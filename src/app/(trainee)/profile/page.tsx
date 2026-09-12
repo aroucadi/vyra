@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User as UserIcon, Shield, AlertTriangle, ArrowRightLeft, Camera, Check } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, Camera } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { switchUserAction } from "@/lib/actions/auth";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ export default function ProfilePage() {
   const currentUser = appStore.getCurrentUser();
 
   const [aiConsent, setAiConsent] = useState(true);
-  const [faceCropEnforced, setFaceCropEnforced] = useState(true);
+  const faceCropEnforced = true;
 
   const handleSwitchToTrainer = async () => {
     await switchUserAction("trainer_1");

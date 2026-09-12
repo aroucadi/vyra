@@ -12,12 +12,11 @@ import {
   Volume2,
   VolumeX,
   Layers,
-  ChevronRight,
   Sparkles,
   ArrowLeft,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { formatDuration, checkIsPersonalRecord } from "@/lib/utils";
+import { formatDuration, checkIsPersonalRecord, resolveProgramDay } from "@/lib/utils";
 import { SetLog, WorkoutSession } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 
@@ -44,6 +43,10 @@ interface ExerciseState {
 export default function SessionLoggingPage() {
   const router = useRouter();
   const currentUser = appStore.getCurrentUser();
+  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
+  const resolved = activeProgram ? resolveProgramDay(activeProgram.startDate) : null;
+  const currentWeek = activeProgram?.weeks.find((w) => w.weekIndex === resolved?.weekIndex) || activeProgram?.weeks[0];
+  const currentDay = currentWeek?.days.find((d) => d.dayOfWeek === resolved?.dayOfWeek) || currentWeek?.days[0];
 
   // Elapsed session timer
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -59,64 +62,91 @@ export default function SessionLoggingPage() {
   // Session summary dialog on finish
   const [showSummary, setShowSummary] = useState(false);
 
-  // Workout Exercises state
-  const [exercises, setExercises] = useState<ExerciseState[]>([
-    {
-      id: "ep1",
-      name: "Barbell Bench Press",
-      prescription: "3 sets × 8–10 reps @ 2 RIR",
-      targetRir: 2,
-      restSeconds: 90,
-      prevBestWeight: 80,
-      prevBestReps: 10,
-      completedSets: [
-        { setIndex: 1, weight: 80, reps: 10, rir: 2, isPR: false },
-        { setIndex: 2, weight: 82.5, reps: 9, rir: 1, isPR: true },
-      ],
-      currentWeight: 82.5,
-      currentReps: 8,
-      currentRir: 0,
-    },
-    {
-      id: "ep2",
-      name: "Incline Dumbbell Press",
-      prescription: "3 sets × 10–12 reps @ 1 RIR",
-      targetRir: 1,
-      restSeconds: 90,
-      prevBestWeight: 28,
-      prevBestReps: 12,
-      completedSets: [],
-      currentWeight: 30,
-      currentReps: 10,
-      currentRir: 1,
-    },
-    {
-      id: "ep3",
-      name: "Cable Lateral Raise (Superset A)",
-      prescription: "3 sets × 12–15 reps @ 0 RIR",
-      targetRir: 0,
-      restSeconds: 0, // 0 because superset
-      prevBestWeight: 12.5,
-      prevBestReps: 15,
-      completedSets: [],
-      currentWeight: 12.5,
-      currentReps: 15,
-      currentRir: 0,
-    },
-    {
-      id: "ep4",
-      name: "Overhead Cable Triceps Extension (Superset B)",
-      prescription: "3 sets × 12–15 reps @ 0 RIR",
-      targetRir: 0,
-      restSeconds: 60, // Rest triggers after both
-      prevBestWeight: 25,
-      prevBestReps: 12,
-      completedSets: [],
-      currentWeight: 25,
-      currentReps: 12,
-      currentRir: 0,
-    },
-  ]);
+  // Workout Exercises state dynamically derived from active program day
+  const [exercises, setExercises] = useState<ExerciseState[]>(() => {
+    if (currentDay && currentDay.blocks && currentDay.blocks.length > 0) {
+      const list: ExerciseState[] = [];
+      currentDay.blocks.forEach((b) => {
+        b.exercises.forEach((ex, exIdx) => {
+          const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
+          const initialWeight = pb?.weightKg || 60;
+          const initialReps = ex.repRangeLow || 8;
+          const isSuperset = b.type === "superset" || b.type === "circuit";
+          const suffix = isSuperset
+            ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
+            : "";
+          list.push({
+            id: ex.id,
+            name: `${ex.exerciseName}${suffix}`,
+            prescription: `${ex.sets} sets × ${ex.repRangeLow}–${ex.repRangeHigh} reps @ ${ex.rirScheme?.[0] ?? 2} RIR`,
+            targetRir: ex.rirScheme?.[0] ?? 2,
+            restSeconds: ex.restSeconds,
+            prevBestWeight: pb?.weightKg || 0,
+            prevBestReps: pb?.reps || 0,
+            completedSets: [],
+            currentWeight: initialWeight,
+            currentReps: initialReps,
+            currentRir: ex.rirScheme?.[0] ?? 2,
+          });
+        });
+      });
+      if (list.length > 0) return list;
+    }
+    return [
+      {
+        id: "ep1",
+        name: "Barbell Bench Press",
+        prescription: "3 sets × 8–10 reps @ 2 RIR",
+        targetRir: 2,
+        restSeconds: 90,
+        prevBestWeight: 80,
+        prevBestReps: 10,
+        completedSets: [],
+        currentWeight: 80,
+        currentReps: 10,
+        currentRir: 2,
+      },
+      {
+        id: "ep2",
+        name: "Incline Dumbbell Press",
+        prescription: "3 sets × 10–12 reps @ 1 RIR",
+        targetRir: 1,
+        restSeconds: 90,
+        prevBestWeight: 28,
+        prevBestReps: 12,
+        completedSets: [],
+        currentWeight: 28,
+        currentReps: 10,
+        currentRir: 1,
+      },
+      {
+        id: "ep3",
+        name: "Cable Lateral Raise (Superset A)",
+        prescription: "3 sets × 12–15 reps @ 0 RIR",
+        targetRir: 0,
+        restSeconds: 0,
+        prevBestWeight: 12.5,
+        prevBestReps: 15,
+        completedSets: [],
+        currentWeight: 12.5,
+        currentReps: 12,
+        currentRir: 0,
+      },
+      {
+        id: "ep4",
+        name: "Overhead Cable Triceps Extension (Superset B)",
+        prescription: "3 sets × 12–15 reps @ 0 RIR",
+        targetRir: 0,
+        restSeconds: 60,
+        prevBestWeight: 25,
+        prevBestReps: 12,
+        completedSets: [],
+        currentWeight: 25,
+        currentReps: 12,
+        currentRir: 0,
+      },
+    ];
+  });
 
   // Session elapsed timer ticker
   useEffect(() => {
@@ -204,9 +234,9 @@ export default function SessionLoggingPage() {
     const newSession: WorkoutSession = {
       id: `sess_${Date.now()}`,
       traineeId: currentUser.id,
-      programDayId: "week_2_d0",
-      programTitle: "Hypertrophy Block 1",
-      dayLabel: "Push Hypertrophy A",
+      programDayId: currentDay?.id || "week_2_d0",
+      programTitle: activeProgram?.title || "Hypertrophy Block 1",
+      dayLabel: currentDay?.label || "Push Hypertrophy A",
       date: new Date().toISOString().split("T")[0],
       startedAt: new Date(Date.now() - sessionSeconds * 1000).toISOString(),
       endedAt: new Date().toISOString(),

@@ -4,11 +4,19 @@ import { appStore } from "@/lib/store";
 import { WorkoutSession } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Non-fatal outside Next.js request context
+  }
+}
+
 export async function saveSessionAction(session: WorkoutSession) {
   const saved = appStore.saveSession(session);
-  revalidatePath("/(trainee)/today");
-  revalidatePath("/(trainee)/progress");
-  revalidatePath("/(trainer)/roster");
+  safeRevalidate("/(trainee)/today");
+  safeRevalidate("/(trainee)/progress");
+  safeRevalidate("/(trainer)/roster");
   return saved;
 }
 

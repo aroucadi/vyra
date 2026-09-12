@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock, Play, Dumbbell, ChevronRight, X, Layers, Check } from "lucide-react";
+import { Clock, Play, Dumbbell, ChevronRight, X, Layers, Check } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay } from "@/lib/utils";
 import { ProgramDay } from "@/lib/types";
@@ -10,8 +10,9 @@ import { ProgramDay } from "@/lib/types";
 export default function ProgramCalendarPage() {
   const currentUser = appStore.getCurrentUser();
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
+  const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
 
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(2); // Week 2 active
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => resolved.weekIndex || 1);
   const [previewDay, setPreviewDay] = useState<ProgramDay | null>(null);
 
   if (!program) {
@@ -23,7 +24,6 @@ export default function ProgramCalendarPage() {
     );
   }
 
-  const resolved = resolveProgramDay(program.startDate);
   const activeWeek = program.weeks.find((w) => w.weekIndex === selectedWeekIndex) || program.weeks[0];
 
   const daysOfWeekLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

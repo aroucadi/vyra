@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Dumbbell, ArrowLeft, ExternalLink, Video, CheckCircle2 } from "lucide-react";
+import { Search, Plus, ArrowLeft, Video } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { Exercise } from "@/lib/types";
 
 export default function ExercisesPage() {
   const [exercises, setExercises] = useState(appStore.getExercises());
@@ -30,7 +29,7 @@ export default function ExercisesPage() {
     e.preventDefault();
     if (!name) return;
 
-    const newEx = appStore.addExercise({
+    appStore.addExercise({
       name,
       primaryMuscle,
       secondaryMuscles: [],

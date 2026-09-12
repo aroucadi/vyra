@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
-import { users, trainerLinks } from "./users";
+import { users } from "./users";
 import { programs, programWeeks, programDays, blocks, exercisePrescriptions } from "./programs";
-import { exercises } from "./exercises";
 import { workoutSessions, setLogs } from "./sessions";
 import { bodyMetricEntries } from "./metrics";
 

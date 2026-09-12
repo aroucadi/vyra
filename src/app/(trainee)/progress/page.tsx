@@ -6,16 +6,14 @@ import {
   Plus,
   Trophy,
   Activity,
-  Calendar,
   CheckCircle2,
-  Dumbbell,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { logWeightAction } from "@/lib/actions/metrics";
 
 export default function ProgressPage() {
   const currentUser = appStore.getCurrentUser();
-  const metrics = appStore.getMetrics(currentUser.id);
+  const [metrics, setMetrics] = useState(() => appStore.getMetrics(currentUser.id));
   const sessions = appStore.getSessions(currentUser.id);
 
   const [weightInput, setWeightInput] = useState("");
@@ -29,6 +27,7 @@ export default function ProgressPage() {
 
     setIsLogging(true);
     await logWeightAction(currentUser.id, val);
+    setMetrics(appStore.getMetrics(currentUser.id));
     setIsLogging(false);
     setWeightInput("");
     setSuccessMessage("Weight logged successfully.");

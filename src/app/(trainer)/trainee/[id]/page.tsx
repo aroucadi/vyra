@@ -1,19 +1,12 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   Dumbbell,
   AlertTriangle,
-  TrendingUp,
-  FileText,
-  ChevronRight,
-  Shield,
   Activity,
-  CheckCircle2,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { formatDuration } from "@/lib/utils";
@@ -57,13 +50,34 @@ export default function TraineeDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Trainee Stats & Injury Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-2">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Physical Baseline</span>
           <div className="space-y-1 text-xs">
             <p className="text-slate-300">Height: <strong className="text-white font-mono">{trainee.heightCm || 180} cm</strong></p>
             <p className="text-slate-300">Current Weight: <strong className="text-white font-mono">{metrics.length ? metrics[metrics.length - 1].weightKg : 80} kg</strong></p>
             <p className="text-slate-300">Goal: <strong className="text-[#10B981]">{trainee.goals[0] || "Strength Progression"}</strong></p>
+          </div>
+        </div>
+
+        <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-2">
+          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Weight Trend (14d)</span>
+          <div className="space-y-1">
+            <p className="text-xs font-mono text-slate-300">
+              {metrics.length >= 2
+                ? `${metrics[metrics.length - 1].weightKg - metrics[0].weightKg > 0 ? "+" : ""}${Math.round((metrics[metrics.length - 1].weightKg - metrics[0].weightKg) * 10) / 10} kg net`
+                : "Stable Baseline"}
+            </p>
+            <div className="h-10 flex items-end gap-1 pt-1">
+              {metrics.slice(-7).map((m, i) => (
+                <div
+                  key={m.id || i}
+                  title={`${m.date}: ${m.weightKg}kg`}
+                  style={{ height: `${Math.max(20, Math.min(100, (m.weightKg - 70) * 5))}%` }}
+                  className="flex-1 bg-[#10B981] rounded-t hover:bg-[#06B6D4] transition"
+                />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -83,7 +97,7 @@ export default function TraineeDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
             <span>Version: <strong>v{program?.version || 1}.0</strong></span>
             <span>•</span>
-            <span>Duration: {program?.durationWeeks || 4} Weeks</span>
+            <span>Duration: {program?.durationWeeks || 4} Wks</span>
           </div>
         </div>
       </div>

@@ -9,17 +9,169 @@ import {
   Plus,
   Trash2,
   Layers,
-  Dumbbell,
   CheckCircle2,
-  Calendar,
-  Clock,
   ArrowLeft,
-  Video,
-  Info,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { Program, ProgramDay, Block, ExercisePrescription } from "@/lib/types";
+import { Program, ProgramWeek, ProgramDay, Block, ExercisePrescription } from "@/lib/types";
 import { saveProgramAction, publishProgramAction } from "@/lib/actions/program";
+
+interface DaySchedule {
+  label: string;
+  isRestDay: boolean;
+  blocks: Block[];
+}
+
+const initialSchedule: Record<number, DaySchedule> = {
+  0: {
+    label: "Push Hypertrophy A",
+    isRestDay: false,
+    blocks: [
+      {
+        id: "b_straight_1",
+        order: 1,
+        type: "straight",
+        exercises: [
+          {
+            id: "ep_b1",
+            exerciseId: "ex_bench_press",
+            exerciseName: "Barbell Bench Press",
+            sets: 3,
+            repRangeLow: 8,
+            repRangeHigh: 10,
+            rirScheme: [2, 1, 0],
+            restSeconds: 90,
+            loadGuidance: "Double progression: add 2.5kg when hitting 10 reps across all sets.",
+            formCueText: "Pause on sternum, stack wrists over elbows.",
+            videoUrl: "https://www.youtube.com/results?search_query=barbell+bench+press+form",
+            targetMuscleGroups: ["Chest", "Triceps"],
+          },
+        ],
+      },
+      {
+        id: "b_super_1",
+        order: 2,
+        type: "superset",
+        exercises: [
+          {
+            id: "ep_s1",
+            exerciseId: "ex_lateral_raise",
+            exerciseName: "Cable Lateral Raise",
+            sets: 3,
+            repRangeLow: 12,
+            repRangeHigh: 15,
+            rirScheme: [1, 0, 0],
+            restSeconds: 0,
+            formCueText: "Continuous tension, slight torso lean.",
+            targetMuscleGroups: ["Side Deltoids"],
+          },
+          {
+            id: "ep_s2",
+            exerciseId: "ex_cable_triceps_ext",
+            exerciseName: "Overhead Cable Triceps Extension",
+            sets: 3,
+            repRangeLow: 12,
+            repRangeHigh: 15,
+            rirScheme: [1, 0, 0],
+            restSeconds: 60,
+            formCueText: "Full stretch behind head, lock elbows in place.",
+            targetMuscleGroups: ["Triceps"],
+          },
+        ],
+      },
+    ],
+  },
+  1: {
+    label: "Pull Hypertrophy & Back",
+    isRestDay: false,
+    blocks: [
+      {
+        id: "b_pull_1",
+        order: 1,
+        type: "straight",
+        exercises: [
+          {
+            id: "ep_p1",
+            exerciseId: "ex_bent_over_row",
+            exerciseName: "Barbell Bent-Over Row",
+            sets: 3,
+            repRangeLow: 8,
+            repRangeHigh: 10,
+            rirScheme: [2, 1, 1],
+            restSeconds: 90,
+            formCueText: "Hinge hips 45°, pull barbell towards lower ribcage.",
+            targetMuscleGroups: ["Upper Back", "Lats"],
+          },
+        ],
+      },
+    ],
+  },
+  2: {
+    label: "Active Recovery & Mobility",
+    isRestDay: true,
+    blocks: [],
+  },
+  3: {
+    label: "Legs & Core Overload",
+    isRestDay: false,
+    blocks: [
+      {
+        id: "b_legs_1",
+        order: 1,
+        type: "straight",
+        exercises: [
+          {
+            id: "ep_l1",
+            exerciseId: "ex_barbell_squat",
+            exerciseName: "Barbell Back Squat",
+            sets: 4,
+            repRangeLow: 6,
+            repRangeHigh: 8,
+            rirScheme: [3, 2, 2, 1],
+            restSeconds: 120,
+            formCueText: "Brace core 360°, break at hips and knees, hit parallel depth.",
+            targetMuscleGroups: ["Quads", "Glutes"],
+          },
+        ],
+      },
+    ],
+  },
+  4: {
+    label: "Upper Hypertrophy B",
+    isRestDay: false,
+    blocks: [
+      {
+        id: "b_up_1",
+        order: 1,
+        type: "straight",
+        exercises: [
+          {
+            id: "ep_up1",
+            exerciseId: "ex_incline_db_press",
+            exerciseName: "Incline Dumbbell Press",
+            sets: 3,
+            repRangeLow: 8,
+            repRangeHigh: 10,
+            rirScheme: [2, 1, 0],
+            restSeconds: 90,
+            formCueText: "Full stretch at bottom, explosive drive.",
+            targetMuscleGroups: ["Upper Chest"],
+          },
+        ],
+      },
+    ],
+  },
+  5: {
+    label: "Mobility & Conditioning",
+    isRestDay: true,
+    blocks: [],
+  },
+  6: {
+    label: "Rest & Systemic Recovery",
+    isRestDay: true,
+    blocks: [],
+  },
+};
 
 export default function ProgramBuilderPage() {
   const router = useRouter();
@@ -40,61 +192,45 @@ export default function ProgramBuilderPage() {
   const [pickerTargetBlockIndex, setPickerTargetBlockIndex] = useState<number | null>(null);
   const [successToast, setSuccessToast] = useState("");
 
-  // Working day exercises state
-  const [blocks, setBlocks] = useState<Block[]>([
-    {
-      id: "b_straight_1",
-      order: 1,
-      type: "straight",
-      exercises: [
-        {
-          id: "ep_b1",
-          exerciseId: "ex_bench_press",
-          exerciseName: "Barbell Bench Press",
-          sets: 3,
-          repRangeLow: 8,
-          repRangeHigh: 10,
-          rirScheme: [2, 1, 0],
-          restSeconds: 90,
-          loadGuidance: "Double progression: add 2.5kg when hitting 10 reps across all sets.",
-          formCueText: "Pause on sternum, stack wrists over elbows.",
-          videoUrl: "https://www.youtube.com/results?search_query=barbell+bench+press+form",
-          targetMuscleGroups: ["Chest", "Triceps"],
-        },
-      ],
-    },
-    {
-      id: "b_super_1",
-      order: 2,
-      type: "superset",
-      exercises: [
-        {
-          id: "ep_s1",
-          exerciseId: "ex_lateral_raise",
-          exerciseName: "Cable Lateral Raise",
-          sets: 3,
-          repRangeLow: 12,
-          repRangeHigh: 15,
-          rirScheme: [1, 0, 0],
-          restSeconds: 0,
-          formCueText: "Continuous tension, slight torso lean.",
-          targetMuscleGroups: ["Side Deltoids"],
-        },
-        {
-          id: "ep_s2",
-          exerciseId: "ex_cable_triceps_ext",
-          exerciseName: "Overhead Cable Triceps Extension",
-          sets: 3,
-          repRangeLow: 12,
-          repRangeHigh: 15,
-          rirScheme: [1, 0, 0],
-          restSeconds: 60,
-          formCueText: "Full stretch behind head, lock elbows in place.",
-          targetMuscleGroups: ["Triceps"],
-        },
-      ],
-    },
-  ]);
+  // Full 7-day meso-cycle schedule state
+  const [schedule, setSchedule] = useState<Record<number, DaySchedule>>(initialSchedule);
+
+  const currentDaySchedule = schedule[activeDayIndex] || {
+    label: "Training Day",
+    isRestDay: false,
+    blocks: [],
+  };
+  const blocks = currentDaySchedule.blocks;
+
+  const setBlocks = (newBlocks: Block[]) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [activeDayIndex]: {
+        ...prev[activeDayIndex],
+        blocks: newBlocks,
+      },
+    }));
+  };
+
+  const toggleRestDay = (isRest: boolean) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [activeDayIndex]: {
+        ...prev[activeDayIndex],
+        isRestDay: isRest,
+      },
+    }));
+  };
+
+  const updateDayLabel = (newLabel: string) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [activeDayIndex]: {
+        ...prev[activeDayIndex],
+        label: newLabel,
+      },
+    }));
+  };
 
   const [nextId, setNextId] = useState(100);
 
@@ -157,20 +293,81 @@ export default function ProgramBuilderPage() {
     setBlocks(updated);
   };
 
+  const buildProgramObject = (progStatus: "draft" | "published", progVersion: number): Program => {
+    const progId = `prog_${Date.now()}`;
+    const weeks: ProgramWeek[] = [];
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + durationWeeks * 7 - 1);
+    const endDateStr = end.toISOString().split("T")[0];
+
+    for (let w = 1; w <= durationWeeks; w++) {
+      const weekId = `week_${progId}_${w}`;
+      const days: ProgramDay[] = [];
+      for (let d = 0; d < 7; d++) {
+        const daySched = schedule[d] || {
+          label: `Day ${d + 1}`,
+          isRestDay: d === 2 || d === 5 || d === 6,
+          blocks: [],
+        };
+        days.push({
+          id: `${weekId}_d${d}`,
+          weekId,
+          dayOfWeek: d,
+          label: daySched.label,
+          isRestDay: daySched.isRestDay,
+          morningRoutine: ["750ml hydration", "Dynamic mobility warmup"],
+          blocks: daySched.isRestDay ? [] : daySched.blocks,
+          nutrition: {
+            targetProteinGrams: 180,
+            supplements: [{ name: "Creatine", dosage: "5g", timing: "Post-workout", checked: true }],
+          },
+        });
+      }
+      weeks.push({
+        id: weekId,
+        programId: progId,
+        weekIndex: w,
+        days,
+      });
+    }
+
+    return {
+      id: progId,
+      trainerId: "trainer_1",
+      traineeId: selectedTraineeId,
+      title,
+      startDate,
+      endDate: endDateStr,
+      durationWeeks,
+      status: progStatus,
+      version: progVersion,
+      weeks,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
   const handleSaveDraft = async () => {
+    const prog = buildProgramObject("draft", version);
+    await saveProgramAction(prog);
+    setStatus("draft");
     setSuccessToast("Program draft saved successfully.");
     setTimeout(() => setSuccessToast(""), 3000);
   };
 
   const handlePublish = async () => {
     setShowPublishModal(false);
+    const newVersion = version + 1;
+    const prog = buildProgramObject("published", newVersion);
+    await saveProgramAction(prog);
+    await publishProgramAction(prog.id);
     setStatus("published");
-    setVersion((v) => v + 1);
-    setSuccessToast("Program v" + (version + 1) + ".0 published to athlete device!");
+    setVersion(newVersion);
+    setSuccessToast("Program v" + newVersion + ".0 published to athlete device!");
     setTimeout(() => {
       setSuccessToast("");
       router.push("/roster");
-    }, 2000);
+    }, 1500);
   };
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -290,64 +487,90 @@ export default function ProgramBuilderPage() {
 
       {/* 4. Day-by-Day Calendar Columns Bar */}
       <div className="grid grid-cols-7 gap-2">
-        {daysOfWeek.map((dayName, idx) => (
-          <button
-            key={dayName}
-            onClick={() => setActiveDayIndex(idx)}
-            className={`p-3 rounded-xl border text-center transition ${
-              activeDayIndex === idx
-                ? "bg-[#162032] border-[#10B981] ring-1 ring-[#10B981]"
-                : "bg-[#162032]/60 border-[#1E293B] hover:border-slate-700"
-            }`}
-          >
-            <span className="text-[10px] uppercase font-mono text-slate-400 block">{dayName.slice(0, 3)}</span>
-            <span className="text-xs font-bold text-white mt-1 block truncate">
-              {idx === 0
-                ? "Push Hyper"
-                : idx === 1
-                ? "Pull Hyper"
-                : idx === 2
-                ? "Rest Day"
-                : idx === 3
-                ? "Legs Base"
-                : idx === 4
-                ? "Upper Power"
-                : "Rest"}
-            </span>
-          </button>
-        ))}
+        {daysOfWeek.map((dayName, idx) => {
+          const dSched = schedule[idx];
+          return (
+            <button
+              key={dayName}
+              onClick={() => setActiveDayIndex(idx)}
+              className={`p-3 rounded-xl border text-center transition ${
+                activeDayIndex === idx
+                  ? "bg-[#162032] border-[#10B981] ring-1 ring-[#10B981]"
+                  : "bg-[#162032]/60 border-[#1E293B] hover:border-slate-700"
+              }`}
+            >
+              <span className="text-[10px] uppercase font-mono text-slate-400 block">{dayName.slice(0, 3)}</span>
+              <span className="text-xs font-bold text-white mt-1 block truncate">
+                {dSched?.label || `Day ${idx + 1}`}
+              </span>
+              {dSched?.isRestDay && (
+                <span className="mt-1 px-1.5 py-0.2 rounded bg-[#06B6D4]/10 text-[#06B6D4] text-[9px] font-mono block">
+                  Rest
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* 5. Day Detail & Exercise Blocks Editor */}
       <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1E293B] pb-3">
           <div>
             <span className="text-[10px] font-mono text-[#06B6D4] uppercase font-bold tracking-wider">
               {daysOfWeek[activeDayIndex]} • Week {activeWeekIndex} Editor
             </span>
-            <h2 className="text-base font-black text-white">Push Hypertrophy Session</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                value={currentDaySchedule.label}
+                onChange={(e) => updateDayLabel(e.target.value)}
+                className="text-base font-black text-white bg-transparent border-b border-transparent hover:border-slate-700 focus:border-[#10B981] focus:outline-none"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleAddStraightBlock}
-              className="px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] border border-[#334155] text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Plus className="w-3.5 h-3.5 text-[#10B981]" />
-              Add Straight Set
-            </button>
-            <button
-              onClick={handleAddSupersetBlock}
-              className="px-3 py-1.5 rounded-lg bg-[#06B6D4]/10 hover:bg-[#06B6D4]/20 border border-[#06B6D4]/40 text-[#06B6D4] text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Add Superset Block
-            </button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0F172A] border border-[#334155] cursor-pointer hover:border-slate-600 transition">
+              <input
+                type="checkbox"
+                checked={currentDaySchedule.isRestDay}
+                onChange={(e) => toggleRestDay(e.target.checked)}
+                className="accent-[#10B981] w-4 h-4 rounded"
+              />
+              <span className="text-xs font-mono font-bold text-slate-300">Rest Day</span>
+            </label>
+
+            {!currentDaySchedule.isRestDay && (
+              <>
+                <button
+                  onClick={handleAddStraightBlock}
+                  className="px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] border border-[#334155] text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#10B981]" />
+                  Add Straight Set
+                </button>
+                <button
+                  onClick={handleAddSupersetBlock}
+                  className="px-3 py-1.5 rounded-lg bg-[#06B6D4]/10 hover:bg-[#06B6D4]/20 border border-[#06B6D4]/40 text-[#06B6D4] text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Add Superset Block
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Blocks List */}
-        <div className="space-y-4">
+        {currentDaySchedule.isRestDay ? (
+          <div className="p-8 text-center bg-[#0F172A] rounded-xl border border-[#1E293B] space-y-2">
+            <p className="text-sm font-bold text-slate-200">Scheduled Rest & Muscle Protein Synthesis</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              This day is designated as non-lifting recovery. Uncheck &ldquo;Rest Day&rdquo; above to prescribe exercises.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
           {blocks.map((block, bIdx) => (
             <div
               key={block.id}
@@ -485,6 +708,7 @@ export default function ProgramBuilderPage() {
             </div>
           ))}
         </div>
+      )}
       </section>
 
       {/* Exercise Picker Modal */}

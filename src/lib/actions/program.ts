@@ -4,6 +4,14 @@ import { appStore } from "@/lib/store";
 import { Program } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Non-fatal outside Next.js request context
+  }
+}
+
 export async function getActiveProgram(traineeId: string) {
   return appStore.getActiveProgramForTrainee(traineeId);
 }
@@ -14,17 +22,17 @@ export async function getProgramById(programId: string) {
 
 export async function saveProgramAction(program: Program) {
   const saved = appStore.saveProgram(program);
-  revalidatePath("/(trainee)/today");
-  revalidatePath("/(trainee)/program");
-  revalidatePath("/(trainer)/roster");
-  revalidatePath(`/(trainer)/program/${program.id}`);
+  safeRevalidate("/(trainee)/today");
+  safeRevalidate("/(trainee)/program");
+  safeRevalidate("/(trainer)/roster");
+  safeRevalidate(`/(trainer)/program/${program.id}`);
   return saved;
 }
 
 export async function publishProgramAction(programId: string) {
   const published = appStore.publishProgram(programId);
-  revalidatePath("/(trainee)/today");
-  revalidatePath("/(trainee)/program");
-  revalidatePath("/(trainer)/roster");
+  safeRevalidate("/(trainee)/today");
+  safeRevalidate("/(trainee)/program");
+  safeRevalidate("/(trainer)/roster");
   return published;
 }

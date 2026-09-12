@@ -9,15 +9,10 @@ import {
   TrendingUp,
   Search,
   Plus,
-  ArrowRight,
-  Shield,
   CheckCircle2,
   X,
-  Dumbbell,
-  ExternalLink,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { TraineeRosterItem } from "@/lib/types";
 
 export default function TrainerRosterPage() {
   const rosterItems = appStore.getRoster();

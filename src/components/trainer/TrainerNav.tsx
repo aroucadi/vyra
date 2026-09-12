@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, ClipboardList, Dumbbell, BarChart3, Shield, ArrowRightLeft } from "lucide-react";
+import { Users, ClipboardList, Dumbbell, Shield, ArrowRightLeft } from "lucide-react";
 
 export function TrainerNav() {
   const pathname = usePathname();

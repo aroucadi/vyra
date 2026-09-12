@@ -4,7 +4,6 @@ import {
   WorkoutSession,
   BodyMetricEntry,
   TraineeRosterItem,
-  SetLog,
   Exercise,
 } from "./types";
 import { seedExercises } from "@/db/seed/exercises";

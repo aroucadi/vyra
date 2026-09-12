@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Circle,
   Video,
-  ExternalLink,
   Flame,
   Clock,
   Dumbbell,
@@ -180,12 +179,12 @@ export default function TodayPage() {
               <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400 font-mono">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3 text-[#06B6D4]" />
-                  Est. 52 mins
+                  Est. {currentDay?.blocks ? Math.max(30, Math.round(currentDay.blocks.reduce((acc, b) => acc + b.exercises.reduce((sAcc, e) => sAcc + e.sets, 0), 0) * 3.5)) : 52} mins
                 </span>
                 <span>•</span>
-                <span>4 Movements</span>
+                <span>{currentDay?.blocks?.reduce((acc, b) => acc + b.exercises.length, 0) || 4} Movements</span>
                 <span>•</span>
-                <span>12 Sets</span>
+                <span>{currentDay?.blocks?.reduce((acc, b) => acc + b.exercises.reduce((sAcc, e) => sAcc + e.sets, 0), 0) || 12} Sets</span>
               </div>
             </div>
 
@@ -200,108 +199,88 @@ export default function TodayPage() {
 
           {/* Exercise Rows */}
           <div className="space-y-3">
-            {/* Exercise 1 */}
-            <div className="bg-[#0F172A] rounded-lg p-3 border border-[#1E293B] space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[#F8FAFC]">1. Barbell Bench Press</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-mono font-semibold text-[#10B981]">
-                      3 sets × 8–10 reps
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-[#06B6D4] font-mono">
-                      @ 2 RIR
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-slate-300 font-mono">
-                      Rest 90s
-                    </span>
+            {currentDay?.blocks && currentDay.blocks.length > 0 ? (
+              currentDay.blocks.map((b, bIdx) => {
+                if (b.type === "superset" || b.type === "circuit") {
+                  return (
+                    <div key={b.id || bIdx} className="border border-[#06B6D4]/40 bg-[#06B6D4]/5 rounded-xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-[#06B6D4]" />
+                          <span className="text-xs font-bold text-[#06B6D4] tracking-wide uppercase">
+                            {b.type === "superset" ? "Superset" : "Circuit"} ({b.exercises.length} Movements)
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          Shared Rest {b.exercises[b.exercises.length - 1]?.restSeconds || 60}s
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {b.exercises.map((ex, exIdx) => (
+                          <div key={ex.id || exIdx} className="bg-[#0F172A] p-2.5 rounded-lg border border-[#1E293B]">
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-200">
+                              <span>
+                                {bIdx + 1}.{String.fromCharCode(97 + exIdx)} {ex.exerciseName}
+                              </span>
+                              <span className="text-[#10B981] font-mono">
+                                {ex.sets} × {ex.repRangeLow}–{ex.repRangeHigh} @ {ex.rirScheme?.[0] ?? 1} RIR
+                              </span>
+                            </div>
+                            {ex.formCueText && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">{ex.formCueText}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return b.exercises.map((ex, exIdx) => (
+                  <div key={ex.id || exIdx} className="bg-[#0F172A] rounded-lg p-3 border border-[#1E293B] space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-[#F8FAFC]">
+                          {bIdx + 1}. {ex.exerciseName}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-mono font-semibold text-[#10B981]">
+                            {ex.sets} sets × {ex.repRangeLow}–{ex.repRangeHigh} reps
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-[#06B6D4] font-mono">
+                            @ {ex.rirScheme?.[0] ?? 2} RIR
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-slate-300 font-mono">
+                            Rest {ex.restSeconds}s
+                          </span>
+                        </div>
+                      </div>
+
+                      {ex.videoUrl && (
+                        <a
+                          href={ex.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px]"
+                        >
+                          <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
+                          <span>Guide</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {ex.formCueText && (
+                      <div className="bg-[#162032]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#10B981] flex items-start gap-1.5">
+                        <Info className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
+                        <span>{ex.formCueText}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <a
-                  href="https://www.youtube.com/results?search_query=barbell+bench+press+proper+form"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px]"
-                >
-                  <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
-                  <span>Guide</span>
-                </a>
-              </div>
-
-              <div className="bg-[#162032]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#10B981] flex items-start gap-1.5">
-                <Info className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
-                <span>Pause on sternum, stack wrists over elbows, double progression from last 80kg x 10.</span>
-              </div>
-            </div>
-
-            {/* Exercise 2 */}
-            <div className="bg-[#0F172A] rounded-lg p-3 border border-[#1E293B] space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[#F8FAFC]">2. Incline Dumbbell Press</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-mono font-semibold text-[#10B981]">
-                      3 sets × 10–12 reps
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-[#06B6D4] font-mono">
-                      @ 1 RIR
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-[#162032] border border-[#334155] text-[10px] text-slate-300 font-mono">
-                      Rest 90s
-                    </span>
-                  </div>
-                </div>
-
-                <a
-                  href="https://www.youtube.com/results?search_query=incline+dumbbell+press+form"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px]"
-                >
-                  <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
-                  <span>Guide</span>
-                </a>
-              </div>
-
-              <div className="bg-[#162032]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#06B6D4] flex items-start gap-1.5">
-                <Info className="w-3 h-3 text-[#06B6D4] shrink-0 mt-0.5" />
-                <span>30° incline bench, prioritize deep stretch at bottom of repetition.</span>
-              </div>
-            </div>
-
-            {/* Superset Block */}
-            <div className="border border-[#06B6D4]/40 bg-[#06B6D4]/5 rounded-xl p-3 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-[#06B6D4]" />
-                  <span className="text-xs font-bold text-[#06B6D4] tracking-wide uppercase">
-                    Superset: Lateral & Triceps
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-slate-400">
-                  Shared Rest 60s
-                </span>
-              </div>
-
-              {/* Superset A */}
-              <div className="bg-[#0F172A] p-2.5 rounded-lg border border-[#1E293B]">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                  <span>3a. Cable Lateral Raises</span>
-                  <span className="text-[#10B981] font-mono">3 × 12–15 @ 0 RIR</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">Continuous tension, lead with elbows.</p>
-              </div>
-
-              {/* Superset B */}
-              <div className="bg-[#0F172A] p-2.5 rounded-lg border border-[#1E293B]">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                  <span>3b. Overhead Cable Triceps Extension</span>
-                  <span className="text-[#10B981] font-mono">3 × 12–15 @ 0 RIR</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">Full extension, 60s rest starts after this set.</p>
-              </div>
-            </div>
+                ));
+              })
+            ) : (
+              <p className="text-xs text-slate-400 text-center py-4">No exercises scheduled for this day.</p>
+            )}
           </div>
         </section>
       )}

@@ -46,7 +46,8 @@ export function resolveProgramDay(startDateStr: string, refDateStr?: string) {
  * 1RM = Weight * (1 + Reps / 30)
  */
 export function calculateEstimated1RM(weightKg: number, reps: number): number {
-  if (reps <= 1) return weightKg;
+  if (weightKg <= 0 || reps <= 0) return 0;
+  if (reps === 1) return weightKg;
   return Math.round(weightKg * (1 + reps / 30) * 10) / 10;
 }
 
@@ -73,8 +74,9 @@ export function checkIsPersonalRecord(
  * Format seconds into mm:ss string
  */
 export function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const clamped = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(clamped / 60);
+  const secs = clamped % 60;
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 

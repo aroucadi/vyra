@@ -26,5 +26,6 @@ export const setLogs = pgTable("set_logs", {
   weightKg: real("weight_kg").notNull(),
   rirAchieved: integer("rir_achieved").notNull(),
   isPR: boolean("is_pr").default(false).notNull(),
+  selectedEquipment: text("selected_equipment", { enum: ["machine", "dumbbell", "cable", "bodyweight"] }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

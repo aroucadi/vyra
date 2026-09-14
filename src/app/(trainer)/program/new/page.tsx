@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,10 +11,49 @@ import {
   Layers,
   CheckCircle2,
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  Video,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { Program, ProgramWeek, ProgramDay, Block, ExercisePrescription } from "@/lib/types";
+import {
+  Program,
+  ProgramWeek,
+  ProgramDay,
+  Block,
+  ExercisePrescription,
+  EquipmentOption,
+  EquipmentType,
+} from "@/lib/types";
 import { saveProgramAction, publishProgramAction } from "@/lib/actions/program";
+
+export const generateDefaultEquipmentVariations = (name: string, muscle: string): EquipmentOption[] => [
+  {
+    equipmentType: "machine",
+    exerciseName: `${name} (Machine)`,
+    formCue: "Adjust seat/handles so trajectory aligns with target muscle line of drive.",
+    targetFocus: muscle,
+  },
+  {
+    equipmentType: "dumbbell",
+    exerciseName: `${name} (Dumbbell)`,
+    formCue: "Control 3s eccentric descent, pause briefly at peak stretch.",
+    targetFocus: muscle,
+  },
+  {
+    equipmentType: "cable",
+    exerciseName: `${name} (Cable)`,
+    formCue: "Continuous tension through peak contraction, brace core.",
+    targetFocus: muscle,
+  },
+  {
+    equipmentType: "bodyweight",
+    exerciseName: `${name} (Bodyweight)`,
+    formCue: "Maintain strict biomechanics and constant tension throughout.",
+    targetFocus: muscle,
+  },
+];
 
 interface DaySchedule {
   label: string;
@@ -173,7 +212,7 @@ const initialSchedule: Record<number, DaySchedule> = {
   },
 };
 
-export default function ProgramBuilderPage() {
+export default function ProgramBuilderPage({ programId }: { programId?: string } = {}) {
   const router = useRouter();
   const trainees = appStore.getTrainees();
   const exercisesLibrary = appStore.getExercises();
@@ -192,8 +231,41 @@ export default function ProgramBuilderPage() {
   const [pickerTargetBlockIndex, setPickerTargetBlockIndex] = useState<number | null>(null);
   const [successToast, setSuccessToast] = useState("");
 
+  // Track expanded equipment matrix per exercise ID and active equipment tab
+  const [expandedMatrices, setExpandedMatrices] = useState<Record<string, boolean>>({});
+  const [activeEquipmentTabs, setActiveEquipmentTabs] = useState<Record<string, EquipmentType>>({});
+
   // Full 7-day meso-cycle schedule state
   const [schedule, setSchedule] = useState<Record<number, DaySchedule>>(initialSchedule);
+
+  // Load existing program if editing
+  useEffect(() => {
+    if (!programId) return;
+    const existing = appStore.getProgram(programId);
+    if (!existing) return;
+
+    setTitle(existing.title);
+    setSelectedTraineeId(existing.traineeId);
+    setStartDate(existing.startDate);
+    setDurationWeeks(existing.durationWeeks);
+    setStatus(existing.status === "archived" ? "draft" : existing.status);
+    setVersion(existing.version);
+
+    if (existing.weeks && existing.weeks.length > 0) {
+      const firstWeek = existing.weeks[0];
+      if (firstWeek.days && firstWeek.days.length > 0) {
+        const loadedSchedule: Record<number, DaySchedule> = {};
+        firstWeek.days.forEach((d) => {
+          loadedSchedule[d.dayOfWeek] = {
+            label: d.label,
+            isRestDay: d.isRestDay,
+            blocks: d.blocks || [],
+          };
+        });
+        setSchedule(loadedSchedule);
+      }
+    }
+  }, [programId]);
 
   const currentDaySchedule = schedule[activeDayIndex] || {
     label: "Training Day",
@@ -278,6 +350,7 @@ export default function ProgramBuilderPage() {
       restSeconds: 90,
       formCueText: "Focus on controlled eccentric phase.",
       targetMuscleGroups: [ex.primaryMuscle],
+      equipmentVariations: generateDefaultEquipmentVariations(ex.name, ex.primaryMuscle),
     };
 
     const updated = [...blocks];
@@ -285,6 +358,25 @@ export default function ProgramBuilderPage() {
     setBlocks(updated);
     setShowExercisePicker(false);
     setPickerTargetBlockIndex(null);
+  };
+
+  const updateEquipmentOption = (
+    blockIdx: number,
+    exIdx: number,
+    eqType: EquipmentType,
+    field: keyof EquipmentOption,
+    value: string
+  ) => {
+    const updated = [...blocks];
+    const ex = updated[blockIdx].exercises[exIdx];
+    if (!ex.equipmentVariations || ex.equipmentVariations.length === 0) {
+      ex.equipmentVariations = generateDefaultEquipmentVariations(ex.exerciseName, ex.targetMuscleGroups[0] || "Target");
+    }
+    const opt = ex.equipmentVariations.find((o) => o.equipmentType === eqType);
+    if (opt) {
+      (opt as any)[field] = value;
+    }
+    setBlocks(updated);
   };
 
   const removeExercise = (blockIdx: number, exIdx: number) => {
@@ -700,6 +792,167 @@ export default function ProgramBuilderPage() {
                           placeholder="e.g. Pause on chest, avoid flared elbows."
                           className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
                         />
+                      </div>
+
+                      {/* 4-Option Equipment Matrix Configuration */}
+                      <div className="pt-2 border-t border-[#334155]/60 space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedMatrices((prev) => ({
+                              ...prev,
+                              [ex.id]: !prev[ex.id],
+                            }));
+                          }}
+                          className="flex items-center justify-between w-full text-left py-1 text-xs font-bold text-[#06B6D4] hover:text-[#06B6D4]/80 transition"
+                        >
+                          <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                            4-Option Equipment Matrix (Machine, DB, Cable, BW)
+                          </span>
+                          {expandedMatrices[ex.id] ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+
+                        {expandedMatrices[ex.id] && (
+                          <div className="p-2.5 rounded-lg bg-[#0F172A] border border-[#334155] space-y-3">
+                            {/* Equipment Tabs */}
+                            <div className="flex rounded-lg bg-[#162032] p-1 gap-1 border border-[#334155]">
+                              {(["machine", "dumbbell", "cable", "bodyweight"] as EquipmentType[]).map((eq) => {
+                                const activeTab = activeEquipmentTabs[ex.id] || "machine";
+                                const isCurrent = activeTab === eq;
+                                return (
+                                  <button
+                                    key={eq}
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveEquipmentTabs((prev) => ({
+                                        ...prev,
+                                        [ex.id]: eq,
+                                      }))
+                                    }
+                                    className={`flex-1 py-1 rounded text-[10px] font-mono font-bold uppercase transition ${
+                                      isCurrent
+                                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                                        : "text-slate-400 hover:text-white"
+                                    }`}
+                                  >
+                                    {eq}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Active Equipment Fields */}
+                            {(() => {
+                              const activeEq = activeEquipmentTabs[ex.id] || "machine";
+                              const variations =
+                                ex.equipmentVariations && ex.equipmentVariations.length > 0
+                                  ? ex.equipmentVariations
+                                  : generateDefaultEquipmentVariations(
+                                      ex.exerciseName,
+                                      ex.targetMuscleGroups[0] || "Target"
+                                    );
+                              const option =
+                                variations.find((o) => o.equipmentType === activeEq) || {
+                                  equipmentType: activeEq,
+                                  exerciseName: `${ex.exerciseName} (${activeEq})`,
+                                  formCue: "Maintain strict control through full range.",
+                                  targetFocus: ex.targetMuscleGroups[0] || "Target",
+                                };
+
+                              return (
+                                <div className="space-y-2 text-xs font-mono">
+                                  <div>
+                                    <label className="text-[9px] text-slate-400 uppercase">
+                                      {activeEq.toUpperCase()} Exercise Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={option.exerciseName}
+                                      onChange={(e) =>
+                                        updateEquipmentOption(
+                                          bIdx,
+                                          exIdx,
+                                          activeEq,
+                                          "exerciseName",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full bg-[#162032] border border-[#334155] rounded px-2 py-1 text-white text-xs mt-0.5"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[9px] text-slate-400 uppercase">
+                                      Form Cue & Biomechanical Target
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={option.formCue}
+                                      onChange={(e) =>
+                                        updateEquipmentOption(
+                                          bIdx,
+                                          exIdx,
+                                          activeEq,
+                                          "formCue",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full bg-[#162032] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
+                                    />
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[9px] text-slate-400 uppercase">
+                                        Target Focus
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={option.targetFocus || ""}
+                                        onChange={(e) =>
+                                          updateEquipmentOption(
+                                            bIdx,
+                                            exIdx,
+                                            activeEq,
+                                            "targetFocus",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="e.g. Upper Chest Shelf"
+                                        className="w-full bg-[#162032] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[9px] text-slate-400 uppercase flex items-center gap-1">
+                                        <Video className="w-3 h-3 text-[#10B981]" /> Video URL
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={option.videoUrl || ""}
+                                        onChange={(e) =>
+                                          updateEquipmentOption(
+                                            bIdx,
+                                            exIdx,
+                                            activeEq,
+                                            "videoUrl",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="https://..."
+                                        className="w-full bg-[#162032] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

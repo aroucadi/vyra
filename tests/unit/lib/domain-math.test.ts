@@ -5,6 +5,7 @@ import {
   calculateEstimated1RM,
   checkIsPersonalRecord,
   formatDuration,
+  isSafeUrl,
 } from "../../../src/lib/utils.ts";
 
 describe("Domain Math & Utility Functions", () => {
@@ -56,5 +57,15 @@ describe("Domain Math & Utility Functions", () => {
     assert.equal(formatDuration(48), "00:48");
     assert.equal(formatDuration(90), "01:30");
     assert.equal(formatDuration(3240), "54:00");
+  });
+
+  it("validates safe URLs and blocks XSS pseudo-protocols", () => {
+    assert.equal(isSafeUrl("https://youtube.com/watch?v=123"), true);
+    assert.equal(isSafeUrl("http://localhost:3000/demo"), true);
+    assert.equal(isSafeUrl("javascript:alert(1)"), false);
+    assert.equal(isSafeUrl("data:text/html,<script>alert(1)</script>"), false);
+    assert.equal(isSafeUrl("vbscript:msgbox(1)"), false);
+    assert.equal(isSafeUrl(""), false);
+    assert.equal(isSafeUrl(undefined), false);
   });
 });

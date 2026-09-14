@@ -11,6 +11,7 @@ import {
   SupplementLog,
   HydrationGoal,
   HydrationLog,
+  EquipmentType,
 } from "./types";
 import { seedExercises } from "@/db/seed/exercises";
 import {
@@ -87,10 +88,16 @@ const traineeMarcusV: User = {
   hideWeightFromTrainee: false,
 };
 
-// Start date: 9 days ago so that today lands on Week 2, Day 3 (Push Day)
-const getStartDateNineDaysAgo = () => {
+// Start date helpers for realistic program progression
+const getStartDateTwentyOneDaysAgo = () => {
   const d = new Date();
-  d.setDate(d.getDate() - 9);
+  d.setDate(d.getDate() - 21);
+  return d.toISOString().split("T")[0];
+};
+
+const getStartDateSevenDaysAgo = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
   return d.toISOString().split("T")[0];
 };
 
@@ -105,13 +112,13 @@ const defaultProgram: Program = {
   trainerId: "trainer_1",
   traineeId: "trainee_1",
   title: "Hypertrophy Block 1",
-  startDate: getStartDateNineDaysAgo(),
+  startDate: getStartDateTwentyOneDaysAgo(),
   endDate: getEndDateTwentyDaysAhead(),
   durationWeeks: 4,
   status: "published",
   version: 1,
-  createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
-  updatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+  createdAt: new Date(Date.now() - 22 * 86400000).toISOString(),
+  updatedAt: new Date(Date.now() - 22 * 86400000).toISOString(),
   weeks: [
     {
       id: "week_1",
@@ -396,44 +403,143 @@ defaultProgram.weeks.forEach((w) => {
   w.days = createStandardDays(w.id);
 });
 
-// Seed sample past workout sessions for Alex
-const seedSessions: WorkoutSession[] = [
-  {
-    id: "sess_1",
+const marcusProgram: Program = {
+  id: "prog_marcus_1",
+  trainerId: "trainer_1",
+  traineeId: "trainee_3",
+  title: "Strength Foundations",
+  startDate: getStartDateSevenDaysAgo(),
+  endDate: getEndDateTwentyDaysAhead(),
+  durationWeeks: 4,
+  status: "published",
+  version: 1,
+  createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+  updatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+  weeks: [
+    { id: "marcus_w1", programId: "prog_marcus_1", weekIndex: 1, days: createStandardDays("marcus_w1") },
+    { id: "marcus_w2", programId: "prog_marcus_1", weekIndex: 2, days: createStandardDays("marcus_w2") },
+    { id: "marcus_w3", programId: "prog_marcus_1", weekIndex: 3, days: createStandardDays("marcus_w3") },
+    { id: "marcus_w4", programId: "prog_marcus_1", weekIndex: 4, days: createStandardDays("marcus_w4") },
+  ],
+};
+
+const sarahProgram: Program = {
+  id: "prog_sarah_1",
+  trainerId: "trainer_1",
+  traineeId: "trainee_2",
+  title: "Endurance & Conditioning",
+  startDate: getStartDateTwentyOneDaysAgo(),
+  endDate: getEndDateTwentyDaysAhead(),
+  durationWeeks: 4,
+  status: "published",
+  version: 1,
+  createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+  updatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+  weeks: [
+    { id: "sarah_w1", programId: "prog_sarah_1", weekIndex: 1, days: createStandardDays("sarah_w1") },
+    { id: "sarah_w2", programId: "prog_sarah_1", weekIndex: 2, days: createStandardDays("sarah_w2") },
+    { id: "sarah_w3", programId: "prog_sarah_1", weekIndex: 3, days: createStandardDays("sarah_w3") },
+    { id: "sarah_w4", programId: "prog_sarah_1", weekIndex: 4, days: createStandardDays("sarah_w4") },
+  ],
+};
+
+// Seed realistic workout sessions dynamically for trainees
+// Alex: 15 completed sessions out of 16 scheduled workouts up to today (93.75% -> 94%)
+const seedAlexSessions: WorkoutSession[] = Array.from({ length: 15 }, (_, i) => {
+  const dayOffset = 21 - Math.floor((i * 21) / 15);
+  return {
+    id: `sess_alex_${i + 1}`,
     traineeId: "trainee_1",
-    programDayId: "week_1_d0",
+    programDayId: `week_${Math.floor(i / 4) + 1}_d${i % 4}`,
     programTitle: "Hypertrophy Block 1",
-    dayLabel: "Push Hypertrophy A",
-    date: new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0],
-    startedAt: new Date(Date.now() - 7 * 86400000 - 3600000).toISOString(),
-    endedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    durationSec: 3240, // 54 mins
-    notes: "Felt strong. Bench paused easily at 80kg.",
+    dayLabel: i % 2 === 0 ? "Push Hypertrophy A" : "Pull Hypertrophy A",
+    date: new Date(Date.now() - dayOffset * 86400000).toISOString().split("T")[0],
+    startedAt: new Date(Date.now() - dayOffset * 86400000 - 3600000).toISOString(),
+    endedAt: new Date(Date.now() - dayOffset * 86400000).toISOString(),
+    durationSec: 3200,
+    notes: i === 0 ? "Felt strong. Bench paused easily at 80kg." : undefined,
     setLogs: [
-      { id: "sl1", exercisePrescriptionId: "ep1", exerciseName: "Barbell Bench Press", setIndex: 1, weightKg: 80, reps: 10, rirAchieved: 2, isPR: false },
-      { id: "sl2", exercisePrescriptionId: "ep1", exerciseName: "Barbell Bench Press", setIndex: 2, weightKg: 80, reps: 9, rirAchieved: 1, isPR: false },
-      { id: "sl3", exercisePrescriptionId: "ep1", exerciseName: "Barbell Bench Press", setIndex: 3, weightKg: 80, reps: 8, rirAchieved: 0, isPR: false },
-      { id: "sl4", exercisePrescriptionId: "ep2", exerciseName: "Incline Dumbbell Press", setIndex: 1, weightKg: 28, reps: 12, rirAchieved: 2, isPR: false },
-      { id: "sl5", exercisePrescriptionId: "ep2", exerciseName: "Incline Dumbbell Press", setIndex: 2, weightKg: 28, reps: 11, rirAchieved: 1, isPR: false },
-      { id: "sl6", exercisePrescriptionId: "ep2", exerciseName: "Incline Dumbbell Press", setIndex: 3, weightKg: 28, reps: 10, rirAchieved: 0, isPR: false },
+      {
+        id: `sl_alex_${i}_1`,
+        exercisePrescriptionId: "ep1",
+        exerciseName: "Barbell Bench Press",
+        setIndex: 1,
+        weightKg: 80 + (i % 3) * 2.5,
+        reps: 10,
+        rirAchieved: 2,
+        isPR: i === 14,
+      },
+      {
+        id: `sl_alex_${i}_2`,
+        exercisePrescriptionId: "ep1",
+        exerciseName: "Barbell Bench Press",
+        setIndex: 2,
+        weightKg: 80,
+        reps: 9,
+        rirAchieved: 1,
+        isPR: false,
+      },
+      {
+        id: `sl_alex_${i}_3`,
+        exercisePrescriptionId: "ep_row",
+        exerciseName: "Barbell Bent-Over Row",
+        setIndex: 1,
+        weightKg: 75,
+        reps: 10,
+        rirAchieved: 2,
+        isPR: i === 0,
+      },
     ],
-  },
+  };
+});
+
+// Marcus Vance: 3 completed sessions out of 6 scheduled workouts up to today (3/6 -> 50%)
+const seedMarcusSessions: WorkoutSession[] = [
   {
-    id: "sess_2",
-    traineeId: "trainee_1",
-    programDayId: "week_1_d1",
-    programTitle: "Hypertrophy Block 1",
-    dayLabel: "Pull Hypertrophy A",
+    id: "sess_marcus_1",
+    traineeId: "trainee_3",
+    programDayId: "marcus_w1_d0",
+    programTitle: "Strength Foundations",
+    dayLabel: "Push Hypertrophy A",
     date: new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0],
-    startedAt: new Date(Date.now() - 6 * 86400000 - 3300000).toISOString(),
+    startedAt: new Date(Date.now() - 6 * 86400000 - 3000000).toISOString(),
     endedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
     durationSec: 3000,
     setLogs: [
-      { id: "sl7", exercisePrescriptionId: "ep_row", exerciseName: "Barbell Bent-Over Row", setIndex: 1, weightKg: 75, reps: 10, rirAchieved: 2, isPR: true },
-      { id: "sl8", exercisePrescriptionId: "ep_row", exerciseName: "Barbell Bent-Over Row", setIndex: 2, weightKg: 75, reps: 10, rirAchieved: 1, isPR: false },
+      { id: "sl_m1", exercisePrescriptionId: "ep1", exerciseName: "Barbell Bench Press", setIndex: 1, weightKg: 60, reps: 8, rirAchieved: 2, isPR: false },
+    ],
+  },
+  {
+    id: "sess_marcus_2",
+    traineeId: "trainee_3",
+    programDayId: "marcus_w1_d1",
+    programTitle: "Strength Foundations",
+    dayLabel: "Pull Hypertrophy A",
+    date: new Date(Date.now() - 5 * 86400000).toISOString().split("T")[0],
+    startedAt: new Date(Date.now() - 5 * 86400000 - 2800000).toISOString(),
+    endedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    durationSec: 2800,
+    setLogs: [
+      { id: "sl_m2", exercisePrescriptionId: "ep_row", exerciseName: "Barbell Bent-Over Row", setIndex: 1, weightKg: 55, reps: 8, rirAchieved: 2, isPR: false },
+    ],
+  },
+  {
+    id: "sess_marcus_3",
+    traineeId: "trainee_3",
+    programDayId: "marcus_w1_d3",
+    programTitle: "Strength Foundations",
+    dayLabel: "Push Hypertrophy B",
+    date: new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0],
+    startedAt: new Date(Date.now() - 3 * 86400000 - 2500000).toISOString(),
+    endedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    durationSec: 2500,
+    setLogs: [
+      { id: "sl_m3", exercisePrescriptionId: "ep_db_bench", exerciseName: "Incline Dumbbell Press", setIndex: 1, weightKg: 20, reps: 8, rirAchieved: 1, isPR: false },
     ],
   },
 ];
+
+const seedSessions: WorkoutSession[] = [...seedAlexSessions, ...seedMarcusSessions];
 
 // Seed bodyweight trend for Alex (last 14 days)
 const seedMetrics: BodyMetricEntry[] = Array.from({ length: 14 }, (_, i) => {
@@ -628,58 +734,131 @@ export const seedHydrationGoals: HydrationGoal[] = [
 const todayDateStr = new Date().toISOString().split("T")[0];
 
 export const seedSupplementLogs: SupplementLog[] = [
+  // Alex Rivera (trainee_1): 11 taken, 1 skipped out of 12 scheduled logs (11/12 = 91.67% -> 92%)
+  ...Array.from({ length: 11 }, (_, i) => {
+    const dayOffset = Math.floor(i / 2);
+    return {
+      id: `spl_alex_taken_${i + 1}`,
+      traineeId: "trainee_1",
+      programId: "prog_hypertrophy_1",
+      protocolId: i % 2 === 0 ? "sp_d3k2" : "sp_omega3",
+      supplementName: i % 2 === 0 ? "Vitamin D3 + K2" : "Omega-3 Fish Oil (EPA/DHA)",
+      doseId: i % 2 === 0 ? "sp_d3k2_d1" : "sp_omega3_d1",
+      scheduledDate: new Date(Date.now() - dayOffset * 86400000).toISOString().split("T")[0],
+      status: "taken" as const,
+      takenAt: new Date(Date.now() - dayOffset * 86400000 - 3 * 3600000).toISOString(),
+    };
+  }),
   {
-    id: "spl_seed_1",
+    id: "spl_alex_skipped_1",
     traineeId: "trainee_1",
     programId: "prog_hypertrophy_1",
     protocolId: "sp_d3k2",
     supplementName: "Vitamin D3 + K2",
     doseId: "sp_d3k2_d1",
-    scheduledDate: todayDateStr,
+    scheduledDate: new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0],
+    status: "skipped" as const,
+  },
+  // Marcus Vance (trainee_3): 2 taken, 3 skipped out of 5 logs (2/5 = 40% < 70%)
+  {
+    id: "spl_marcus_1",
+    traineeId: "trainee_3",
+    programId: "prog_marcus_1",
+    protocolId: "sp_creatine",
+    supplementName: "Creatine Monohydrate",
+    doseId: "sp_cr_d1",
+    scheduledDate: new Date(Date.now() - 4 * 86400000).toISOString().split("T")[0],
     status: "taken",
-    takenAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+    takenAt: new Date(Date.now() - 4 * 86400000 - 2 * 3600000).toISOString(),
   },
   {
-    id: "spl_seed_2",
-    traineeId: "trainee_1",
-    programId: "prog_hypertrophy_1",
-    protocolId: "sp_omega3",
-    supplementName: "Omega-3 Fish Oil (EPA/DHA)",
-    doseId: "sp_omega3_d1",
-    scheduledDate: todayDateStr,
+    id: "spl_marcus_2",
+    traineeId: "trainee_3",
+    programId: "prog_marcus_1",
+    protocolId: "sp_creatine",
+    supplementName: "Creatine Monohydrate",
+    doseId: "sp_cr_d1",
+    scheduledDate: new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0],
     status: "taken",
-    takenAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+    takenAt: new Date(Date.now() - 3 * 86400000 - 2 * 3600000).toISOString(),
+  },
+  {
+    id: "spl_marcus_3",
+    traineeId: "trainee_3",
+    programId: "prog_marcus_1",
+    protocolId: "sp_creatine",
+    supplementName: "Creatine Monohydrate",
+    doseId: "sp_cr_d1",
+    scheduledDate: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
+    status: "skipped",
+  },
+  {
+    id: "spl_marcus_4",
+    traineeId: "trainee_3",
+    programId: "prog_marcus_1",
+    protocolId: "sp_creatine",
+    supplementName: "Creatine Monohydrate",
+    doseId: "sp_cr_d1",
+    scheduledDate: new Date(Date.now() - 1 * 86400000).toISOString().split("T")[0],
+    status: "skipped",
+  },
+  {
+    id: "spl_marcus_5",
+    traineeId: "trainee_3",
+    programId: "prog_marcus_1",
+    protocolId: "sp_creatine",
+    supplementName: "Creatine Monohydrate",
+    doseId: "sp_cr_d1",
+    scheduledDate: todayDateStr,
+    status: "skipped",
   },
 ];
 
+// Seed hydration logs
+// Alex Rivera (trainee_1): Target is 3500ml. 3000ml / 3500ml = 85.7% -> 86% per day across 6 past days
+const seedAlexHydrationLogs: HydrationLog[] = [];
+for (let d = 1; d <= 6; d++) {
+  const dateStr = new Date(Date.now() - d * 86400000).toISOString().split("T")[0];
+  seedAlexHydrationLogs.push(
+    { id: `hl_a_${d}_1`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 4 * 3600000).toISOString() },
+    { id: `hl_a_${d}_2`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 2 * 3600000).toISOString() },
+    { id: `hl_a_${d}_3`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 1 * 3600000).toISOString() }
+  );
+}
+
+// Marcus Vance (trainee_3): Target is 3000ml. 1500ml / 3000ml = 50% (< 60%)
+const seedMarcusHydrationLogs: HydrationLog[] = [];
+for (let d = 1; d <= 5; d++) {
+  const dateStr = new Date(Date.now() - d * 86400000).toISOString().split("T")[0];
+  seedMarcusHydrationLogs.push(
+    { id: `hl_m_${d}_1`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(Date.now() - d * 86400000 - 4 * 3600000).toISOString() },
+    { id: `hl_m_${d}_2`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(Date.now() - d * 86400000 - 2 * 3600000).toISOString() }
+  );
+}
+
 export const seedHydrationLogs: HydrationLog[] = [
+  ...seedAlexHydrationLogs,
+  ...seedMarcusHydrationLogs,
   {
-    id: "hl_seed_1",
+    id: "hl_today_1",
     traineeId: "trainee_1",
     date: todayDateStr,
-    amountMl: 500,
+    amountMl: 1000,
     loggedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
   },
   {
-    id: "hl_seed_2",
+    id: "hl_today_2",
     traineeId: "trainee_1",
     date: todayDateStr,
-    amountMl: 500,
-    loggedAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+    amountMl: 1000,
+    loggedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
   },
   {
-    id: "hl_seed_3",
+    id: "hl_today_3",
     traineeId: "trainee_1",
     date: todayDateStr,
-    amountMl: 750,
+    amountMl: 1000,
     loggedAt: new Date(Date.now() - 1 * 3600000).toISOString(),
-  },
-  {
-    id: "hl_seed_4",
-    traineeId: "trainee_1",
-    date: todayDateStr,
-    amountMl: 500,
-    loggedAt: new Date(Date.now() - 30 * 60000).toISOString(),
   },
 ];
 
@@ -699,7 +878,7 @@ class Store {
       currentUser: userAlaa, // Default persona set to Alaa for immediate Blueprint dogfooding
       users: [coachUser, userAlaaPro, traineeAlex, userAlaa, traineeSarah, traineeMarcusV],
       exercises: seedExercises,
-      programs: [masterProgram, defaultProgram],
+      programs: [masterProgram, defaultProgram, marcusProgram, sarahProgram],
       sessions: seedSessions,
       metrics: [...seedMetrics, ...seedMetricsAlaa],
       supplementProtocols: [...masterSupplementProtocols, ...seedSupplementProtocols],
@@ -799,13 +978,19 @@ class Store {
     return session;
   }
 
-  getPersonalBestForExercise(traineeId: string, exerciseName: string): { weightKg: number; reps: number } | null {
+  getPersonalBestForExercise(
+    traineeId: string,
+    exerciseName: string,
+    equipmentType?: EquipmentType
+  ): { weightKg: number; reps: number } | null {
     let best = { weightKg: 0, reps: 0 };
     this.db.sessions
       .filter((s) => s.traineeId === traineeId)
       .forEach((sess) => {
         sess.setLogs.forEach((log) => {
-          if (log.exerciseName.toLowerCase() === exerciseName.toLowerCase()) {
+          const nameMatches = log.exerciseName.toLowerCase() === exerciseName.toLowerCase();
+          const equipmentMatches = !equipmentType || !log.selectedEquipment || log.selectedEquipment === equipmentType;
+          if (nameMatches && equipmentMatches) {
             if (checkIsPersonalRecord(log.weightKg, log.reps, best.weightKg, best.reps)) {
               best = { weightKg: log.weightKg, reps: log.reps };
             }
@@ -950,27 +1135,63 @@ class Store {
   }
 
   calculateWorkoutAdherence(traineeId: string): number {
-    if (traineeId === "trainee_alaa") return 96;
-    if (traineeId === "trainee_1") return 94;
-    if (traineeId === "trainee_2") return 78;
-    if (traineeId === "trainee_3") return 50;
-    return 85;
+    const program = this.getActiveProgramForTrainee(traineeId);
+    if (!program) return 100;
+
+    const resolved = resolveProgramDay(program.startDate);
+    const elapsedDays = Math.max(0, resolved.elapsedDays);
+    let scheduledWorkouts = 0;
+    for (let d = 0; d <= elapsedDays; d++) {
+      const wIdx = Math.floor(d / 7);
+      const dIdx = d % 7;
+      const week = program.weeks[wIdx];
+      if (!week) break;
+      const day = week?.days.find((pDay) => pDay.dayOfWeek === dIdx);
+      if (day && !day.isRestDay) {
+        scheduledWorkouts++;
+      }
+    }
+    if (scheduledWorkouts === 0) return 100;
+
+    const completed = this.getSessions(traineeId).filter((s) => s.setLogs.length > 0).length;
+    return Math.min(100, Math.round((completed / scheduledWorkouts) * 100));
   }
 
   calculateSupplementAdherence(traineeId: string): number {
-    if (traineeId === "trainee_alaa") return 95;
-    if (traineeId === "trainee_1") return 92;
-    if (traineeId === "trainee_2") return 74;
-    if (traineeId === "trainee_3") return 48;
-    return 80;
+    const today = new Date().toISOString().split("T")[0];
+    const logs = this.db.supplementLogs.filter(
+      (l) => l.traineeId === traineeId && l.scheduledDate <= today
+    );
+    const targetLogs = logs.length > 0 ? logs : this.db.supplementLogs.filter((l) => l.traineeId === traineeId);
+    if (targetLogs.length === 0) return 100;
+    const taken = targetLogs.filter((l) => l.status === "taken").length;
+    return Math.min(100, Math.round((taken / targetLogs.length) * 100));
   }
 
   calculateHydrationAdherence(traineeId: string): number {
-    if (traineeId === "trainee_alaa") return 92;
-    if (traineeId === "trainee_1") return 86;
-    if (traineeId === "trainee_2") return 68;
-    if (traineeId === "trainee_3") return 55;
-    return 75;
+    const goal = this.getHydrationGoal(traineeId);
+    if (!goal || goal.dailyTargetMl <= 0) return 100;
+
+    const today = new Date().toISOString().split("T")[0];
+    const logs = this.db.hydrationLogs.filter(
+      (l) => l.traineeId === traineeId && l.date <= today
+    );
+    const targetLogs = logs.length > 0 ? logs : this.db.hydrationLogs.filter((l) => l.traineeId === traineeId);
+    if (targetLogs.length === 0) return 100;
+
+    const dailyTotals: Record<string, number> = {};
+    for (const log of targetLogs) {
+      dailyTotals[log.date] = (dailyTotals[log.date] || 0) + log.amountMl;
+    }
+    const dates = Object.keys(dailyTotals);
+    if (dates.length === 0) return 100;
+
+    const totalPct = dates.reduce((acc, d) => {
+      const pct = Math.min(100, Math.round((dailyTotals[d] / goal.dailyTargetMl) * 100));
+      return acc + pct;
+    }, 0);
+
+    return Math.round(totalPct / dates.length);
   }
 
   getRoster(): TraineeRosterItem[] {
@@ -982,20 +1203,14 @@ class Store {
 
       // Calculate adherence
       let currentWeekIndex = 1;
-      let adherencePercentage = 85;
       if (activeProgram) {
         const resolved = resolveProgramDay(activeProgram.startDate);
         currentWeekIndex = resolved.weekIndex;
       }
 
-      // Trainee specific realistic variations
-      if (trainee.id === "trainee_alaa") adherencePercentage = 96;
-      if (trainee.id === "trainee_1") adherencePercentage = 94;
-      if (trainee.id === "trainee_2") adherencePercentage = 78;
-      if (trainee.id === "trainee_3") adherencePercentage = 50;
-
-      const supplementAdherencePercentage = trainee.id === "trainee_alaa" ? 95 : this.calculateSupplementAdherence(trainee.id);
-      const hydrationAdherencePercentage = trainee.id === "trainee_alaa" ? 92 : this.calculateHydrationAdherence(trainee.id);
+      const adherencePercentage = this.calculateWorkoutAdherence(trainee.id);
+      const supplementAdherencePercentage = this.calculateSupplementAdherence(trainee.id);
+      const hydrationAdherencePercentage = this.calculateHydrationAdherence(trainee.id);
 
       const alerts: TraineeRosterItem["alerts"] = [];
       if (trainee.id === "trainee_alaa") {

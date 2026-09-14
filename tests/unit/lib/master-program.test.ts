@@ -137,4 +137,65 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     assert.equal(goal?.dailyTargetMl, 3500);
     assert.equal(goal?.workoutDayBonusMl, 500);
   });
+
+  it("verifies per-set equipment swapping, PR isolation, and dynamic adherence evolution", () => {
+    // 1. Initially Alex has 15 completed sessions out of 16 scheduled -> 94%
+    const alexInitialAdherence = appStore.calculateWorkoutAdherence("trainee_1");
+    assert.equal(alexInitialAdherence, 94);
+
+    // Marcus Vance has 3 completed sessions out of 6 scheduled -> 50%
+    const marcusAdherence = appStore.calculateWorkoutAdherence("trainee_3");
+    assert.equal(marcusAdherence, 50);
+
+    // Check personal best for Barbell Bench Press
+    const barbellBest = appStore.getPersonalBestForExercise("trainee_1", "Barbell Bench Press", "barbell");
+    assert.ok(barbellBest);
+    assert.ok(barbellBest.weightKg > 0);
+
+    // Check personal best for Dumbbell variant (should be isolated / independent)
+    const dumbbellBest = appStore.getPersonalBestForExercise("trainee_1", "Incline Dumbbell Press", "dumbbell");
+    const initialDbWeight = dumbbellBest ? dumbbellBest.weightKg : 0;
+
+    // Log a new 16th session with Dumbbell variant at higher weight (38kg)
+    const testSession = appStore.saveSession({
+      id: "sess_test_db_1",
+      traineeId: "trainee_1",
+      programDayId: "test_day",
+      programTitle: "Test Program",
+      dayLabel: "Chest Day",
+      date: new Date().toISOString().split("T")[0],
+      startedAt: new Date().toISOString(),
+      durationSec: 1800,
+      setLogs: [
+        {
+          id: "sl_test_db",
+          exercisePrescriptionId: "ep1",
+          exerciseName: "Incline Dumbbell Press",
+          setIndex: 1,
+          weightKg: 38,
+          reps: 10,
+          rirAchieved: 1,
+          isPR: true,
+          selectedEquipment: "dumbbell",
+        },
+      ],
+    });
+    assert.ok(testSession.id);
+
+    // Equipment-isolated PR detection: dumbbell PR updated to 38kg
+    const updatedDbBest = appStore.getPersonalBestForExercise("trainee_1", "Incline Dumbbell Press", "dumbbell");
+    assert.ok(updatedDbBest);
+    assert.equal(updatedDbBest.weightKg, 38);
+
+    // Dynamic adherence evolution: with 16 sessions completed out of 16 scheduled, adherence becomes 100%
+    const alexUpdatedAdherence = appStore.calculateWorkoutAdherence("trainee_1");
+    assert.equal(alexUpdatedAdherence, 100);
+
+    // Roster reflects Marcus's adherence and alert flags
+    const roster = appStore.getRoster();
+    const marcusRoster = roster.find((r) => r.trainee.id === "trainee_3");
+    assert.ok(marcusRoster);
+    assert.equal(marcusRoster.adherencePercentage, 50);
+    assert.ok(marcusRoster.alerts.some((a) => a.type === "missed_sessions"));
+  });
 });

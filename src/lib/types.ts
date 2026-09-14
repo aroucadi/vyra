@@ -193,6 +193,7 @@ export interface SetLog {
   weightKg: number;
   rirAchieved: number;
   isPR?: boolean;
+  selectedEquipment?: EquipmentType;
 }
 
 export interface WorkoutSession {

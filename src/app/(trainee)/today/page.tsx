@@ -18,7 +18,7 @@ import {
   Pill,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { resolveProgramDay } from "@/lib/utils";
+import { resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { EquipmentType } from "@/lib/types";
 
 export default function TodayPage() {
@@ -385,22 +385,81 @@ export default function TodayPage() {
                           Shared Rest {b.exercises[b.exercises.length - 1]?.restSeconds || 60}s
                         </span>
                       </div>
-                      <div className="space-y-2">
-                        {b.exercises.map((ex, exIdx) => (
-                          <div key={ex.id || exIdx} className="bg-[#0F172A] p-2.5 rounded-lg border border-[#1E293B]">
-                            <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                              <span>
-                                {bIdx + 1}.{String.fromCharCode(97 + exIdx)} {ex.exerciseName}
-                              </span>
-                              <span className="text-[#10B981] font-mono">
-                                {ex.sets} × {ex.repRangeLow}–{ex.repRangeHigh} @ {ex.rirScheme?.[0] ?? 1} RIR
-                              </span>
+                      <div className="space-y-2.5">
+                        {b.exercises.map((ex, exIdx) => {
+                          const activeEquipment = equipmentOverrides[ex.id] || ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
+                          const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
+                          const displayName = activeVariant ? activeVariant.exerciseName : ex.exerciseName;
+                          const displayCue = activeVariant ? activeVariant.formCue : ex.formCueText;
+                          const displayVideo = activeVariant?.videoUrl || ex.videoUrl;
+
+                          return (
+                            <div key={ex.id || exIdx} className="bg-[#0F172A] p-2.5 rounded-lg border border-[#1E293B] space-y-2">
+                              <div className="flex justify-between items-start text-xs font-bold text-slate-200">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span>
+                                      {bIdx + 1}.{String.fromCharCode(97 + exIdx)} {displayName}
+                                    </span>
+                                    {activeVariant && (
+                                      <span className="text-[9px] font-mono uppercase px-1 py-0.2 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/20">
+                                        {activeEquipment}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[#10B981] font-mono text-[11px]">
+                                    {ex.sets} × {ex.repRangeLow}–{ex.repRangeHigh} @ {ex.rirScheme?.[0] ?? 1} RIR
+                                  </span>
+                                </div>
+                                {displayVideo && (
+                                  <a
+                                    href={displayVideo}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[10px] bg-[#162032] px-1.5 py-0.5 rounded border border-[#334155]"
+                                  >
+                                    <Video className="w-3 h-3 text-[#06B6D4]" />
+                                    <span>Guide</span>
+                                  </a>
+                                )}
+                              </div>
+
+                              {/* Superset 4-Option Equipment Selector */}
+                              {ex.equipmentVariations && ex.equipmentVariations.length > 0 && (
+                                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                                  {ex.equipmentVariations.map((v) => {
+                                    const isSelected = activeEquipment === v.equipmentType;
+                                    return (
+                                      <button
+                                        key={v.equipmentType}
+                                        type="button"
+                                        onClick={() =>
+                                          setEquipmentOverrides((prev) => ({
+                                            ...prev,
+                                            [ex.id]: v.equipmentType,
+                                          }))
+                                        }
+                                        className={`px-1 py-0.5 rounded text-center text-[9px] font-semibold uppercase tracking-wider transition border ${
+                                          isSelected
+                                            ? "bg-[#10B981] text-slate-950 border-[#10B981] font-bold shadow-sm"
+                                            : "bg-[#162032] text-slate-400 border-[#334155] hover:text-slate-200"
+                                        }`}
+                                      >
+                                        {v.equipmentType}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {displayCue && (
+                                <p className="text-[10px] text-slate-400 mt-0.5 border-l border-[#10B981] pl-1.5">
+                                  {displayCue}
+                                </p>
+                              )}
                             </div>
-                            {ex.formCueText && (
-                              <p className="text-[10px] text-slate-400 mt-0.5">{ex.formCueText}</p>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -440,7 +499,7 @@ export default function TodayPage() {
                           </div>
                         </div>
 
-                        {displayVideo && (
+                        {displayVideo && isSafeUrl(displayVideo) && (
                           <a
                             href={displayVideo}
                             target="_blank"
@@ -544,7 +603,11 @@ export default function TodayPage() {
       {!currentDay?.isRestDay && (
         <div className="sticky bottom-20 z-40">
           <Link
-            href="/session"
+            href={
+              Object.keys(equipmentOverrides).length > 0
+                ? `/session?overrides=${encodeURIComponent(JSON.stringify(equipmentOverrides))}`
+                : "/session"
+            }
             className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] text-slate-950 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:opacity-95 transition active:scale-[0.99]"
           >
             <Play className="w-4 h-4 fill-slate-950" />

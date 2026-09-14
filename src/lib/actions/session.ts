@@ -1,7 +1,7 @@
 "use server";
 
 import { appStore } from "@/lib/store";
-import { WorkoutSession } from "@/lib/types";
+import { EquipmentType, WorkoutSession } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 function safeRevalidate(path: string) {
@@ -24,6 +24,10 @@ export async function getSessionsAction(traineeId: string) {
   return appStore.getSessions(traineeId);
 }
 
-export async function getPersonalBestAction(traineeId: string, exerciseName: string) {
-  return appStore.getPersonalBestForExercise(traineeId, exerciseName);
+export async function getPersonalBestAction(
+  traineeId: string,
+  exerciseName: string,
+  equipmentType?: EquipmentType
+) {
+  return appStore.getPersonalBestForExercise(traineeId, exerciseName, equipmentType);
 }

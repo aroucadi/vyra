@@ -95,3 +95,20 @@ export function formatDate(dateStr: string): string {
     return dateStr;
   }
 }
+
+/**
+ * Validate URL to prevent XSS (e.g. javascript: pseudo-protocols)
+ */
+export function isSafeUrl(url?: string): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed.startsWith("javascript:") || trimmed.startsWith("data:") || trimmed.startsWith("vbscript:")) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}

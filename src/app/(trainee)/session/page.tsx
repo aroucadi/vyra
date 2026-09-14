@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Clock,
   Check,
@@ -18,7 +18,7 @@ import {
   Info,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
-import { formatDuration, checkIsPersonalRecord, resolveProgramDay } from "@/lib/utils";
+import { formatDuration, checkIsPersonalRecord, resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { SetLog, WorkoutSession, EquipmentOption, EquipmentType } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 
@@ -36,6 +36,8 @@ interface ExerciseState {
     reps: number;
     rir: number;
     isPR: boolean;
+    exerciseName: string;
+    selectedEquipment?: EquipmentType;
   }[];
   currentWeight: number;
   currentReps: number;
@@ -48,6 +50,7 @@ interface ExerciseState {
 
 export default function SessionLoggingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const currentUser = appStore.getCurrentUser();
   const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
   const resolved = activeProgram ? resolveProgramDay(activeProgram.startDate) : null;
@@ -68,24 +71,49 @@ export default function SessionLoggingPage() {
   // Session summary dialog on finish
   const [showSummary, setShowSummary] = useState(false);
 
+  // Parse any passed equipment overrides from Today page
+  const initialOverrides = (() => {
+    try {
+      const p = searchParams.get("overrides");
+      if (p) {
+        const parsed = JSON.parse(p);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return parsed as Record<string, EquipmentType>;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return {} as Record<string, EquipmentType>;
+  })();
+
   // Workout Exercises state dynamically derived from active program day
   const [exercises, setExercises] = useState<ExerciseState[]>(() => {
     if (currentDay && currentDay.blocks && currentDay.blocks.length > 0) {
       const list: ExerciseState[] = [];
+      const validEquipments: EquipmentType[] = ["machine", "dumbbell", "cable", "bodyweight"];
       currentDay.blocks.forEach((b) => {
         b.exercises.forEach((ex, exIdx) => {
-          const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
-          const initialWeight = pb?.weightKg || 60;
-          const initialReps = ex.repRangeLow || 8;
           const isSuperset = b.type === "superset" || b.type === "circuit";
           const suffix = isSuperset
             ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
             : "";
-          const activeEquipment = ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
+          const overrideVal = initialOverrides[ex.id];
+          const activeEquipment = (overrideVal && validEquipments.includes(overrideVal))
+            ? overrideVal
+            : ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
           const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
           const initialName = activeVariant ? `${activeVariant.exerciseName}${suffix}` : `${ex.exerciseName}${suffix}`;
           const initialFormCue = activeVariant ? activeVariant.formCue : ex.formCueText;
           const initialVideo = activeVariant?.videoUrl || ex.videoUrl;
+
+          const pb = appStore.getPersonalBestForExercise(
+            currentUser.id,
+            activeVariant ? activeVariant.exerciseName : ex.exerciseName,
+            activeEquipment
+          );
+          const initialWeight = pb?.weightKg || 60;
+          const initialReps = ex.repRangeLow || 8;
 
           list.push({
             id: ex.id,
@@ -202,6 +230,8 @@ export default function SessionLoggingPage() {
       reps: ex.currentReps,
       rir: ex.currentRir,
       isPR: isPrSet,
+      exerciseName: ex.name,
+      selectedEquipment: ex.selectedEquipment,
     };
 
     const updated = [...exercises];
@@ -237,12 +267,13 @@ export default function SessionLoggingPage() {
         allSetLogs.push({
           id: `sl_${Date.now()}_${ex.id}_${s.setIndex}`,
           exercisePrescriptionId: ex.id,
-          exerciseName: ex.name,
+          exerciseName: s.exerciseName || ex.name,
           setIndex: s.setIndex,
           reps: s.reps,
           weightKg: s.weight,
           rirAchieved: s.rir,
           isPR: s.isPR,
+          selectedEquipment: s.selectedEquipment || ex.selectedEquipment,
         });
       });
     });
@@ -285,7 +316,9 @@ export default function SessionLoggingPage() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-base font-black text-[#F8FAFC]">Push Hypertrophy A</h1>
+            <h1 className="text-base font-black text-[#F8FAFC]">
+              {currentDay?.label || "Workout Session"}
+            </h1>
             <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
               <span className="flex items-center gap-1 text-[#10B981]">
                 <Clock className="w-3.5 h-3.5" />
@@ -391,7 +424,7 @@ export default function SessionLoggingPage() {
                   <p className="text-[11px] text-[#10B981] font-mono mt-0.5">{ex.prescription}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {ex.videoUrl && (
+                  {ex.videoUrl && isSafeUrl(ex.videoUrl) && (
                     <a
                       href={ex.videoUrl}
                       target="_blank"
@@ -431,12 +464,20 @@ export default function SessionLoggingPage() {
                               ? ` (${ex.name.includes("Superset") ? "Superset" : "Circuit"}${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0] ? ` ${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0]}` : ""})`
                               : "";
                             const newName = suffix ? `${v.exerciseName} ${suffix.trim()}` : v.exerciseName;
+                            const pb = appStore.getPersonalBestForExercise(
+                              currentUser.id,
+                              v.exerciseName,
+                              v.equipmentType
+                            );
                             updated[exIdx] = {
                               ...ex,
                               selectedEquipment: v.equipmentType,
                               name: newName,
                               formCue: v.formCue,
                               videoUrl: v.videoUrl,
+                              prevBestWeight: pb?.weightKg || 0,
+                              prevBestReps: pb?.reps || 0,
+                              currentWeight: pb?.weightKg || ex.currentWeight,
                             };
                             setExercises(updated);
                           }}
@@ -630,7 +671,9 @@ export default function SessionLoggingPage() {
 
             <div>
               <h3 className="text-lg font-black text-white">Workout Completed!</h3>
-              <p className="text-xs text-slate-400 mt-1">Logged to Coach Marcus console in real time.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Logged to {activeProgram?.trainerId ? appStore.getUser(activeProgram.trainerId)?.name || "your coach" : "your coach"}&apos;s console in real time.
+              </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 bg-[#0F172A] p-3 rounded-xl border border-[#1E293B] font-mono text-center">

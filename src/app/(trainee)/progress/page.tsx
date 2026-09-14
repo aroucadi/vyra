@@ -44,7 +44,7 @@ export default function ProgressPage() {
   const diff = Math.round((latestWeight - startWeight) * 10) / 10;
 
   // Extract PRs
-  const prs: { exercise: string; weight: number; reps: number; date: string }[] = [];
+  const prs: { exercise: string; weight: number; reps: number; date: string; equipment?: string }[] = [];
   sessions.forEach((s) => {
     s.setLogs.forEach((l) => {
       if (l.isPR) {
@@ -53,6 +53,7 @@ export default function ProgressPage() {
           weight: l.weightKg,
           reps: l.reps,
           date: s.date,
+          equipment: l.selectedEquipment,
         });
       }
     });
@@ -187,7 +188,14 @@ export default function ProgressPage() {
           {prs.length > 0 ? (
             prs.map((pr, idx) => (
               <div key={idx} className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] space-y-1">
-                <span className="text-[10px] font-mono text-slate-400 uppercase">{pr.exercise}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase truncate">{pr.exercise}</span>
+                  {pr.equipment && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 shrink-0">
+                      {pr.equipment}
+                    </span>
+                  )}
+                </div>
                 <p className="text-base font-black text-white font-mono">{pr.weight} kg × {pr.reps}</p>
                 <p className="text-[9px] text-[#10B981] font-mono">
                   Estimated 1RM: {calculateEstimated1RM(pr.weight, pr.reps)} kg • {pr.date}

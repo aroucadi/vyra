@@ -78,43 +78,62 @@ export default function TrainerRosterPage() {
       </div>
 
       {/* 2. Top Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Active Athletes</span>
-            <Users className="w-4 h-4 text-[#10B981]" />
-          </div>
-          <p className="text-2xl font-black text-white font-mono">24</p>
-          <span className="text-[10px] text-[#10B981] font-mono">100% assigned periodized programs</span>
-        </div>
+      {(() => {
+        const totalAthletes = rosterItems.length;
+        const avgAdherence = totalAthletes > 0
+          ? Math.round(rosterItems.reduce((acc, r) => acc + r.adherencePercentage, 0) / totalAthletes)
+          : 0;
+        const needsAttentionCount = rosterItems.filter(
+          (r) => r.adherencePercentage < 70 || r.alerts.some((a) => a.type === "missed_sessions" || a.type === "plateau")
+        ).length;
+        const allSessions = rosterItems.flatMap((r) => appStore.getSessions(r.trainee.id));
+        const totalVolumeKg = allSessions.reduce(
+          (acc, s) => acc + s.setLogs.reduce((setAcc, set) => setAcc + set.weightKg * set.reps, 0),
+          0
+        );
 
-        <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>7-Day Adherence</span>
-            <Activity className="w-4 h-4 text-[#06B6D4]" />
-          </div>
-          <p className="text-2xl font-black text-white font-mono">88.4%</p>
-          <span className="text-[10px] text-slate-400 font-mono">+3.2% vs previous microcycle</span>
-        </div>
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Active Athletes</span>
+                <Users className="w-4 h-4 text-[#10B981]" />
+              </div>
+              <p className="text-2xl font-black text-white font-mono">{totalAthletes}</p>
+              <span className="text-[10px] text-[#10B981] font-mono">100% assigned periodized programs</span>
+            </div>
 
-        <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Needs Attention</span>
-            <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-          </div>
-          <p className="text-2xl font-black text-white font-mono">3</p>
-          <span className="text-[10px] text-[#F59E0B] font-mono">Missed sessions / Plateau flags</span>
-        </div>
+            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Avg Adherence</span>
+                <Activity className="w-4 h-4 text-[#06B6D4]" />
+              </div>
+              <p className="text-2xl font-black text-white font-mono">{avgAdherence}%</p>
+              <span className="text-[10px] text-slate-400 font-mono">Workout compliance average</span>
+            </div>
 
-        <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Total Volume (7d)</span>
-            <TrendingUp className="w-4 h-4 text-[#8B5CF6]" />
+            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Needs Attention</span>
+                <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
+              </div>
+              <p className="text-2xl font-black text-white font-mono">{needsAttentionCount}</p>
+              <span className="text-[10px] text-[#F59E0B] font-mono">Missed sessions / Compliance flags</span>
+            </div>
+
+            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Logged Volume</span>
+                <TrendingUp className="w-4 h-4 text-[#8B5CF6]" />
+              </div>
+              <p className="text-2xl font-black text-white font-mono">
+                {totalVolumeKg > 0 ? `${Math.round(totalVolumeKg).toLocaleString()} kg` : "Baseline"}
+              </p>
+              <span className="text-[10px] text-[#8B5CF6] font-mono">Across {allSessions.length} logged sessions</span>
+            </div>
           </div>
-          <p className="text-2xl font-black text-white font-mono">142,500 kg</p>
-          <span className="text-[10px] text-[#8B5CF6] font-mono">Across 86 logged sessions</span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 3. Trainee Roster Table */}
       <section className="bg-[#162032] rounded-xl border border-[#1E293B] overflow-hidden shadow-lg">
@@ -130,9 +149,11 @@ export default function TrainerRosterPage() {
             <thead>
               <tr className="border-b border-[#1E293B] bg-[#0F172A]/70 text-slate-400 font-mono">
                 <th className="p-3.5">Athlete & Program</th>
-                <th className="p-3.5">Cycle Timeline</th>
-                <th className="p-3.5">14-Day Adherence</th>
-                <th className="p-3.5">Last Logged Session</th>
+                <th className="p-3.5">Cycle</th>
+                <th className="p-3.5">Workout Adh.</th>
+                <th className="p-3.5">Supplement Adh.</th>
+                <th className="p-3.5">Hydration Adh.</th>
+                <th className="p-3.5">Last Session</th>
                 <th className="p-3.5">Algorithmic Alert</th>
                 <th className="p-3.5 text-right">Actions</th>
               </tr>
@@ -141,6 +162,14 @@ export default function TrainerRosterPage() {
               {filteredRoster.map((item) => {
                 const isOptimal = item.adherencePercentage >= 90;
                 const isWarning = item.adherencePercentage < 60;
+
+                const suppAdh = item.supplementAdherencePercentage ?? 80;
+                const isSuppOptimal = suppAdh >= 85;
+                const isSuppWarning = suppAdh < 70;
+
+                const hydrAdh = item.hydrationAdherencePercentage ?? 75;
+                const isHydrOptimal = hydrAdh >= 85;
+                const isHydrWarning = hydrAdh < 60;
 
                 return (
                   <tr key={item.trainee.id} className="hover:bg-[#131C2E] transition-colors">
@@ -165,14 +194,15 @@ export default function TrainerRosterPage() {
 
                     <td className="p-3.5 font-mono">
                       <span className="text-slate-200 font-semibold">
-                        Week {item.currentWeekIndex}
+                        Wk {item.currentWeekIndex}
                       </span>
-                      <span className="text-slate-500"> of {item.activeProgram?.durationWeeks || 4}</span>
+                      <span className="text-slate-500">/{item.activeProgram?.durationWeeks || 4}</span>
                     </td>
 
+                    {/* Workout Adherence */}
                     <td className="p-3.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-20 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
+                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
                           <div
                             style={{ width: `${item.adherencePercentage}%` }}
                             className={`h-2 rounded-full ${
@@ -182,6 +212,40 @@ export default function TrainerRosterPage() {
                         </div>
                         <span className="font-mono font-bold text-slate-200">
                           {item.adherencePercentage}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Supplement Adherence */}
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
+                          <div
+                            style={{ width: `${suppAdh}%` }}
+                            className={`h-2 rounded-full ${
+                              isSuppOptimal ? "bg-[#10B981]" : isSuppWarning ? "bg-[#EF4444]" : "bg-[#06B6D4]"
+                            }`}
+                          />
+                        </div>
+                        <span className="font-mono font-bold text-slate-200">
+                          {suppAdh}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Hydration Adherence */}
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
+                          <div
+                            style={{ width: `${hydrAdh}%` }}
+                            className={`h-2 rounded-full ${
+                              isHydrOptimal ? "bg-[#10B981]" : isHydrWarning ? "bg-[#EF4444]" : "bg-[#06B6D4]"
+                            }`}
+                          />
+                        </div>
+                        <span className="font-mono font-bold text-slate-200">
+                          {hydrAdh}%
                         </span>
                       </div>
                     </td>

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { logWeightAction } from "@/lib/actions/metrics";
+import { calculateEstimated1RM } from "@/lib/utils";
 
 export default function ProgressPage() {
   const currentUser = appStore.getCurrentUser();
@@ -182,18 +183,25 @@ export default function ProgressPage() {
           <span className="text-[10px] font-mono text-[#F59E0B] font-bold">{prs.length || 2} Records</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] space-y-1">
-            <span className="text-[10px] font-mono text-slate-400 uppercase">Barbell Bench Press</span>
-            <p className="text-base font-black text-white font-mono">82.5 kg × 9</p>
-            <p className="text-[9px] text-[#10B981] font-mono">Estimated 1RM: 107 kg</p>
-          </div>
-
-          <div className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] space-y-1">
-            <span className="text-[10px] font-mono text-slate-400 uppercase">Barbell Bent-Over Row</span>
-            <p className="text-base font-black text-white font-mono">75.0 kg × 10</p>
-            <p className="text-[9px] text-[#10B981] font-mono">Estimated 1RM: 100 kg</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {prs.length > 0 ? (
+            prs.map((pr, idx) => (
+              <div key={idx} className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] space-y-1">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">{pr.exercise}</span>
+                <p className="text-base font-black text-white font-mono">{pr.weight} kg × {pr.reps}</p>
+                <p className="text-[9px] text-[#10B981] font-mono">
+                  Estimated 1RM: {calculateEstimated1RM(pr.weight, pr.reps)} kg • {pr.date}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-2 bg-[#0F172A] p-4 rounded-lg border border-[#1E293B] text-center space-y-1">
+              <p className="text-xs text-slate-300 font-medium">No PRs logged yet.</p>
+              <p className="text-[10px] text-slate-500">
+                Log completed workouts in Session to record personal records.
+              </p>
+            </div>
+          )}
         </div>
       </section>
     </div>

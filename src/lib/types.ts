@@ -34,6 +34,16 @@ export interface Exercise {
   wikiUrl?: string;
 }
 
+export type EquipmentType = "machine" | "dumbbell" | "cable" | "bodyweight";
+
+export interface EquipmentOption {
+  equipmentType: EquipmentType;
+  exerciseName: string;
+  formCue: string;
+  videoUrl?: string;
+  targetFocus?: string;
+}
+
 export interface ExercisePrescription {
   id: string;
   exerciseId: string;
@@ -48,6 +58,8 @@ export interface ExercisePrescription {
   videoUrl?: string;
   wikiMuscleUrl?: string;
   targetMuscleGroups: string[];
+  equipmentVariations?: EquipmentOption[];
+  selectedEquipment?: EquipmentType;
 }
 
 export interface Block {
@@ -66,6 +78,75 @@ export interface MealPlanPrescription {
   notes?: string;
 }
 
+export type SupplementTimingType = "standalone" | "meal_linked";
+export type StandaloneTiming =
+  | "on_waking"
+  | "morning"
+  | "pre_workout"
+  | "intra_workout"
+  | "post_workout"
+  | "afternoon"
+  | "with_dinner"
+  | "pre_bed";
+
+export interface SupplementDosePrescription {
+  id: string;
+  doseOrder: number;
+  amount: number;
+  unit: "g" | "mg" | "IU" | "capsules" | "scoop" | "ml";
+  timingType: SupplementTimingType;
+  mealLabel?: string; // e.g. "Meal 1: Breakfast", "Post-Workout Shake"
+  standaloneTiming?: StandaloneTiming;
+  targetTime?: string; // e.g. "07:30"
+  notes?: string;
+}
+
+export interface SupplementPhase {
+  phaseIndex: number;
+  name: string; // e.g. "Loading Phase", "Maintenance"
+  startDay: number; // 1-indexed relative to program start
+  endDay?: number; // inclusive, undefined/null = end of program
+  doses: SupplementDosePrescription[];
+}
+
+export interface SupplementProtocol {
+  id: string;
+  programId: string;
+  programDayId?: string; // optional day override
+  name: string; // e.g. "Creatine Monohydrate"
+  category: "performance" | "health" | "recovery" | "sleep";
+  phases: SupplementPhase[];
+}
+
+export interface SupplementLog {
+  id: string;
+  traineeId: string;
+  programId: string;
+  protocolId: string;
+  supplementName: string;
+  doseId: string;
+  scheduledDate: string; // YYYY-MM-DD
+  status: "taken" | "skipped" | "pending";
+  takenAt?: string; // ISO timestamp
+  notes?: string;
+}
+
+export interface HydrationGoal {
+  id: string;
+  programId: string;
+  traineeId: string;
+  dailyTargetMl: number; // e.g. 3500
+  workoutDayBonusMl?: number; // e.g. 500
+}
+
+export interface HydrationLog {
+  id: string;
+  traineeId: string;
+  date: string; // YYYY-MM-DD
+  amountMl: number;
+  loggedAt: string;
+}
+
 export interface ProgramDay {
   id: string;
   weekId: string;
@@ -75,6 +156,7 @@ export interface ProgramDay {
   morningRoutine: string[];
   blocks: Block[];
   nutrition: MealPlanPrescription;
+  supplementOverrides?: SupplementProtocol[];
 }
 
 export interface ProgramWeek {
@@ -96,6 +178,8 @@ export interface Program {
   version: number;
   parentVersionId?: string;
   weeks: ProgramWeek[];
+  supplementProtocols?: SupplementProtocol[];
+  hydrationGoal?: HydrationGoal;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +222,8 @@ export interface TraineeRosterItem {
   activeProgram?: Program;
   currentWeekIndex: number;
   adherencePercentage: number;
+  supplementAdherencePercentage?: number;
+  hydrationAdherencePercentage?: number;
   lastSessionDate?: string;
   alerts: {
     type: "missed_sessions" | "plateau" | "optimal";

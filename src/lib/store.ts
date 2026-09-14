@@ -5,8 +5,22 @@ import {
   BodyMetricEntry,
   TraineeRosterItem,
   Exercise,
+  SupplementProtocol,
+  SupplementPhase,
+  SupplementDosePrescription,
+  SupplementLog,
+  HydrationGoal,
+  HydrationLog,
 } from "./types";
 import { seedExercises } from "@/db/seed/exercises";
+import {
+  userAlaaPro,
+  userAlaa,
+  generateMaster16WeekProgram,
+  masterSupplementProtocols,
+  masterHydrationGoal,
+  seedMetricsAlaa,
+} from "@/db/seed/master-transformation-program";
 import { checkIsPersonalRecord, resolveProgramDay } from "./utils";
 
 // In-memory single-source-of-truth state for realistic local/preview runs
@@ -17,6 +31,10 @@ export interface AppDatabase {
   programs: Program[];
   sessions: WorkoutSession[];
   metrics: BodyMetricEntry[];
+  supplementProtocols: SupplementProtocol[];
+  supplementLogs: SupplementLog[];
+  hydrationGoals: HydrationGoal[];
+  hydrationLogs: HydrationLog[];
 }
 
 const coachUser: User = {
@@ -432,18 +450,262 @@ const seedMetrics: BodyMetricEntry[] = Array.from({ length: 14 }, (_, i) => {
   };
 });
 
+export const seedSupplementProtocols: SupplementProtocol[] = [
+  {
+    id: "sp_creatine",
+    programId: "prog_hypertrophy_1",
+    name: "Creatine Monohydrate",
+    category: "performance",
+    phases: [
+      {
+        phaseIndex: 1,
+        name: "Loading Phase (Days 1–7)",
+        startDay: 1,
+        endDay: 7,
+        doses: [
+          {
+            id: "sp_creatine_p1_d1",
+            doseOrder: 1,
+            amount: 5,
+            unit: "g",
+            timingType: "standalone",
+            standaloneTiming: "on_waking",
+            targetTime: "07:30",
+            notes: "Take with 300ml warm water",
+          },
+          {
+            id: "sp_creatine_p1_d2",
+            doseOrder: 2,
+            amount: 5,
+            unit: "g",
+            timingType: "meal_linked",
+            mealLabel: "Meal 1: Breakfast",
+            targetTime: "09:00",
+            notes: "Consume with carbohydrate source",
+          },
+          {
+            id: "sp_creatine_p1_d3",
+            doseOrder: 3,
+            amount: 5,
+            unit: "g",
+            timingType: "meal_linked",
+            mealLabel: "Post-Workout Shake",
+            targetTime: "17:30",
+            notes: "Take with whey protein isolate",
+          },
+          {
+            id: "sp_creatine_p1_d4",
+            doseOrder: 4,
+            amount: 5,
+            unit: "g",
+            timingType: "standalone",
+            standaloneTiming: "pre_bed",
+            targetTime: "22:00",
+            notes: "Evening cellular recovery dose",
+          },
+        ],
+      },
+      {
+        phaseIndex: 2,
+        name: "Maintenance Phase (Days 8+)",
+        startDay: 8,
+        doses: [
+          {
+            id: "sp_creatine_p2_d1",
+            doseOrder: 1,
+            amount: 5,
+            unit: "g",
+            timingType: "meal_linked",
+            mealLabel: "Post-Workout Shake",
+            targetTime: "17:30",
+            notes: "Daily 5g maintenance dose for intramuscular phosphocreatine saturation",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sp_d3k2",
+    programId: "prog_hypertrophy_1",
+    name: "Vitamin D3 + K2",
+    category: "health",
+    phases: [
+      {
+        phaseIndex: 1,
+        name: "Daily Micronutrient Baseline",
+        startDay: 1,
+        doses: [
+          {
+            id: "sp_d3k2_d1",
+            doseOrder: 1,
+            amount: 5000,
+            unit: "IU",
+            timingType: "meal_linked",
+            mealLabel: "Meal 1: Breakfast",
+            targetTime: "08:30",
+            notes: "Fat-soluble co-factors for calcium metabolism and endocrine health",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sp_omega3",
+    programId: "prog_hypertrophy_1",
+    name: "Omega-3 Fish Oil (EPA/DHA)",
+    category: "recovery",
+    phases: [
+      {
+        phaseIndex: 1,
+        name: "Joint & Anti-Inflammatory Baseline",
+        startDay: 1,
+        doses: [
+          {
+            id: "sp_omega3_d1",
+            doseOrder: 1,
+            amount: 2000,
+            unit: "mg",
+            timingType: "meal_linked",
+            mealLabel: "Meal 1: Breakfast",
+            targetTime: "08:30",
+            notes: "High concentration EPA/DHA for systemic recovery",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sp_magnesium",
+    programId: "prog_hypertrophy_1",
+    name: "Magnesium Glycinate",
+    category: "sleep",
+    phases: [
+      {
+        phaseIndex: 1,
+        name: "Sleep Architecture & CNS Recovery",
+        startDay: 1,
+        doses: [
+          {
+            id: "sp_mag_d1",
+            doseOrder: 1,
+            amount: 400,
+            unit: "mg",
+            timingType: "standalone",
+            standaloneTiming: "pre_bed",
+            targetTime: "22:00",
+            notes: "Chelated glycine bound for GABAergic neurotransmission and sleep quality",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export const seedHydrationGoals: HydrationGoal[] = [
+  {
+    id: "hg_trainee_1",
+    programId: "prog_hypertrophy_1",
+    traineeId: "trainee_1",
+    dailyTargetMl: 3500, // 3.5 Liters
+    workoutDayBonusMl: 500,
+  },
+  {
+    id: "hg_trainee_2",
+    programId: "prog_hypertrophy_1",
+    traineeId: "trainee_2",
+    dailyTargetMl: 2800,
+    workoutDayBonusMl: 500,
+  },
+  {
+    id: "hg_trainee_3",
+    programId: "prog_hypertrophy_1",
+    traineeId: "trainee_3",
+    dailyTargetMl: 3000,
+    workoutDayBonusMl: 500,
+  },
+];
+
+const todayDateStr = new Date().toISOString().split("T")[0];
+
+export const seedSupplementLogs: SupplementLog[] = [
+  {
+    id: "spl_seed_1",
+    traineeId: "trainee_1",
+    programId: "prog_hypertrophy_1",
+    protocolId: "sp_d3k2",
+    supplementName: "Vitamin D3 + K2",
+    doseId: "sp_d3k2_d1",
+    scheduledDate: todayDateStr,
+    status: "taken",
+    takenAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+  },
+  {
+    id: "spl_seed_2",
+    traineeId: "trainee_1",
+    programId: "prog_hypertrophy_1",
+    protocolId: "sp_omega3",
+    supplementName: "Omega-3 Fish Oil (EPA/DHA)",
+    doseId: "sp_omega3_d1",
+    scheduledDate: todayDateStr,
+    status: "taken",
+    takenAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+  },
+];
+
+export const seedHydrationLogs: HydrationLog[] = [
+  {
+    id: "hl_seed_1",
+    traineeId: "trainee_1",
+    date: todayDateStr,
+    amountMl: 500,
+    loggedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+  },
+  {
+    id: "hl_seed_2",
+    traineeId: "trainee_1",
+    date: todayDateStr,
+    amountMl: 500,
+    loggedAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+  },
+  {
+    id: "hl_seed_3",
+    traineeId: "trainee_1",
+    date: todayDateStr,
+    amountMl: 750,
+    loggedAt: new Date(Date.now() - 1 * 3600000).toISOString(),
+  },
+  {
+    id: "hl_seed_4",
+    traineeId: "trainee_1",
+    date: todayDateStr,
+    amountMl: 500,
+    loggedAt: new Date(Date.now() - 30 * 60000).toISOString(),
+  },
+];
+
 // Initial Database Singleton
 class Store {
   private db: AppDatabase;
 
   constructor() {
+    defaultProgram.supplementProtocols = seedSupplementProtocols;
+    defaultProgram.hydrationGoal = seedHydrationGoals[0];
+
+    const masterProgram = generateMaster16WeekProgram();
+    masterProgram.supplementProtocols = masterSupplementProtocols;
+    masterProgram.hydrationGoal = masterHydrationGoal;
+
     this.db = {
-      currentUser: traineeAlex, // Default lands on Trainee Today screen
-      users: [coachUser, traineeAlex, traineeSarah, traineeMarcusV],
+      currentUser: userAlaa, // Default persona set to Alaa for immediate Blueprint dogfooding
+      users: [coachUser, userAlaaPro, traineeAlex, userAlaa, traineeSarah, traineeMarcusV],
       exercises: seedExercises,
-      programs: [defaultProgram],
+      programs: [masterProgram, defaultProgram],
       sessions: seedSessions,
-      metrics: seedMetrics,
+      metrics: [...seedMetrics, ...seedMetricsAlaa],
+      supplementProtocols: [...masterSupplementProtocols, ...seedSupplementProtocols],
+      supplementLogs: seedSupplementLogs,
+      hydrationGoals: [masterHydrationGoal, ...seedHydrationGoals],
+      hydrationLogs: seedHydrationLogs,
     };
   }
 
@@ -463,6 +725,10 @@ class Store {
 
   getTrainees(): User[] {
     return this.db.users.filter((u) => u.role === "trainee" || u.role === "both");
+  }
+
+  getTrainers(): User[] {
+    return this.db.users.filter((u) => u.role === "trainer" || u.role === "both");
   }
 
   getUser(id: string): User | undefined {
@@ -567,6 +833,146 @@ class Store {
     return entry;
   }
 
+  getSupplementProtocols(programId: string): SupplementProtocol[] {
+    return this.db.supplementProtocols.filter((p) => p.programId === programId);
+  }
+
+  getActiveSupplementDosesForDay(
+    programId: string,
+    dayNumber: number
+  ): {
+    protocol: SupplementProtocol;
+    phase: SupplementPhase;
+    dose: SupplementDosePrescription;
+  }[] {
+    const protocols = this.getSupplementProtocols(programId);
+    const result: {
+      protocol: SupplementProtocol;
+      phase: SupplementPhase;
+      dose: SupplementDosePrescription;
+    }[] = [];
+
+    for (const protocol of protocols) {
+      const activePhase = protocol.phases.find(
+        (ph) =>
+          ph.startDay <= dayNumber && (!ph.endDay || dayNumber <= ph.endDay)
+      );
+      if (activePhase) {
+        for (const dose of activePhase.doses) {
+          result.push({ protocol, phase: activePhase, dose });
+        }
+      }
+    }
+
+    // Sort chronologically by targetTime
+    return result.sort((a, b) => {
+      const tA = a.dose.targetTime || "12:00";
+      const tB = b.dose.targetTime || "12:00";
+      return tA.localeCompare(tB);
+    });
+  }
+
+  getSupplementLogsForDate(traineeId: string, date: string): SupplementLog[] {
+    return this.db.supplementLogs.filter(
+      (l) => l.traineeId === traineeId && l.scheduledDate === date
+    );
+  }
+
+  toggleSupplementDose(
+    traineeId: string,
+    programId: string,
+    protocolId: string,
+    doseId: string,
+    date: string,
+    supplementName: string
+  ): SupplementLog {
+    const existing = this.db.supplementLogs.find(
+      (l) =>
+        l.traineeId === traineeId &&
+        l.doseId === doseId &&
+        l.scheduledDate === date
+    );
+
+    if (existing) {
+      if (existing.status === "taken") {
+        existing.status = "pending";
+        existing.takenAt = undefined;
+      } else {
+        existing.status = "taken";
+        existing.takenAt = new Date().toISOString();
+      }
+      return existing;
+    }
+
+    const newLog: SupplementLog = {
+      id: `spl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      traineeId,
+      programId,
+      protocolId,
+      supplementName,
+      doseId,
+      scheduledDate: date,
+      status: "taken",
+      takenAt: new Date().toISOString(),
+    };
+    this.db.supplementLogs.push(newLog);
+    return newLog;
+  }
+
+  getHydrationGoal(traineeId: string): HydrationGoal | undefined {
+    return this.db.hydrationGoals.find((g) => g.traineeId === traineeId);
+  }
+
+  getHydrationLogsForDate(traineeId: string, date: string): HydrationLog[] {
+    return this.db.hydrationLogs.filter(
+      (h) => h.traineeId === traineeId && h.date === date
+    );
+  }
+
+  getTodayHydrationTotal(traineeId: string, date: string): number {
+    return this.getHydrationLogsForDate(traineeId, date).reduce(
+      (sum, log) => sum + log.amountMl,
+      0
+    );
+  }
+
+  logHydration(traineeId: string, amountMl: number, date?: string): HydrationLog {
+    const entryDate = date || new Date().toISOString().split("T")[0];
+    const log: HydrationLog = {
+      id: `hl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      traineeId,
+      date: entryDate,
+      amountMl,
+      loggedAt: new Date().toISOString(),
+    };
+    this.db.hydrationLogs.push(log);
+    return log;
+  }
+
+  calculateWorkoutAdherence(traineeId: string): number {
+    if (traineeId === "trainee_alaa") return 96;
+    if (traineeId === "trainee_1") return 94;
+    if (traineeId === "trainee_2") return 78;
+    if (traineeId === "trainee_3") return 50;
+    return 85;
+  }
+
+  calculateSupplementAdherence(traineeId: string): number {
+    if (traineeId === "trainee_alaa") return 95;
+    if (traineeId === "trainee_1") return 92;
+    if (traineeId === "trainee_2") return 74;
+    if (traineeId === "trainee_3") return 48;
+    return 80;
+  }
+
+  calculateHydrationAdherence(traineeId: string): number {
+    if (traineeId === "trainee_alaa") return 92;
+    if (traineeId === "trainee_1") return 86;
+    if (traineeId === "trainee_2") return 68;
+    if (traineeId === "trainee_3") return 55;
+    return 75;
+  }
+
   getRoster(): TraineeRosterItem[] {
     const trainees = this.getTrainees();
     return trainees.map((trainee) => {
@@ -583,15 +989,37 @@ class Store {
       }
 
       // Trainee specific realistic variations
+      if (trainee.id === "trainee_alaa") adherencePercentage = 96;
       if (trainee.id === "trainee_1") adherencePercentage = 94;
       if (trainee.id === "trainee_2") adherencePercentage = 78;
       if (trainee.id === "trainee_3") adherencePercentage = 50;
 
+      const supplementAdherencePercentage = trainee.id === "trainee_alaa" ? 95 : this.calculateSupplementAdherence(trainee.id);
+      const hydrationAdherencePercentage = trainee.id === "trainee_alaa" ? 92 : this.calculateHydrationAdherence(trainee.id);
+
       const alerts: TraineeRosterItem["alerts"] = [];
+      if (trainee.id === "trainee_alaa") {
+        alerts.push({
+          type: "optimal",
+          message: "2:1 Pull/Push ratio strictly enforced. Scale: +0.35kg/wk on pace.",
+        });
+      }
       if (adherencePercentage < 60) {
         alerts.push({
           type: "missed_sessions",
           message: "3 missed sessions in the last 7 days",
+        });
+      }
+      if (supplementAdherencePercentage < 70) {
+        alerts.push({
+          type: "missed_sessions",
+          message: `Supplement compliance low (${supplementAdherencePercentage}%)`,
+        });
+      }
+      if (hydrationAdherencePercentage < 60) {
+        alerts.push({
+          type: "missed_sessions",
+          message: `Hydration target missed (<60% avg)`,
         });
       }
       if (trainee.id === "trainee_2") {
@@ -619,6 +1047,8 @@ class Store {
         activeProgram,
         currentWeekIndex,
         adherencePercentage,
+        supplementAdherencePercentage,
+        hydrationAdherencePercentage,
         lastSessionDate: lastSession ? lastSession.date : undefined,
         alerts,
         totalVolumeKg: totalVolumeKg || 42500,

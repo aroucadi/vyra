@@ -14,10 +14,12 @@ import {
   Layers,
   Sparkles,
   ArrowLeft,
+  Video,
+  Info,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { formatDuration, checkIsPersonalRecord, resolveProgramDay } from "@/lib/utils";
-import { SetLog, WorkoutSession } from "@/lib/types";
+import { SetLog, WorkoutSession, EquipmentOption, EquipmentType } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 
 interface ExerciseState {
@@ -38,6 +40,10 @@ interface ExerciseState {
   currentWeight: number;
   currentReps: number;
   currentRir: number;
+  equipmentVariations?: EquipmentOption[];
+  selectedEquipment?: EquipmentType;
+  formCue?: string;
+  videoUrl?: string;
 }
 
 export default function SessionLoggingPage() {
@@ -75,9 +81,15 @@ export default function SessionLoggingPage() {
           const suffix = isSuperset
             ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
             : "";
+          const activeEquipment = ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
+          const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
+          const initialName = activeVariant ? `${activeVariant.exerciseName}${suffix}` : `${ex.exerciseName}${suffix}`;
+          const initialFormCue = activeVariant ? activeVariant.formCue : ex.formCueText;
+          const initialVideo = activeVariant?.videoUrl || ex.videoUrl;
+
           list.push({
             id: ex.id,
-            name: `${ex.exerciseName}${suffix}`,
+            name: initialName,
             prescription: `${ex.sets} sets × ${ex.repRangeLow}–${ex.repRangeHigh} reps @ ${ex.rirScheme?.[0] ?? 2} RIR`,
             targetRir: ex.rirScheme?.[0] ?? 2,
             restSeconds: ex.restSeconds,
@@ -87,6 +99,10 @@ export default function SessionLoggingPage() {
             currentWeight: initialWeight,
             currentReps: initialReps,
             currentRir: ex.rirScheme?.[0] ?? 2,
+            equipmentVariations: ex.equipmentVariations,
+            selectedEquipment: activeEquipment,
+            formCue: initialFormCue,
+            videoUrl: initialVideo,
           });
         });
       });
@@ -366,15 +382,84 @@ export default function SessionLoggingPage() {
                   <div className="flex items-center gap-2">
                     {isSuperset && <Layers className="w-3.5 h-3.5 text-[#06B6D4]" />}
                     <h2 className="text-sm font-black text-[#F8FAFC]">{ex.name}</h2>
+                    {ex.selectedEquipment && (
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/20">
+                        {ex.selectedEquipment}
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-[#10B981] font-mono mt-0.5">{ex.prescription}</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Best: {ex.prevBestWeight}kg × {ex.prevBestReps}
-                  </span>
+                <div className="flex items-center gap-2">
+                  {ex.videoUrl && (
+                    <a
+                      href={ex.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px] bg-[#0F172A] px-2 py-0.5 rounded border border-[#334155]"
+                    >
+                      <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
+                      <span>Form</span>
+                    </a>
+                  )}
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Best: {ex.prevBestWeight}kg × {ex.prevBestReps}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* 4-Option Equipment Matrix Pill Bar in Live Session */}
+              {ex.equipmentVariations && ex.equipmentVariations.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                      Swap Tool (Same Target):
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {ex.equipmentVariations.map((v) => {
+                      const isSelected = (ex.selectedEquipment || "machine") === v.equipmentType;
+                      return (
+                        <button
+                          key={v.equipmentType}
+                          type="button"
+                          onClick={() => {
+                            const updated = [...exercises];
+                            const suffix = isSuperset
+                              ? ` (${ex.name.includes("Superset") ? "Superset" : "Circuit"}${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0] ? ` ${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0]}` : ""})`
+                              : "";
+                            const newName = suffix ? `${v.exerciseName} ${suffix.trim()}` : v.exerciseName;
+                            updated[exIdx] = {
+                              ...ex,
+                              selectedEquipment: v.equipmentType,
+                              name: newName,
+                              formCue: v.formCue,
+                              videoUrl: v.videoUrl,
+                            };
+                            setExercises(updated);
+                          }}
+                          className={`px-1.5 py-1 rounded text-center text-[10px] font-semibold uppercase tracking-wider transition border ${
+                            isSelected
+                              ? "bg-[#10B981] text-slate-950 border-[#10B981] font-bold shadow-sm"
+                              : "bg-[#0F172A] text-slate-400 border-[#334155] hover:text-slate-200 hover:border-slate-500"
+                          }`}
+                        >
+                          {v.equipmentType}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {ex.formCue && (
+                <div className="bg-[#0F172A]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#10B981] flex items-start gap-1.5">
+                  <Info className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
+                  <span>{ex.formCue}</span>
+                </div>
+              )}
 
               {/* Completed Sets Table */}
               {ex.completedSets.length > 0 && (

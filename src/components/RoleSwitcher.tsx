@@ -30,15 +30,37 @@ export function RoleSwitcher({ currentUser }: { currentUser: User }) {
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-slate-500 mr-1">Switch View:</span>
         <button
+          onClick={() => handleSwitch("trainee_alaa", "/today")}
+          disabled={isPending}
+          className={`px-2 py-1 rounded text-xs transition-colors ${
+            currentUser.id === "trainee_alaa"
+              ? "bg-[#10B981] text-slate-950 font-bold shadow-sm"
+              : "bg-[#0F172A] text-slate-300 hover:bg-[#1E293B] border border-[#334155]"
+          }`}
+        >
+          Alaa (Trainee)
+        </button>
+        <button
+          onClick={() => handleSwitch("trainer_alaa", "/roster")}
+          disabled={isPending}
+          className={`px-2 py-1 rounded text-xs transition-colors ${
+            currentUser.id === "trainer_alaa"
+              ? "bg-[#8B5CF6] text-white font-bold shadow-sm"
+              : "bg-[#0F172A] text-slate-300 hover:bg-[#1E293B] border border-[#334155]"
+          }`}
+        >
+          Alaa Pro (Coach)
+        </button>
+        <button
           onClick={() => handleSwitch("trainee_1", "/today")}
           disabled={isPending}
           className={`px-2 py-1 rounded text-xs transition-colors ${
             currentUser.id === "trainee_1"
               ? "bg-[#10B981] text-slate-950 font-bold"
-              : "bg-[#0F172A] text-slate-300 hover:bg-[#1E293B] border border-[#334155]"
+              : "bg-[#0F172A] text-slate-400 hover:bg-[#1E293B] border border-[#334155]"
           }`}
         >
-          Alex (Trainee)
+          Alex (Demo)
         </button>
         <button
           onClick={() => handleSwitch("trainer_1", "/roster")}
@@ -46,10 +68,10 @@ export function RoleSwitcher({ currentUser }: { currentUser: User }) {
           className={`px-2 py-1 rounded text-xs transition-colors ${
             currentUser.id === "trainer_1"
               ? "bg-[#8B5CF6] text-white font-bold"
-              : "bg-[#0F172A] text-slate-300 hover:bg-[#1E293B] border border-[#334155]"
+              : "bg-[#0F172A] text-slate-400 hover:bg-[#1E293B] border border-[#334155]"
           }`}
         >
-          Marcus (Coach)
+          Marcus (Demo)
         </button>
       </div>
     </div>

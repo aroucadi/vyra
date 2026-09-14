@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { appStore } from "@/lib/store";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -6,6 +6,15 @@ import { RoleSwitcher } from "@/components/RoleSwitcher";
 export const metadata: Metadata = {
   title: "NewME — AI-Assisted Strength Coaching",
   description: "Periodized workout and nutrition coaching platform for certified coaches and trainees.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#0B0F17",
 };
 
 export default function RootLayout({

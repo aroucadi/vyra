@@ -55,4 +55,47 @@ export const exercisePrescriptions = pgTable("exercise_prescriptions", {
   videoUrl: text("video_url"),
   wikiMuscleUrl: text("wiki_muscle_url"),
   targetMuscleGroups: text("target_muscle_groups").array(),
+  equipmentVariations: jsonb("equipment_variations"), // EquipmentOption[]
+  selectedEquipment: text("selected_equipment", { enum: ["machine", "dumbbell", "cable", "bodyweight"] }).default("machine"),
 });
+
+export const supplementProtocols = pgTable("supplement_protocols", {
+  id: text("id").primaryKey(),
+  programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  programDayId: text("program_day_id").references(() => programDays.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  category: text("category", { enum: ["performance", "health", "recovery", "sleep"] }).notNull().default("performance"),
+  phases: jsonb("phases").notNull(), // SupplementPhase[]
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const supplementLogs = pgTable("supplement_logs", {
+  id: text("id").primaryKey(),
+  traineeId: text("trainee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  protocolId: text("protocol_id").references(() => supplementProtocols.id, { onDelete: "cascade" }).notNull(),
+  supplementName: text("supplement_name").notNull(),
+  doseId: text("dose_id").notNull(),
+  scheduledDate: text("scheduled_date").notNull(), // YYYY-MM-DD
+  status: text("status", { enum: ["taken", "skipped", "pending"] }).notNull().default("pending"),
+  takenAt: timestamp("taken_at"),
+  notes: text("notes"),
+});
+
+export const hydrationGoals = pgTable("hydration_goals", {
+  id: text("id").primaryKey(),
+  programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  traineeId: text("trainee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  dailyTargetMl: integer("daily_target_ml").notNull().default(3500),
+  workoutDayBonusMl: integer("workout_day_bonus_ml").default(500),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const hydrationLogs = pgTable("hydration_logs", {
+  id: text("id").primaryKey(),
+  traineeId: text("trainee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  amountMl: integer("amount_ml").notNull(),
+  loggedAt: timestamp("logged_at").defaultNow().notNull(),
+});
+

@@ -204,13 +204,17 @@ TrainerLink     { trainerId, traineeId, status\[active|paused|ended] }
 
 Program         { id, trainerId, traineeId, title, startDate, endDate, durationWeeks,
 
-&#x20;                 status\[draft|published|archived], version, parentVersionId? }
+&#x20;                 status\[draft|published|archived], version, parentVersionId?,
+
+&#x20;                 supplementProtocols: SupplementProtocol\[], hydrationGoal: HydrationGoal }
 
 ProgramWeek     { id, programId, weekIndex }
 
 ProgramDay      { id, weekId, dayOfWeek, label, isRestDay,
 
-&#x20;                 morningRoutine: Block\[], workout: Block\[], nutrition: MealPlan }
+&#x20;                 morningRoutine: Block\[], workout: Block\[], nutrition: MealPlan,
+
+&#x20;                 supplementOverrides?: SupplementProtocol\[] }
 
 
 
@@ -239,6 +243,58 @@ Exercise (library) { id, name, primaryMuscle, secondaryMuscles\[], equipment, vi
 MealPlan        { id, meals: Meal\[] }  // trainer-authored, per-day, mirrors the uploaded doc's format
 
 Meal            { time, label, foods\[], approxKcal, approxProtein, supplements\[] }
+
+
+
+SupplementProtocol {
+
+&#x20; id, programId, programDayId?, name, category\[performance|health|recovery|sleep],
+
+&#x20; phases: SupplementPhase\[]
+
+}
+
+SupplementPhase {
+
+&#x20; phaseIndex, name, startDay, endDay?,
+
+&#x20; doses: SupplementDosePrescription\[]
+
+}
+
+SupplementDosePrescription {
+
+&#x20; id, doseOrder, amount, unit\[g|mg|IU|capsules|scoop|ml],
+
+&#x20; timingType\[standalone|meal\_linked],
+
+&#x20; mealLabel?, // link to Meal.label (e.g. "Meal 1: Breakfast", "Post-Workout Shake")
+
+&#x20; standaloneTiming?, // on\_waking|morning|pre\_workout|intra\_workout|post\_workout|afternoon|with\_dinner|pre\_bed
+
+&#x20; targetTime?, notes?
+
+}
+
+SupplementLog   {
+
+&#x20; id, traineeId, programId, protocolId, supplementName, doseId,
+
+&#x20; scheduledDate, status\[taken|skipped|pending], takenAt
+
+}
+
+HydrationGoal   {
+
+&#x20; id, programId, traineeId, dailyTargetMl, workoutDayBonusMl?
+
+}
+
+HydrationLog    {
+
+&#x20; id, traineeId, date, amountMl, loggedAt
+
+}
 
 
 
@@ -374,6 +430,8 @@ Every RIR/double-progression/pull-push-ratio rule from your source document is \
 
 &#x20; - Deload or exercise-substitution suggestions where a lift has stalled for 2+ weeks.
 
+\- \*\*Supplement \& Hydration Signal Consumption\*\*: Ingests supplement adherence % and hydration target % alongside workout logs. Flags protocol compliance issues and correlates them with recovery or performance stalls (e.g. "Creatine loading phase missed 2 doses this week; hydration at 62% of target on heavy compound days — recommend addressing hydration baseline before altering training volume"). Suggests phase adjustments or simplifying multi-dose stacks if compliance is low.
+
 \- Output lands as an editable \*\*draft diff\*\* on top of the current program — trainer accepts, edits, or rejects line by line. The AI never auto-publishes.
 
 
@@ -382,17 +440,93 @@ Every RIR/double-progression/pull-push-ratio rule from your source document is \
 
 \- Runs against the trainee's own log history + body metrics: "your bench load has been flat for 3 sessions but reps are climbing — that's still progress," "you've hit face pulls at 0 RIR for 2 weeks straight, this is likely your limiting set." Conversational follow-up is supported (Vercel AI SDK `useChat` streaming against a Gemini-backed API route).
 
+\- \*\*Supplement \& Hydration Coaching\*\*: Delivers contextual reminders and positive reinforcements tied to the trainee's scheduled doses and running hydration total (e.g. "Creatine loading phase missed 2 doses this week — try pairing your midday dose with your post-workout shake," "You're at 2.5L / 3.5L hydration today; 2 glasses left to hit optimal recovery hydration").
+
 \- Insights are informational/motivational only — no medical, injury-diagnosis, or extreme-deficit dieting advice; if a trainee describes pain or injury, the assistant should suggest they flag it to their human trainer or a medical professional rather than prescribing around it.
 
 
 
 \### 5.10 Trainer Console / Roster \& Analytics
 
-\- Roster table: adherence %, last logged session, current program week, alerts (3+ missed days, flat progress ≥2 weeks).
+\- Roster table: workout adherence %, supplement adherence %, hydration adherence %, last logged session, current program week, alerts (3+ missed days, flat progress ≥2 weeks, supplement compliance <70%, hydration <60%). Visual treatment uses matching color-coded chip badges (green ≥85%, amber 70–84%, red <70%) across all three adherence dimensions.
 
-\- Per-trainee detail: full log history, weight chart, photo timeline, program version history, notes field.
+\- Per-trainee detail: full log history, weight chart, photo timeline, supplement & hydration compliance breakdown (per-supplement weekly compliance, daily hydration pacing, active phase status), program version history, notes field.
 
-\- Cross-client analytics: which exercises stall most often, adherence by day of week — useful for the trainer to spot patterns across their whole client base, not just one person.
+\- Cross-client analytics: which exercises stall most often, adherence by day of week, cross-client supplement protocol completion rates — useful for the trainer to spot patterns across their whole client base, not just one person.
+
+
+
+\### 5.11 Supplement \& Hydration Tracking System
+
+\#### 5.11.1 Trainer Authoring \& Phase-Based Dosing
+
+\- \*\*Hierarchical Protocol Scope\*\*: Defined at the `Program` level (applies across the entire block) with optional overrides on specific `ProgramDay`s (e.g. pre-workout caffeine or intra-workout EAAs only on lifting days).
+
+\- \*\*Named Supplements \& Attributes\*\*: Supports multi-supplement stacks (Creatine Monohydrate, Vitamin D3+K2, Omega-3 Fish Oil, Magnesium Glycinate, Ashwagandha KSM-66, etc.) with precise amount, unit (`g`, `mg`, `IU`, `capsules`, `scoop`, `ml`), and timing category.
+
+\- \*\*Phase-Based Dosing Lineage\*\*: Allows trainers to author phase transitions once across the program duration without manually editing every calendar day:
+
+&#x20; - \*\*Phase 1 (Loading)\*\*: e.g. Days 1–7 with 4 doses/day (5g each = 20g/day total).
+
+&#x20; - \*\*Phase 2 (Maintenance)\*\*: e.g. Days 8+ with 1 dose/day (5g/day total).
+
+&#x20; - The resolution engine computes the trainee's active program day (`today - program.startDate + 1`) and resolves the active phase's prescribed doses automatically.
+
+\- \*\*Meal Linkage vs. Standalone Timing\*\*:
+
+&#x20; - \*\*Meal-Linked\*\*: Doses can link directly to a meal or shake from `MealPlan.meals` (e.g. "Meal 1: Breakfast", "Post-Workout Shake").
+
+&#x20; - \*\*Standalone\*\*: Doses can specify physiological timing anchors (`on_waking`, `morning`, `pre_workout`, `intra_workout`, `post_workout`, `afternoon`, `with_dinner`, `pre_bed`, or target clock time `HH:mm`).
+
+
+
+\#### 5.11.2 Trainee Today Screen Experience
+
+\- \*\*Time-Ordered Chronological Integration\*\*: Doses due today appear directly on the Today home screen alongside workout blocks and nutrition cards in chronological order (e.g. 07:00 On Waking Hydration + Creatine Dose 1 → 08:30 Breakfast + Vitamin D3+K2 → 17:00 Workout → 18:30 Post-Workout Shake + Creatine Dose 2 → 22:00 Pre-bed Magnesium).
+
+\- \*\*Dose-Level Check-Off (`SupplementLog`)\*\*: Trainees tap to check off individual doses when taken. Logs record exact timestamp (`takenAt`), dose index, and status (`taken` | `skipped` | `pending`), enabling granular dose compliance rather than binary all-or-nothing daily flags.
+
+\- \*\*Hydration Progress Widget (`HydrationGoal` + `HydrationLog`)\*\*:
+
+&#x20; - Trainer-configured daily target in ml/L (e.g. 3,500 ml / 3.5 L), with optional workout-day bonus adjustments (+500 ml).
+
+&#x20; - Running total progress bar displayed prominently on Today with current percentage and volume remaining.
+
+&#x20; - Quick-add increment buttons for sub-second logging: `+250ml` (Glass), `+500ml` (Bottle), `+750ml` (Shaker), `+1000ml` (Jug), plus custom entry.
+
+
+
+\#### 5.11.3 Compliance \& Adherence Engine
+
+\- \*\*Per-Supplement Compliance\*\*: `(Doses Taken / Doses Scheduled) × 100` calculated over the active week and program lifecycle.
+
+\- \*\*Weekly Supplement Adherence\*\*: Aggregated across all active protocols for each calendar week (Monday–Sunday).
+
+\- \*\*Hydration Target Attainment\*\*: Daily attainment % (`loggedMl / targetMl`), rolling 7-day average adherence %, and consistency score.
+
+
+
+\#### 5.11.4 Trainer Console Integration
+
+\- \*\*Roster Table\*\*: Dedicated `Supplements` and `Hydration` adherence columns sitting directly beside `Workout Adherence`, using identical color-coded badge treatments.
+
+\- \*\*Trainee Detail View\*\*: Detailed breakdown card featuring:
+
+&#x20; - 7-day adherence comparison (Workout vs Supplement vs Hydration).
+
+&#x20; - Active protocol phase status badge (e.g. "Creatine: Maintenance Phase — Day 9 of Program").
+
+&#x20; - Dose-by-dose adherence log table and hydration volume pacing chart.
+
+\- \*\*Coaching Alerts\*\*: Automated warning flags when a trainee falls below 70% supplement compliance or 60% hydration target over rolling 7 days.
+
+
+
+\#### 5.11.5 AI Signal Integration
+
+\- \*\*Trainer AI Program Assistant\*\*: Consumes supplement and hydration adherence metrics in the Gemini 3.8 Flash prompt context to correlate recovery deficits, recommend protocol deloads, or flag excessive protocol complexity.
+
+\- \*\*Trainee AI Insights Coach\*\*: Consumes real-time daily intake logs to provide proactive, habit-forming guidance (e.g. "Creatine loading phase missed 2 doses this week; hydration at 62% of target") without judgment or disordered eating patterns.
 
 
 

@@ -442,14 +442,55 @@ export default function TodayPage() {
 
       {/* 3. Workout Prescription Card */}
       {currentDay?.isRestDay ? (
-        <section className="bg-[#162032] rounded-xl border border-[#06B6D4]/30 p-5 text-center space-y-3">
+        <section className="bg-[#162032] rounded-xl border border-[#06B6D4]/30 p-5 text-center space-y-4 shadow-lg">
           <div className="w-12 h-12 rounded-full bg-[#06B6D4]/10 border border-[#06B6D4]/40 mx-auto flex items-center justify-center">
             <Clock className="w-6 h-6 text-[#06B6D4]" />
           </div>
-          <h2 className="text-base font-bold text-slate-100">Scheduled Rest & Regeneration</h2>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            Today is dedicated to muscular rebuilding, parasympathetic tone, and glycogen replenishment.
-          </p>
+          <div>
+            <h2 className="text-base font-bold text-slate-100">Scheduled Rest & Regeneration</h2>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
+              Today is dedicated to muscular rebuilding, parasympathetic tone, and glycogen replenishment.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-[#1E293B] text-left space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
+                Test or Preview Workouts
+              </span>
+              <span className="text-[10px] font-mono text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded border border-[#10B981]/20">
+                Active Protocol
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Select any of your 4 Master Transformation protocols below to test equipment swaps, watch exercise form guides, or log sets:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {currentWeek?.days
+                .filter((d) => d.blocks && d.blocks.length > 0)
+                .map((d) => (
+                  <Link
+                    key={d.dayOfWeek}
+                    href={`/session?day=${d.dayOfWeek}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-[#0F172A] border border-[#1E293B] hover:border-[#10B981] hover:bg-[#10B981]/5 transition text-xs group"
+                  >
+                    <div>
+                      <p className="font-bold text-slate-200 group-hover:text-[#10B981] transition">
+                        {d.label.split(":")[0]?.trim() || `Day ${d.dayOfWeek + 1}`}
+                      </p>
+                      <p className="text-[10px] text-slate-400 line-clamp-1">
+                        {d.label.split(":")[1]?.trim() || "Workout Protocol"}
+                      </p>
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-[#162032] border border-[#334155] flex items-center justify-center text-slate-400 group-hover:text-[#10B981] group-hover:border-[#10B981] shrink-0 transition">
+                      <Play className="w-3 h-3 fill-current" />
+                    </div>
+                  </Link>
+                ))}
+            </div>
+          </div>
         </section>
       ) : (
         <section className="bg-[#162032] rounded-xl border border-[#334155] p-4 space-y-4 shadow-lg">
@@ -474,7 +515,11 @@ export default function TodayPage() {
             </div>
 
             <Link
-              href="/session"
+              href={
+                Object.keys(equipmentOverrides).length > 0
+                  ? `/session?day=${currentDay.dayOfWeek}&overrides=${encodeURIComponent(JSON.stringify(equipmentOverrides))}`
+                  : `/session?day=${currentDay.dayOfWeek}`
+              }
               className="px-3 py-1.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
             >
               <Play className="w-3.5 h-3.5 fill-slate-950" />
@@ -757,8 +802,8 @@ export default function TodayPage() {
           <Link
             href={
               Object.keys(equipmentOverrides).length > 0
-                ? `/session?overrides=${encodeURIComponent(JSON.stringify(equipmentOverrides))}`
-                : "/session"
+                ? `/session?day=${currentDay.dayOfWeek}&overrides=${encodeURIComponent(JSON.stringify(equipmentOverrides))}`
+                : `/session?day=${currentDay.dayOfWeek}`
             }
             className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] text-slate-950 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:opacity-95 transition active:scale-[0.99]"
           >

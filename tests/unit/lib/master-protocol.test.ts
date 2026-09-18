@@ -194,4 +194,46 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(masterHydrationGoal.dailyTargetMl, 3500);
     assert.strictEqual(masterHydrationGoal.workoutDayBonusMl, 500);
   });
+
+  it('verifies safe video URLs and form cues for all 17 exercise slots and 68 variations', () => {
+    const trainingDays = week1.days.filter((d) => d.blocks && d.blocks.length > 0);
+    assert.strictEqual(trainingDays.length, 4, 'Must have 4 active training days with blocks');
+
+    let totalExercisesChecked = 0;
+    let totalVariationsChecked = 0;
+
+    trainingDays.forEach((day) => {
+      day.blocks.forEach((block) => {
+        block.exercises.forEach((ex) => {
+          totalExercisesChecked++;
+          assert.ok(ex.videoUrl, `Exercise ${ex.exerciseName} must have a videoUrl`);
+          assert.ok(ex.videoUrl.startsWith('http'), `Exercise ${ex.exerciseName} videoUrl must be http/https`);
+          assert.ok(ex.formCueText, `Exercise ${ex.exerciseName} must have formCueText`);
+          assert.ok(ex.equipmentVariations && ex.equipmentVariations.length === 4, `Exercise ${ex.exerciseName} must have 4 variations`);
+
+          ex.equipmentVariations.forEach((v) => {
+            totalVariationsChecked++;
+            assert.ok(v.videoUrl, `Variation ${v.exerciseName} must have videoUrl`);
+            assert.ok(v.videoUrl.startsWith('http'), `Variation ${v.exerciseName} videoUrl must be http/https`);
+            assert.ok(v.formCue, `Variation ${v.exerciseName} must have formCue`);
+          });
+        });
+      });
+    });
+
+    assert.strictEqual(totalExercisesChecked, 17);
+    assert.strictEqual(totalVariationsChecked, 68);
+  });
+
+  it('verifies rest day fallback seamlessly defaults to Day 0 (Monday) training routine', () => {
+    const fridayRestDay = week1.days[4];
+    assert.strictEqual(fridayRestDay.isRestDay, true);
+    assert.strictEqual(fridayRestDay.blocks.length, 0);
+
+    const trainingDays = week1.days.filter((d) => d.blocks && d.blocks.length > 0);
+    const defaultTestDay = trainingDays[0];
+    assert.ok(defaultTestDay);
+    assert.strictEqual(defaultTestDay.dayOfWeek, 0);
+    assert.strictEqual(defaultTestDay.blocks.length > 0, true);
+  });
 });

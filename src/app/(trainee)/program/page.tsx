@@ -238,7 +238,7 @@ export default function ProgramCalendarPage() {
 
             <div className="pt-2">
               <Link
-                href="/session"
+                href={`/session?day=${previewDay.dayOfWeek}`}
                 className="w-full py-3 rounded-xl bg-[#10B981] text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
               >
                 <Play className="w-3.5 h-3.5 fill-slate-950" />

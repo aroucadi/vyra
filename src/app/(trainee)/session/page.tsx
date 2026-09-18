@@ -18,10 +18,11 @@ import {
   Info,
   Flame,
   ShieldCheck,
+  Dumbbell,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { formatDuration, checkIsPersonalRecord, resolveProgramDay, isSafeUrl } from "@/lib/utils";
-import { SetLog, WorkoutSession, EquipmentOption, EquipmentType } from "@/lib/types";
+import { SetLog, WorkoutSession, EquipmentOption, EquipmentType, ProgramDay } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
 
@@ -55,6 +56,64 @@ interface ExerciseState {
   totalSets?: number;
 }
 
+function buildExerciseStates(
+  targetDay: ProgramDay | undefined,
+  overrides: Record<string, EquipmentType>,
+  userId: string
+): ExerciseState[] {
+  if (targetDay && targetDay.blocks && targetDay.blocks.length > 0) {
+    const list: ExerciseState[] = [];
+    const validEquipments: EquipmentType[] = ["machine", "dumbbell", "cable", "bodyweight"];
+    targetDay.blocks.forEach((b) => {
+      b.exercises.forEach((ex, exIdx) => {
+        const isSuperset = b.type === "superset" || b.type === "circuit";
+        const suffix = isSuperset
+          ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
+          : "";
+        const overrideVal = overrides[ex.id];
+        const activeEquipment = (overrideVal && validEquipments.includes(overrideVal))
+          ? overrideVal
+          : ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
+        const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
+        const initialName = activeVariant ? `${activeVariant.exerciseName}${suffix}` : `${ex.exerciseName}${suffix}`;
+        const initialFormCue = activeVariant ? activeVariant.formCue : ex.formCueText;
+        const initialVideo = activeVariant?.videoUrl || ex.videoUrl;
+
+        const pb = appStore.getPersonalBestForExercise(
+          userId,
+          activeVariant ? activeVariant.exerciseName : ex.exerciseName,
+          activeEquipment
+        );
+        const initialWeight = pb?.weightKg || 60;
+        const initialReps = ex.repRangeLow || 8;
+
+        list.push({
+          id: ex.id,
+          name: initialName,
+          prescription: `${ex.sets} sets × ${ex.repRangeLow}–${ex.repRangeHigh} reps @ ${ex.rirScheme?.[0] ?? 2} RIR`,
+          targetRir: ex.rirScheme?.[0] ?? 2,
+          restSeconds: ex.restSeconds,
+          prevBestWeight: pb?.weightKg || 0,
+          prevBestReps: pb?.reps || 0,
+          completedSets: [],
+          currentWeight: initialWeight,
+          currentReps: initialReps,
+          currentRir: ex.rirScheme?.[0] ?? 2,
+          equipmentVariations: ex.equipmentVariations,
+          selectedEquipment: activeEquipment,
+          formCue: initialFormCue,
+          videoUrl: initialVideo,
+          hasDropSet: ex.hasDropSet,
+          dropSetGuidance: ex.dropSetGuidance,
+          totalSets: ex.sets,
+        });
+      });
+    });
+    if (list.length > 0) return list;
+  }
+  return [];
+}
+
 export default function SessionLoggingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,24 +121,9 @@ export default function SessionLoggingPage() {
   const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
   const resolved = activeProgram ? resolveProgramDay(activeProgram.startDate) : null;
   const currentWeek = activeProgram?.weeks.find((w) => w.weekIndex === resolved?.weekIndex) || activeProgram?.weeks[0];
-  const currentDay = currentWeek?.days.find((d) => d.dayOfWeek === resolved?.dayOfWeek) || currentWeek?.days[0];
 
-  // Elapsed session timer
-  const [sessionSeconds, setSessionSeconds] = useState(0);
-
-  // Active rest timer countdown
-  const [restSecondsLeft, setRestSecondsLeft] = useState<number | null>(null);
-  const [restTotalSeconds, setRestTotalSeconds] = useState(90);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  // PR Celebration Modal / Toast
-  const [recentPR, setRecentPR] = useState<{ exercise: string; weight: number; reps: number } | null>(null);
-
-  // Session summary dialog on finish
-  const [showSummary, setShowSummary] = useState(false);
-
-  // Active Exercise Confidence Card Modal
-  const [activeConfidenceModalIndex, setActiveConfidenceModalIndex] = useState<number | null>(null);
+  // All training days in current week that contain exercises
+  const trainingDays = currentWeek?.days.filter((d) => d.blocks && d.blocks.length > 0) || [];
 
   // Parse any passed equipment overrides from Today page
   const initialOverrides = (() => {
@@ -97,58 +141,32 @@ export default function SessionLoggingPage() {
     return {} as Record<string, EquipmentType>;
   })();
 
+  // Determine initial selected day:
+  // 1. From ?day= or ?dayOfWeek= query param
+  // 2. Or today's day if it has workout blocks
+  // 3. Or first available training day (e.g. Day 0 / Monday)
+  const initialDayOfWeek = (() => {
+    const p = searchParams.get("day") || searchParams.get("dayOfWeek");
+    if (p !== null && !isNaN(parseInt(p, 10))) {
+      const parsedDay = parseInt(p, 10);
+      const matched = currentWeek?.days.find((d) => d.dayOfWeek === parsedDay);
+      if (matched && matched.blocks && matched.blocks.length > 0) return matched.dayOfWeek;
+    }
+    const todayDay = currentWeek?.days.find((d) => d.dayOfWeek === resolved?.dayOfWeek);
+    if (todayDay && todayDay.blocks && todayDay.blocks.length > 0) {
+      return todayDay.dayOfWeek;
+    }
+    return trainingDays[0]?.dayOfWeek ?? 0;
+  })();
+
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(initialDayOfWeek);
+  const currentDay = currentWeek?.days.find((d) => d.dayOfWeek === selectedDayOfWeek) || currentWeek?.days[0];
+
   // Workout Exercises state dynamically derived from active program day
   const [exercises, setExercises] = useState<ExerciseState[]>(() => {
-    if (currentDay && currentDay.blocks && currentDay.blocks.length > 0) {
-      const list: ExerciseState[] = [];
-      const validEquipments: EquipmentType[] = ["machine", "dumbbell", "cable", "bodyweight"];
-      currentDay.blocks.forEach((b) => {
-        b.exercises.forEach((ex, exIdx) => {
-          const isSuperset = b.type === "superset" || b.type === "circuit";
-          const suffix = isSuperset
-            ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
-            : "";
-          const overrideVal = initialOverrides[ex.id];
-          const activeEquipment = (overrideVal && validEquipments.includes(overrideVal))
-            ? overrideVal
-            : ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
-          const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
-          const initialName = activeVariant ? `${activeVariant.exerciseName}${suffix}` : `${ex.exerciseName}${suffix}`;
-          const initialFormCue = activeVariant ? activeVariant.formCue : ex.formCueText;
-          const initialVideo = activeVariant?.videoUrl || ex.videoUrl;
-
-          const pb = appStore.getPersonalBestForExercise(
-            currentUser.id,
-            activeVariant ? activeVariant.exerciseName : ex.exerciseName,
-            activeEquipment
-          );
-          const initialWeight = pb?.weightKg || 60;
-          const initialReps = ex.repRangeLow || 8;
-
-          list.push({
-            id: ex.id,
-            name: initialName,
-            prescription: `${ex.sets} sets × ${ex.repRangeLow}–${ex.repRangeHigh} reps @ ${ex.rirScheme?.[0] ?? 2} RIR`,
-            targetRir: ex.rirScheme?.[0] ?? 2,
-            restSeconds: ex.restSeconds,
-            prevBestWeight: pb?.weightKg || 0,
-            prevBestReps: pb?.reps || 0,
-            completedSets: [],
-            currentWeight: initialWeight,
-            currentReps: initialReps,
-            currentRir: ex.rirScheme?.[0] ?? 2,
-            equipmentVariations: ex.equipmentVariations,
-            selectedEquipment: activeEquipment,
-            formCue: initialFormCue,
-            videoUrl: initialVideo,
-            hasDropSet: ex.hasDropSet,
-            dropSetGuidance: ex.dropSetGuidance,
-            totalSets: ex.sets,
-          });
-        });
-      });
-      if (list.length > 0) return list;
-    }
+    const initialDay = currentWeek?.days.find((d) => d.dayOfWeek === initialDayOfWeek);
+    const built = buildExerciseStates(initialDay, initialOverrides, currentUser.id);
+    if (built.length > 0) return built;
     return [
       {
         id: "ep1",
@@ -204,6 +222,31 @@ export default function SessionLoggingPage() {
       },
     ];
   });
+
+  const handleSelectDay = (dayNum: number) => {
+    setSelectedDayOfWeek(dayNum);
+    const target = currentWeek?.days.find((d) => d.dayOfWeek === dayNum);
+    const built = buildExerciseStates(target, initialOverrides, currentUser.id);
+    setExercises(built);
+    setActiveConfidenceModalIndex(null);
+  };
+
+  // Elapsed session timer
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+
+  // Active rest timer countdown
+  const [restSecondsLeft, setRestSecondsLeft] = useState<number | null>(null);
+  const [restTotalSeconds, setRestTotalSeconds] = useState(90);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // PR Celebration Modal / Toast
+  const [recentPR, setRecentPR] = useState<{ exercise: string; weight: number; reps: number } | null>(null);
+
+  // Session summary dialog on finish
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Active Exercise Confidence Card Modal
+  const [activeConfidenceModalIndex, setActiveConfidenceModalIndex] = useState<number | null>(null);
 
   // Session elapsed timer ticker
   useEffect(() => {
@@ -393,6 +436,53 @@ export default function SessionLoggingPage() {
           Finish
         </button>
       </div>
+
+      {/* Protocol Routine Switcher (Always accessible so athlete can test/log any routine) */}
+      {trainingDays.length > 0 && (
+        <div className="bg-[#162032] border border-[#1E293B] rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+              <Dumbbell className="w-3.5 h-3.5 text-[#10B981]" />
+              Protocol Routine Switcher
+            </span>
+            {selectedDayOfWeek !== resolved?.dayOfWeek && (
+              <span className="text-[10px] font-mono text-[#06B6D4] bg-[#06B6D4]/10 px-2 py-0.5 rounded border border-[#06B6D4]/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Active Routine
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {trainingDays.map((d) => {
+              const isSelected = d.dayOfWeek === selectedDayOfWeek;
+              const [dayPrefix, ...rest] = d.label.split(":");
+              const routineName = rest.join(":").trim();
+              return (
+                <button
+                  key={d.dayOfWeek}
+                  type="button"
+                  onClick={() => handleSelectDay(d.dayOfWeek)}
+                  className={`p-2.5 rounded-lg text-left transition border ${
+                    isSelected
+                      ? "bg-[#10B981]/15 border-[#10B981] text-slate-100 shadow-sm ring-1 ring-[#10B981]/40"
+                      : "bg-[#0F172A] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-600"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[11px] font-bold ${isSelected ? "text-[#10B981]" : "text-slate-300"}`}>
+                      {dayPrefix.trim()}
+                    </span>
+                    {isSelected && <Check className="w-3 h-3 text-[#10B981]" />}
+                  </div>
+                  <p className="text-[10px] truncate text-slate-400 mt-0.5" title={routineName}>
+                    {routineName || "Workout Protocol"}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 2. Floating Live Rest Timer Banner */}
       {restSecondsLeft !== null && (

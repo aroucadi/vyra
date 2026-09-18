@@ -60,6 +60,23 @@ Built specifically to eliminate gym intimidation for trainees on the gym floor:
 
 ---
 
+## 🎨 Stitch MCP Super App UI/UX Design Architecture
+
+Vyra’s user experience is designed using **Stitch MCP** under the *Quiet Luxury & Precision Biomechanics* design system:
+
+| # | Screen | Design Objective & Features | High-Res Stitch Preview |
+| :-: | :--- | :--- | :--- |
+| **01** | **Executive Mobile HUD** | The single command center: 94% Peak Life State badge, 5-Pillar Daily Resonance Strip, Phase 2 Upper Hypertrophy hero card, and Gemini voice assistant. | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1UqibSbtzkcjUfKGFw1mlYmShXK9cb_53k8I7iqTKePqDMFyUroGLaAEQGnbAbuUqo-iLMfJ7c6HBe9WKa0gVfY12u5bB4dDvWqTLyr72f6gfNTRRb1qg_RDwI-bHG3zowDB3hP9minbWKP9PgOhj0QPm2i_riMCfBA71GL5eT0RndApSuVGOocgxswYPAYUtHP9vsFLh25kQDXKRTdkDyVmjf15x75kLcwUtbdmjYvGAY1Jy_6w_cYV8I) |
+| **02** | **Train Well (Live Gym Telemetry)** | Exercise Confidence Card (ECC) in Stealth Gym Mode, 5-second hardware pin blueprint, 4-equipment swapper, sensory burn gauge, and tactile set logger. | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1VNyuGI5Ocx-wUCHqgxfEY2fuQrxRSjhgKtGCqZtoXhuYRDYjCTyPU-_lbNlC9Iz6lBb5Z5tltqTx6yfz1NOSDjEEqudxN3DwJhgjTCNsaPTfuqqbfGfGS6TFLqpQEvv0pHKVd2nqyU3aC1gmV0BZWBeCYI8NMRALTqJG_AKtnBfu_z-ufRHoAVEKW4EhFKdzLqli9Mx4FNtXpcb5C1YKDpcwqZnJmDgk_krbMTFiBqd9mFZod_kQAXHTU) |
+| **03** | **Eat Well (Circadian Fueling)** | 8-Milestone nutrient timing timeline, active post-workout creatine saturation window, and blood biomarker integration (Glucose 84, hs-CRP 0.4, Test 740). | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1W4I6aYIcweFG0mQlqmbXMe9nqqCVNgJ1JOjt3qOJvlyBmGl100CPTOJgRBhUwi6mjxiw2Qef9gaC3HCghz0TxmatYdABrn3wblGlGB2Wa24I1VA16IMXoydEU7W8FaJQcdAMC32mPB4weW0wqONpCN8fNRXrxWXMSK961a9vPlT1okpB_CNHQ-n9SELlsy44iwPFfc1ULRVd8bfzpHMLmFH40jln3uXPaGMHffaZobatOC4bu405Jxz6M) |
+| **04** | **Wear Well (Style Architecture)** | 1.54 V-taper ratio, 96% neutral scapular posture sensor, today's AI look "The Executive Athletic Minimalist", and digital closet matrix. | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1U6BPqUmEnKpHSLPTC50vs0iOXEDY3jxxg4Ta9VFmk8ECchweMzJLkv5UIX1MOl7uNyg-yc2uY_YEqMfktf77Ope7xsIBER91kF6V3SA94zn6VKuRN108VjDBMmjb_dh4g5y9N6hkW05LqjXTS6SuMBjA600HponrWOp0jRwBMgJQNZsxJtuB2XSDYVwPFR1Q9DZyiypA6R_vyHIO2RoGvwPb8PJjZ3pNi3OuGdGG4mevL7FheIqrlljQ) |
+| **05** | **Meet & Network Well** | 91% social energy battery, peak charisma window (6:00-9:30 PM), Marina Sunset 8k athletic run & founders circle, and live gym crowd radar. | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1U7xRk193YusO-IWCj66-43Z7v0tLs8UHJE9UGiDjza_AR0ar8_3hve_oEj57QZG0G0d-S22ObN4vpWhzo17e7O8Y1wGKsugQkIr8KVMdJo08ebn4cvLiXQ4kO0Cq22Fbyd_H6317ZWiLcxX_0tL0w6fuVBfgY7_9T_QGVEdBdKW6V7I2mpw5Nh8nWcacDMMtI90_PcJt-fKH--Zkf2zP4f5hf1GInWBQa6R-POe7uNezgrTqDp-AiAof0) |
+| **06** | **Sleep & Restore Well** | 94% Restorative Depth score, Stage 3 NREM deep sleep (2h 14m), HRV 82ms, circadian light/adenosine curve, smart mattress cooling, and NSDR induction. | [View Screen](https://lh3.googleusercontent.com/aida/AEtjO1Wp8HV_6FiM8U10xuvHE_vvB2EyBKd6owKPzuKzsLIcGLqDESOjKkv0iozCANDcY8DgLvuCqzniG1U9QWzAEs4va9A0IXjeiXU85BWg4QhN4PjDB1MRQHcUn2bZiU_g4u98MpbinIsprOHSEJJHTGRUJTuqAIjicRWCIhgcqPzEpvjVqkwoNAKCzcqyzPEJEWNfURpvgTPzXaPsYQYaHfDTCDj4meXNmXzfogDXusJsa6wHZRDeIK6byQ) |
+
+> Complete design spec and architectural breakdown: [specs/006-vyra-super-app-design/spec.md](specs/006-vyra-super-app-design/spec.md)
+
+---
+
 ## 🛠️ Tech Stack & Architecture
 
 - **Framework**: Next.js 16 (App Router) + React 19

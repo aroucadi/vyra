@@ -16,10 +16,13 @@ import {
   Info,
   Droplets,
   Pill,
+  Utensils,
+  ShieldCheck,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { EquipmentType } from "@/lib/types";
+import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
 
 export default function TodayPage() {
   const currentUser = appStore.getCurrentUser();
@@ -27,6 +30,15 @@ export default function TodayPage() {
 
   // Equipment variations override state per exercise ID
   const [equipmentOverrides, setEquipmentOverrides] = useState<{ [exerciseId: string]: EquipmentType }>({});
+
+  // Active Exercise Confidence Card Preview
+  const [previewGuideExercise, setPreviewGuideExercise] = useState<{
+    id: string;
+    name: string;
+    selectedEquipment: EquipmentType;
+    equipmentVariations?: any[];
+    videoUrl?: string;
+  } | null>(null);
 
   // Daily protocol interactive state
   const todayStr = new Date().toISOString().split("T")[0];
@@ -36,6 +48,9 @@ export default function TodayPage() {
     m2: false,
     m3: false,
   });
+
+  const [mealsChecked, setMealsChecked] = useState<{ [mealTime: string]: boolean }>({});
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
 
   // Resolve today's program day
   const resolved = program
@@ -325,6 +340,102 @@ export default function TodayPage() {
         </div>
       </section>
 
+      {/* 5. Daily Schedule & Nutrient Architecture Card */}
+      {currentDay?.nutrition?.dailyMeals && currentDay.nutrition.dailyMeals.length > 0 && (
+        <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Utensils className="w-4 h-4 text-[#10B981]" />
+              <h2 className="text-sm font-bold text-[#F8FAFC]">Daily Schedule & Nutrient Architecture</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400 font-mono">
+                {Object.values(mealsChecked).filter(Boolean).length} of {currentDay.nutrition.dailyMeals.length} logged
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFullSchedule(!showFullSchedule)}
+                className="text-xs text-[#06B6D4] hover:underline"
+              >
+                {showFullSchedule ? "Compact" : "View All"}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#0F172A] border border-[#1E293B] text-xs">
+            <div className="flex items-center gap-3">
+              <span className="text-slate-300">
+                Target: <strong className="text-[#10B981] font-mono">{currentDay.nutrition.targetKcal ?? 2700} kcal</strong>
+              </span>
+              <span className="text-slate-500">•</span>
+              <span className="text-slate-300">
+                Protein: <strong className="text-[#06B6D4] font-mono">{currentDay.nutrition.targetProteinGrams}g</strong>
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">Precision Milestones</span>
+          </div>
+
+          <div className="space-y-2">
+            {(showFullSchedule
+              ? currentDay.nutrition.dailyMeals
+              : currentDay.nutrition.dailyMeals.slice(0, 4)
+            ).map((meal) => {
+              const isChecked = !!mealsChecked[meal.time];
+              return (
+                <div
+                  key={meal.time}
+                  onClick={() => setMealsChecked((prev) => ({ ...prev, [meal.time]: !prev[meal.time] }))}
+                  className={`p-2.5 rounded-lg border transition cursor-pointer text-left ${
+                    isChecked
+                      ? "bg-[#0F172A]/60 border-[#10B981]/40 text-slate-400"
+                      : "bg-[#0F172A] border-[#1E293B] hover:border-slate-700 text-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono font-bold text-[#10B981] bg-[#162032] px-1.5 py-0.5 rounded border border-[#334155]">
+                        {meal.time}
+                      </span>
+                      <span className={`text-xs font-bold ${isChecked ? "line-through text-slate-500" : "text-slate-100"}`}>
+                        {meal.label}
+                      </span>
+                    </div>
+                    {isChecked ? (
+                      <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-slate-600 shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-1 pl-1">
+                    {meal.foods}
+                    {meal.calories ? ` (~${meal.calories} kcal, ${meal.proteinGrams}g P)` : ""}
+                  </p>
+                  {meal.supplements && meal.supplements !== "None" && (
+                    <p className="text-[10px] text-[#06B6D4] mt-0.5 pl-1 flex items-center gap-1 font-mono">
+                      <span>💊 {meal.supplements}</span>
+                    </p>
+                  )}
+                  {meal.rationale && showFullSchedule && (
+                    <p className="text-[10px] text-slate-500 mt-1 pl-1 italic">
+                      Rationale: {meal.rationale}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {!showFullSchedule && currentDay.nutrition.dailyMeals.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setShowFullSchedule(true)}
+              className="w-full py-1.5 text-center text-xs text-[#06B6D4] hover:text-white bg-[#0F172A] rounded-lg border border-[#1E293B] transition"
+            >
+              Show all {currentDay.nutrition.dailyMeals.length} milestones (+{currentDay.nutrition.dailyMeals.length - 4} more)
+            </button>
+          )}
+        </section>
+      )}
+
       {/* 3. Workout Prescription Card */}
       {currentDay?.isRestDay ? (
         <section className="bg-[#162032] rounded-xl border border-[#06B6D4]/30 p-5 text-center space-y-3">
@@ -411,17 +522,35 @@ export default function TodayPage() {
                                     {ex.sets} × {ex.repRangeLow}–{ex.repRangeHigh} @ {ex.rirScheme?.[0] ?? 1} RIR
                                   </span>
                                 </div>
-                                {displayVideo && (
-                                  <a
-                                    href={displayVideo}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[10px] bg-[#162032] px-1.5 py-0.5 rounded border border-[#334155]"
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setPreviewGuideExercise({
+                                        id: ex.id,
+                                        name: displayName,
+                                        selectedEquipment: activeEquipment,
+                                        equipmentVariations: ex.equipmentVariations,
+                                        videoUrl: displayVideo,
+                                      })
+                                    }
+                                    className="text-slate-300 hover:text-[#06B6D4] flex items-center gap-1 text-[10px] bg-[#162032] px-1.5 py-0.5 rounded border border-[#334155] font-semibold transition"
                                   >
-                                    <Video className="w-3 h-3 text-[#06B6D4]" />
+                                    <ShieldCheck className="w-3 h-3 text-[#06B6D4]" />
                                     <span>Guide</span>
-                                  </a>
-                                )}
+                                  </button>
+                                  {displayVideo && (
+                                    <a
+                                      href={displayVideo}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[10px] bg-[#162032] px-1.5 py-0.5 rounded border border-[#334155]"
+                                    >
+                                      <Video className="w-3 h-3 text-[#06B6D4]" />
+                                      <span>Video</span>
+                                    </a>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Superset 4-Option Equipment Selector */}
@@ -499,17 +628,36 @@ export default function TodayPage() {
                           </div>
                         </div>
 
-                        {displayVideo && isSafeUrl(displayVideo) && (
-                          <a
-                            href={displayVideo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px] bg-[#162032] px-2 py-1 rounded border border-[#334155]"
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewGuideExercise({
+                                id: ex.id,
+                                name: displayName,
+                                selectedEquipment: activeEquipment,
+                                equipmentVariations: ex.equipmentVariations,
+                                videoUrl: displayVideo,
+                              })
+                            }
+                            className="text-slate-300 hover:text-[#06B6D4] flex items-center gap-1 text-[11px] bg-[#162032] px-2 py-1 rounded border border-[#334155] font-semibold transition"
+                            title="Preview Exercise Confidence Card"
                           >
-                            <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#06B6D4]" />
                             <span>Guide</span>
-                          </a>
-                        )}
+                          </button>
+                          {displayVideo && isSafeUrl(displayVideo) && (
+                            <a
+                              href={displayVideo}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px] bg-[#162032] px-2 py-1 rounded border border-[#334155]"
+                            >
+                              <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
+                              <span>Video</span>
+                            </a>
+                          )}
+                        </div>
                       </div>
 
                       {/* 4-Option Equipment Matrix Selector */}
@@ -614,6 +762,27 @@ export default function TodayPage() {
             Start Workout Session
           </Link>
         </div>
+      )}
+
+      {/* Exercise Confidence Card Preview Modal */}
+      {previewGuideExercise && (
+        <ExerciseConfidenceCard
+          isOpen={true}
+          onClose={() => setPreviewGuideExercise(null)}
+          exerciseName={previewGuideExercise.name}
+          selectedEquipment={previewGuideExercise.selectedEquipment}
+          equipmentVariations={previewGuideExercise.equipmentVariations}
+          videoUrl={previewGuideExercise.videoUrl}
+          onSelectEquipment={(newEq) => {
+            setEquipmentOverrides((prev) => ({
+              ...prev,
+              [previewGuideExercise.id]: newEq,
+            }));
+            setPreviewGuideExercise((prev) =>
+              prev ? { ...prev, selectedEquipment: newEq } : null
+            );
+          }}
+        />
       )}
     </div>
   );

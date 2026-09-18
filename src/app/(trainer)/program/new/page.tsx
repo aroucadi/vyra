@@ -15,6 +15,9 @@ import {
   ChevronUp,
   SlidersHorizontal,
   Video,
+  Sparkles,
+  Flame,
+  Utensils,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import {
@@ -25,6 +28,7 @@ import {
   ExercisePrescription,
   EquipmentOption,
   EquipmentType,
+  MealPlanPrescription,
 } from "@/lib/types";
 import { saveProgramAction, publishProgramAction } from "@/lib/actions/program";
 
@@ -58,6 +62,8 @@ export const generateDefaultEquipmentVariations = (name: string, muscle: string)
 interface DaySchedule {
   label: string;
   isRestDay: boolean;
+  morningRoutine?: string[];
+  nutrition?: MealPlanPrescription;
   blocks: Block[];
 }
 
@@ -217,7 +223,7 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   const trainees = appStore.getTrainees();
   const exercisesLibrary = appStore.getExercises();
 
-  const [selectedTraineeId, setSelectedTraineeId] = useState(trainees[0]?.id || "trainee_1");
+  const [selectedTraineeId, setSelectedTraineeId] = useState(trainees[0]?.id || "");
   const [title, setTitle] = useState("Hypertrophy Block 1 - Precision");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [durationWeeks, setDurationWeeks] = useState(4);
@@ -259,6 +265,8 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           loadedSchedule[d.dayOfWeek] = {
             label: d.label,
             isRestDay: d.isRestDay,
+            morningRoutine: d.morningRoutine || [],
+            nutrition: d.nutrition,
             blocks: d.blocks || [],
           };
         });
@@ -266,6 +274,29 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
       }
     }
   }, [programId]);
+
+  const handleApplyMasterTemplate = () => {
+    const masterProg =
+      appStore.getPrograms().find((p) => p.title.includes("Master Hypertrophy")) ||
+      appStore.getPrograms()[0];
+    if (masterProg && masterProg.weeks[0]) {
+      const loadedSchedule: Record<number, DaySchedule> = {};
+      masterProg.weeks[0].days.forEach((d: ProgramDay) => {
+        loadedSchedule[d.dayOfWeek] = {
+          label: d.label,
+          isRestDay: d.isRestDay,
+          morningRoutine: d.morningRoutine || [],
+          nutrition: d.nutrition,
+          blocks: d.blocks || [],
+        };
+      });
+      setSchedule(loadedSchedule);
+      setTitle(masterProg.title);
+      setDurationWeeks(masterProg.durationWeeks);
+      setSuccessToast(`Loaded ${masterProg.title} (4-day split, 17 slots, 4 modalities, morning drills & nutrient architecture)!`);
+      setTimeout(() => setSuccessToast(""), 4500);
+    }
+  };
 
   const currentDaySchedule = schedule[activeDayIndex] || {
     label: "Training Day",
@@ -407,11 +438,13 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           dayOfWeek: d,
           label: daySched.label,
           isRestDay: daySched.isRestDay,
-          morningRoutine: ["750ml hydration", "Dynamic mobility warmup"],
+          morningRoutine: daySched.morningRoutine && daySched.morningRoutine.length > 0
+            ? daySched.morningRoutine
+            : ["500ml hydration", "Dynamic mobility warmup"],
           blocks: daySched.isRestDay ? [] : daySched.blocks,
-          nutrition: {
-            targetProteinGrams: 180,
-            supplements: [{ name: "Creatine", dosage: "5g", timing: "Post-workout", checked: true }],
+          nutrition: daySched.nutrition || {
+            targetProteinGrams: 160,
+            supplements: [{ name: "Creatine", dosage: "5g", timing: "14:00 Post-workout", checked: true }],
           },
         });
       }
@@ -423,9 +456,10 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
       });
     }
 
+    const currentTrainer = appStore.getCurrentUser();
     return {
       id: progId,
-      trainerId: "trainer_1",
+      trainerId: currentTrainer.id || "trainer_1",
       traineeId: selectedTraineeId,
       title,
       startDate,
@@ -499,6 +533,16 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
               <CheckCircle2 className="w-4 h-4" /> {successToast}
             </span>
           )}
+
+          <button
+            type="button"
+            onClick={handleApplyMasterTemplate}
+            className="px-3.5 py-2 rounded-lg bg-[#06B6D4]/15 hover:bg-[#06B6D4]/25 border border-[#06B6D4]/50 text-[#06B6D4] font-bold text-xs flex items-center gap-1.5 transition"
+            title="Populate 4-Day Hypertrophy & Postural Architecture split with 18 slots, 4 modalities, morning drills & nutrient schedule"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Apply Master Protocol
+          </button>
 
           <button
             onClick={handleSaveDraft}
@@ -654,6 +698,49 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           </div>
         </div>
 
+        {/* Morning Routine and Nutrition Protocol Indicators */}
+        {!!(currentDaySchedule.morningRoutine?.length || currentDaySchedule.nutrition?.dailyMeals?.length) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {currentDaySchedule.morningRoutine && currentDaySchedule.morningRoutine.length > 0 && (
+              <div className="p-3 bg-[#0F172A] rounded-xl border border-[#1E293B] space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#F59E0B]">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Morning Alignment Routine ({currentDaySchedule.morningRoutine.length} drills)</span>
+                </div>
+                <div className="space-y-0.5 text-[11px] text-slate-300">
+                  {currentDaySchedule.morningRoutine.map((drill, idx) => (
+                    <div key={idx} className="truncate">• {drill}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentDaySchedule.nutrition?.dailyMeals && currentDaySchedule.nutrition.dailyMeals.length > 0 && (
+              <div className="p-3 bg-[#0F172A] rounded-xl border border-[#1E293B] space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-[#10B981]">
+                  <div className="flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5" />
+                    <span>Nutrient Architecture ({currentDaySchedule.nutrition.targetKcal ?? 2700} kcal, {currentDaySchedule.nutrition.targetProteinGrams}g P)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400">{currentDaySchedule.nutrition.dailyMeals.length} milestones</span>
+                </div>
+                <div className="space-y-0.5 text-[11px] text-slate-300">
+                  {currentDaySchedule.nutrition.dailyMeals.slice(0, 3).map((meal) => (
+                    <div key={meal.time} className="truncate">
+                      <span className="font-mono text-[#10B981]">{meal.time}</span>: {meal.label}
+                    </div>
+                  ))}
+                  {currentDaySchedule.nutrition.dailyMeals.length > 3 && (
+                    <div className="text-[10px] text-slate-500 italic">
+                      +{currentDaySchedule.nutrition.dailyMeals.length - 3} additional milestones...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {currentDaySchedule.isRestDay ? (
           <div className="p-8 text-center bg-[#0F172A] rounded-xl border border-[#1E293B] space-y-2">
             <p className="text-sm font-bold text-slate-200">Scheduled Rest & Muscle Protein Synthesis</p>
@@ -792,6 +879,56 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                           placeholder="e.g. Pause on chest, avoid flared elbows."
                           className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
                         />
+                      </div>
+
+                      {/* Drop Set Configuration */}
+                      <div className="pt-2 border-t border-[#334155]/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!ex.hasDropSet}
+                              onChange={(e) => {
+                                const updated = [...blocks];
+                                updated[bIdx].exercises[exIdx].hasDropSet = e.target.checked;
+                                if (e.target.checked && !updated[bIdx].exercises[exIdx].dropSetGuidance) {
+                                  updated[bIdx].exercises[exIdx].dropSetGuidance =
+                                    "Set 4 Drop Set: Immediate 40% weight drop taken to absolute 0 RIR failure.";
+                                }
+                                setBlocks(updated);
+                              }}
+                              className="rounded border-[#334155] bg-[#0F172A] text-[#EF4444] focus:ring-0"
+                            />
+                            <span className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                              <Flame className="w-3.5 h-3.5 text-[#EF4444]" />
+                              Include Drop Set (Burnout)
+                            </span>
+                          </label>
+                          {ex.hasDropSet && (
+                            <span className="text-[10px] font-mono text-[#EF4444] bg-[#EF4444]/10 px-1.5 py-0.2 rounded border border-[#EF4444]/20">
+                              40% Drop • 0 RIR
+                            </span>
+                          )}
+                        </div>
+
+                        {ex.hasDropSet && (
+                          <div>
+                            <label className="text-[9px] text-slate-400 font-mono uppercase">
+                              Drop Set Execution Guidance
+                            </label>
+                            <input
+                              type="text"
+                              value={ex.dropSetGuidance || ""}
+                              onChange={(e) => {
+                                const updated = [...blocks];
+                                updated[bIdx].exercises[exIdx].dropSetGuidance = e.target.value;
+                                setBlocks(updated);
+                              }}
+                              placeholder="e.g. Set 4 Drop Set: Immediate 40% weight drop taken to absolute 0 RIR failure."
+                              className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* 4-Option Equipment Matrix Configuration */}

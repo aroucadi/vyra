@@ -32,9 +32,48 @@ export interface Exercise {
   equipment: string;
   videoUrl?: string;
   wikiUrl?: string;
+  muscleWikiId?: number;
+  difficulty?: "Beginner" | "Intermediate" | "Advanced";
+  steps?: string[];
+  mediaUrls?: string[];
+  muscleWikiUrl?: string;
 }
 
 export type EquipmentType = "machine" | "dumbbell" | "cable" | "bodyweight";
+
+export type GripType = "overhand" | "underhand" | "neutral" | "thumbless" | "mixed";
+export type GripWidth = "narrow" | "shoulder_width" | "wide";
+export type MachineHardwareType =
+  | "pin_selectorized"
+  | "plate_loaded"
+  | "cable_tower"
+  | "free_weight"
+  | "bodyweight_station";
+
+export interface ExerciseConfidenceGuide {
+  exerciseName: string;
+  equipmentType: EquipmentType;
+  hardware: {
+    type: MachineHardwareType;
+    typeLabel: string;
+    commonAliases: string[];
+    setupSteps: string[];
+    requiredAttachment?: string;
+  };
+  mechanics: {
+    gripType: GripType;
+    gripWidth: GripWidth;
+    wristCue: string;
+    threeCues: [string, string, string];
+    mentalCue: string;
+  };
+  proprioception: {
+    primaryMuscle: string;
+    targetFeel: string;
+    normalSensations: string[];
+    redFlagStop: string;
+  };
+}
 
 export interface EquipmentOption {
   equipmentType: EquipmentType;
@@ -42,6 +81,7 @@ export interface EquipmentOption {
   formCue: string;
   videoUrl?: string;
   targetFocus?: string;
+  confidenceGuide?: ExerciseConfidenceGuide;
 }
 
 export interface ExercisePrescription {
@@ -60,6 +100,9 @@ export interface ExercisePrescription {
   targetMuscleGroups: string[];
   equipmentVariations?: EquipmentOption[];
   selectedEquipment?: EquipmentType;
+  hasDropSet?: boolean;
+  dropSetGuidance?: string;
+  confidenceGuide?: ExerciseConfidenceGuide;
 }
 
 export interface Block {
@@ -69,6 +112,16 @@ export interface Block {
   exercises: ExercisePrescription[];
 }
 
+export interface DailyMealSlot {
+  time: string;
+  label: string;
+  foods: string;
+  supplements?: string;
+  rationale?: string;
+  calories?: number;
+  proteinGrams?: number;
+}
+
 export interface MealPlanPrescription {
   targetKcal?: number;
   targetProteinGrams: number;
@@ -76,6 +129,7 @@ export interface MealPlanPrescription {
   preWorkoutFoods?: string;
   supplements: { name: string; dosage: string; timing: string; checked?: boolean }[];
   notes?: string;
+  dailyMeals?: DailyMealSlot[];
 }
 
 export type SupplementTimingType = "standalone" | "meal_linked";
@@ -194,6 +248,7 @@ export interface SetLog {
   rirAchieved: number;
   isPR?: boolean;
   selectedEquipment?: EquipmentType;
+  isDropSet?: boolean;
 }
 
 export interface WorkoutSession {

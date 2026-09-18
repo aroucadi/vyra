@@ -310,27 +310,31 @@ BodyMetricEntry { id, traineeId, date, weightKg, source\[manual|synced] }
 
 
 
-ProgressPhoto   { id, traineeId, date, angle\[front|back|side],
+ProgressPhoto   { id, traineeId, date, angle[front|back|side],
+                  storagePath, faceCropped: true, consentAiAnalysis: bool }
 
-&#x20;                 storagePath, faceCropped: true, consentAiAnalysis: bool }
+AIInsight       { id, subjectId(trainer|trainee), type[program_suggestion|log_insight|
+                  photo_analysis|feedback_synthesis], inputRefs[], modelOutput, status[suggested|
+                  accepted|dismissed], createdAt }
 
+TraineeFeedback { id, traineeId, trainerId, programId, programDayId?, exercisePrescriptionId?,
+                  sessionId?, type[exercise_struggle|joint_pain|plateau|energy_fatigue|general_note],
+                  severity[low|medium|high], tags[], rawText, audioMemoUrl?,
+                  status[pending_ai|analyzed|reviewed_by_trainer|action_taken|dismissed], createdAt }
 
+FeedbackAIAnalysis { id, feedbackId, traineeId, trainerId,
+                     retrievedContext: { recentLogs: SetLog[], profileInjuries[], historicalTrends },
+                     observedPattern, biomechanicalRootCause,
+                     recommendedActions: TrainerActionProposal[], trainerDraftResponse, createdAt }
 
-AIInsight       { id, subjectId(trainer|trainee), type\[program\_suggestion|log\_insight|
-
-&#x20;                 photo\_analysis], inputRefs\[], modelOutput, status\[suggested|
-
-&#x20;                 accepted|dismissed], createdAt }
-
+TrainerActionProposal { id, analysisId, type[exercise_swap|add_warmup_block|deload_load|technique_cue|custom],
+                        title, rationale, proposedProgramDiff, status[proposed|accepted|modified|rejected],
+                        appliedAt?, trainerNote? }
 ```
 
+Every RIR/double-progression/pull-push-ratio rule from your source document is **data on `ExercisePrescription` and `Block`**, not hardcoded logic — that document becomes the first seeded `Program` template, not a special case in the engine.
 
-
-Every RIR/double-progression/pull-push-ratio rule from your source document is \*\*data on `ExercisePrescription` and `Block`\*\*, not hardcoded logic — that document becomes the first seeded `Program` template, not a special case in the engine.
-
-
-
-\---
+---
 
 
 
@@ -524,13 +528,53 @@ Every RIR/double-progression/pull-push-ratio rule from your source document is \
 
 \#### 5.11.5 AI Signal Integration
 
-\- \*\*Trainer AI Program Assistant\*\*: Consumes supplement and hydration adherence metrics in the Gemini 3.8 Flash prompt context to correlate recovery deficits, recommend protocol deloads, or flag excessive protocol complexity.
+- **Trainer AI Program Assistant**: Consumes supplement and hydration adherence metrics in the Gemini 3.8 Flash prompt context to correlate recovery deficits, recommend protocol deloads, or flag excessive protocol complexity.
 
-\- \*\*Trainee AI Insights Coach\*\*: Consumes real-time daily intake logs to provide proactive, habit-forming guidance (e.g. "Creatine loading phase missed 2 doses this week; hydration at 62% of target") without judgment or disordered eating patterns.
+- **Trainee AI Insights Coach**: Consumes real-time daily intake logs to provide proactive, habit-forming guidance (e.g. "Creatine loading phase missed 2 doses this week; hydration at 62% of target") without judgment or disordered eating patterns.
 
 
 
-\---
+### 5.12 Bi-directional Trainee Feedback & RAG-Augmented Adaptive Coaching Engine
+#### 5.12.1 Trainee Frictionless Multi-Modal Feedback Capture
+- **Contextual In-Session Exercise Feedback**:
+  - On any exercise slot during live logging or immediately post-set, trainees can tap a lightweight "Feedback / Struggling?" prompt.
+  - **Categorized Quick Tags**: `Weight / Rep Stall`, `Joint Pain / Impingement`, `Form Breakdown`, `Excessive Fatigue / Low Energy`, `Equipment Friction`, `Felt Great / Too Easy`.
+  - **Freeform Voice & Text Input**: Trainees can type notes or record 15–30s voice memos (e.g. *"My right shoulder feels jammed on the overhead press; I got stuck at 15kg for 5 reps and couldn't clear rep range"*), transcribed via Gemini multimodal audio ingestion.
+- **Post-Workout Debrief & Subjective Readiness**:
+  - 20-second end-of-session rating: Session RPE (1–10), perceived pump / target-muscle connection, joint comfort rating, and a prompt: *"Anything hurt, feel stuck, or feel off today?"*
+  - Weekly check-in capturing recovery quality, sleep hours, and localized tightness.
+
+#### 5.12.2 Retrieval-Augmented Generation (RAG) Context Aggregation Pipeline
+When feedback is submitted, a server-side RAG pipeline retrieves and synthesizes four contextual layers:
+1. **Athlete Orthopedic & Anthropometric Profile**: Age, sex, height, current bodyweight, documented injuries or structural constraints (e.g. Alaa's Anterior Pelvic Tilt, shoulder internal rotation tendency, clinically underweight BMI 16.4).
+2. **Historical Performance Telemetry**: Past 14–30 days of `SetLog` entries on the specific movement and movement pattern — actual weights lifted, rep progression slopes, logged RIR vs. target RIR, failed double-progression milestones (e.g. 3 consecutive sessions stalled at 15kg × 5 reps).
+3. **Lifestyle & Compliance Adherence Telemetry**: Rolling 7-day supplement adherence (e.g. Creatine consistency), hydration attainment % on lifting days, and rest day intervals.
+4. **Biomechanical Domain Knowledge Base**: Curated vector database of exercise biomechanics, kinetic chain compensation patterns, scapular plane pressing kinematics, external rotation activation protocols, deload guidelines, and equipment-matched alternative movements.
+
+#### 5.12.3 Gemini 3.8 Flash Diagnostic Synthesis & Trainer Triage Dossier
+The RAG pipeline passes the unified context to Gemini 3.8 Flash (`thinking_level: medium`) to produce a structured, high-signal coaching dossier delivered to the trainer:
+- **Observed Quantitative Pattern**: Clear empirical summary without emotion (e.g. *"Alaa has stalled at 15kg on Neutral-Grip DB Shoulder Press for 3 consecutive weeks, failing to reach the 6-rep floor (averaging 5 reps @ 0 RIR). Prior compound pressing volume on Monday has remained constant."*).
+- **Biomechanical Root Cause Analysis**: Identifies anatomical and kinetic drivers (e.g. *"Correlates with documented shoulder internal rotation. Subacromial clearance is compromised during overhead humerus elevation, leading to anterior rotator cuff impingement and reflexive motor inhibition."*).
+- **Ranked Adaptive Interventions (Proposals)**:
+  - **Intervention 1 (Targeted Mobility/Warm-Up Block)**: Inject a temporary 2-week Scapular Prep & External Rotator warm-up before Thursday pressing (Band Face Pulls + Scapular Wall Slides, 2 sets × 10 reps).
+  - **Intervention 2 (Exercise Substitution)**: Substitute Neutral-Grip DB Shoulder Press with Half-Kneeling Landmine Press or 15° Incline DB Press to restore scapular plane freedom without impingement.
+  - **Intervention 3 (10% Fatigue Reset)**: Apply a 10% fatigue-shedding deload for 1 session on the pressing slot, resetting target rep range to 8–10 at 2 RIR.
+- **Auto-Drafted Empathetic Coach Communication**: A pre-formulated, encouraging coach message for the trainer to review, edit, and send with 1 click.
+
+#### 5.12.4 Trainer Triage Console & 1-Click Adaptive Program Mutation
+- **Roster & Trainee Detail Alerts**: Trainer Roster displays an alert chip (e.g. *"Alaa: Shoulder Impingement / Stalled Press"*). Tapping opens the Feedback & Diagnostic Dossier.
+- **Interactive Program Diff Preview**: Trainer reviews the AI proposals and selects an action (e.g. Accept Intervention 1 + Intervention 2). The system generates a side-by-side interactive before/after diff of the affected ProgramDay(s).
+- **1-Click Apply & Version Increment**: Clicking *"Apply & Publish v1.1"* immediately mutates the trainee's active program, archives v1.0, and preserves all historical workout session logs intact.
+- **Zero Hallucination Guarantee**: The AI proposes; the human trainer disposes. The LLM never mutates a trainee's program autonomously.
+
+#### 5.12.5 Closing the Feedback Loop (Trainee Adaptive Experience)
+- Trainee receives a push notification and an updated "Today" / "Program" card with an adaptive badge: *"Coach Alaa Pro adjusted your shoulder protocol based on your feedback: 2-Week Scapular Prep Block added!"*
+- The trainee views the trainer's personal note and rationale directly on the exercise card.
+- Turns athletic frustration and joint pain into a confidence-building, personalized coaching milestone.
+
+
+
+---
 
 
 
@@ -620,9 +664,9 @@ Hand this to the agent as a standing constraint, not a one-time note:
 
 1\. \*\*MVP\*\*: Trainer builds/publishes a single-trainee program manually (§5.2 minus AI-assist), trainee views/logs it (§5.3–5.4), bodyweight chart, basic roster.
 
-2\. \*\*V1\*\*: Per-muscle volume charts (§5.5), progress photos + compare (§5.6), trainer analytics (§5.10).
+2. **V1**: Per-muscle volume charts (§5.5), progress photos + compare (§5.6), trainer analytics (§5.10), Bi-directional Trainee Feedback Loops & RAG-Augmented Adaptive Coaching Engine (§5.12).
 
-3\. \*\*V2\*\*: Gemini program assistant (§5.8), Gemini trainee insights/chat (§5.9), Gemini photo analysis (§5.7).
+3. **V2**: Gemini program assistant autonomous drafts (§5.8), Gemini trainee conversational insights coach (§5.9), Gemini photo analysis (§5.7).
 
 
 

@@ -937,6 +937,10 @@ class Store {
     return this.db.programs.find((p) => p.id === id);
   }
 
+  getPrograms(): Program[] {
+    return this.db.programs;
+  }
+
   saveProgram(program: Program): Program {
     const idx = this.db.programs.findIndex((p) => p.id === program.id);
     if (idx >= 0) {
@@ -1213,12 +1217,8 @@ class Store {
       const hydrationAdherencePercentage = this.calculateHydrationAdherence(trainee.id);
 
       const alerts: TraineeRosterItem["alerts"] = [];
-      if (trainee.id === "trainee_alaa") {
-        alerts.push({
-          type: "optimal",
-          message: "2:1 Pull/Push ratio strictly enforced. Scale: +0.35kg/wk on pace.",
-        });
-      }
+
+      // Dynamic adherence checks
       if (adherencePercentage < 60) {
         alerts.push({
           type: "missed_sessions",
@@ -1237,12 +1237,50 @@ class Store {
           message: `Hydration target missed (<60% avg)`,
         });
       }
-      if (trainee.id === "trainee_2") {
-        alerts.push({
-          type: "plateau",
-          message: "Bench Press volume stalled 2 weeks",
+
+      // Dynamic plateau detection across distinct recent workout sessions
+      const sessionMaxMap: Record<string, number[]> = {};
+      sessions.slice(0, 6).forEach((sess) => {
+        const exMaxes: Record<string, number> = {};
+        sess.setLogs.forEach((log) => {
+          exMaxes[log.exerciseName] = Math.max(exMaxes[log.exerciseName] || 0, log.weightKg);
         });
+        for (const [exName, maxW] of Object.entries(exMaxes)) {
+          if (!sessionMaxMap[exName]) sessionMaxMap[exName] = [];
+          sessionMaxMap[exName].push(maxW);
+        }
+      });
+      for (const [exName, maxWeights] of Object.entries(sessionMaxMap)) {
+        if (maxWeights.length >= 4 && maxWeights.every((w, idx) => idx === 0 || w <= maxWeights[idx - 1])) {
+          const hadRecentPR = sessions.slice(0, 3).some((s) =>
+            s.setLogs.some((l) => l.exerciseName === exName && l.isPR)
+          );
+          if (!hadRecentPR) {
+            alerts.push({
+              type: "plateau",
+              message: `${exName} volume stalled over recent sessions`,
+            });
+            break;
+          }
+        }
       }
+
+      // Dynamic optimal progression check
+      if (alerts.length === 0) {
+        const traineeMetrics = this.getMetrics(trainee.id);
+        if (traineeMetrics.length >= 2) {
+          const latest = traineeMetrics[traineeMetrics.length - 1].weightKg;
+          const baseline = traineeMetrics[0].weightKg;
+          const diff = Math.round((latest - baseline) * 10) / 10;
+          if (diff > 0) {
+            alerts.push({
+              type: "optimal",
+              message: `Progressive overload on track (+${diff}kg scale trend)`,
+            });
+          }
+        }
+      }
+
       if (alerts.length === 0) {
         alerts.push({
           type: "optimal",

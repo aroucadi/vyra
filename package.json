@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx --test tests/unit/lib/*.test.ts"
+    "test": "npx tsx --test tests/unit/lib/*.test.ts",
+    "db:seed": "npx tsx src/db/seed/run-seed.ts",
+    "db:enrich-musclewiki": "npx tsx scripts/enrich-musclewiki-exercises.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

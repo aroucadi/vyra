@@ -16,11 +16,14 @@ import {
   ArrowLeft,
   Video,
   Info,
+  Flame,
+  ShieldCheck,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { formatDuration, checkIsPersonalRecord, resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { SetLog, WorkoutSession, EquipmentOption, EquipmentType } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
+import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
 
 interface ExerciseState {
   id: string;
@@ -38,6 +41,7 @@ interface ExerciseState {
     isPR: boolean;
     exerciseName: string;
     selectedEquipment?: EquipmentType;
+    isDropSet?: boolean;
   }[];
   currentWeight: number;
   currentReps: number;
@@ -46,6 +50,9 @@ interface ExerciseState {
   selectedEquipment?: EquipmentType;
   formCue?: string;
   videoUrl?: string;
+  hasDropSet?: boolean;
+  dropSetGuidance?: string;
+  totalSets?: number;
 }
 
 export default function SessionLoggingPage() {
@@ -70,6 +77,9 @@ export default function SessionLoggingPage() {
 
   // Session summary dialog on finish
   const [showSummary, setShowSummary] = useState(false);
+
+  // Active Exercise Confidence Card Modal
+  const [activeConfidenceModalIndex, setActiveConfidenceModalIndex] = useState<number | null>(null);
 
   // Parse any passed equipment overrides from Today page
   const initialOverrides = (() => {
@@ -131,6 +141,9 @@ export default function SessionLoggingPage() {
             selectedEquipment: activeEquipment,
             formCue: initialFormCue,
             videoUrl: initialVideo,
+            hasDropSet: ex.hasDropSet,
+            dropSetGuidance: ex.dropSetGuidance,
+            totalSets: ex.sets,
           });
         });
       });
@@ -223,7 +236,9 @@ export default function SessionLoggingPage() {
       ex.prevBestReps
     );
 
+    const totalSetsTarget = ex.totalSets || 3;
     const nextSetIndex = ex.completedSets.length + 1;
+    const isThisSetDropSet = !!(ex.hasDropSet && nextSetIndex === totalSetsTarget);
     const newCompletedSet = {
       setIndex: nextSetIndex,
       weight: ex.currentWeight,
@@ -232,7 +247,15 @@ export default function SessionLoggingPage() {
       isPR: isPrSet,
       exerciseName: ex.name,
       selectedEquipment: ex.selectedEquipment,
+      isDropSet: isThisSetDropSet,
     };
+
+    // Auto-calculate 30% drop for the final set if this exercise has drop set!
+    const willNextBeDropSet = !!(ex.hasDropSet && nextSetIndex === totalSetsTarget - 1);
+    const nextWeight = willNextBeDropSet
+      ? Math.max(1, Math.round(ex.currentWeight * 0.7 * 2) / 2)
+      : ex.currentWeight;
+    const nextRir = willNextBeDropSet ? 0 : (ex.targetRir ?? 1);
 
     const updated = [...exercises];
     updated[exerciseIndex] = {
@@ -240,6 +263,8 @@ export default function SessionLoggingPage() {
       completedSets: [...ex.completedSets, newCompletedSet],
       prevBestWeight: isPrSet ? ex.currentWeight : ex.prevBestWeight,
       prevBestReps: isPrSet ? ex.currentReps : ex.prevBestReps,
+      currentWeight: nextWeight,
+      currentRir: nextRir,
     };
 
     setExercises(updated);
@@ -260,6 +285,36 @@ export default function SessionLoggingPage() {
     }
   };
 
+  const handleConfidenceEquipmentSwap = (newEq: EquipmentType) => {
+    if (activeConfidenceModalIndex === null) return;
+    const exIdx = activeConfidenceModalIndex;
+    const ex = exercises[exIdx];
+    if (!ex) return;
+    const isSuperset = ex.name.includes("Superset") || ex.name.includes("Circuit");
+    const suffix = isSuperset
+      ? ` (${ex.name.includes("Superset") ? "Superset" : "Circuit"}${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0] ? ` ${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0]}` : ""})`
+      : "";
+    const variant = ex.equipmentVariations?.find((v) => v.equipmentType === newEq);
+    const newName = variant ? (suffix ? `${variant.exerciseName} ${suffix.trim()}` : variant.exerciseName) : ex.name;
+    const pb = appStore.getPersonalBestForExercise(
+      currentUser.id,
+      variant ? variant.exerciseName : ex.name,
+      newEq
+    );
+    const updated = [...exercises];
+    updated[exIdx] = {
+      ...ex,
+      selectedEquipment: newEq,
+      name: newName,
+      formCue: variant ? variant.formCue : ex.formCue,
+      videoUrl: variant?.videoUrl || ex.videoUrl,
+      prevBestWeight: pb?.weightKg || 0,
+      prevBestReps: pb?.reps || 0,
+      currentWeight: pb?.weightKg || ex.currentWeight,
+    };
+    setExercises(updated);
+  };
+
   const handleFinishWorkout = async () => {
     const allSetLogs: SetLog[] = [];
     exercises.forEach((ex) => {
@@ -274,6 +329,7 @@ export default function SessionLoggingPage() {
           rirAchieved: s.rir,
           isPR: s.isPR,
           selectedEquipment: s.selectedEquipment || ex.selectedEquipment,
+          isDropSet: s.isDropSet,
         });
       });
     });
@@ -423,7 +479,16 @@ export default function SessionLoggingPage() {
                   </div>
                   <p className="text-[11px] text-[#10B981] font-mono mt-0.5">{ex.prescription}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveConfidenceModalIndex(exIdx)}
+                    className="text-slate-300 hover:text-[#06B6D4] hover:border-[#06B6D4]/50 flex items-center gap-1 text-[11px] bg-[#0F172A] px-2 py-0.5 rounded border border-[#334155] font-semibold transition"
+                    title="Open Stealth Gym Confidence Guide"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#06B6D4]" />
+                    <span>Guide</span>
+                  </button>
                   {ex.videoUrl && isSafeUrl(ex.videoUrl) && (
                     <a
                       href={ex.videoUrl}
@@ -435,7 +500,7 @@ export default function SessionLoggingPage() {
                       <span>Form</span>
                     </a>
                   )}
-                  <div className="text-right">
+                  <div className="text-right ml-1">
                     <span className="text-[10px] text-slate-400 font-mono">
                       Best: {ex.prevBestWeight}kg × {ex.prevBestReps}
                     </span>
@@ -515,7 +580,11 @@ export default function SessionLoggingPage() {
                         {s.weight} kg × {s.reps} reps
                       </span>
                       <span className="text-[#06B6D4]">RIR {s.rir}</span>
-                      {s.isPR ? (
+                      {s.isDropSet ? (
+                        <span className="px-1.5 py-0.5 rounded bg-[#EF4444]/20 text-[#EF4444] text-[10px] font-bold flex items-center gap-0.5">
+                          <Flame className="w-3 h-3 fill-[#EF4444]" /> DROP SET
+                        </span>
+                      ) : s.isPR ? (
                         <span className="px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-bold flex items-center gap-0.5">
                           <Trophy className="w-3 h-3" /> PR
                         </span>
@@ -530,9 +599,29 @@ export default function SessionLoggingPage() {
               {/* Set Input Form */}
               <div className="bg-[#0F172A] p-3 rounded-lg border border-[#334155] space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                  <span>Log Set {ex.completedSets.length + 1}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Log Set {ex.completedSets.length + 1}</span>
+                    {ex.hasDropSet && ex.completedSets.length + 1 === (ex.totalSets || 3) && (
+                      <span className="px-1.5 py-0.2 rounded bg-[#EF4444]/20 text-[#EF4444] text-[10px] font-mono font-bold uppercase tracking-wider">
+                        Drop Set (0 RIR)
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] text-slate-400 font-mono">Rest: {ex.restSeconds}s</span>
                 </div>
+
+                {/* Drop Set Highlight Banner */}
+                {ex.hasDropSet && ex.completedSets.length + 1 === (ex.totalSets || 3) && (
+                  <div className="bg-gradient-to-r from-[#EF4444]/20 to-[#F59E0B]/20 border border-[#EF4444]/50 rounded-lg p-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-[#EF4444] uppercase tracking-wide">
+                      <Flame className="w-3.5 h-3.5 fill-[#EF4444]" />
+                      <span>Set {ex.completedSets.length + 1} Drop Set Protocol Active</span>
+                    </div>
+                    <p className="text-[11px] text-slate-200">
+                      {ex.dropSetGuidance || "Immediately drop weight ~30% and take set to absolute 0 RIR technical failure."}
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-2">
                   {/* Weight Input */}
@@ -650,10 +739,23 @@ export default function SessionLoggingPage() {
 
                 <button
                   onClick={() => handleLogSet(exIdx)}
-                  className="w-full py-2 rounded-lg bg-[#10B981]/20 hover:bg-[#10B981]/30 border border-[#10B981]/50 text-[#10B981] font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                  className={`w-full py-2.5 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                    ex.hasDropSet && ex.completedSets.length === 3
+                      ? "bg-[#EF4444]/20 hover:bg-[#EF4444]/30 border-[#EF4444]/60 text-[#EF4444] shadow-md animate-pulse"
+                      : "bg-[#10B981]/20 hover:bg-[#10B981]/30 border-[#10B981]/50 text-[#10B981]"
+                  }`}
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  Log Set {ex.completedSets.length + 1}
+                  {ex.hasDropSet && ex.completedSets.length === 3 ? (
+                    <>
+                      <Flame className="w-3.5 h-3.5 fill-[#EF4444]" />
+                      Log Set 4: Drop Set (0 RIR Burnout)
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Log Set {ex.completedSets.length + 1}
+                    </>
+                  )}
                 </button>
               </div>
             </section>
@@ -699,6 +801,19 @@ export default function SessionLoggingPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Exercise Confidence Card Modal (Stealth Gym Shield) */}
+      {activeConfidenceModalIndex !== null && exercises[activeConfidenceModalIndex] && (
+        <ExerciseConfidenceCard
+          isOpen={true}
+          onClose={() => setActiveConfidenceModalIndex(null)}
+          exerciseName={exercises[activeConfidenceModalIndex].name}
+          selectedEquipment={exercises[activeConfidenceModalIndex].selectedEquipment || "machine"}
+          equipmentVariations={exercises[activeConfidenceModalIndex].equipmentVariations}
+          videoUrl={exercises[activeConfidenceModalIndex].videoUrl}
+          onSelectEquipment={handleConfidenceEquipmentSwap}
+        />
       )}
     </div>
   );

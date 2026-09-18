@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, Play, Dumbbell, ChevronRight, X, Layers, Check } from "lucide-react";
+import { Clock, Play, Dumbbell, ChevronRight, X, Layers, Check, Flame, Utensils } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay } from "@/lib/utils";
 import { ProgramDay } from "@/lib/types";
@@ -135,6 +135,24 @@ export default function ProgramCalendarPage() {
               </button>
             </div>
 
+            {/* Morning Alignment Routine Section */}
+            {previewDay.morningRoutine && previewDay.morningRoutine.length > 0 && (
+              <div className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#F59E0B]">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span className="uppercase font-mono tracking-wider">Morning Alignment Routine</span>
+                </div>
+                <div className="space-y-1 text-xs text-slate-300">
+                  {previewDay.morningRoutine.map((drill, dIdx) => (
+                    <div key={dIdx} className="flex items-start gap-1.5 py-0.5">
+                      <span className="text-[#F59E0B] font-mono shrink-0">•</span>
+                      <span>{drill}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {previewDay.isRestDay ? (
               <div className="p-4 bg-[#0F172A] rounded-xl text-center space-y-2 border border-[#1E293B]">
                 <Clock className="w-6 h-6 text-[#06B6D4] mx-auto" />
@@ -145,7 +163,7 @@ export default function ProgramCalendarPage() {
             ) : (
               <div className="space-y-3">
                 {previewDay.blocks.map((b, bIdx) => (
-                  <div key={b.id} className="bg-[#0F172A] p-3 rounded-xl border border-[#1E293B] space-y-2">
+                  <div key={b.id} className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#06B6D4]">
                       {b.type === "superset" && <Layers className="w-3.5 h-3.5" />}
                       <span className="uppercase font-mono tracking-wider">
@@ -153,18 +171,68 @@ export default function ProgramCalendarPage() {
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {b.exercises.map((ex) => (
-                        <div key={ex.id} className="text-xs flex justify-between items-center py-1 border-t border-[#1E293B]">
-                          <span className="text-slate-200 font-medium">{ex.exerciseName}</span>
-                          <span className="font-mono text-[#10B981]">
-                            {ex.sets} × {ex.repRangeLow}-{ex.repRangeHigh}
-                          </span>
+                        <div key={ex.id} className="text-xs py-1.5 border-t border-[#1E293B] space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-100 font-bold">{ex.exerciseName}</span>
+                            <span className="font-mono text-[#10B981]">
+                              {ex.sets} × {ex.repRangeLow}-{ex.repRangeHigh}
+                            </span>
+                          </div>
+
+                          {/* Drop Set Indicator */}
+                          {ex.hasDropSet && (
+                            <div className="flex items-center gap-1 text-[10px] font-mono text-[#EF4444] bg-[#EF4444]/10 px-2 py-0.5 rounded border border-[#EF4444]/20">
+                              <Flame className="w-3 h-3 fill-[#EF4444]" />
+                              <span>{ex.dropSetGuidance || "Set 4 Drop Set: 40% drop to 0 RIR failure"}</span>
+                            </div>
+                          )}
+
+                          {/* Equipment Modality Matrix Tags */}
+                          {ex.equipmentVariations && ex.equipmentVariations.length > 0 && (
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <span className="text-[9px] font-mono text-slate-500 uppercase">Modalities:</span>
+                              <div className="flex gap-1">
+                                {ex.equipmentVariations.map((v) => (
+                                  <span
+                                    key={v.equipmentType}
+                                    className="text-[9px] font-mono uppercase px-1 py-0.2 rounded bg-[#162032] text-slate-400 border border-[#334155]"
+                                  >
+                                    {v.equipmentType.charAt(0).toUpperCase()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Daily Nutrient Milestones Preview */}
+            {previewDay.nutrition?.dailyMeals && previewDay.nutrition.dailyMeals.length > 0 && (
+              <div className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[#10B981]">
+                  <div className="flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5" />
+                    <span className="uppercase font-mono tracking-wider">Nutrient Architecture</span>
+                  </div>
+                  <span className="font-mono text-[11px] text-slate-400">
+                    {previewDay.nutrition.targetKcal ?? 2700} kcal • {previewDay.nutrition.targetProteinGrams}g P
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  {previewDay.nutrition.dailyMeals.slice(0, 5).map((meal) => (
+                    <div key={meal.time} className="flex justify-between items-center py-0.5 text-slate-300">
+                      <span className="font-mono text-[#10B981] text-[11px]">{meal.time}</span>
+                      <span className="truncate max-w-[200px] text-[11px]">{meal.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

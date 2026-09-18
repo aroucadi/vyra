@@ -11,8 +11,8 @@ export default function ProfilePage() {
   const currentUser = appStore.getCurrentUser();
 
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
-  const trainerId = program?.trainerId || appStore.getTrainers()[0]?.id || "trainer_alaa";
-  const coach = appStore.getUser(trainerId);
+  const trainerId = program?.trainerId || appStore.getTrainers()[0]?.id || "";
+  const coach = trainerId ? appStore.getUser(trainerId) : undefined;
 
   const [aiConsent, setAiConsent] = useState(true);
   const faceCropEnforced = true;

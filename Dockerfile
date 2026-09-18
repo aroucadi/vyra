@@ -1,12 +1,12 @@
-﻿# 1. Base dependencies stage
-FROM node:20-alpine AS deps
+# 1. Base dependencies stage
+FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # 2. Builder stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # 3. Production runner stage (Google Cloud Run compatible)
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

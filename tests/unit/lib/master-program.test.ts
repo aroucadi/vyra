@@ -21,7 +21,7 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program, "Master program must be published for trainee_alaa");
     assert.equal(program?.id, "prog_master_transformation_16w");
-    assert.equal(program?.title, "The Master Transformation Program: 16-Week Blueprint");
+    assert.equal(program?.title, "The Master Hypertrophy & Postural Architecture Protocol");
     assert.equal(program?.durationWeeks, 16);
     assert.equal(program?.weeks.length, 16);
 

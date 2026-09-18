@@ -1,11 +1,11 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/newme-app:latest', '.', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/newme-repo/newme-app:latest', '.']
 
-  # Push the image to Container Registry
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/newme-app:latest']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/newme-repo/newme-app:latest']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -15,7 +15,7 @@ steps:
       - 'deploy'
       - 'newme-app'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/newme-app:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/newme-repo/newme-app:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -25,4 +25,4 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'gcr.io/$PROJECT_ID/newme-app:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/newme-repo/newme-app:latest'

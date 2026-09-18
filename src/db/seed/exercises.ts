@@ -1,6 +1,7 @@
 import { Exercise } from "@/lib/types";
+import { alaaProgramMuscleWikiExercises } from "./musclewiki-enriched-exercises";
 
-export const seedExercises: Exercise[] = [
+const baseSeedExercises: Exercise[] = [
   // Chest
   {
     id: "ex_bench_press",
@@ -272,3 +273,34 @@ export const seedExercises: Exercise[] = [
     videoUrl: "https://www.youtube.com/results?search_query=dumbbell+farmer+walk+form",
   },
 ];
+
+/**
+ * Enriched exercise library merging base library with verified MuscleWiki metadata.
+ */
+export const seedExercises: Exercise[] = (() => {
+  const map = new Map<string, Exercise>();
+
+  // 1. Load base library
+  baseSeedExercises.forEach((ex) => map.set(ex.id, ex));
+
+  // 2. Overlay MuscleWiki enriched metadata for Alaa's Blueprint
+  alaaProgramMuscleWikiExercises.forEach((mwEx) => {
+    const existing = Array.from(map.values()).find(
+      (e) => e.name.toLowerCase().trim() === mwEx.name.toLowerCase().trim() || e.id === mwEx.id
+    );
+    if (existing) {
+      map.set(existing.id, {
+        ...existing,
+        muscleWikiId: mwEx.muscleWikiId,
+        difficulty: mwEx.difficulty,
+        steps: mwEx.steps,
+        mediaUrls: mwEx.mediaUrls,
+        muscleWikiUrl: mwEx.muscleWikiUrl,
+      });
+    } else {
+      map.set(mwEx.id, mwEx);
+    }
+  });
+
+  return Array.from(map.values());
+})();

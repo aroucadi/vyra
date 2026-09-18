@@ -57,6 +57,8 @@ export const exercisePrescriptions = pgTable("exercise_prescriptions", {
   targetMuscleGroups: text("target_muscle_groups").array(),
   equipmentVariations: jsonb("equipment_variations"), // EquipmentOption[]
   selectedEquipment: text("selected_equipment", { enum: ["machine", "dumbbell", "cable", "bodyweight"] }).default("machine"),
+  hasDropSet: boolean("has_drop_set").default(false),
+  dropSetGuidance: text("drop_set_guidance"),
 });
 
 export const supplementProtocols = pgTable("supplement_protocols", {

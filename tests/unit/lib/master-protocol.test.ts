@@ -160,13 +160,13 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.ok(masterDailyMeals.length >= 8, 'Must define at least 8 daily nutrient milestones');
 
     const mealTimes = masterDailyMeals.map((m) => m.time);
-    ['07:00', '09:15', '11:45', '12:15', '13:35', '14:00', '16:00', '21:30', '22:45'].forEach((time) => {
+    ['07:00', '08:00', '11:45', '12:15', '13:35', '14:15', '18:00', '21:30', '22:45'].forEach((time) => {
       assert.ok(mealTimes.includes(time), `Daily schedule must include milestone at ${time}`);
     });
 
     const nutrition = week1.days[0].nutrition;
-    assert.strictEqual(nutrition.targetKcal, 2700);
-    assert.strictEqual(nutrition.targetProteinGrams, 100);
+    assert.strictEqual(nutrition.targetKcal, 2800);
+    assert.strictEqual(nutrition.targetProteinGrams, 126);
     assert.ok(nutrition.dailyMeals && nutrition.dailyMeals.length > 0);
   });
 

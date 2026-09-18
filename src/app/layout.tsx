@@ -4,8 +4,8 @@ import { appStore } from "@/lib/store";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 export const metadata: Metadata = {
-  title: "NewME — AI-Assisted Strength Coaching",
-  description: "Periodized workout and nutrition coaching platform for certified coaches and trainees.",
+  title: "Vyra — Personal Life Optimization Super App",
+  description: "High-performance fitness, postural architecture, and life optimization super app for certified coaches and ambitious individuals.",
 };
 
 export const viewport: Viewport = {

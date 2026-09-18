@@ -17,11 +17,11 @@ export function TrainerNav() {
     <aside className="w-64 bg-[#0B0F17] border-r border-[#1E293B] min-h-screen p-4 flex flex-col justify-between hidden md:flex">
       <div>
         <div className="flex items-center gap-2 px-2 py-4 mb-6 border-b border-[#1E293B]">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#10B981] to-[#06B6D4] flex items-center justify-center font-black text-slate-950 text-base">
-            NM
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#10B981] via-[#06B6D4] to-[#8B5CF6] flex items-center justify-center font-black text-slate-950 text-base tracking-tighter">
+            VY
           </div>
           <div>
-            <h1 className="font-bold text-sm text-[#F8FAFC] tracking-tight">NewME Coach</h1>
+            <h1 className="font-bold text-sm text-[#F8FAFC] tracking-tight">Vyra Coach</h1>
             <span className="text-[10px] text-[#06B6D4] font-mono uppercase tracking-wider">Pro Edition</span>
           </div>
         </div>

@@ -1,6 +1,6 @@
 /**
- * NewME Design System Tokens (Stitch Asset: assets/7111496643528512196)
- * Sourced directly from Stitch MCP Design DNA
+ * Vyra Design System Tokens (Stitch Asset: assets/7111496643528512196)
+ * Sourced directly from Stitch MCP Design DNA for Vyra Life OS
  */
 
 export const tokens = {

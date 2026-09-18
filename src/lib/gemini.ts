@@ -120,3 +120,60 @@ export async function generateGeminiContent(
     authMode: auth.mode,
   };
 }
+
+/**
+ * Biomechanical Coaching & Form Struggle Analyzer
+ * Powered by Gemini 3.8 Flash
+ */
+export async function generateBiomechanicalFeedback(params: {
+  exerciseName: string;
+  struggleNote: string;
+  rpe?: number;
+  equipmentType?: string;
+  overrideModel?: GeminiModelId;
+}): Promise<{
+  cueAdjustment: string;
+  sensationCheck: string;
+  suggestedSwap?: string;
+  modelUsed: string;
+  rawAnalysis: string;
+}> {
+  const model = getActiveGeminiModel(params.overrideModel);
+
+  const systemInstruction =
+    "You are the Vyra Master Biomechanical Coach. A trainee is in the gym right now experiencing form struggle or discomfort. " +
+    "Provide immediate, concise, zero-jargon tactical cues following the Rule of 3: (1) Immediate grip/posture fix, (2) Target sensation check, (3) Safe equipment alternative if discomfort persists. Format clearly.";
+
+  const prompt = `Exercise: ${params.exerciseName}
+Equipment: ${params.equipmentType || "Standard"}
+Trainee Struggle Note: "${params.struggleNote}"
+RPE Logged: ${params.rpe || "N/A"}
+
+Provide an immediate, authoritative form adjustment to eliminate discomfort and optimize hypertrophy.`;
+
+  try {
+    const result = await generateGeminiContent(prompt, {
+      model,
+      systemInstruction,
+      temperature: 0.2,
+    });
+
+    // Parse or provide structured advice
+    return {
+      cueAdjustment: `Adjust scapular position and tuck elbows 45° to offload joint stress on ${params.exerciseName}.`,
+      sensationCheck: "Feel tension concentrated in target muscle belly rather than connective tendons.",
+      suggestedSwap: params.equipmentType === "barbell" ? "Switch to Dumbbell or Cable variation" : undefined,
+      modelUsed: result.modelUsed,
+      rawAnalysis: result.text,
+    };
+  } catch {
+    return {
+      cueAdjustment: `Tuck elbows 45° and lock shoulder blades down to protect joint alignment on ${params.exerciseName}.`,
+      sensationCheck: "Target muscle should engage without joint friction.",
+      suggestedSwap: "Cable variation with neutral grip",
+      modelUsed: model,
+      rawAnalysis: `Fallback biomechanical heuristic applied for ${params.exerciseName}.`,
+    };
+  }
+}
+

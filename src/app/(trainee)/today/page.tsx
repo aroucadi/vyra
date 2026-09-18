@@ -23,6 +23,7 @@ import { appStore } from "@/lib/store";
 import { resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { EquipmentType } from "@/lib/types";
 import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
+import { VyraLifeHub } from "@/components/trainee/VyraLifeHub";
 
 export default function TodayPage() {
   const currentUser = appStore.getCurrentUser();
@@ -170,6 +171,9 @@ export default function TodayPage() {
           </span>
         </div>
       </header>
+
+      {/* Vyra Life OS: 5 Core Optimization Pillars */}
+      <VyraLifeHub compact={true} />
 
       {/* 2. Chronological Daily Supplement Checklist Card */}
       <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3 shadow-sm">

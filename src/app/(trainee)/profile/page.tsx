@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRightLeft, Camera } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { switchUserAction } from "@/lib/actions/auth";
 import { useRouter } from "next/navigation";
+import { VyraLifeHub } from "@/components/trainee/VyraLifeHub";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function ProfilePage() {
           <h2 className="text-sm font-bold">Privacy & AI Analysis Consent</h2>
         </div>
         <p className="text-xs text-slate-400">
-          NewME guarantees privacy guardrails: client-side face cropping before upload and strict 18+ age gating.
+          Vyra guarantees privacy guardrails: client-side face cropping before upload and strict 18+ age gating.
         </p>
 
         <div className="space-y-2 text-xs">
@@ -106,6 +107,9 @@ export default function ProfilePage() {
           </label>
         </div>
       </section>
+
+      {/* Vyra Super App Hub: Personal Life Optimization Pillars */}
+      <VyraLifeHub />
 
       {/* Coach Portal Link */}
       <div className="pt-2">

@@ -33,17 +33,19 @@ export const userAlaa: User = {
   sex: 'male',
   dob: '1987-03-15',
   injuries: [
-    'Anterior Pelvic Tilt (lax deep core, avoid lumbar hyperextension)',
-    'Shoulder Internal Rotation (mandates strict 2:1 pull-to-push volume)',
-    'Clinically Underweight (BMI 16.4 / 49 kg: consult physician or registered dietitian before starting to ensure safe weight gain)',
+    'Clinically Underweight (BMI 16.4 / 49 kg at 173 cm: consult physician or registered dietitian before starting to rule out underlying medical issues and ensure safe weight gain)',
+    'Detrained Lifter (11-month layoff: muscle memory allows strength and volume to return rapidly; Weeks 1–3 conservative baseline loading)',
+    'Anterior Pelvic Tilt (APT) & Forward Pelvic Sway (load glutes, hamstrings, and anterior core; avoid lumbar hyperextension; frequent position changes every 45–60 min)',
+    'Shoulder Internal Rotation (mandates strict 2:1 pull-to-push volume, strengthening retractors, rear delts, and lower traps)',
+    'Monday Night Football Management (high-velocity sprinting & cutting: Tuesday maintenance load vs Thursday primary overload)',
   ],
   goals: [
-    'Rebuild Clavicular Upper Chest Shelf (30° incline)',
-    'V-Taper Lat Width with zero scapular winging',
-    'Pelvic Reset: 100% posterior chain, zero quad isolation',
-    'Gain +0.25 to +0.40 kg/week lean mass on 7-day rolling average',
-    'High-Frequency Frame Widening: 3x/Week Side Delt Matrix (9 sets)',
-    'Desk Ergonomics & Postural Architecture: Strict 2:1 pull-to-push ratio',
+    'Rebuild Clavicular Upper Chest Shelf (30° upward pressing path with full serratus protraction)',
+    'V-Taper Lat Width & Scapular Retraction (2:1 pull-to-push volume balance opposing desk internal rotation)',
+    'Pelvic Reset: 100% posterior chain & anti-rotation core, zero quad isolation',
+    'Gain +0.25 to +0.40 kg/week lean mass on 7-day rolling average (add 150–200 kcal/day if stalled 2 weeks)',
+    'High-Frequency Frame Widening: 3x/Week Side Delt Matrix (9 direct sets across Mon, Wed, Thu)',
+    'Monday Football Caloric Compensation: ~3,150 kcal / ~155g P on match days',
   ],
   hideWeightFromTrainee: false,
 };
@@ -55,86 +57,121 @@ export const linkAlaa: TrainerLink = {
   createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
 };
 
-// 8-Minute Morning Alignment Routine (Bedroom Mat, 07:15 - 07:23)
-const morningAlignmentDrills: string[] = [
-  'Supine Stomach Vacuum: 3 sets × 20-sec hold (Rest 30s) — Lie supine with knees bent. Exhale fully and gently draw abdominal wall inward toward spine (transverse abdominis motor control)',
-  'Floor Glute Bridges: 2 sets × 12 reps (Rest 30s) — Drive through heels, pause 2s at full hip extension, contract glutes to rotate pelvis upright',
-  'Half-Kneeling Hip Flexor Stretch: 2 sets × 45s / side — Kneel with rear glute contracted and pelvis tucked neutral to lengthen psoas',
-  'Doorway Pec Stretch: 2 sets × 30s / side — Forearm against frame at 90°; step gently forward until stretch is felt across chest',
+// 9-Minute Morning Mobility, Neck & Position Control Routine (Bedroom Mat, 07:15 – 07:24 AM)
+export const morningAlignmentDrills: string[] = [
+  'Supine Chin Tucks (Deep Cervical Flexors): 2 sets × 10–12 reps (Rest 30s) — Lie supine, knees bent, no pillow. Gently draw chin down toward throat (making double chin), press back of skull lightly into floor for 2s to align head and strengthen longus colli/capitis',
+  'Supine Stomach Vacuum: 3 sets × 20-sec hold (Rest 30s) — Lie supine. Exhale fully, draw abdominal wall inward toward spine to train motor control of the transverse abdominis',
+  'Floor Glute Bridge: 2 sets × 12 reps (Rest 30s) — Drive through heels, pause 2s at full hip extension, contract glutes to train active end-range hip extension and rotate pelvis upright',
+  'Half-Kneeling Hip Flexor Stretch: 2 sets × 45s / side — Kneel on one knee, squeeze rear glute, tuck pelvis neutral, lean forward gently to lengthen psoas and improve hip extension tolerance',
+  'High-Angle Doorway Pec Minor Stretch: 2 sets × 30s / side — Forearm on doorframe with elbow at eye level (120° angle) in staggered stance; lean forward until stretch is felt near armpit crease to relieve downward/forward coracoid traction',
 ];
 
-// Chronological 8-Milestone Daily Nutrient Architecture (07:00 – 22:45)
-// Chronological 8-Milestone Daily Nutrient Architecture (07:00 – 22:45)
-export const masterDailyMeals: DailyMealSlot[] = [
+// Daily Ergonomics, Commute & Decompression Habits
+export const workdayErgonomicsRoutines: string[] = [
+  'Car Commute (65 min): Seat backrest at 100–110°; hips against crease; lumbar support at beltline. At stoplights, perform gentle chin tucks pressing skull into headrest for 5 seconds',
+  'Hourly Desk Reset (45 seconds every 45–60 min): Stand up, unlock knees, shift 60% of weight into heels, cue belt buckle back 1 inch. Perform 5 slow thoracic rotations per side, followed by 2 deep diaphragmatic breaths',
+  'Post-Lunch Walk (14:00 – 14:15): 10–15 minutes relaxed outdoor walking to break prolonged hip flexion and aid glucose uptake',
+  'Evening Pre-Bed Decompression (22:40 – 22:45 | 2 mins): Passive Chest Opener (1 min lying on foam roller/towel along spine in "T") + Kneeling Hip Flexor Stretch (30s/side with glute squeeze)',
+];
+
+// Monday Schedule (Adjusted for 19:00 Football & Caloric Compensation: ~3,150 kcal / ~155g P)
+export const mondayDailyMeals: DailyMealSlot[] = [
   {
     time: '07:00',
     label: 'Waking Hydration & Spinal Rehydration',
     foods: '500 ml plain water',
-    supplements: 'Creatine Monohydrate (loading phase: 6.9g in warm water, or maintenance: taken at 18:00)',
-    rationale: 'Rehydrates intervertebral discs after sleep; triggers gastric motility and cellular hydration.',
+    supplements: 'None',
+    rationale: 'Rehydrates intervertebral discs after sleep; triggers gastric motility.',
     calories: 0,
     proteinGrams: 0,
   },
   {
     time: '08:00',
-    label: 'Car Commute Fuel + Morning Micronutrients',
-    foods: '7 Ajwa Dates (~75g) + 40g Nuts (almonds or walnuts)',
+    label: 'Car Commute: Dates, Nuts & Morning Micronutrients',
+    foods: '7 Ajwa Dates (~75g) + 40g raw nuts (almonds/walnuts)',
     supplements: 'Vit D3+K2 (2,000–3,000 IU / 100mcg), Omega-3 Fish Oil (1,000–1,500mg EPA/DHA), Multi-B Complex (1 capsule)',
-    rationale: 'Dense, effortless to eat while driving (zero cooking or café sit-down friction); 20+g healthy nut fats provide ideal vehicle to absorb fat-soluble D3/K2 and Omega-3s.',
+    rationale: 'Frictionless commute eating; 20+g nut fats provide ideal vehicle to absorb fat-soluble D3/K2 and Omega-3s. Headrest chin tucks at stoplights.',
     calories: 460,
     proteinGrams: 8,
   },
   {
     time: '11:45',
-    label: 'Pre-Workout Hydration & Primer',
-    foods: '300 ml water (optionally 1–2 plain dates if feeling low on energy; NO heavy powders)',
-    supplements: 'None',
-    rationale: 'Protects training performance from intra-abdominal pressure, reflux, and reactive hypoglycemia during compound lifts.',
-    calories: 60,
-    proteinGrams: 1,
+    label: 'Pre-Gym Snack (Desk Fuel)',
+    foods: '1 ripe banana + 1 tbsp honey + 1 pinch table salt (0.5g) + 300 ml water',
+    supplements: 'Sodium (0.5g table salt)',
+    rationale: 'Rapid-digesting carbs and sodium to fuel 12:15 gym session without gut fullness or reflux.',
+    calories: 170,
+    proteinGrams: 2,
   },
   {
     time: '12:15',
-    label: '45-Minute Training Session (Intra-Workout Hydration)',
-    foods: '500 ml water + Table Salt (0.5g / 1 light pinch)',
-    supplements: 'Sodium (0.5g in 500ml water)',
-    rationale: 'Sodium maintains blood plasma volume, sustains muscular contractions, and delivers cellular hydration.',
+    label: '45-Minute Workout (Chest, Pull, Triceps, Delts)',
+    foods: '500 ml water sipped during session',
+    supplements: 'None',
+    rationale: 'Timed rest intervals; Upper pressing capped to maintain 2:1 pull:push ratio.',
     calories: 0,
     proteinGrams: 0,
   },
   {
     time: '13:35',
     label: 'Office Restaurant Lunch',
-    foods: 'Solid food meal: Meat/Chicken + Rice/Pasta + Greens/Veggies (cooked in olive oil)',
+    foods: '200–250g cooked rice or pasta, 130–150g chicken/beef/fish, 1 tbsp olive oil drizzled on carbs, cooked greens',
     supplements: 'None',
-    rationale: 'Fast post-workout whole-food meal to stop catabolism and replenish depleted muscle glycogen stores.',
+    rationale: 'Whole-food post-workout meal to stop catabolism and replenish muscle glycogen stores.',
     calories: 700,
     proteinGrams: 38,
   },
   {
-    time: '14:15',
+    time: '15:30',
     label: 'Desk Shake 1 (Jumbo Weight Gainer)',
-    foods: '2.25 scoops Jumbo in 330 ml water (1/2 daily serving)',
+    foods: '2.25 scoops Jumbo Gainer powder in 330 ml water',
     supplements: 'None',
-    rationale: 'Post-lunch anabolic window; dense calories and complex starches drive amino acids into recovering muscle fibers without pre-workout GI stress.',
+    rationale: '1/2 daily Jumbo serving; moved earlier to ensure full digestion before 19:00 match.',
     calories: 420,
     proteinGrams: 25,
   },
   {
-    time: '18:00',
-    label: 'Desk Shake 2 (Jumbo Weight Gainer + Creatine)',
-    foods: '2.25 scoops Jumbo in 330 ml water (2nd half of daily Jumbo serving)',
-    supplements: 'Creatine Monohydrate: 3–5g (Maintenance dose or Loading Dose 2)',
-    rationale: 'Bridges the gap between lunch and late dinner without digestive heaviness; single-product simplification (no need to cycle separate Whey & Jumbo powders).',
+    time: '17:00',
+    label: 'Desk Shake 2 (Jumbo Weight Gainer)',
+    foods: '2.25 scoops Jumbo Gainer powder in 330 ml water',
+    supplements: 'None (No Creatine here to prevent gastrointestinal discomfort during sprinting)',
+    rationale: '2nd half of daily Jumbo serving; provides 2 full hours of clearance before football kickoff.',
     calories: 420,
     proteinGrams: 25,
+  },
+  {
+    time: '18:30',
+    label: 'Pre-Game Match Fuel',
+    foods: '1 ripe banana or 3 dried dates + 300 ml water',
+    supplements: 'None',
+    rationale: 'Fast, light carbohydrates 30 minutes before 19:00 kickoff; zero bloat.',
+    calories: 120,
+    proteinGrams: 1,
+  },
+  {
+    time: '19:00',
+    label: 'Indoor 5-a-Side Football Match (60 Mins)',
+    foods: '750 ml water sipped throughout match',
+    supplements: 'None',
+    rationale: 'High-velocity sprinting, cutting, and deceleration (burns ~500–600 kcal).',
+    calories: 0,
+    proteinGrams: 0,
+  },
+  {
+    time: '20:15',
+    label: 'Post-Game Recovery Drink',
+    foods: '1 scoop Whey Protein powder in 350 ml whole milk',
+    supplements: 'None',
+    rationale: 'Immediate post-match recovery drink to halt tissue breakdown and start muscle re-synthesis.',
+    calories: 300,
+    proteinGrams: 30,
   },
   {
     time: '21:30',
-    label: 'Solid Family Dinner + Olive Oil Density',
-    foods: 'Solid family dinner + Large salad with 2 tbsp Extra Virgin Olive Oil drizzled on top',
-    supplements: 'None',
-    rationale: '2 tbsp extra virgin olive oil effortlessly adds ~240 kcal of healthy fat density without increasing chewing fatigue or stomach volume before bed.',
+    label: 'Solid Family Dinner + Olive Oil Density & Creatine',
+    foods: 'Home-cooked dinner (meat/fish with 250g potatoes/bread) + Large fresh salad with 2 tbsp Extra Virgin Olive Oil drizzled on top',
+    supplements: 'Creatine Monohydrate: 3–5g taken with dinner (completely outside pre-match window)',
+    rationale: 'Dense whole foods + 240 kcal from 2 tbsp olive oil; Creatine taken here avoids any sprinting GI discomfort.',
     calories: 800,
     proteinGrams: 30,
   },
@@ -142,43 +179,152 @@ export const masterDailyMeals: DailyMealSlot[] = [
     time: '22:45',
     label: 'Evening Supplements & Sleep Stack',
     foods: '200 ml water',
-    supplements: 'Magnesium (Bisglycinate or Citrate: 300–400mg) + Ashwagandha',
-    rationale: 'Calms neuromuscular excitability, blunts cortisol, and supports deep parasympathetic recovery before 23:00 sleep.',
+    supplements: 'Magnesium (Bisglycinate/Citrate: 300–400mg) + Ashwagandha KSM-66 (300–600mg)',
+    rationale: 'Calms central nervous system tone after football, blunts evening cortisol, and supports restorative sleep.',
     calories: 0,
     proteinGrams: 0,
   },
 ];
 
-// Meal Plan & Nutrition Architecture (~2,800 kcal | ~126g Protein)
-const workoutDayNutrition: MealPlanPrescription = {
-  targetKcal: 2800,
-  targetProteinGrams: 126,
-  preWorkoutTiming: '11:45 Pre-Workout Hydration & Primer (30 min prior to session)',
-  preWorkoutFoods: '300 ml water (optionally 1–2 plain dates if low energy; NO heavy powders)',
+// Standard Training Days (Tuesday – Thursday: ~2,750 kcal / ~125g Protein)
+export const standardDailyMeals: DailyMealSlot[] = [
+  {
+    time: '07:00',
+    label: 'Waking Hydration & Spinal Rehydration',
+    foods: '500 ml plain water',
+    supplements: 'None',
+    rationale: 'Rehydrates intervertebral discs after sleep; triggers gastric motility.',
+    calories: 0,
+    proteinGrams: 0,
+  },
+  {
+    time: '08:00',
+    label: 'Car Commute: Dates, Nuts & Morning Micronutrients',
+    foods: '7 Ajwa Dates (~75g) + 40g raw nuts (almonds/walnuts)',
+    supplements: 'Vit D3+K2 (2,000–3,000 IU / 100mcg), Omega-3 Fish Oil (1,000–1,500mg EPA/DHA), Multi-B Complex (1 capsule)',
+    rationale: 'Frictionless commute eating; 20+g nut fats provide ideal vehicle to absorb fat-soluble D3/K2 and Omega-3s. Headrest chin tucks at stoplights.',
+    calories: 460,
+    proteinGrams: 8,
+  },
+  {
+    time: '11:45',
+    label: 'Pre-Gym Snack (Desk Fuel)',
+    foods: '1 ripe banana + 1 tbsp honey + 1 pinch table salt (0.5g) + 300 ml water',
+    supplements: 'Sodium (0.5g table salt)',
+    rationale: 'Rapid-digesting carbohydrates and sodium to maintain muscular contractions without gut fullness.',
+    calories: 170,
+    proteinGrams: 2,
+  },
+  {
+    time: '12:15',
+    label: '45-Minute Workout Session',
+    foods: '500 ml water sipped during session',
+    supplements: 'None',
+    rationale: 'Working sets with timed rest intervals; strictly capped at 1 RIR on compounds.',
+    calories: 0,
+    proteinGrams: 0,
+  },
+  {
+    time: '13:35',
+    label: 'Office Restaurant Lunch',
+    foods: '200–250g cooked rice or pasta, 130–150g chicken/beef/fish, 1 tbsp olive oil drizzled on carbs, cooked greens',
+    supplements: 'None',
+    rationale: 'Solid post-workout whole-food meal to replenish glycogen and provide 38g protein.',
+    calories: 700,
+    proteinGrams: 38,
+  },
+  {
+    time: '16:00',
+    label: 'Desk Shake 1 (Jumbo Weight Gainer)',
+    foods: '2.25 scoops Jumbo Gainer powder in 330 ml water',
+    supplements: 'None',
+    rationale: '1/2 daily Jumbo serving; steady amino acid and starch release.',
+    calories: 420,
+    proteinGrams: 25,
+  },
+  {
+    time: '18:30',
+    label: 'Desk Shake 2 (Jumbo Weight Gainer)',
+    foods: '2.25 scoops Jumbo Gainer powder in 330 ml water',
+    supplements: 'None',
+    rationale: '2nd half of daily Jumbo serving; bridges the gap to dinner.',
+    calories: 420,
+    proteinGrams: 25,
+  },
+  {
+    time: '21:30',
+    label: 'Solid Family Dinner + Olive Oil Density & Creatine',
+    foods: 'Home-cooked dinner + Large fresh salad with 2 tbsp Extra Virgin Olive Oil drizzled on top',
+    supplements: 'Creatine Monohydrate: 3–5g taken with dinner',
+    rationale: '2 tbsp extra virgin olive oil effortlessly adds ~240 kcal healthy fat density; Creatine taken with carbs and fats for uptake.',
+    calories: 800,
+    proteinGrams: 30,
+  },
+  {
+    time: '22:45',
+    label: 'Evening Supplements & Sleep Stack',
+    foods: '200 ml water',
+    supplements: 'Magnesium (Bisglycinate/Citrate: 300–400mg) + Ashwagandha KSM-66 (300–600mg)',
+    rationale: 'Calms neuromuscular excitability, manages cortisol, and deepens sleep.',
+    calories: 0,
+    proteinGrams: 0,
+  },
+];
+
+export const restDayDailyMeals: DailyMealSlot[] = standardDailyMeals.filter(
+  (m) => m.time !== '11:45' && m.time !== '12:15'
+);
+
+// Backward-compatible alias
+export const masterDailyMeals = standardDailyMeals;
+
+// Monday Match Day Nutrition Prescription (~3,150 kcal | ~155g Protein)
+export const mondayNutrition: MealPlanPrescription = {
+  targetKcal: 3150,
+  targetProteinGrams: 155,
+  preWorkoutTiming: '11:45 Pre-Gym Snack & 18:30 Pre-Football Fast Carbs',
+  preWorkoutFoods: '11:45: Banana + 1 tbsp honey + salt + water | 18:30: Banana or 3 dates + water',
   supplements: [
-    { name: 'Creatine Monohydrate', dosage: '3–5g/day (or 20.7g/day loading in 3x6.9g doses Days 1-5)', timing: '18:00 Desk Shake 2 (or 07:00 warm water)' },
-    { name: 'Vitamin D3 + K2', dosage: '2,000–3,000 IU D3 + 100mcg K2', timing: '08:00 Car Commute (absorbed with 40g nut fats)' },
-    { name: 'Omega-3 Fish Oil', dosage: '1,000–1,500mg EPA/DHA', timing: '08:00 Car Commute (absorbed with 40g nut fats)' },
+    { name: 'Creatine Monohydrate', dosage: '3–5g/day', timing: '21:30 Dinner (avoid pre-football GI distress)' },
+    { name: 'Vitamin D3 + K2', dosage: '2,000–3,000 IU D3 + 100mcg K2', timing: '08:00 Car Commute (absorbed with 40g nuts)' },
+    { name: 'Omega-3 Fish Oil', dosage: '1,000–1,500mg EPA/DHA', timing: '08:00 Car Commute (absorbed with 40g nuts)' },
     { name: 'Multi-B Complex', dosage: '1 standard capsule', timing: '08:00 Car Commute' },
-    { name: 'Magnesium + Ashwagandha', dosage: '300–400mg Magnesium + Ashwagandha', timing: '22:45 Pre-Bed' },
+    { name: 'Magnesium + Ashwagandha', dosage: '300–400mg Magnesium + 300–600mg Ashwagandha', timing: '22:45 Pre-Bed' },
   ],
-  dailyMeals: masterDailyMeals,
-  notes: 'Calories: ~2,800 kcal/day. Protein: ~126g/day (~2.5 g/kg body weight). Commute dates + nuts eliminate café friction and provide 20+g fats for D3/Omega-3 absorption. 4.5 scoops Jumbo split into two 2.25-scoop doses (14:15 & 18:00) simplifies product cycling. 2 tbsp olive oil on dinner salad adds 240 kcal effortless density.',
+  dailyMeals: mondayDailyMeals,
+  notes: 'Monday Match Day Caloric Compensation: ~3,150 kcal / ~155g Protein. Offsets ~500–600 kcal burned in 60-min 5-a-side indoor football. Post-match 20:15 whey shaker (300 kcal, 30g P) halts catabolism.',
 };
 
-const restDayNutrition: MealPlanPrescription = {
-  targetKcal: 2700,
+// Standard Training Day Nutrition Prescription (~2,750 kcal | ~125g Protein)
+export const workoutDayNutrition: MealPlanPrescription = {
+  targetKcal: 2750,
+  targetProteinGrams: 125,
+  preWorkoutTiming: '11:45 Pre-Workout Desk Fuel (30 min prior to session)',
+  preWorkoutFoods: '1 ripe banana + 1 tbsp honey + 1 pinch salt (0.5g) + 300 ml water',
+  supplements: [
+    { name: 'Creatine Monohydrate', dosage: '3–5g/day', timing: '21:30 Dinner' },
+    { name: 'Vitamin D3 + K2', dosage: '2,000–3,000 IU D3 + 100mcg K2', timing: '08:00 Car Commute (absorbed with 40g nuts)' },
+    { name: 'Omega-3 Fish Oil', dosage: '1,000–1,500mg EPA/DHA', timing: '08:00 Car Commute (absorbed with 40g nuts)' },
+    { name: 'Multi-B Complex', dosage: '1 standard capsule', timing: '08:00 Car Commute' },
+    { name: 'Magnesium + Ashwagandha', dosage: '300–400mg Magnesium + 300–600mg Ashwagandha', timing: '22:45 Pre-Bed' },
+  ],
+  dailyMeals: standardDailyMeals,
+  notes: 'Standard Training Days (Tue–Thu): ~2,750 kcal / ~125g Protein. 4.5 scoops Jumbo split at 16:00 and 18:30. 2 tbsp olive oil on dinner salad adds 240 kcal effortless healthy fat density.',
+};
+
+export const restDayNutrition: MealPlanPrescription = {
+  targetKcal: 2600,
   targetProteinGrams: 120,
   preWorkoutTiming: 'Rest Day (Tissue Rebuilding & Glycogen Saturation)',
   preWorkoutFoods: 'Balanced whole food distribution with complex carbs and healthy fats',
   supplements: [
-    { name: 'Creatine Monohydrate', dosage: '3–5g/day', timing: '18:00 Desk Shake 2' },
+    { name: 'Creatine Monohydrate', dosage: '3–5g/day', timing: '21:30 Dinner' },
     { name: 'Vitamin D3 + K2', dosage: '2,000–3,000 IU / 100mcg', timing: '08:00 Car Commute' },
     { name: 'Omega-3 Fish Oil', dosage: '1,000–1,500mg', timing: '08:00 Car Commute' },
     { name: 'Multi-B Complex', dosage: '1 capsule', timing: '08:00 Car Commute' },
-    { name: 'Magnesium + Ashwagandha', dosage: '300–400mg Magnesium + Ashwagandha', timing: '22:45 Pre-Bed' },
+    { name: 'Magnesium + Ashwagandha', dosage: '300–400mg Magnesium + 300–600mg Ashwagandha', timing: '22:45 Pre-Bed' },
   ],
-  dailyMeals: masterDailyMeals.filter((m) => m.time !== '11:45' && m.time !== '12:15'),
+  dailyMeals: restDayDailyMeals,
   notes: 'Friday morning fasted weigh-in milestone. Target: +0.25 to +0.40 kg/week on 7-day rolling average.',
 };
 
@@ -193,7 +339,7 @@ export function createBlueprintDays(weekId: string, _weekIndex?: number): Progra
       label: 'Monday: Clavicular Chest, Posture Pull, Triceps & Lateral Delts',
       isRestDay: false,
       morningRoutine: morningAlignmentDrills,
-      nutrition: workoutDayNutrition,
+      nutrition: mondayNutrition,
       blocks: [
         {
           id: `${weekId}_d0_b1`,
@@ -409,7 +555,7 @@ export function createBlueprintDays(weekId: string, _weekIndex?: number): Progra
               repRangeHigh: 10,
               rirScheme: [1, 1, 1],
               restSeconds: 90,
-              loadGuidance: 'Place feet at top edge of platform; drive strictly through heels to overload glutes and eliminate knee shearing. Cap at 1 RIR max.',
+              loadGuidance: 'Tuesday Post-Football Rule: Maintain previous working loads; hold at 1 RIR. Do not chase progression post-football. Place feet at top edge of platform; drive strictly through heels to overload glutes and eliminate knee shearing.',
               formCueText: 'Zero quad isolation: full glute and hamstring tension. Cap at 1 RIR max.',
               videoUrl: 'https://www.youtube.com/results?search_query=high+foot+placement+leg+press+form',
               targetMuscleGroups: ['Glutes', 'Hamstrings'],
@@ -454,7 +600,7 @@ export function createBlueprintDays(weekId: string, _weekIndex?: number): Progra
               repRangeHigh: 12,
               rirScheme: [2, 1, 0],
               restSeconds: 75,
-              loadGuidance: 'Flex toes toward shins; smooth 3-second lowering phase. Pulls the tilted pelvis backward into neutral alignment. Set 1: 2 RIR, Set 2: 1 RIR, Set 3: 0 RIR.',
+              loadGuidance: 'Tuesday Post-Football Rule: Maintain previous working loads; hold at 1 RIR on sets 1–2. Pulls the tilted pelvis backward into neutral alignment. Flex toes toward shins; smooth 3-second lowering phase. Set 1: 2 RIR, Set 2: 1 RIR, Set 3: 0 RIR.',
               formCueText: 'Dorsiflex ankles to maximize hamstring recruitment. Set 3 to 0 RIR.',
               videoUrl: 'https://www.youtube.com/results?search_query=seated+leg+curl+machine+form',
               targetMuscleGroups: ['Hamstrings'],
@@ -854,7 +1000,7 @@ export function createBlueprintDays(weekId: string, _weekIndex?: number): Progra
               repRangeHigh: 10,
               rirScheme: [1, 1, 1],
               restSeconds: 90,
-              loadGuidance: '3 sets × 8–10 reps (1 RIR max). Use moderate DBs; push hips back until hamstrings stretch tight; keep lumbar spine strictly neutral.',
+              loadGuidance: 'Thursday Primary Overload Rule: 72h post-football, this is your primary lower-body progressive overload driver. Target double progression (reach top of rep range before adding load). 3 sets × 8–10 reps (1 RIR max). Use moderate DBs; push hips back until hamstrings stretch tight; keep lumbar spine strictly neutral. Stall Rule: If load does not increase for 3 consecutive sessions, reduce load by 10% for one session before resuming progression.',
               formCueText: 'Hinge hips backward, keep dumbbells skimming shins. Cap at 1 RIR.',
               videoUrl: 'https://www.youtube.com/results?search_query=dumbbell+rdl+form+for+beginners',
               targetMuscleGroups: ['Hamstrings', 'Glutes', 'Posterior Chain'],

@@ -223,11 +223,15 @@ export async function runSeed(customDbUrl?: string) {
               .onConflictDoUpdate({
                 target: schema.exercisePrescriptions.id,
                 set: {
+                  exerciseName: ep.exerciseName,
                   sets: ep.sets,
                   repRangeLow: ep.repRangeLow,
                   repRangeHigh: ep.repRangeHigh,
                   rirScheme: ep.rirScheme,
                   restSeconds: ep.restSeconds,
+                  loadGuidance: ep.loadGuidance,
+                  formCueText: ep.formCueText,
+                  videoUrl: ep.videoUrl,
                   equipmentVariations: ep.equipmentVariations,
                   hasDropSet: ep.hasDropSet,
                   dropSetGuidance: ep.dropSetGuidance,

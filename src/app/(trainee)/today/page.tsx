@@ -18,10 +18,13 @@ import {
   Pill,
   Utensils,
   ShieldCheck,
+  ExternalLink,
+  Compass,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay, isSafeUrl } from "@/lib/utils";
 import { EquipmentType } from "@/lib/types";
+import { workdayErgonomicsRoutines } from "@/db/seed/master-transformation-program";
 import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
 import { VyraLifeHub } from "@/components/trainee/VyraLifeHub";
 
@@ -51,7 +54,17 @@ export default function TodayPage() {
   });
 
   const [mealsChecked, setMealsChecked] = useState<{ [mealTime: string]: boolean }>({});
+  const [ergonomicsChecked, setErgonomicsChecked] = useState<{ [key: string]: boolean }>({});
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+
+  const getMobilityVideoUrl = (drillText: string): string => {
+    if (drillText.includes("Chin Tuck")) return "https://www.youtube.com/results?search_query=supine+chin+tuck+exercise+proper+form";
+    if (drillText.includes("Vacuum")) return "https://www.youtube.com/results?search_query=stomach+vacuum+exercise+form";
+    if (drillText.includes("Glute Bridge")) return "https://www.youtube.com/results?search_query=floor+glute+bridge+form";
+    if (drillText.includes("Hip Flexor")) return "https://www.youtube.com/results?search_query=half+kneeling+hip+flexor+stretch+form";
+    if (drillText.includes("Pec Minor") || drillText.includes("Doorway Pec")) return "https://www.youtube.com/results?search_query=high+angle+doorway+pec+minor+stretch+form";
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(drillText.split(":")[0])}`;
+  };
 
   // Resolve today's program day
   const resolved = program
@@ -298,26 +311,29 @@ export default function TodayPage() {
       </section>
 
       {/* 4. Warmup & Mobility Protocol Card */}
-      <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3">
+      <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flame className="w-4 h-4 text-[#F59E0B]" />
-            <h2 className="text-sm font-bold text-[#F8FAFC]">
-              {currentDay?.morningRoutine && currentDay.morningRoutine.length > 0
-                ? "Morning Alignment Routine"
-                : "Warmup & Mobility Routine"}
-            </h2>
+            <div>
+              <h2 className="text-sm font-bold text-[#F8FAFC]">
+                {currentDay?.morningRoutine && currentDay.morningRoutine.length > 0
+                  ? "9-Minute Morning Mobility & Neck Alignment Routine"
+                  : "Warmup & Mobility Routine"}
+              </h2>
+              <span className="text-[10px] text-slate-400 font-mono">Bedroom Mat • 07:15 – 07:24 AM</span>
+            </div>
           </div>
           <span className="text-[11px] text-slate-400 font-mono">
             {Object.values(mobilityChecked).filter(Boolean).length} of{" "}
             {currentDay?.morningRoutine && currentDay.morningRoutine.length > 0
               ? currentDay.morningRoutine.length
               : 3}{" "}
-            complete
+            done
           </span>
         </div>
 
-        <div className="space-y-1.5 text-xs">
+        <div className="space-y-2 text-xs">
           {(currentDay?.morningRoutine && currentDay.morningRoutine.length > 0
             ? currentDay.morningRoutine.map((drill, idx) => ({ id: `drill_${idx}`, text: drill }))
             : [
@@ -325,24 +341,97 @@ export default function TodayPage() {
                 { id: "m2", text: "Overhead band pull-aparts (15x)" },
                 { id: "m3", text: "Scapular wall slides & wrist extensions" },
               ]
-          ).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => toggleMobility(item.id)}
-              className="w-full flex items-center justify-between p-2 rounded-lg bg-[#0F172A] border border-[#1E293B] hover:border-slate-700 transition text-left"
-            >
-              <span className={mobilityChecked[item.id] ? "line-through text-slate-500" : "text-slate-300"}>
-                {item.text}
-              </span>
-              {mobilityChecked[item.id] ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-              ) : (
-                <Circle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-              )}
-            </button>
-          ))}
+          ).map((item) => {
+            const isChecked = !!mobilityChecked[item.id];
+            const videoUrl = getMobilityVideoUrl(item.text);
+
+            return (
+              <div
+                key={item.id}
+                className={`p-2.5 rounded-lg border transition ${
+                  isChecked
+                    ? "bg-[#0F172A]/60 border-[#10B981]/30 text-slate-400"
+                    : "bg-[#0F172A] border-[#1E293B] hover:border-slate-700 text-slate-200"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    onClick={() => toggleMobility(item.id)}
+                    className="flex items-start gap-2 flex-1 cursor-pointer"
+                  >
+                    {isChecked ? (
+                      <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                    )}
+                    <span className={`leading-snug ${isChecked ? "line-through text-slate-500" : "text-slate-200"}`}>
+                      {item.text}
+                    </span>
+                  </div>
+
+                  <a
+                    href={videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 rounded bg-[#162032] border border-[#334155] text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/50 transition shrink-0"
+                    title="Watch Exercise Demonstration Video"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
+
+      {/* 4b. Workday Ergonomics & Pre-Bed Decompression Card */}
+      {workdayErgonomicsRoutines && workdayErgonomicsRoutines.length > 0 && (
+        <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#06B6D4]" />
+              <div>
+                <h2 className="text-sm font-bold text-[#F8FAFC]">Workday Ergonomics & Pre-Bed Decompression</h2>
+                <span className="text-[10px] text-slate-400 font-mono">Posture Reinforcement & Disc Hydration</span>
+              </div>
+            </div>
+            <span className="text-[11px] text-slate-400 font-mono">
+              {Object.values(ergonomicsChecked).filter(Boolean).length} of {workdayErgonomicsRoutines.length} logged
+            </span>
+          </div>
+
+          <div className="space-y-2 text-xs">
+            {workdayErgonomicsRoutines.map((routine, idx) => {
+              const habitId = `ergo_${idx}`;
+              const isChecked = !!ergonomicsChecked[habitId];
+
+              return (
+                <div
+                  key={habitId}
+                  onClick={() => setErgonomicsChecked((prev) => ({ ...prev, [habitId]: !prev[habitId] }))}
+                  className={`p-2.5 rounded-lg border transition cursor-pointer flex items-start gap-2.5 ${
+                    isChecked
+                      ? "bg-[#0F172A]/60 border-[#10B981]/30 text-slate-400"
+                      : "bg-[#0F172A] border-[#1E293B] hover:border-slate-700 text-slate-200"
+                  }`}
+                >
+                  {isChecked ? (
+                    <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <span className={`leading-snug ${isChecked ? "line-through text-slate-500" : "text-slate-200"}`}>
+                      {routine}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* 5. Daily Schedule & Nutrient Architecture Card */}
       {currentDay?.nutrition?.dailyMeals && currentDay.nutrition.dailyMeals.length > 0 && (

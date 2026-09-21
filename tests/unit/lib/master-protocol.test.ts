@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import {
   generateMaster16WeekProgram,
   masterDailyMeals,
+  mondayDailyMeals,
+  standardDailyMeals,
+  mondayNutrition,
+  workoutDayNutrition,
   masterSupplementProtocols,
   masterHydrationGoal,
   userAlaa,
+  workdayErgonomicsRoutines,
 } from '@/db/seed/master-transformation-program';
 import { EquipmentType } from '@/lib/types';
 
@@ -120,6 +125,18 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(tuesdayExercises[0].exerciseName.includes('Leg Press'), true);
     assert.strictEqual(tuesdayExercises[1].exerciseName.includes('Leg Curl'), true);
     assert.strictEqual(tuesdayExercises[2].exerciseName.includes('Pallof'), true);
+
+    // Tuesday Post-Football Load Hold Rule
+    assert.ok(tuesdayExercises[0].loadGuidance?.includes('Tuesday Post-Football Rule'), 'Leg press must include Tuesday Post-Football Rule');
+    assert.ok(tuesdayExercises[1].loadGuidance?.includes('Tuesday Post-Football Rule'), 'Leg curl must include Tuesday Post-Football Rule');
+  });
+
+  it('enforces Thursday Primary Overload Rule and Stall Rule on RDL', () => {
+    const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
+    const rdl = thursdayExercises[1]; // Slot 2: RDL
+    assert.strictEqual(rdl.exerciseName.includes('Romanian Deadlift'), true);
+    assert.ok(rdl.loadGuidance?.includes('Thursday Primary Overload Rule'), 'RDL must include Thursday Primary Overload Rule');
+    assert.ok(rdl.loadGuidance?.includes('Stall Rule'), 'RDL must include 10% Stall Rule');
   });
 
   it('verifies 4-modality equipment matrix completeness for all 17 slots (68 variations total)', () => {
@@ -145,29 +162,45 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     });
   });
 
-  it('verifies 8-Minute Morning Alignment Routine is assigned to all days', () => {
+  it('verifies 9-Minute Morning Alignment Routine is assigned to all days', () => {
     week1.days.forEach((d) => {
-      assert.ok(d.morningRoutine && d.morningRoutine.length >= 4, `Day ${d.label} must have morning routine`);
+      assert.ok(d.morningRoutine && d.morningRoutine.length >= 5, `Day ${d.label} must have at least 5 morning mobility drills`);
       const routineStr = d.morningRoutine.join(' ');
+      assert.ok(routineStr.includes('Chin Tuck'), 'Routine must include Supine Chin Tucks');
       assert.ok(routineStr.includes('Vacuum'), 'Routine must include Stomach Vacuum');
       assert.ok(routineStr.includes('Glute Bridge'), 'Routine must include Glute Bridges');
       assert.ok(routineStr.includes('Hip Flexor'), 'Routine must include Hip Flexor Stretch');
-      assert.ok(routineStr.includes('Doorway Pec'), 'Routine must include Doorway Pec Stretch');
+      assert.ok(routineStr.includes('Pec Minor'), 'Routine must include Pec Minor Stretch');
     });
   });
 
-  it('verifies 8-milestone daily nutrient architecture and macro targets', () => {
-    assert.ok(masterDailyMeals.length >= 8, 'Must define at least 8 daily nutrient milestones');
+  it('verifies Workday Ergonomics & Pre-Bed Decompression Protocol', () => {
+    assert.strictEqual(workdayErgonomicsRoutines.length, 4, 'Must have 4 workday ergonomics protocols');
+    const ergoStr = workdayErgonomicsRoutines.join(' ');
+    assert.ok(ergoStr.includes('Car Commute'), 'Must include Car Commute ergonomics');
+    assert.ok(ergoStr.includes('Hourly Desk Reset'), 'Must include Hourly Desk Reset');
+    assert.ok(ergoStr.includes('Post-Lunch Walk'), 'Must include Post-Lunch Walk');
+    assert.ok(ergoStr.includes('Evening Pre-Bed Decompression'), 'Must include Evening Pre-Bed Decompression');
+  });
 
-    const mealTimes = masterDailyMeals.map((m) => m.time);
-    ['07:00', '08:00', '11:45', '12:15', '13:35', '14:15', '18:00', '21:30', '22:45'].forEach((time) => {
-      assert.ok(mealTimes.includes(time), `Daily schedule must include milestone at ${time}`);
+  it('verifies Monday match-day caloric compensation (~3,150 kcal / ~155g P) and standard training days (~2,750 kcal / ~125g P)', () => {
+    // Monday (Match Day)
+    const monNutrition = week1.days[0].nutrition;
+    assert.strictEqual(monNutrition.targetKcal, 3150, 'Monday must target 3150 kcal for match day compensation');
+    assert.strictEqual(monNutrition.targetProteinGrams, 155, 'Monday must target 155g protein');
+    const monTimes = monNutrition.dailyMeals?.map((m) => m.time) || [];
+    ['07:00', '08:00', '11:45', '12:15', '13:35', '15:30', '17:00', '18:30', '19:00', '20:15', '21:30', '22:45'].forEach((time) => {
+      assert.ok(monTimes.includes(time), `Monday schedule must include milestone at ${time}`);
     });
 
-    const nutrition = week1.days[0].nutrition;
-    assert.strictEqual(nutrition.targetKcal, 2800);
-    assert.strictEqual(nutrition.targetProteinGrams, 126);
-    assert.ok(nutrition.dailyMeals && nutrition.dailyMeals.length > 0);
+    // Tuesday (Standard Training Day)
+    const tueNutrition = week1.days[1].nutrition;
+    assert.strictEqual(tueNutrition.targetKcal, 2750, 'Tuesday must target 2750 kcal');
+    assert.strictEqual(tueNutrition.targetProteinGrams, 125, 'Tuesday must target 125g protein');
+    const tueTimes = tueNutrition.dailyMeals?.map((m) => m.time) || [];
+    ['07:00', '08:00', '11:45', '12:15', '13:35', '16:00', '18:30', '21:30', '22:45'].forEach((time) => {
+      assert.ok(tueTimes.includes(time), `Standard day schedule must include milestone at ${time}`);
+    });
   });
 
   it('verifies Creatine Saturation loading & maintenance protocols', () => {

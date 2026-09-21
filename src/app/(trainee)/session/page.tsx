@@ -51,6 +51,7 @@ interface ExerciseState {
   selectedEquipment?: EquipmentType;
   formCue?: string;
   videoUrl?: string;
+  loadGuidance?: string;
   hasDropSet?: boolean;
   dropSetGuidance?: string;
   totalSets?: number;
@@ -103,6 +104,7 @@ function buildExerciseStates(
           selectedEquipment: activeEquipment,
           formCue: initialFormCue,
           videoUrl: initialVideo,
+          loadGuidance: ex.loadGuidance,
           hasDropSet: ex.hasDropSet,
           dropSetGuidance: ex.dropSetGuidance,
           totalSets: ex.sets,
@@ -654,6 +656,38 @@ export default function SessionLoggingPage() {
                 <div className="bg-[#0F172A]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#10B981] flex items-start gap-1.5">
                   <Info className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
                   <span>{ex.formCue}</span>
+                </div>
+              )}
+
+              {ex.loadGuidance && (
+                <div
+                  className={`p-2.5 rounded text-[11px] flex items-start gap-2 ${
+                    ex.loadGuidance.includes("Tuesday Post-Football Rule")
+                      ? "bg-[#F59E0B]/10 border border-[#F59E0B]/40 text-[#FCD34D]"
+                      : ex.loadGuidance.includes("Thursday Primary Overload Rule")
+                      ? "bg-[#10B981]/10 border border-[#10B981]/40 text-[#6EE7B7]"
+                      : "bg-[#0F172A]/80 border-l-2 border-[#06B6D4] text-slate-300"
+                  }`}
+                >
+                  <ShieldCheck
+                    className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                      ex.loadGuidance.includes("Tuesday Post-Football Rule")
+                        ? "text-[#F59E0B]"
+                        : ex.loadGuidance.includes("Thursday Primary Overload Rule")
+                        ? "text-[#10B981]"
+                        : "text-[#06B6D4]"
+                    }`}
+                  />
+                  <div className="space-y-0.5">
+                    <span className="font-bold block text-[10px] uppercase font-mono tracking-wider">
+                      {ex.loadGuidance.includes("Tuesday Post-Football Rule")
+                        ? "⚽ Tuesday Post-Football Load Hold Rule"
+                        : ex.loadGuidance.includes("Thursday Primary Overload Rule")
+                        ? "⚡ Thursday Primary Progressive Overload Driver"
+                        : "Coach Load Strategy"}
+                    </span>
+                    <span className="leading-relaxed">{ex.loadGuidance}</span>
+                  </div>
                 </div>
               )}
 

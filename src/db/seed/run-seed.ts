@@ -50,7 +50,7 @@ export async function runSeed(customDbUrl?: string) {
     console.log("============================================================");
     console.log("🎉 Alaa's Master Transformation Protocol is 100% seeded and live!");
     console.log("============================================================");
-    return { success: true, mode: "in-memory" };
+    return { success: false, reason: "DATABASE_URL_NOT_SET" };
   }
 
   const pool = new Pool({

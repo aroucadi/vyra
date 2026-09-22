@@ -1,944 +1,612 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { appStore } from "@/lib/store";
+import { resolveProgramDay, checkIsPersonalRecord } from "@/lib/utils";
+import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription } from "@/lib/types";
+import { saveSessionAction } from "@/lib/actions/session";
+import { Log } from "@/components/primitives/Log";
+import { Card } from "@/components/primitives/Card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
-  Clock,
-  Check,
-  Trophy,
-  Plus,
-  Minus,
-  FastForward,
-  Volume2,
-  VolumeX,
-  Layers,
-  Sparkles,
   ArrowLeft,
+  Clock,
+  Dumbbell,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  Sparkles,
+  Trophy,
   Video,
   Info,
-  Flame,
-  ShieldCheck,
-  Dumbbell,
+  HelpCircle,
+  X,
+  FastForward,
 } from "lucide-react";
-import { appStore } from "@/lib/store";
-import { formatDuration, checkIsPersonalRecord, resolveProgramDay, isSafeUrl } from "@/lib/utils";
-import { SetLog, WorkoutSession, EquipmentOption, EquipmentType, ProgramDay } from "@/lib/types";
-import { saveSessionAction } from "@/lib/actions/session";
-import { ExerciseConfidenceCard } from "@/components/trainee/ExerciseConfidenceCard";
+import { clsx } from "clsx";
 
-interface ExerciseState {
+interface ActiveExercise {
   id: string;
   name: string;
-  prescription: string;
+  targetSets: number;
+  repLow: number;
+  repHigh: number;
   targetRir: number;
   restSeconds: number;
-  prevBestWeight: number;
-  prevBestReps: number;
-  completedSets: {
-    setIndex: number;
-    weight: number;
-    reps: number;
-    rir: number;
-    isPR: boolean;
-    exerciseName: string;
-    selectedEquipment?: EquipmentType;
-    isDropSet?: boolean;
-  }[];
-  currentWeight: number;
-  currentReps: number;
-  currentRir: number;
-  equipmentVariations?: EquipmentOption[];
-  selectedEquipment?: EquipmentType;
+  lastBestWeight: number;
+  lastBestReps: number;
   formCue?: string;
   videoUrl?: string;
   loadGuidance?: string;
-  hasDropSet?: boolean;
-  dropSetGuidance?: string;
-  totalSets?: number;
+  completedSets: { weight: number; reps: number; isPR: boolean }[];
+  currentWeight: number;
+  currentReps: number;
 }
 
-function buildExerciseStates(
-  targetDay: ProgramDay | undefined,
-  overrides: Record<string, EquipmentType>,
-  userId: string
-): ExerciseState[] {
-  if (targetDay && targetDay.blocks && targetDay.blocks.length > 0) {
-    const list: ExerciseState[] = [];
-    const validEquipments: EquipmentType[] = ["machine", "dumbbell", "cable", "bodyweight"];
-    targetDay.blocks.forEach((b) => {
-      b.exercises.forEach((ex, exIdx) => {
-        const isSuperset = b.type === "superset" || b.type === "circuit";
-        const suffix = isSuperset
-          ? ` (${b.type === "superset" ? "Superset" : "Circuit"} ${String.fromCharCode(65 + exIdx)})`
-          : "";
-        const overrideVal = overrides[ex.id];
-        const activeEquipment = (overrideVal && validEquipments.includes(overrideVal))
-          ? overrideVal
-          : ex.selectedEquipment || (ex.equipmentVariations && ex.equipmentVariations[0]?.equipmentType) || "machine";
-        const activeVariant = ex.equipmentVariations?.find((v) => v.equipmentType === activeEquipment);
-        const initialName = activeVariant ? `${activeVariant.exerciseName}${suffix}` : `${ex.exerciseName}${suffix}`;
-        const initialFormCue = activeVariant ? activeVariant.formCue : ex.formCueText;
-        const initialVideo = activeVariant?.videoUrl || ex.videoUrl;
-
-        const pb = appStore.getPersonalBestForExercise(
-          userId,
-          activeVariant ? activeVariant.exerciseName : ex.exerciseName,
-          activeEquipment
-        );
-        const initialWeight = pb?.weightKg || 60;
-        const initialReps = ex.repRangeLow || 8;
-
-        list.push({
-          id: ex.id,
-          name: initialName,
-          prescription: `${ex.sets} sets × ${ex.repRangeLow}–${ex.repRangeHigh} reps @ ${ex.rirScheme?.[0] ?? 2} RIR`,
-          targetRir: ex.rirScheme?.[0] ?? 2,
-          restSeconds: ex.restSeconds,
-          prevBestWeight: pb?.weightKg || 0,
-          prevBestReps: pb?.reps || 0,
-          completedSets: [],
-          currentWeight: initialWeight,
-          currentReps: initialReps,
-          currentRir: ex.rirScheme?.[0] ?? 2,
-          equipmentVariations: ex.equipmentVariations,
-          selectedEquipment: activeEquipment,
-          formCue: initialFormCue,
-          videoUrl: initialVideo,
-          loadGuidance: ex.loadGuidance,
-          hasDropSet: ex.hasDropSet,
-          dropSetGuidance: ex.dropSetGuidance,
-          totalSets: ex.sets,
-        });
-      });
-    });
-    if (list.length > 0) return list;
-  }
-  return [];
-}
-
-export default function SessionLoggingPage() {
+function SessionFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dayParam = searchParams.get("day");
   const currentUser = appStore.getCurrentUser();
-  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
-  const resolved = activeProgram ? resolveProgramDay(activeProgram.startDate) : null;
-  const currentWeek = activeProgram?.weeks.find((w) => w.weekIndex === resolved?.weekIndex) || activeProgram?.weeks[0];
+  const program = appStore.getActiveProgramForTrainee(currentUser.id);
 
-  // All training days in current week that contain exercises
-  const trainingDays = currentWeek?.days.filter((d) => d.blocks && d.blocks.length > 0) || [];
+  const resolved = program
+    ? resolveProgramDay(program.startDate)
+    : { weekIndex: 1, dayOfWeek: 0, started: true };
 
-  // Parse any passed equipment overrides from Today page
-  const initialOverrides = (() => {
-    try {
-      const p = searchParams.get("overrides");
-      if (p) {
-        const parsed = JSON.parse(p);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed as Record<string, EquipmentType>;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return {} as Record<string, EquipmentType>;
-  })();
+  // Resolve target program day
+  const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
+  const targetDay: ProgramDay | undefined = dayParam
+    ? currentWeek?.days.find((d) => d.id === dayParam) || program?.weeks.flatMap((w) => w.days).find((d) => d.id === dayParam)
+    : currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek);
 
-  // Determine initial selected day:
-  // 1. From ?day= or ?dayOfWeek= query param
-  // 2. Or today's day if it has workout blocks
-  // 3. Or first available training day (e.g. Day 0 / Monday)
-  const initialDayOfWeek = (() => {
-    const p = searchParams.get("day") || searchParams.get("dayOfWeek");
-    if (p !== null && !isNaN(parseInt(p, 10))) {
-      const parsedDay = parseInt(p, 10);
-      const matched = currentWeek?.days.find((d) => d.dayOfWeek === parsedDay);
-      if (matched && matched.blocks && matched.blocks.length > 0) return matched.dayOfWeek;
-    }
-    const todayDay = currentWeek?.days.find((d) => d.dayOfWeek === resolved?.dayOfWeek);
-    if (todayDay && todayDay.blocks && todayDay.blocks.length > 0) {
-      return todayDay.dayOfWeek;
-    }
-    return trainingDays[0]?.dayOfWeek ?? 0;
-  })();
+  // Flow mode: "preview" | "active" | "summary"
+  const [mode, setMode] = useState<"preview" | "active" | "summary">("preview");
 
-  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(initialDayOfWeek);
-  const currentDay = currentWeek?.days.find((d) => d.dayOfWeek === selectedDayOfWeek) || currentWeek?.days[0];
+  // Exercises initialization
+  const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
+    if (!targetDay || !targetDay.blocks) return [];
+    const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
+    return exPrescriptions.map((ex) => {
+      const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
+      const defaultWeight = pb ? pb.weightKg : 60;
+      const defaultReps = pb ? pb.reps : Math.round((ex.repRangeLow + ex.repRangeHigh) / 2);
 
-  // Workout Exercises state dynamically derived from active program day
-  const [exercises, setExercises] = useState<ExerciseState[]>(() => {
-    const initialDay = currentWeek?.days.find((d) => d.dayOfWeek === initialDayOfWeek);
-    const built = buildExerciseStates(initialDay, initialOverrides, currentUser.id);
-    if (built.length > 0) return built;
-    return [
-      {
-        id: "ep1",
-        name: "Barbell Bench Press",
-        prescription: "3 sets × 8–10 reps @ 2 RIR",
-        targetRir: 2,
-        restSeconds: 90,
-        prevBestWeight: 80,
-        prevBestReps: 10,
+      return {
+        id: ex.id,
+        name: ex.exerciseName,
+        targetSets: ex.sets || 3,
+        repLow: ex.repRangeLow,
+        repHigh: ex.repRangeHigh,
+        targetRir: ex.rirScheme?.[0] ?? 2,
+        restSeconds: ex.restSeconds || 90,
+        lastBestWeight: defaultWeight,
+        lastBestReps: defaultReps,
+        formCue: ex.formCueText,
+        videoUrl: ex.videoUrl,
+        loadGuidance: ex.loadGuidance || "Double progression: add 2.5 kg once top rep target is reached.",
         completedSets: [],
-        currentWeight: 80,
-        currentReps: 10,
-        currentRir: 2,
-      },
-      {
-        id: "ep2",
-        name: "Incline Dumbbell Press",
-        prescription: "3 sets × 10–12 reps @ 1 RIR",
-        targetRir: 1,
-        restSeconds: 90,
-        prevBestWeight: 28,
-        prevBestReps: 12,
-        completedSets: [],
-        currentWeight: 28,
-        currentReps: 10,
-        currentRir: 1,
-      },
-      {
-        id: "ep3",
-        name: "Cable Lateral Raise (Superset A)",
-        prescription: "3 sets × 12–15 reps @ 0 RIR",
-        targetRir: 0,
-        restSeconds: 0,
-        prevBestWeight: 12.5,
-        prevBestReps: 15,
-        completedSets: [],
-        currentWeight: 12.5,
-        currentReps: 12,
-        currentRir: 0,
-      },
-      {
-        id: "ep4",
-        name: "Overhead Cable Triceps Extension (Superset B)",
-        prescription: "3 sets × 12–15 reps @ 0 RIR",
-        targetRir: 0,
-        restSeconds: 60,
-        prevBestWeight: 25,
-        prevBestReps: 12,
-        completedSets: [],
-        currentWeight: 25,
-        currentReps: 12,
-        currentRir: 0,
-      },
-    ];
+        currentWeight: defaultWeight,
+        currentReps: defaultReps,
+      };
+    });
   });
 
-  const handleSelectDay = (dayNum: number) => {
-    setSelectedDayOfWeek(dayNum);
-    const target = currentWeek?.days.find((d) => d.dayOfWeek === dayNum);
-    const built = buildExerciseStates(target, initialOverrides, currentUser.id);
-    setExercises(built);
-    setActiveConfidenceModalIndex(null);
-  };
+  const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [isTipsOpen, setIsTipsOpen] = useState(false);
+  const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
 
-  // Elapsed session timer
-  const [sessionSeconds, setSessionSeconds] = useState(0);
+  // Timer states
+  const [sessionDurationSec, setSessionDurationSec] = useState(0);
+  const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
+  const [sessionStartTime] = useState(() => new Date().toISOString());
 
-  // Active rest timer countdown
-  const [restSecondsLeft, setRestSecondsLeft] = useState<number | null>(null);
-  const [restTotalSeconds, setRestTotalSeconds] = useState(90);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  // PR Celebration Modal / Toast
-  const [recentPR, setRecentPR] = useState<{ exercise: string; weight: number; reps: number } | null>(null);
-
-  // Session summary dialog on finish
-  const [showSummary, setShowSummary] = useState(false);
-
-  // Active Exercise Confidence Card Modal
-  const [activeConfidenceModalIndex, setActiveConfidenceModalIndex] = useState<number | null>(null);
-
-  // Session elapsed timer ticker
+  // Overall session clock
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSessionSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Rest countdown ticker
-  useEffect(() => {
-    if (restSecondsLeft === null || restSecondsLeft <= 0) return;
+    if (mode !== "active") return;
     const interval = setInterval(() => {
-      setRestSecondsLeft((prev) => {
-        if (prev === null || prev <= 1) {
-          return null;
-        }
+      setSessionDurationSec((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [mode]);
+
+  // Rest countdown timer
+  useEffect(() => {
+    if (restTimerSec === null || restTimerSec <= 0) return;
+    const timer = setInterval(() => {
+      setRestTimerSec((prev) => {
+        if (prev === null || prev <= 1) return null;
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
-  }, [restSecondsLeft]);
+    return () => clearInterval(timer);
+  }, [restTimerSec]);
 
-  const handleLogSet = (exerciseIndex: number) => {
-    const ex = exercises[exerciseIndex];
-    const isPrSet = checkIsPersonalRecord(
-      ex.currentWeight,
-      ex.currentReps,
-      ex.prevBestWeight,
-      ex.prevBestReps
+  const activeEx = exercises[currentExIndex];
+  const isFinalExercise = currentExIndex === exercises.length - 1;
+  const isFinalSetOfExercise = activeEx && activeEx.completedSets.length + 1 >= activeEx.targetSets;
+  const isAllExercisesComplete = exercises.every((e) => e.completedSets.length >= e.targetSets);
+
+  // Log a set (Effort: 1 tap, <= 5s)
+  const handleLogSet = () => {
+    if (!activeEx) return;
+
+    const isPR = checkIsPersonalRecord(
+      activeEx.currentWeight,
+      activeEx.currentReps,
+      activeEx.lastBestWeight,
+      activeEx.lastBestReps
     );
 
-    const totalSetsTarget = ex.totalSets || 3;
-    const nextSetIndex = ex.completedSets.length + 1;
-    const isThisSetDropSet = !!(ex.hasDropSet && nextSetIndex === totalSetsTarget);
-    const newCompletedSet = {
-      setIndex: nextSetIndex,
-      weight: ex.currentWeight,
-      reps: ex.currentReps,
-      rir: ex.currentRir,
-      isPR: isPrSet,
-      exerciseName: ex.name,
-      selectedEquipment: ex.selectedEquipment,
-      isDropSet: isThisSetDropSet,
-    };
+    const newCompleted = [
+      ...activeEx.completedSets,
+      {
+        weight: activeEx.currentWeight,
+        reps: activeEx.currentReps,
+        isPR,
+      },
+    ];
 
-    // Auto-calculate 30% drop for the final set if this exercise has drop set!
-    const willNextBeDropSet = !!(ex.hasDropSet && nextSetIndex === totalSetsTarget - 1);
-    const nextWeight = willNextBeDropSet
-      ? Math.max(1, Math.round(ex.currentWeight * 0.7 * 2) / 2)
-      : ex.currentWeight;
-    const nextRir = willNextBeDropSet ? 0 : (ex.targetRir ?? 1);
-
-    const updated = [...exercises];
-    updated[exerciseIndex] = {
-      ...ex,
-      completedSets: [...ex.completedSets, newCompletedSet],
-      prevBestWeight: isPrSet ? ex.currentWeight : ex.prevBestWeight,
-      prevBestReps: isPrSet ? ex.currentReps : ex.prevBestReps,
-      currentWeight: nextWeight,
-      currentRir: nextRir,
-    };
-
-    setExercises(updated);
-
-    if (isPrSet) {
-      setRecentPR({
-        exercise: ex.name,
-        weight: ex.currentWeight,
-        reps: ex.currentReps,
-      });
-      setTimeout(() => setRecentPR(null), 5000);
-    }
-
-    // Trigger Rest Timer
-    if (ex.restSeconds > 0) {
-      setRestTotalSeconds(ex.restSeconds);
-      setRestSecondsLeft(ex.restSeconds);
-    }
-  };
-
-  const handleConfidenceEquipmentSwap = (newEq: EquipmentType) => {
-    if (activeConfidenceModalIndex === null) return;
-    const exIdx = activeConfidenceModalIndex;
-    const ex = exercises[exIdx];
-    if (!ex) return;
-    const isSuperset = ex.name.includes("Superset") || ex.name.includes("Circuit");
-    const suffix = isSuperset
-      ? ` (${ex.name.includes("Superset") ? "Superset" : "Circuit"}${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0] ? ` ${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0]}` : ""})`
-      : "";
-    const variant = ex.equipmentVariations?.find((v) => v.equipmentType === newEq);
-    const newName = variant ? (suffix ? `${variant.exerciseName} ${suffix.trim()}` : variant.exerciseName) : ex.name;
-    const pb = appStore.getPersonalBestForExercise(
-      currentUser.id,
-      variant ? variant.exerciseName : ex.name,
-      newEq
-    );
-    const updated = [...exercises];
-    updated[exIdx] = {
-      ...ex,
-      selectedEquipment: newEq,
-      name: newName,
-      formCue: variant ? variant.formCue : ex.formCue,
-      videoUrl: variant?.videoUrl || ex.videoUrl,
-      prevBestWeight: pb?.weightKg || 0,
-      prevBestReps: pb?.reps || 0,
-      currentWeight: pb?.weightKg || ex.currentWeight,
-    };
-    setExercises(updated);
-  };
-
-  const handleFinishWorkout = async () => {
-    const allSetLogs: SetLog[] = [];
-    exercises.forEach((ex) => {
-      ex.completedSets.forEach((s) => {
-        allSetLogs.push({
-          id: `sl_${Date.now()}_${ex.id}_${s.setIndex}`,
-          exercisePrescriptionId: ex.id,
-          exerciseName: s.exerciseName || ex.name,
-          setIndex: s.setIndex,
-          reps: s.reps,
-          weightKg: s.weight,
-          rirAchieved: s.rir,
-          isPR: s.isPR,
-          selectedEquipment: s.selectedEquipment || ex.selectedEquipment,
-          isDropSet: s.isDropSet,
-        });
-      });
+    setExercises((prev) => {
+      const updated = [...prev];
+      updated[currentExIndex] = {
+        ...updated[currentExIndex],
+        completedSets: newCompleted,
+      };
+      return updated;
     });
 
-    const newSession: WorkoutSession = {
-      id: `sess_${Date.now()}`,
-      traineeId: currentUser.id,
-      programDayId: currentDay?.id || "week_2_d0",
-      programTitle: activeProgram?.title || "Hypertrophy Block 1",
-      dayLabel: currentDay?.label || "Push Hypertrophy A",
-      date: new Date().toISOString().split("T")[0],
-      startedAt: new Date(Date.now() - sessionSeconds * 1000).toISOString(),
-      endedAt: new Date().toISOString(),
-      durationSec: sessionSeconds,
-      setLogs: allSetLogs,
-      notes: "High intensity session logged with NewME.",
-    };
+    // Auto-start rest timer
+    setRestTimerSec(activeEx.restSeconds);
 
-    await saveSessionAction(newSession);
-    setShowSummary(true);
+    // If all sets for this exercise complete, move to next after brief pause or if user chooses
+    if (newCompleted.length >= activeEx.targetSets && !isFinalExercise) {
+      setTimeout(() => {
+        setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1));
+      }, 400);
+    }
   };
 
-  // Calculate totals
-  const totalVolumeKg = exercises.reduce((acc, ex) => {
-    return acc + ex.completedSets.reduce((sAcc, s) => sAcc + s.weight * s.reps, 0);
-  }, 0);
+  // Finish session
+  const handleFinishSession = async () => {
+    const allSetLogs: SetLog[] = exercises.flatMap((ex, exIdx) =>
+      ex.completedSets.map((s, sIdx) => ({
+        id: `set_${Date.now()}_${exIdx}_${sIdx}`,
+        exercisePrescriptionId: ex.id,
+        exerciseName: ex.name,
+        setIndex: sIdx + 1,
+        reps: s.reps,
+        weightKg: s.weight,
+        rirAchieved: ex.targetRir,
+        isPR: s.isPR,
+      }))
+    );
 
-  const totalCompletedSets = exercises.reduce((acc, ex) => acc + ex.completedSets.length, 0);
-  const totalPRs = exercises.reduce((acc, ex) => acc + ex.completedSets.filter((s) => s.isPR).length, 0);
+    const completedSession: WorkoutSession = {
+      id: `session_${Date.now()}`,
+      traineeId: currentUser.id,
+      programDayId: targetDay?.id || "day_1",
+      programTitle: program?.title || "16-Week Blueprint",
+      dayLabel: targetDay?.label || "Upper Hypertrophy",
+      date: new Date().toISOString().split("T")[0],
+      startedAt: sessionStartTime,
+      endedAt: new Date().toISOString(),
+      durationSec: sessionDurationSec,
+      setLogs: allSetLogs,
+    };
 
-  return (
-    <div className="px-4 py-4 space-y-4 pb-28">
-      {/* 1. Header Bar */}
-      <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push("/today")}
-            className="p-1.5 rounded-lg bg-[#162032] border border-[#1E293B] text-slate-300 hover:text-white"
+    await saveSessionAction(completedSession);
+    setMode("summary");
+  };
+
+  // --------------------------------------------------------------------------
+  // STATE 1: SESSION PREVIEW (Between Today and Active Workout)
+  // --------------------------------------------------------------------------
+  if (mode === "preview") {
+    return (
+      <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200">
+        <header className="flex items-center justify-between">
+          <Link
+            href="/today"
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
           >
             <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-base font-black text-[#F8FAFC]">
-              {currentDay?.label || "Workout Session"}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-              <span className="flex items-center gap-1 text-[#10B981]">
-                <Clock className="w-3.5 h-3.5" />
-                {formatDuration(sessionSeconds)}
-              </span>
-              <span>•</span>
-              <span>{totalCompletedSets} Sets Logged</span>
-            </div>
-          </div>
+            <span>Today</span>
+          </Link>
+          <span className="text-[10px] font-mono text-emerald-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+            PREVIEW
+          </span>
+        </header>
+
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            {targetDay?.label || "Upper Hypertrophy"}
+          </h1>
+          <p className="text-xs text-slate-400">
+            {exercises.length} exercises · ~55 min · Target RIR 2
+          </p>
         </div>
 
+        {/* Clean Exercise List (name + target reps only) */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 divide-y divide-slate-800/80">
+          {exercises.map((ex, idx) => (
+            <div key={ex.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2.5 truncate pr-2">
+                <span className="font-mono text-slate-500 text-[10px] w-4">{idx + 1}.</span>
+                <span className="font-medium text-slate-200 truncate">{ex.name}</span>
+              </div>
+              <span className="font-mono text-slate-400 text-[11px] tabular">
+                {ex.targetSets} × {ex.repLow}-{ex.repHigh}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Coach Assistant Link */}
+        <div className="flex items-center justify-between text-xs px-1 text-slate-400">
+          <span>Need substitutions or equipment swap?</span>
+          <Link href="/coach?prompt=I%20need%20to%20swap%20an%20exercise%20for%20today" className="text-emerald-400 font-semibold hover:underline">
+            Ask Coach →
+          </Link>
+        </div>
+
+        {/* Single Dominant Begin Action */}
         <button
-          onClick={handleFinishWorkout}
-          className="px-3 py-1.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs transition uppercase tracking-wider"
+          type="button"
+          onClick={() => setMode("active")}
+          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
         >
-          Finish
+          <span>Begin Workout</span>
+          <span>→</span>
         </button>
       </div>
+    );
+  }
 
-      {/* Protocol Routine Switcher (Always accessible so athlete can test/log any routine) */}
-      {trainingDays.length > 0 && (
-        <div className="bg-[#162032] border border-[#1E293B] rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-              <Dumbbell className="w-3.5 h-3.5 text-[#10B981]" />
-              Protocol Routine Switcher
-            </span>
-            {selectedDayOfWeek !== resolved?.dayOfWeek && (
-              <span className="text-[10px] font-mono text-[#06B6D4] bg-[#06B6D4]/10 px-2 py-0.5 rounded border border-[#06B6D4]/30 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                Active Routine
-              </span>
+  // --------------------------------------------------------------------------
+  // STATE 3: SESSION SUMMARY (Celebration View)
+  // --------------------------------------------------------------------------
+  if (mode === "summary") {
+    const totalVolume = exercises.reduce(
+      (acc, ex) => acc + ex.completedSets.reduce((sAcc, s) => sAcc + s.weight * s.reps, 0),
+      0
+    );
+    const prCount = exercises.reduce(
+      (acc, ex) => acc + ex.completedSets.filter((s) => s.isPR).length,
+      0
+    );
+    const durationMin = Math.max(1, Math.round(sessionDurationSec / 60));
+
+    return (
+      <div className="flex-1 pb-12 px-4 pt-12 max-w-md mx-auto w-full space-y-8 animate-in zoom-in-95 duration-300">
+        
+        {/* Celebration Header */}
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto text-2xl shadow-lg">
+            🔥
+          </div>
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            {targetDay?.label || "Session"} Complete
+          </h1>
+          <p className="text-xs text-slate-400">
+            Outstanding execution. Progressive overload targets achieved.
+          </p>
+        </div>
+
+        {/* Max 3 Numbers Metric Matrix */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+            <div className="text-lg font-bold text-white tabular">
+              {totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume}
+            </div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Vol (kg)</div>
+          </div>
+
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+            <div className="text-lg font-bold text-white tabular">{durationMin}m</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Duration</div>
+          </div>
+
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+            <div className="text-lg font-bold text-emerald-400 tabular">
+              {prCount > 0 ? `+${prCount} PR` : "Solid"}
+            </div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Records</div>
+          </div>
+        </div>
+
+        {/* Cross-Pillar Recovery Fuel Insight */}
+        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex items-start gap-3">
+          <Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-300 leading-relaxed">
+            <span className="font-bold text-white">Post-Workout Nutrition: </span>
+            Tonnage was high (+{totalVolume} kg). Confirm your recovery shake with 40g protein and 6.9 g creatine within the next 45 minutes.
+          </div>
+        </div>
+
+        {/* Done / Return Action */}
+        <button
+          type="button"
+          onClick={() => router.push("/today")}
+          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition"
+        >
+          Done · Return to Today
+        </button>
+
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // STATE 2: ACTIVE GYM FLOOR WORKOUT (1 Exercise at a Time, Full-Screen)
+  // --------------------------------------------------------------------------
+  const currentSetNum = activeEx.completedSets.length + 1;
+
+  return (
+    <div className="min-h-screen bg-[#0B0F17] flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none">
+      
+      {/* 1. Header: Exit Action + Exercise Index + Timer */}
+      <header className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <button
+          type="button"
+          onClick={() => setIsExitAlertOpen(true)}
+          className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
+        >
+          <X className="w-4 h-4" />
+          <span>Exit</span>
+        </button>
+
+        <div className="text-xs font-mono font-semibold text-slate-300">
+          Exercise {currentExIndex + 1} of {exercises.length}
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
+          <Clock className="w-3.5 h-3.5" />
+          <span className="tabular">
+            {Math.floor(sessionDurationSec / 60)}:{(sessionDurationSec % 60).toString().padStart(2, "0")}
+          </span>
+        </div>
+      </header>
+
+      {/* 2. Main Gym Floor Card (1 Exercise at a Time) */}
+      <main className="flex-1 flex flex-col justify-center py-4 space-y-6">
+        
+        {/* Exercise Header + Tips Trigger */}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-white tracking-tight leading-snug">
+                {activeEx.name}
+              </h2>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps · RIR {activeEx.targetRir}
+              </p>
+            </div>
+
+            {/* Non-blocking Tips Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsTipsOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 transition flex-shrink-0"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Tips</span>
+            </button>
+          </div>
+
+          {/* Reference Line: Last Best Session */}
+          <div className="text-[11px] text-slate-500 font-mono">
+            Previous best: {activeEx.lastBestWeight} kg × {activeEx.lastBestReps} reps
+          </div>
+        </div>
+
+        {/* Set Progress Dots (● ● ○) */}
+        <div className="flex items-center justify-center gap-2 py-1">
+          {Array.from({ length: activeEx.targetSets }).map((_, idx) => {
+            const isDone = idx < activeEx.completedSets.length;
+            const isCurrent = idx === activeEx.completedSets.length;
+
+            return (
+              <span
+                key={idx}
+                className={clsx(
+                  "w-3 h-3 rounded-full transition-all",
+                  isDone && "bg-emerald-400 scale-100",
+                  isCurrent && "border-2 border-emerald-400 bg-transparent animate-pulse",
+                  !isDone && !isCurrent && "bg-slate-800 border border-slate-700"
+                )}
+              />
+            );
+          })}
+        </div>
+
+        {/* Pre-Filled Numeric Steppers: Weight & Reps */}
+        <div className="grid grid-cols-2 gap-3">
+          <Log.Stepper
+            label="Weight (kg)"
+            value={activeEx.currentWeight}
+            step={2.5}
+            unit="kg"
+            onChange={(val) =>
+              setExercises((prev) => {
+                const copy = [...prev];
+                copy[currentExIndex].currentWeight = val;
+                return copy;
+              })
+            }
+          />
+
+          <Log.Stepper
+            label="Reps Completed"
+            value={activeEx.currentReps}
+            step={1}
+            min={1}
+            max={50}
+            unit="reps"
+            onChange={(val) =>
+              setExercises((prev) => {
+                const copy = [...prev];
+                copy[currentExIndex].currentReps = val;
+                return copy;
+              })
+            }
+          />
+        </div>
+
+        {/* Big Log Set Button (Effort: 1 tap, <= 5s) */}
+        <Log.Confirm
+          label={`Log Set ${Math.min(currentSetNum, activeEx.targetSets)} ✓`}
+          subLabel={isFinalSetOfExercise ? "Final set for this exercise" : "Next rest timer auto-starts"}
+          onClick={handleLogSet}
+        />
+
+        {/* Auto Rest Timer Overlay (Subtle, 1-tap Skip) */}
+        {restTimerSec !== null && (
+          <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span>Rest Interval:</span>
+              <span className="font-mono font-bold text-white text-sm tabular">{restTimerSec}s</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRestTimerSec(null)}
+              className="text-[11px] font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              <span>Skip</span>
+              <FastForward className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+      </main>
+
+      {/* 3. Bottom Exercise Switcher Controls */}
+      <footer className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+        <button
+          type="button"
+          disabled={currentExIndex === 0}
+          onClick={() => setCurrentExIndex((prev) => Math.max(0, prev - 1))}
+          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Prev</span>
+        </button>
+
+        {isAllExercisesComplete || isFinalExercise ? (
+          <button
+            type="button"
+            onClick={handleFinishSession}
+            className="py-2.5 px-4 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs shadow-md hover:bg-emerald-400 transition"
+          >
+            Finish Workout →
+          </button>
+        ) : (
+          <span className="text-[11px] font-mono text-slate-500">
+            {activeEx.completedSets.length}/{activeEx.targetSets} sets done
+          </span>
+        )}
+
+        <button
+          type="button"
+          disabled={currentExIndex === exercises.length - 1}
+          onClick={() => setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1))}
+          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs"
+        >
+          <span>Next</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </footer>
+
+      {/* TIPS SHEET (Drawer with Cues, Video, Load Strategy) */}
+      <Sheet open={isTipsOpen} onOpenChange={setIsTipsOpen}>
+        <SheetContent side="bottom" className="max-w-md mx-auto">
+          <SheetHeader>
+            <div className="flex items-center gap-2 text-emerald-400">
+              <Sparkles className="w-4 h-4" />
+              <SheetTitle>{activeEx.name}</SheetTitle>
+            </div>
+            <SheetDescription>
+              Biomechanics, setup notch blueprint, and progression rules.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 pt-2 pb-6 text-xs">
+            {/* Coach Load Strategy */}
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+              <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">Coach Strategy</span>
+              <p className="text-slate-300 leading-relaxed">{activeEx.loadGuidance}</p>
+            </div>
+
+            {/* Form Cue */}
+            {activeEx.formCue && (
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold">Execution Cue</span>
+                <p className="text-slate-300 leading-relaxed">{activeEx.formCue}</p>
+              </div>
+            )}
+
+            {/* Video Demonstration Link */}
+            {activeEx.videoUrl && (
+              <a
+                href={activeEx.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200 flex items-center justify-between transition"
+              >
+                <div className="flex items-center gap-2">
+                  <Video className="w-4 h-4 text-emerald-400" />
+                  <span>Watch Proper Form Guide</span>
+                </div>
+                <span>→</span>
+              </a>
             )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {trainingDays.map((d) => {
-              const isSelected = d.dayOfWeek === selectedDayOfWeek;
-              const [dayPrefix, ...rest] = d.label.split(":");
-              const routineName = rest.join(":").trim();
-              return (
-                <button
-                  key={d.dayOfWeek}
-                  type="button"
-                  onClick={() => handleSelectDay(d.dayOfWeek)}
-                  className={`p-2.5 rounded-lg text-left transition border ${
-                    isSelected
-                      ? "bg-[#10B981]/15 border-[#10B981] text-slate-100 shadow-sm ring-1 ring-[#10B981]/40"
-                      : "bg-[#0F172A] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-600"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[11px] font-bold ${isSelected ? "text-[#10B981]" : "text-slate-300"}`}>
-                      {dayPrefix.trim()}
-                    </span>
-                    {isSelected && <Check className="w-3 h-3 text-[#10B981]" />}
-                  </div>
-                  <p className="text-[10px] truncate text-slate-400 mt-0.5" title={routineName}>
-                    {routineName || "Workout Protocol"}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
-      {/* 2. Floating Live Rest Timer Banner */}
-      {restSecondsLeft !== null && (
-        <div className="sticky top-2 z-40 bg-[#162032]/95 backdrop-blur-md border border-[#06B6D4]/50 rounded-xl p-3 shadow-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full border-2 border-[#06B6D4] flex items-center justify-center font-mono font-black text-xs text-[#06B6D4] bg-[#0F172A]">
-              {restSecondsLeft}s
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#06B6D4]" />
-                Rest Interval Active
-              </p>
-              <p className="text-[10px] text-slate-400">Target: {restTotalSeconds}s recovery</p>
-            </div>
-          </div>
+      {/* EXIT CONFIRMATION MODAL */}
+      <Sheet open={isExitAlertOpen} onOpenChange={setIsExitAlertOpen}>
+        <SheetContent side="bottom" className="max-w-md mx-auto text-center space-y-4">
+          <SheetHeader>
+            <SheetTitle>Exit Active Workout?</SheetTitle>
+            <SheetDescription>
+              Your logged sets will be safely preserved in today's training log.
+            </SheetDescription>
+          </SheetHeader>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex gap-2 pt-2">
             <button
-              onClick={() => setRestSecondsLeft((prev) => (prev ? prev + 30 : 30))}
-              className="px-2 py-1 rounded bg-[#0F172A] border border-[#334155] text-slate-300 text-xs font-mono hover:bg-[#1E293B]"
+              type="button"
+              onClick={() => setIsExitAlertOpen(false)}
+              className="flex-1 py-3 bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl"
             >
-              +30s
+              Keep Training
             </button>
             <button
-              onClick={() => setRestSecondsLeft(null)}
-              className="px-2.5 py-1 rounded bg-[#06B6D4] text-slate-950 text-xs font-bold hover:bg-[#0891B2] flex items-center gap-1"
+              type="button"
+              onClick={() => {
+                setIsExitAlertOpen(false);
+                router.push("/today");
+              }}
+              className="flex-1 py-3 bg-rose-600 text-white font-semibold text-xs rounded-xl"
             >
-              <FastForward className="w-3 h-3" />
-              Skip
-            </button>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1 rounded text-slate-400 hover:text-white"
-            >
-              {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              Exit to Today
             </button>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
-      {/* PR Celebration Alert */}
-      {recentPR && (
-        <div className="bg-gradient-to-r from-[#F59E0B]/20 to-[#F59E0B]/10 border border-[#F59E0B]/50 rounded-xl p-3 flex items-center gap-3 animate-in zoom-in-95">
-          <div className="w-9 h-9 rounded-full bg-[#F59E0B] text-slate-950 flex items-center justify-center shrink-0">
-            <Trophy className="w-5 h-5 fill-slate-950" />
-          </div>
-          <div>
-            <span className="text-xs font-black text-[#F59E0B] tracking-wider uppercase flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              Personal Record Achieved!
-            </span>
-            <p className="text-xs text-slate-200 mt-0.5">
-              <strong>{recentPR.exercise}</strong>: {recentPR.weight}kg × {recentPR.reps} reps!
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Exercises Logging List */}
-      <div className="space-y-5">
-        {exercises.map((ex, exIdx) => {
-          const isSuperset = ex.name.includes("Superset");
-
-          return (
-            <section
-              key={ex.id}
-              className={`rounded-xl p-4 space-y-3 ${
-                isSuperset
-                  ? "bg-[#06B6D4]/5 border border-[#06B6D4]/30"
-                  : "bg-[#162032] border border-[#1E293B]"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {isSuperset && <Layers className="w-3.5 h-3.5 text-[#06B6D4]" />}
-                    <h2 className="text-sm font-black text-[#F8FAFC]">{ex.name}</h2>
-                    {ex.selectedEquipment && (
-                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/20">
-                        {ex.selectedEquipment}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-[#10B981] font-mono mt-0.5">{ex.prescription}</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveConfidenceModalIndex(exIdx)}
-                    className="text-slate-300 hover:text-[#06B6D4] hover:border-[#06B6D4]/50 flex items-center gap-1 text-[11px] bg-[#0F172A] px-2 py-0.5 rounded border border-[#334155] font-semibold transition"
-                    title="Open Stealth Gym Confidence Guide"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#06B6D4]" />
-                    <span>Guide</span>
-                  </button>
-                  {ex.videoUrl && isSafeUrl(ex.videoUrl) && (
-                    <a
-                      href={ex.videoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-400 hover:text-[#06B6D4] flex items-center gap-1 text-[11px] bg-[#0F172A] px-2 py-0.5 rounded border border-[#334155]"
-                    >
-                      <Video className="w-3.5 h-3.5 text-[#06B6D4]" />
-                      <span>Form</span>
-                    </a>
-                  )}
-                  <div className="text-right ml-1">
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Best: {ex.prevBestWeight}kg × {ex.prevBestReps}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4-Option Equipment Matrix Pill Bar in Live Session */}
-              {ex.equipmentVariations && ex.equipmentVariations.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                      Swap Tool (Same Target):
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {ex.equipmentVariations.map((v) => {
-                      const isSelected = (ex.selectedEquipment || "machine") === v.equipmentType;
-                      return (
-                        <button
-                          key={v.equipmentType}
-                          type="button"
-                          onClick={() => {
-                            const updated = [...exercises];
-                            const suffix = isSuperset
-                              ? ` (${ex.name.includes("Superset") ? "Superset" : "Circuit"}${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0] ? ` ${ex.name.match(/\([A-Za-z0-9 ]+\)/)?.[0]}` : ""})`
-                              : "";
-                            const newName = suffix ? `${v.exerciseName} ${suffix.trim()}` : v.exerciseName;
-                            const pb = appStore.getPersonalBestForExercise(
-                              currentUser.id,
-                              v.exerciseName,
-                              v.equipmentType
-                            );
-                            updated[exIdx] = {
-                              ...ex,
-                              selectedEquipment: v.equipmentType,
-                              name: newName,
-                              formCue: v.formCue,
-                              videoUrl: v.videoUrl,
-                              prevBestWeight: pb?.weightKg || 0,
-                              prevBestReps: pb?.reps || 0,
-                              currentWeight: pb?.weightKg || ex.currentWeight,
-                            };
-                            setExercises(updated);
-                          }}
-                          className={`px-1.5 py-1 rounded text-center text-[10px] font-semibold uppercase tracking-wider transition border ${
-                            isSelected
-                              ? "bg-[#10B981] text-slate-950 border-[#10B981] font-bold shadow-sm"
-                              : "bg-[#0F172A] text-slate-400 border-[#334155] hover:text-slate-200 hover:border-slate-500"
-                          }`}
-                        >
-                          {v.equipmentType}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {ex.formCue && (
-                <div className="bg-[#0F172A]/80 p-2 rounded text-[11px] text-slate-300 border-l-2 border-[#10B981] flex items-start gap-1.5">
-                  <Info className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
-                  <span>{ex.formCue}</span>
-                </div>
-              )}
-
-              {ex.loadGuidance && (
-                <div
-                  className={`p-2.5 rounded text-[11px] flex items-start gap-2 ${
-                    ex.loadGuidance.includes("Tuesday Post-Football Rule")
-                      ? "bg-[#F59E0B]/10 border border-[#F59E0B]/40 text-[#FCD34D]"
-                      : ex.loadGuidance.includes("Thursday Primary Overload Rule")
-                      ? "bg-[#10B981]/10 border border-[#10B981]/40 text-[#6EE7B7]"
-                      : "bg-[#0F172A]/80 border-l-2 border-[#06B6D4] text-slate-300"
-                  }`}
-                >
-                  <ShieldCheck
-                    className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                      ex.loadGuidance.includes("Tuesday Post-Football Rule")
-                        ? "text-[#F59E0B]"
-                        : ex.loadGuidance.includes("Thursday Primary Overload Rule")
-                        ? "text-[#10B981]"
-                        : "text-[#06B6D4]"
-                    }`}
-                  />
-                  <div className="space-y-0.5">
-                    <span className="font-bold block text-[10px] uppercase font-mono tracking-wider">
-                      {ex.loadGuidance.includes("Tuesday Post-Football Rule")
-                        ? "⚽ Tuesday Post-Football Load Hold Rule"
-                        : ex.loadGuidance.includes("Thursday Primary Overload Rule")
-                        ? "⚡ Thursday Primary Progressive Overload Driver"
-                        : "Coach Load Strategy"}
-                    </span>
-                    <span className="leading-relaxed">{ex.loadGuidance}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Completed Sets Table */}
-              {ex.completedSets.length > 0 && (
-                <div className="space-y-1.5 border-t border-[#1E293B] pt-2">
-                  {ex.completedSets.map((s) => (
-                    <div
-                      key={s.setIndex}
-                      className="flex items-center justify-between p-2 rounded bg-[#0F172A] border border-[#1E293B] text-xs font-mono"
-                    >
-                      <span className="text-slate-400 font-medium">Set {s.setIndex}</span>
-                      <span className="text-slate-100 font-bold">
-                        {s.weight} kg × {s.reps} reps
-                      </span>
-                      <span className="text-[#06B6D4]">RIR {s.rir}</span>
-                      {s.isDropSet ? (
-                        <span className="px-1.5 py-0.5 rounded bg-[#EF4444]/20 text-[#EF4444] text-[10px] font-bold flex items-center gap-0.5">
-                          <Flame className="w-3 h-3 fill-[#EF4444]" /> DROP SET
-                        </span>
-                      ) : s.isPR ? (
-                        <span className="px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-bold flex items-center gap-0.5">
-                          <Trophy className="w-3 h-3" /> PR
-                        </span>
-                      ) : (
-                        <Check className="w-4 h-4 text-[#10B981]" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Set Input Form */}
-              <div className="bg-[#0F172A] p-3 rounded-lg border border-[#334155] space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                  <div className="flex items-center gap-1.5">
-                    <span>Log Set {ex.completedSets.length + 1}</span>
-                    {ex.hasDropSet && ex.completedSets.length + 1 === (ex.totalSets || 3) && (
-                      <span className="px-1.5 py-0.2 rounded bg-[#EF4444]/20 text-[#EF4444] text-[10px] font-mono font-bold uppercase tracking-wider">
-                        Drop Set (0 RIR)
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono">Rest: {ex.restSeconds}s</span>
-                </div>
-
-                {/* Drop Set Highlight Banner */}
-                {ex.hasDropSet && ex.completedSets.length + 1 === (ex.totalSets || 3) && (
-                  <div className="bg-gradient-to-r from-[#EF4444]/20 to-[#F59E0B]/20 border border-[#EF4444]/50 rounded-lg p-2.5 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-[#EF4444] uppercase tracking-wide">
-                      <Flame className="w-3.5 h-3.5 fill-[#EF4444]" />
-                      <span>Set {ex.completedSets.length + 1} Drop Set Protocol Active</span>
-                    </div>
-                    <p className="text-[11px] text-slate-200">
-                      {ex.dropSetGuidance || "Immediately drop weight ~30% and take set to absolute 0 RIR technical failure."}
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Weight Input */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono uppercase text-slate-400">Weight (kg)</label>
-                    <div className="flex items-center rounded-lg bg-[#162032] border border-[#334155]">
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentWeight = Math.max(0, updated[exIdx].currentWeight - 2.5);
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={ex.currentWeight}
-                        onChange={(e) => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentWeight = parseFloat(e.target.value) || 0;
-                          setExercises(updated);
-                        }}
-                        className="w-full text-center bg-transparent text-sm font-mono font-bold text-slate-100 focus:outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentWeight = updated[exIdx].currentWeight + 2.5;
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Reps Input */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono uppercase text-slate-400">Reps</label>
-                    <div className="flex items-center rounded-lg bg-[#162032] border border-[#334155]">
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentReps = Math.max(1, updated[exIdx].currentReps - 1);
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <input
-                        type="number"
-                        value={ex.currentReps}
-                        onChange={(e) => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentReps = parseInt(e.target.value) || 0;
-                          setExercises(updated);
-                        }}
-                        className="w-full text-center bg-transparent text-sm font-mono font-bold text-slate-100 focus:outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentReps = updated[exIdx].currentReps + 1;
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* RIR Input */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono uppercase text-slate-400">RIR</label>
-                    <div className="flex items-center rounded-lg bg-[#162032] border border-[#334155]">
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentRir = Math.max(0, updated[exIdx].currentRir - 1);
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <input
-                        type="number"
-                        value={ex.currentRir}
-                        onChange={(e) => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentRir = parseInt(e.target.value) || 0;
-                          setExercises(updated);
-                        }}
-                        className="w-full text-center bg-transparent text-sm font-mono font-bold text-[#06B6D4] focus:outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          const updated = [...exercises];
-                          updated[exIdx].currentRir = updated[exIdx].currentRir + 1;
-                          setExercises(updated);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-white"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleLogSet(exIdx)}
-                  className={`w-full py-2.5 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
-                    ex.hasDropSet && ex.completedSets.length === 3
-                      ? "bg-[#EF4444]/20 hover:bg-[#EF4444]/30 border-[#EF4444]/60 text-[#EF4444] shadow-md animate-pulse"
-                      : "bg-[#10B981]/20 hover:bg-[#10B981]/30 border-[#10B981]/50 text-[#10B981]"
-                  }`}
-                >
-                  {ex.hasDropSet && ex.completedSets.length === 3 ? (
-                    <>
-                      <Flame className="w-3.5 h-3.5 fill-[#EF4444]" />
-                      Log Set 4: Drop Set (0 RIR Burnout)
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      Log Set {ex.completedSets.length + 1}
-                    </>
-                  )}
-                </button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      {/* Finish Session Summary Dialog */}
-      {showSummary && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#162032] border border-[#334155] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
-            <div className="w-14 h-14 rounded-full bg-[#10B981]/20 border border-[#10B981]/50 mx-auto flex items-center justify-center text-[#10B981]">
-              <Trophy className="w-7 h-7" />
-            </div>
-
-            <div>
-              <h3 className="text-lg font-black text-white">Workout Completed!</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Logged to {activeProgram?.trainerId ? appStore.getUser(activeProgram.trainerId)?.name || "your coach" : "your coach"}&apos;s console in real time.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 bg-[#0F172A] p-3 rounded-xl border border-[#1E293B] font-mono text-center">
-              <div>
-                <span className="text-[10px] text-slate-400">Duration</span>
-                <p className="text-sm font-bold text-slate-100">{formatDuration(sessionSeconds)}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400">Volume</span>
-                <p className="text-sm font-bold text-[#10B981]">{totalVolumeKg.toLocaleString()} kg</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400">PRs</span>
-                <p className="text-sm font-bold text-[#F59E0B]">{totalPRs}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => router.push("/progress")}
-              className="w-full py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider transition"
-            >
-              View Progress Charts
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Exercise Confidence Card Modal (Stealth Gym Shield) */}
-      {activeConfidenceModalIndex !== null && exercises[activeConfidenceModalIndex] && (
-        <ExerciseConfidenceCard
-          isOpen={true}
-          onClose={() => setActiveConfidenceModalIndex(null)}
-          exerciseName={exercises[activeConfidenceModalIndex].name}
-          selectedEquipment={exercises[activeConfidenceModalIndex].selectedEquipment || "machine"}
-          equipmentVariations={exercises[activeConfidenceModalIndex].equipmentVariations}
-          videoUrl={exercises[activeConfidenceModalIndex].videoUrl}
-          onSelectEquipment={handleConfidenceEquipmentSwap}
-        />
-      )}
     </div>
+  );
+}
+
+export default function SessionPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-slate-400 text-xs">Loading Session...</div>}>
+      <SessionFlow />
+    </Suspense>
   );
 }

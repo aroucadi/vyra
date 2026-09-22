@@ -1,253 +1,124 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Clock, Play, Dumbbell, ChevronRight, X, Layers, Check, Flame, Utensils } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay } from "@/lib/utils";
-import { ProgramDay } from "@/lib/types";
+import { ProgramDay, ExercisePrescription } from "@/lib/types";
+import { Plan } from "@/components/primitives/Plan";
+import { Card } from "@/components/primitives/Card";
+import { Dumbbell, Clock, ArrowRight, ShieldCheck, Moon, Flame } from "lucide-react";
+import { clsx } from "clsx";
 
 export default function ProgramCalendarPage() {
   const currentUser = appStore.getCurrentUser();
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
 
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => resolved.weekIndex || 1);
-  const [previewDay, setPreviewDay] = useState<ProgramDay | null>(null);
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(() => resolved.dayOfWeek);
 
   if (!program) {
     return (
-      <div className="p-6 text-center space-y-3 my-auto">
+      <div className="p-8 text-center space-y-3 max-w-md mx-auto my-auto">
         <Dumbbell className="w-8 h-8 text-slate-500 mx-auto" />
-        <p className="text-sm text-slate-400">No active program found.</p>
+        <p className="text-xs text-slate-400">No active program found.</p>
       </div>
     );
   }
 
-  const activeWeek = program.weeks.find((w) => w.weekIndex === selectedWeekIndex) || program.weeks[0];
-
+  const currentWeek = program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] || program.weeks[0];
   const daysOfWeekLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+  const weekStripDays = currentWeek.days.map((day, idx) => ({
+    dayName: daysOfWeekLabels[day.dayOfWeek] || `D${idx + 1}`,
+    dayNumber: idx + 1,
+    isRest: day.isRestDay,
+  }));
+
+  const selectedDay = currentWeek.days.find((d) => d.dayOfWeek === selectedDayOfWeek) || currentWeek.days[0];
+  const exercises: ExercisePrescription[] = selectedDay.blocks ? selectedDay.blocks.flatMap((b) => b.exercises) : [];
+  const isSelectedToday = resolved.dayOfWeek === selectedDay.dayOfWeek;
+
   return (
-    <div className="px-4 py-5 space-y-5 pb-24">
+    <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
+      
+      {/* Header */}
       <header className="space-y-1">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-black text-[#F8FAFC]">Program Architecture</h1>
-          <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#10B981]/20 text-[#10B981] font-bold">
-            {program.durationWeeks - resolved.weekIndex + 1} Weeks Remaining
+          <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+            Week {resolved.weekIndex} of {program.durationWeeks}
           </span>
+          <span className="text-[11px] font-mono text-slate-500">Block 1 Hypertrophy</span>
         </div>
+        <h1 className="text-xl font-bold text-white tracking-tight">Program Schedule</h1>
         <p className="text-xs text-slate-400">
-          {program.title} • {program.startDate} to {program.endDate}
+          Periodized progression calibrated to your recovery curve.
         </p>
       </header>
 
-      {/* Week Selector Tabs */}
-      <div className="flex gap-2 border-b border-[#1E293B] pb-2 overflow-x-auto">
-        {program.weeks.map((week) => (
-          <button
-            key={week.id}
-            onClick={() => setSelectedWeekIndex(week.weekIndex)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold shrink-0 transition ${
-              selectedWeekIndex === week.weekIndex
-                ? "bg-[#10B981] text-slate-950 shadow-sm"
-                : "bg-[#162032] text-slate-400 hover:text-white border border-[#1E293B]"
-            }`}
-          >
-            Week {week.weekIndex}
-            {resolved.weekIndex === week.weekIndex && " (Current)"}
-          </button>
-        ))}
-      </div>
+      {/* 7-Day Calendar Strip */}
+      <Plan.WeekStrip
+        days={weekStripDays}
+        selectedDayIndex={selectedDayOfWeek}
+        todayDayIndex={resolved.dayOfWeek}
+        onSelectDay={setSelectedDayOfWeek}
+      />
 
-      {/* Week 7-Day Matrix */}
-      <div className="space-y-2.5">
-        {activeWeek.days.map((day, idx) => {
-          const isToday = resolved.weekIndex === selectedWeekIndex && resolved.dayOfWeek === day.dayOfWeek;
-          const isPast = resolved.weekIndex > selectedWeekIndex || (resolved.weekIndex === selectedWeekIndex && resolved.dayOfWeek > day.dayOfWeek);
-
-          return (
-            <div
-              key={day.id}
-              onClick={() => setPreviewDay(day)}
-              className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
-                isToday
-                  ? "bg-[#162032] border-[#10B981] ring-1 ring-[#10B981]/50 shadow-md"
-                  : day.isRestDay
-                  ? "bg-[#162032]/40 border-[#1E293B] opacity-75"
-                  : "bg-[#162032] border-[#1E293B] hover:border-slate-700"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center font-mono text-xs font-black ${
-                    isToday
-                      ? "bg-[#10B981] text-slate-950"
-                      : "bg-[#0F172A] border border-[#1E293B] text-slate-400"
-                  }`}
-                >
-                  <span className="text-[9px] uppercase font-sans tracking-tight">
-                    {daysOfWeekLabels[idx % 7]}
-                  </span>
-                  <span>D{idx + 1}</span>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-100">{day.label}</h3>
-                    {isToday && (
-                      <span className="px-1.5 py-0.2 rounded bg-[#10B981]/20 text-[#10B981] text-[9px] font-bold uppercase">
-                        Today
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                    {day.isRestDay ? "Recovery & Mobility" : `${day.blocks.length} Blocks Prescribed`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isPast && <Check className="w-4 h-4 text-[#10B981]" />}
-                <ChevronRight className="w-4 h-4 text-slate-500" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Day Preview Slide-over Modal */}
-      {previewDay && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-[#162032] border-t sm:border border-[#334155] rounded-t-2xl sm:rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
-              <div>
-                <span className="text-[10px] font-mono uppercase text-[#10B981] font-bold">
-                  Day Detail Preview
-                </span>
-                <h3 className="text-base font-black text-white">{previewDay.label}</h3>
-              </div>
-              <button
-                onClick={() => setPreviewDay(null)}
-                className="p-1 rounded-lg bg-[#0F172A] border border-[#1E293B] text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Morning Alignment Routine Section */}
-            {previewDay.morningRoutine && previewDay.morningRoutine.length > 0 && (
-              <div className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#F59E0B]">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span className="uppercase font-mono tracking-wider">Morning Alignment Routine</span>
-                </div>
-                <div className="space-y-1 text-xs text-slate-300">
-                  {previewDay.morningRoutine.map((drill, dIdx) => (
-                    <div key={dIdx} className="flex items-start gap-1.5 py-0.5">
-                      <span className="text-[#F59E0B] font-mono shrink-0">•</span>
-                      <span>{drill}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {previewDay.isRestDay ? (
-              <div className="p-4 bg-[#0F172A] rounded-xl text-center space-y-2 border border-[#1E293B]">
-                <Clock className="w-6 h-6 text-[#06B6D4] mx-auto" />
-                <p className="text-xs text-slate-300">
-                  Rest day: prioritize mobility, parasympathetic breathing, and hydration.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {previewDay.blocks.map((b, bIdx) => (
-                  <div key={b.id} className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#06B6D4]">
-                      {b.type === "superset" && <Layers className="w-3.5 h-3.5" />}
-                      <span className="uppercase font-mono tracking-wider">
-                        Block {bIdx + 1} ({b.type})
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {b.exercises.map((ex) => (
-                        <div key={ex.id} className="text-xs py-1.5 border-t border-[#1E293B] space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-100 font-bold">{ex.exerciseName}</span>
-                            <span className="font-mono text-[#10B981]">
-                              {ex.sets} × {ex.repRangeLow}-{ex.repRangeHigh}
-                            </span>
-                          </div>
-
-                          {/* Drop Set Indicator */}
-                          {ex.hasDropSet && (
-                            <div className="flex items-center gap-1 text-[10px] font-mono text-[#EF4444] bg-[#EF4444]/10 px-2 py-0.5 rounded border border-[#EF4444]/20">
-                              <Flame className="w-3 h-3 fill-[#EF4444]" />
-                              <span>{ex.dropSetGuidance || "Set 4 Drop Set: 40% drop to 0 RIR failure"}</span>
-                            </div>
-                          )}
-
-                          {/* Equipment Modality Matrix Tags */}
-                          {ex.equipmentVariations && ex.equipmentVariations.length > 0 && (
-                            <div className="flex items-center gap-1 pt-0.5">
-                              <span className="text-[9px] font-mono text-slate-500 uppercase">Modalities:</span>
-                              <div className="flex gap-1">
-                                {ex.equipmentVariations.map((v) => (
-                                  <span
-                                    key={v.equipmentType}
-                                    className="text-[9px] font-mono uppercase px-1 py-0.2 rounded bg-[#162032] text-slate-400 border border-[#334155]"
-                                  >
-                                    {v.equipmentType.charAt(0).toUpperCase()}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Daily Nutrient Milestones Preview */}
-            {previewDay.nutrition?.dailyMeals && previewDay.nutrition.dailyMeals.length > 0 && (
-              <div className="bg-[#0F172A] p-3.5 rounded-xl border border-[#1E293B] space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-[#10B981]">
-                  <div className="flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5" />
-                    <span className="uppercase font-mono tracking-wider">Nutrient Architecture</span>
-                  </div>
-                  <span className="font-mono text-[11px] text-slate-400">
-                    {previewDay.nutrition.targetKcal ?? 2700} kcal • {previewDay.nutrition.targetProteinGrams}g P
-                  </span>
-                </div>
-                <div className="space-y-1 text-xs">
-                  {previewDay.nutrition.dailyMeals.slice(0, 5).map((meal) => (
-                    <div key={meal.time} className="flex justify-between items-center py-0.5 text-slate-300">
-                      <span className="font-mono text-[#10B981] text-[11px]">{meal.time}</span>
-                      <span className="truncate max-w-[200px] text-[11px]">{meal.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="pt-2">
-              <Link
-                href={`/session?day=${previewDay.dayOfWeek}`}
-                className="w-full py-3 rounded-xl bg-[#10B981] text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
-              >
-                <Play className="w-3.5 h-3.5 fill-slate-950" />
-                Launch This Session
-              </Link>
-            </div>
+      {/* Day Details Card */}
+      {selectedDay.isRestDay || exercises.length === 0 ? (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-center">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <Moon className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Active Recovery Day</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              No heavy loading scheduled. Focus on 20-minute restorative walk, hydration, and tissue remodeling.
+            </p>
+          </div>
+          <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl text-left text-xs space-y-1">
+            <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">Mobility Cue</span>
+            <p className="text-slate-300">Half-kneeling hip flexor stretch & 10 supine chin tucks.</p>
           </div>
         </div>
+      ) : (
+        <Card variant={isSelectedToday ? "hero" : "default"}>
+          <Card.Glance
+            eyebrow={isSelectedToday ? "Today's Prescription" : `Scheduled Day ${selectedDayOfWeek + 1}`}
+            title={selectedDay.label}
+            status={`${exercises.length} exercises · ~55 min · Target RIR 2`}
+          />
+
+          {/* Compact Exercise List (name + target reps only) */}
+          <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+            {exercises.map((ex, idx) => (
+              <div
+                key={ex.id || idx}
+                className="flex items-center justify-between py-1.5 text-xs text-slate-300 border-b border-slate-800/40 last:border-b-0"
+              >
+                <div className="flex items-center gap-2 truncate pr-2">
+                  <span className="font-mono text-[10px] text-slate-500 w-4">{idx + 1}.</span>
+                  <span className="font-medium text-slate-200 truncate">{ex.exerciseName}</span>
+                </div>
+                <span className="font-mono text-[11px] text-slate-400 flex-shrink-0 tabular">
+                  {ex.sets} × {ex.repRangeLow}-{ex.repRangeHigh}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <Card.Action>
+            <Link
+              href={`/session?day=${selectedDay.id}`}
+              className="w-full py-3 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <span>{isSelectedToday ? "Start Today's Session" : "Preview Session Flow"}</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            </Link>
+          </Card.Action>
+        </Card>
       )}
+
     </div>
   );
 }

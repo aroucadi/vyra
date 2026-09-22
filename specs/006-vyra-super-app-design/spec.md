@@ -73,3 +73,19 @@ $$\text{State Vector} = \big[ \text{CNS Readiness}, \text{Glycemic Stability}, \
 - **Screen ID**: `ddf62a8423d84d41b7ccba6d4db9a15c`
 - **Preview**: [Stitch High-Res Screenshot](https://lh3.googleusercontent.com/aida/AEtjO1Wp8HV_6FiM8U10xuvHE_vvB2EyBKd6owKPzuKzsLIcGLqDESOjKkv0iozCANDcY8DgLvuCqzniG1U9QWzAEs4va9A0IXjeiXU85BWg4QhN4PjDB1MRQHcUn2bZiU_g4u98MpbinIsprOHSEJJHTGRUJTuqAIjicRWCIhgcqPzEpvjVqkwoNAKCzcqyzPEJEWNfURpvgTPzXaPsYQYaHfDTCDj4meXNmXzfogDXusJsa6wHZRDeIK6byQ)
 - **Features**: 94% Restorative Depth score (7h 48m, 95% efficiency), Deep Stage 3 NREM (2h 14m / 29%), HRV 82ms (parasympathetic dominant), Resting HR 48 bpm, Circadian Light & Adenosine timeline, smart bed cooling protocol (19°C / 66°F), and 12-minute NSDR induction player.
+
+---
+
+## 4. User Feedback Synthesis & Information Architecture Refactor
+
+### User Feedback Signal (Alpha Testing)
+> *"I gave a quick test of the app and the ui is overcrowded with dozen of feature info all same place not easy to use or to understand or to follow."*
+
+### Root Cause Analysis
+The initial `/today` screen attempted to surface all five life pillars, hydration logging, supplement trackers, ergonomics, mobility routines, confidence cards, and workout execution in a single 900+ line flat page. This violated core cognitive load principles and created severe visual exhaustion.
+
+### Information Architecture Redesign Principles
+1. **Pillar Segmentation**: The Command HUD must use a segmented pill/tab selector (`Today's Focus` | `Train` | `Fuel` | `Restore` | `Style` | `Social`) so users inspect one cognitive domain at a time.
+2. **Card Simplification**: Maximum 3 elements per card context (Category Header -> Primary Focus/Value -> Contextual Action).
+3. **Progressive Disclosure**: Detailed protocol matrices (full supplement rosters, meal timelines, mobility video guides) default to collapsed or modal drill-downs, keeping the main view serene and spacious.
+4. **Visual Hierarchy & Breathing Room**: Expand vertical and card padding (`gap-6`, `p-6`), strictly enforce 60-30-10 color balance, and preserve whitespace.

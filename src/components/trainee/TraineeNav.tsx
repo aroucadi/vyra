@@ -2,43 +2,48 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, CalendarDays, Dumbbell, TrendingUp, User as UserIcon } from "lucide-react";
+import { Calendar, MessageSquare, Compass, User as UserIcon } from "lucide-react";
+import { clsx } from "clsx";
 
 export function TraineeNav() {
   const pathname = usePathname();
 
+  // Hide the navigation bar completely during active workout sessions
+  if (pathname.startsWith("/session")) {
+    return null;
+  }
+
   const navItems = [
     { label: "Today", href: "/today", icon: Calendar },
-    { label: "Program", href: "/program", icon: CalendarDays },
-    { label: "Log Session", href: "/session", icon: Dumbbell },
-    { label: "Progress", href: "/progress", icon: TrendingUp },
-    { label: "Profile", href: "/profile", icon: UserIcon },
+    { label: "Coach", href: "/coach", icon: MessageSquare },
+    { label: "Life", href: "/life", icon: Compass },
+    { label: "You", href: "/you", icon: UserIcon },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F17]/95 backdrop-blur-md border-t border-[#1E293B] max-w-md mx-auto">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav aria-label="Primary Navigation" className="fixed bottom-0 left-0 right-0 z-40 bg-[#0B0F17]/95 backdrop-blur-md border-t border-slate-800/80 max-w-md mx-auto">
+      <div className="flex items-center justify-around h-16 px-4">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href === "/today" && pathname === "/");
+          const isActive =
+            pathname === item.href ||
+            (item.href === "/today" && pathname === "/") ||
+            (item.href === "/you" && pathname === "/profile");
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+              aria-current={isActive ? "page" : undefined}
+              className={clsx(
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 isActive
-                  ? "text-[#10B981] font-semibold"
-                  : "text-[#94A3B8] hover:text-[#F8FAFC]"
-              }`}
+                  ? "text-emerald-400 font-semibold"
+                  : "text-slate-400 hover:text-slate-200"
+              )}
             >
-              <div className="relative">
-                <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
-                {item.href === "/session" && (
-                  <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-[#06B6D4] animate-ping" />
-                )}
-              </div>
-              <span className="text-[10px] mt-1 tracking-tight">{item.label}</span>
+              <Icon className={clsx("w-5 h-5", isActive ? "stroke-[2.5]" : "stroke-[1.75]")} aria-hidden="true" />
+              <span className="text-[10px] mt-1 tracking-tight font-medium">{item.label}</span>
             </Link>
           );
         })}

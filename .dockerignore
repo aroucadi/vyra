@@ -1,8 +1,10 @@
-﻿node_modules
+node_modules
 .next
 .git
-.gitignore
-.env*.local
-README.md
-*.test.ts
-tests
+.github
+.agents
+designs
+docs
+coverage
+.DS_Store
+*.log

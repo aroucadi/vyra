@@ -19,7 +19,7 @@ export async function runSeed(customDbUrl?: string) {
   const dbUrl = customDbUrl || process.env.DATABASE_URL;
 
   console.log("============================================================");
-  console.log("🏋️ Vyra × NewME Master Database Seeding Engine");
+  console.log("🏋️ Vyra Master Database Seeding Engine");
   console.log("   Target Athlete: Alaa (Trainee ID: trainee_alaa)");
   console.log("   Assigned Coach: Alaa Pro (Trainer ID: trainer_alaa)");
   console.log("============================================================");

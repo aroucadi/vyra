@@ -121,7 +121,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
       status: sessionCompleted ? "past" : "now",
       badge: sessionCompleted ? "Done" : undefined,
       actionLabel: sessionCompleted ? "View Progress" : "Start Workout",
-      actionHref: sessionCompleted ? "/progress" : `/session?day=${todaySession?.id || "day_1"}`,
+      actionHref: sessionCompleted ? "/progress" : `/session?day=${todaySession?.id || "day_1"}&mode=preview`,
       learnType: "workout",
     },
     {

@@ -29,7 +29,7 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
   it('verifies Alaa trainee account is fully pre-seeded for zero signup/signin friction', () => {
     assert.strictEqual(userAlaa.id, 'trainee_alaa');
     assert.strictEqual(userAlaa.name, 'Alaa');
-    assert.strictEqual(userAlaa.email, 'alaa@newme.fit');
+    assert.strictEqual(userAlaa.email, 'alaa@vyra.fit');
     assert.strictEqual(userAlaa.role, 'trainee');
     assert.strictEqual(userAlaa.heightCm, 173);
     assert.strictEqual(userAlaa.sex, 'male');
@@ -48,7 +48,7 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
   it('verifies Trainer Alaa Pro account is fully pre-seeded', () => {
     assert.strictEqual(userAlaaPro.id, 'trainer_alaa');
     assert.strictEqual(userAlaaPro.name, 'Alaa Pro');
-    assert.strictEqual(userAlaaPro.email, 'coach.alaa@newme.fit');
+    assert.strictEqual(userAlaaPro.email, 'coach.alaa@vyra.fit');
     assert.strictEqual(userAlaaPro.role, 'trainer');
   });
 

@@ -2,10 +2,10 @@
 
 > **A single, unified life optimization super app unifying high-performance movement, postural architecture, precision fueling, biometric context, personal style, and local experiences.**
 
-[![Cloud Run Live](https://img.shields.io/badge/Google_Cloud_Run-Live_Production-10B981?logo=googlecloud&logoColor=white)](https://newme-app-rqxaakcija-uc.a.run.app)
+[![Cloud Run Live](https://img.shields.io/badge/Google_Cloud_Run-Live_Production-10B981?logo=googlecloud&logoColor=white)](https://vyra-app-rqxaakcija-uc.a.run.app)
 [![Gemini AI](https://img.shields.io/badge/AI_Engine-Gemini_3.8_Flash-8B5CF6?logo=google&logoColor=white)](https://cloud.google.com/vertex-ai)
 [![MuscleWiki API](https://img.shields.io/badge/Biomechanical_DB-MuscleWiki_Integrated-06B6D4)](https://api.musclewiki.com)
-[![Tests](https://img.shields.io/badge/Unit_Tests-68%2F68_Passing-10B981)](tests/unit)
+[![Tests](https://img.shields.io/badge/Unit_Tests-76%2F76_Passing-10B981)](tests/unit)
 [![License](https://img.shields.io/badge/License-Proprietary_Private-slate)](LICENSE)
 
 ---
@@ -116,10 +116,10 @@ npm run db:enrich-musclewiki:apply
 ## ☁️ Google Cloud Deployment
 
 Production service is deployed on Google Cloud Run:
-- **Live URL**: `https://newme-app-rqxaakcija-uc.a.run.app`
+- **Live URL**: `https://vyra-app-rqxaakcija-uc.a.run.app`
 - **GCP Project**: `vyra-509011`
 - **Region**: `us-central1`
-- **Health Endpoint**: `https://newme-app-rqxaakcija-uc.a.run.app/api/health`
+- **Health Endpoint**: `https://vyra-app-rqxaakcija-uc.a.run.app/api/health`
 
 ### Deploy via Google Cloud Build:
 ```bash

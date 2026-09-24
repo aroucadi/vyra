@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ export async function GET() {
   return NextResponse.json(
     {
       status: 'healthy',
-      service: 'newme-app',
+      service: 'vyra-app',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(uptime),
       environment: process.env.NODE_ENV || 'development',

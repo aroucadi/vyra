@@ -10,6 +10,9 @@ import { saveSessionAction } from "@/lib/actions/session";
 import { Log } from "@/components/primitives/Log";
 import { Card } from "@/components/primitives/Card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { generateAutoregulationPlan, MinimalExerciseTarget } from "@/lib/autoregulation";
+import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibrationCard";
+import { telemetry } from "@/lib/telemetry";
 import {
   ArrowLeft,
   Clock,
@@ -63,7 +66,8 @@ function SessionFlow() {
     : currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek);
 
   // Flow mode: "preview" | "active" | "summary"
-  const [mode, setMode] = useState<"preview" | "active" | "summary">("preview");
+  const initialMode = (searchParams.get("mode") as "preview" | "active" | "summary") || "preview";
+  const [mode, setMode] = useState<"preview" | "active" | "summary">(initialMode);
 
   // Exercises initialization
   const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
@@ -124,6 +128,58 @@ function SessionFlow() {
     return () => clearInterval(timer);
   }, [restTimerSec]);
 
+  // Autoregulation & Readiness State
+  const [sleepHours, setSleepHours] = useState<number>(5.5);
+  const [isRecalibrationApplied, setIsRecalibrationApplied] = useState<boolean>(false);
+  const [isRecalibrationDismissed, setIsRecalibrationDismissed] = useState<boolean>(false);
+
+  // Generate real-time autoregulation plan for current exercises
+  const minimalTargets: MinimalExerciseTarget[] = React.useMemo(() => {
+    return exercises.map((e) => ({
+      id: e.id,
+      name: e.name,
+      targetSets: e.targetSets,
+      repLow: e.repLow,
+      repHigh: e.repHigh,
+      targetRir: e.targetRir,
+      plannedWeightKg: e.lastBestWeight || 60,
+    }));
+  }, [exercises]);
+
+  const autoregulationPlan = React.useMemo(() => {
+    return generateAutoregulationPlan(minimalTargets, { sleepHours });
+  }, [minimalTargets, sleepHours]);
+
+  const handleAcceptRecalibration = () => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        const delta = autoregulationPlan.prescriptionDeltas.find((d) => d.id === ex.id);
+        if (!delta) return ex;
+        return {
+          ...ex,
+          name: delta.adaptedName,
+          targetSets: delta.adaptedSets,
+          targetRir: delta.adaptedRir,
+          currentWeight: delta.adaptedWeightKg,
+          lastBestWeight: delta.adaptedWeightKg,
+        };
+      })
+    );
+    setIsRecalibrationApplied(true);
+    telemetry.track("workout_recalibration_applied", {
+      sleep_hours: sleepHours,
+      readiness_score: autoregulationPlan.readinessScore,
+      cns_fatigue: autoregulationPlan.cnsFatigueDetected,
+    }, currentUser.id);
+  };
+
+  const handleDismissRecalibration = () => {
+    setIsRecalibrationDismissed(true);
+    telemetry.track("workout_recalibration_dismissed", {
+      sleep_hours: sleepHours,
+    }, currentUser.id);
+  };
+
   const activeEx = exercises[currentExIndex];
   const isFinalExercise = currentExIndex === exercises.length - 1;
   const isFinalSetOfExercise = activeEx && activeEx.completedSets.length + 1 >= activeEx.targetSets;
@@ -161,6 +217,19 @@ function SessionFlow() {
     // Auto-start rest timer
     setRestTimerSec(activeEx.restSeconds);
 
+    // Track set logging telemetry
+    telemetry.track(
+      "workout_set_logged",
+      {
+        exercise_name: activeEx.name,
+        weight_kg: activeEx.currentWeight,
+        reps: activeEx.currentReps,
+        set_index: activeEx.completedSets.length + 1,
+        is_pr: isPR,
+      },
+      currentUser.id
+    );
+
     // If all sets for this exercise complete, move to next after brief pause or if user chooses
     if (newCompleted.length >= activeEx.targetSets && !isFinalExercise) {
       setTimeout(() => {
@@ -197,6 +266,17 @@ function SessionFlow() {
       setLogs: allSetLogs,
     };
 
+    telemetry.track(
+      "workout_completed",
+      {
+        program_day_id: targetDay?.id,
+        duration_sec: sessionDurationSec,
+        total_sets: allSetLogs.length,
+        is_recalibrated: isRecalibrationApplied,
+      },
+      currentUser.id
+    );
+
     await saveSessionAction(completedSession);
     setMode("summary");
   };
@@ -229,17 +309,70 @@ function SessionFlow() {
           </p>
         </div>
 
+        {/* Readiness Input & Autoregulation Section */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between text-xs px-1">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">
+              Last Night&apos;s Sleep
+            </span>
+            <span className="text-[11px] font-mono text-emerald-400">
+              {sleepHours} Hours
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { hours: 5.0, label: "5h (Depleted)" },
+              { hours: 6.5, label: "6.5h (Normal)" },
+              { hours: 8.0, label: "8h+ (Peaked)" },
+            ].map((option) => (
+              <button
+                key={option.hours}
+                type="button"
+                onClick={() => {
+                  setSleepHours(option.hours);
+                  setIsRecalibrationApplied(false);
+                  setIsRecalibrationDismissed(false);
+                }}
+                className={clsx(
+                  "py-2.5 px-2 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer",
+                  sleepHours === option.hours
+                    ? "bg-slate-800 border-emerald-500/50 text-emerald-400 shadow-sm"
+                    : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {!isRecalibrationDismissed && (
+            <AdaptiveRecalibrationCard
+              plan={autoregulationPlan}
+              onAccept={handleAcceptRecalibration}
+              onDismiss={handleDismissRecalibration}
+              isApplied={isRecalibrationApplied}
+            />
+          )}
+        </section>
+
         {/* Clean Exercise List (name + target reps only) */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 divide-y divide-slate-800/80">
+          <div className="pb-2 text-[10px] uppercase font-bold tracking-wider text-slate-400">
+            {isRecalibrationApplied ? "Recalibrated Program Blueprint" : "Planned Program Blueprint"}
+          </div>
           {exercises.map((ex, idx) => (
-            <div key={ex.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
+            <div key={ex.id} className="py-2.5 first:pt-2 last:pb-0 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2.5 truncate pr-2">
                 <span className="font-mono text-slate-500 text-[10px] w-4">{idx + 1}.</span>
                 <span className="font-medium text-slate-200 truncate">{ex.name}</span>
               </div>
-              <span className="font-mono text-slate-400 text-[11px] tabular">
-                {ex.targetSets} × {ex.repLow}-{ex.repHigh}
-              </span>
+              <div className="flex items-center gap-2 font-mono text-[11px] tabular">
+                <span className="text-emerald-400 font-semibold">{ex.currentWeight}kg</span>
+                <span className="text-slate-400">
+                  {ex.targetSets} × {ex.repLow}-{ex.repHigh} (RIR {ex.targetRir})
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -255,11 +388,21 @@ function SessionFlow() {
         {/* Single Dominant Begin Action */}
         <button
           type="button"
-          onClick={() => setMode("active")}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+          onClick={() => {
+            telemetry.track(
+              "workout_preview_viewed",
+              {
+                exercise_count: exercises.length,
+                is_recalibrated: isRecalibrationApplied,
+                sleep_hours: sleepHours,
+              },
+              currentUser.id
+            );
+            setMode("active");
+          }}
+          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>Begin Workout</span>
-          <span>→</span>
         </button>
       </div>
     );

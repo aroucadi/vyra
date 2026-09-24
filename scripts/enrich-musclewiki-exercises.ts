@@ -4,7 +4,7 @@
  * MuscleWiki Database Enrichment & Migration Script
  * 
  * Fetches and caches high-fidelity exercise metadata (steps, difficulty, target muscles,
- * animated media, and MuscleWiki IDs) for NewME exercise library while strictly protecting
+ * animated media, and MuscleWiki IDs) for Vyra exercise library while strictly protecting
  * the Basic Tier quota (500 requests/month).
  * 
  * Usage:
@@ -119,7 +119,7 @@ export async function runEnrichment(options = parseArgs()): Promise<{
   enrichedExercises: Exercise[];
 }> {
   console.log("============================================================");
-  console.log("🏋️ NewME × MuscleWiki Database Enrichment & Migration Engine");
+  console.log("🏋️ Vyra × MuscleWiki Database Enrichment & Migration Engine");
   console.log(`   Mode: ${options.offline ? "Offline (Pre-Cached Dataset)" : "Live API"}`);
   console.log(`   Dry Run: ${options.dryRun ? "YES (Preview Only)" : "NO"}`);
   console.log(`   Quota Guard Limit: ${options.limit} calls max`);

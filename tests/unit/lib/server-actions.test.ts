@@ -25,7 +25,7 @@ import {
 } from "../../../src/lib/actions/roster.ts";
 import { Program, WorkoutSession } from "../../../src/lib/types.ts";
 
-describe("NewME Server Actions Execution Suite", () => {
+describe("Vyra Server Actions Execution Suite", () => {
   it("executes auth actions and maintains role switching state", async () => {
     const user = await getCurrentUserAction();
     assert.ok(user.id);

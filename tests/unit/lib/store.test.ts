@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { appStore } from "../../../src/lib/store.ts";
 
-describe("NewME Domain Store & Business Logic", () => {
+describe("Vyra Domain Store & Business Logic", () => {
   it("retrieves current user and supports role switching", () => {
     const user = appStore.getCurrentUser();
     assert.ok(user);

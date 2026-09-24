@@ -1,8 +1,8 @@
-﻿import { describe, it } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { appStore } from "../../../src/lib/store.ts";
 
-describe("NewME Supplement & Hydration Tracking Module", () => {
+describe("Vyra Supplement & Hydration Tracking Module", () => {
   const testProgramId = "prog_hypertrophy_1";
   const traineeId = "trainee_1";
 

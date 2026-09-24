@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect } from 'react';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ export default function ErrorBoundary({
 }) {
   useEffect(() => {
     // Log client errors to stdout/monitoring console
-    console.error('NewME Unhandled Runtime Error:', error);
+    console.error('Vyra Unhandled Runtime Error:', error);
   }, [error]);
 
   return (

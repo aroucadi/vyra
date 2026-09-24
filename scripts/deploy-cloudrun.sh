@@ -2,12 +2,12 @@
 set -e
 
 PROJECT_ID=${1*-${bash_project:-$GCP_PROJECT}}
-SERVICE_NAME=${NEWME_SERVICE_NAME:-"newme-app"}
+SERVICE_NAME=${VYRA_SERVICE_NAME:-"vyra-app"}
 REGION=${GCP_REGION:-"us-central1"}
 
-echo "😚 ============================================="
-echo "   NewME Google Cloud Run Deployment Script  "
-echo "😚 ============================================="
+echo "✨ ============================================="
+echo "   Vyra Google Cloud Run Deployment Script   "
+echo "✨ ============================================="
 
 if [ -z "$PROJECT_ID" ]; then
   PROJECT_ID=$(gcloud config get-value project 2>/dev/null || true)

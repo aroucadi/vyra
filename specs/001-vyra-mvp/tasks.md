@@ -1,6 +1,6 @@
-# Tasks: NewME MVP
+# Tasks: Vyra MVP
 
-**Input**: Design documents from `specs/001-newme-mvp/`
+**Input**: Design documents from `specs/001-vyra-mvp/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories)
 
@@ -228,7 +228,7 @@
 
 ## Phase 10: Stitch UI Generation
 
-**Purpose**: Generate all screen designs via Stitch MCP, applying the NewME design system
+**Purpose**: Generate all screen designs via Stitch MCP, applying the Vyra design system
 
 - [x] T088 [P] Generate Trainee Today screen via Stitch MCP generate_screen_from_text
 - [x] T089 [P] Generate Trainer Roster screen via Stitch MCP generate_screen_from_text

@@ -1,4 +1,4 @@
-\# NewME — Product Specification for GStack / Antigravity CLI
+\# Vyra — Product Specification for GStack / Antigravity CLI
 
 
 
@@ -24,7 +24,7 @@ A few things below are explicit \*\*assumptions\*\* — flag them for the traine
 
 \# 1) create the project folder
 
-mkdir NewME \&\& cd NewME
+mkdir Vyra \&\& cd Vyra
 
 git init
 
@@ -70,7 +70,7 @@ gcloud beta services mcp enable stitch.googleapis.com
 
 
 
-\*\*First prompt to run inside Antigravity CLI, in the empty `NewME` folder:\*\*
+\*\*First prompt to run inside Antigravity CLI, in the empty `Vyra` folder:\*\*
 
 
 
@@ -80,9 +80,9 @@ gcloud beta services mcp enable stitch.googleapis.com
 
 
 
-Project: NewME — AI-assisted strength coaching platform, two personas (Trainer, Trainee).
+Project: Vyra — AI-assisted strength coaching platform, two personas (Trainer, Trainee).
 
-Attach: the file NewME-GStack-Spec.md in this repo as the authority document.
+Attach: the file Vyra-GStack-Spec.md in this repo as the authority document.
 
 Also pull design context from Stitch project 15968334285667068787 via the Stitch MCP
 
@@ -118,7 +118,7 @@ That gives GStack a real target instead of "build me a fitness app," which is wh
 
 
 
-\*\*Name:\*\* NewME
+\*\*Name:\*\* Vyra
 
 \*\*One-liner:\*\* A coach-and-client training platform where a certified trainer builds, publishes, and adapts periodized workout + nutrition programs for each trainee, trainees log every session and photo, and Gemini turns both sides' data into concrete next steps — without either side having to interpret spreadsheets.
 

@@ -12,7 +12,7 @@
 
 Modern fitness apps are one-way broadcast systems: the coach writes a program, the trainee tries to follow it, and when joint discomfort, mechanical stalls, or schedule frictions occur, the athlete either struggles in silence, drops out, or messages the coach on WhatsApp with disconnected context.
 
-NewME's **Bi-directional Feedback & RAG-Augmented Adaptive Coaching Engine** closes this loop:
+Vyra's **Bi-directional Feedback & RAG-Augmented Adaptive Coaching Engine** closes this loop:
 1. **The Trainee** can frictionlessly flag struggles, joint pinches, or stalls in real time during workouts with quick tags, voice memos, or post-session debriefs.
 2. **The RAG Synthesis Engine** joins the athlete's raw feedback with their orthopedic constraints (e.g. Alaa's Anterior Pelvic Tilt, shoulder internal rotation, clinical underweight BMI 16.4), 14–30 day workout telemetry (`SetLog` progression slopes, rep ceilings, RIR achieved), and biomechanical domain rules.
 3. **The Certified Trainer** receives a high-density, clinical triage dossier: observed quantitative pattern, root-cause diagnosis, ranked actionable interventions (e.g., 2-week scapular mobility prep block or landmine substitution), and an auto-drafted personalized message.

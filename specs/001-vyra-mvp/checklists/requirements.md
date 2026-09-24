@@ -1,8 +1,8 @@
-# Specification Quality Checklist: NewME MVP
+# Specification Quality Checklist: Vyra MVP
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-12
-**Feature**: [spec.md](file:///d:/rouca/DVM/workPlace/NewMe/specs/001-newme-mvp/spec.md)
+**Feature**: [spec.md](specs/001-vyra-mvp/spec.md)
 
 ## Content Quality
 

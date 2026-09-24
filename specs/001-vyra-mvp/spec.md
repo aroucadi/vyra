@@ -1,12 +1,12 @@
-# Feature Specification: NewME MVP — Trainer↔Trainee Coaching Platform
+# Feature Specification: Vyra MVP — Trainer↔Trainee Coaching Platform
 
-**Feature Branch**: `001-newme-mvp`
+**Feature Branch**: `001-vyra-mvp`
 
 **Created**: 2026-09-12
 
 **Status**: Draft
 
-**Input**: User description: "Build the MVP of NewME — an AI-assisted strength coaching platform where a certified trainer builds, publishes, and adapts periodized workout programs for each trainee. Trainees log every session, see their progress, and get coached. MVP scope: manual program builder (no AI), trainee views/logs workouts, bodyweight chart, basic trainer roster."
+**Input**: User description: "Build the MVP of Vyra — an AI-assisted strength coaching platform where a certified trainer builds, publishes, and adapts periodized workout programs for each trainee. Trainees log every session, see their progress, and get coached. MVP scope: manual program builder (no AI), trainee views/logs workouts, bodyweight chart, basic trainer roster."
 
 ## User Scenarios & Testing *(mandatory)*
 

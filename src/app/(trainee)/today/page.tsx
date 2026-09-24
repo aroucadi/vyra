@@ -17,6 +17,12 @@ export default function TodayPage() {
   const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("supplements=open")) {
+      setIsSuppDrawerOpen(true);
+    }
+  }, []);
+
   // Derive unified Day timeline from current state (reactive to tick)
   const { moments, heroMoment, insight, readinessStatus } = React.useMemo(
     () => deriveDayTimeline(currentUser.id),
@@ -50,10 +56,13 @@ export default function TodayPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full shadow-sm">
+        <Link
+          href="/session?mode=preview"
+          className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full shadow-sm transition cursor-pointer"
+        >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-xs font-semibold text-slate-200">{readinessStatus}</span>
-        </div>
+        </Link>
       </header>
 
       {/* 2. Single Cross-Pillar Insight (Max 1 visible) */}

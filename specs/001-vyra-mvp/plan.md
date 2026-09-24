@@ -1,12 +1,12 @@
-# Implementation Plan: NewME MVP
+# Implementation Plan: Vyra MVP
 
-**Branch**: `001-newme-mvp` | **Date**: 2026-09-12 | **Spec**: [spec.md](file:///d:/rouca/DVM/workPlace/NewMe/specs/001-newme-mvp/spec.md)
+**Branch**: `001-vyra-mvp` | **Date**: 2026-09-12 | **Spec**: [spec.md](specs/001-vyra-mvp/spec.md)
 
-**Input**: Feature specification from `specs/001-newme-mvp/spec.md`
+**Input**: Feature specification from `specs/001-vyra-mvp/spec.md`
 
 ## Summary
 
-Build the MVP of NewME — a coach-and-client training platform. The MVP enables a trainer to build/publish periodized programs, trainees to view/log workouts with timed rest intervals and PR detection, bodyweight tracking, and a trainer roster with adherence analytics. Technical approach: Next.js 15 App Router with TypeScript, Drizzle ORM on Postgres, Firebase Auth, Tailwind + shadcn/ui themed via Stitch MCP design system.
+Build the MVP of Vyra — a coach-and-client training platform. The MVP enables a trainer to build/publish periodized programs, trainees to view/log workouts with timed rest intervals and PR detection, bodyweight tracking, and a trainer roster with adherence analytics. Technical approach: Next.js 15 App Router with TypeScript, Drizzle ORM on Postgres, Firebase Auth, Tailwind + shadcn/ui themed via Stitch MCP design system.
 
 ## Technical Context
 
@@ -47,7 +47,7 @@ Build the MVP of NewME — a coach-and-client training platform. The MVP enables
 ### Documentation (this feature)
 
 ```text
-specs/001-newme-mvp/
+specs/001-vyra-mvp/
 ├── spec.md              # Feature specification
 ├── plan.md              # This file
 ├── tasks.md             # Task breakdown (by /speckit.tasks)

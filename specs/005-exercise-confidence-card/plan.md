@@ -3,7 +3,7 @@
 **Branch**: `005-exercise-confidence-card` | **Date**: 2026-09-17 | **Spec**: [specs/005-exercise-confidence-card/spec.md](specs/005-exercise-confidence-card/spec.md)
 
 ## Summary
-Implement the Exercise Confidence Card (ECC) inside NewME to eradicate beginner gym anxiety ("gymtimidation"). Deliver instant visual hardware identification, grip and wrist mechanics with visual cues, sensory proprioceptive feedback ("where should I feel it?", "by rep 8-10..."), red-flag injury warnings, and seamless 1-tap equipment fallback directly within the active workout session and Today preview.
+Implement the Exercise Confidence Card (ECC) inside Vyra to eradicate beginner gym anxiety ("gymtimidation"). Deliver instant visual hardware identification, grip and wrist mechanics with visual cues, sensory proprioceptive feedback ("where should I feel it?", "by rep 8-10..."), red-flag injury warnings, and seamless 1-tap equipment fallback directly within the active workout session and Today preview.
 
 ## Technical Context
 - Language/Version: TypeScript 5, Node.js 24

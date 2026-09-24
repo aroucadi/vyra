@@ -42,7 +42,7 @@ const coachUser: User = {
   id: "trainer_1",
   role: "trainer",
   name: "Coach Marcus, CSCS",
-  email: "marcus@newme.fit",
+  email: "marcus@vyra.fit",
   avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop",
   injuries: [],
   goals: ["Coach 50+ athletes to competitive totals"],

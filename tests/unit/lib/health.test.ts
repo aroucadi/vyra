@@ -9,7 +9,7 @@ describe("Google Cloud Run Health Probe API", () => {
 
     const data = await response.json();
     assert.equal(data.status, "healthy");
-    assert.equal(data.service, "newme-app");
+    assert.equal(data.service, "vyra-app");
     assert.ok(data.uptimeSeconds >= 0);
     assert.ok(data.memoryUsage);
     assert.ok(data.memoryUsage.rssMb > 0);

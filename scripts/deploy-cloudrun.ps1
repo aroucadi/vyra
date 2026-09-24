@@ -4,7 +4,7 @@ param (
     [string]$ProjectId = "vyra-509011",
 
     [Parameter(Mandatory = $false)]
-    [string]$ServiceName = "newme-app",
+    [string]$ServiceName = "vyra-app",
 
     [Parameter(Mandatory = $false)]
     [string]$Region = "us-central1",
@@ -46,7 +46,7 @@ Write-Host "[1/4] Service Name:         $ServiceName" -ForegroundColor Green
 Write-Host "[1/4] Target Region:        $Region" -ForegroundColor Green
 
 # Use Artifact Registry in us-central1
-$ImageUri = "us-central1-docker.pkg.dev/${ProjectId}/newme-repo/${ServiceName}:latest"
+$ImageUri = "us-central1-docker.pkg.dev/${ProjectId}/vyra-repo/${ServiceName}:latest"
 Write-Host "`n[2/4] Building image with Cloud Build: $ImageUri ..." -ForegroundColor Yellow
 & $GcloudCmd builds submit --project $ProjectId --tag $ImageUri .
 

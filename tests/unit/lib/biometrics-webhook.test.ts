@@ -163,4 +163,49 @@ describe("Vyra Apple Health & Wearables Biometric Ingestion Engine", () => {
       `Readiness status must reflect CNS fatigue (got: ${timeline.readinessStatus})`
     );
   });
+
+  it("safely parses stringified numeric values sent by iOS Shortcuts", async () => {
+    const payload = {
+      traineeId: alaaId,
+      source: "apple_health",
+      secretKey: validSecret,
+      sleepHours: "6.8",
+      deepSleepMinutes: "45",
+      hrvMs: "58",
+      restingHeartRateBpm: "56",
+    };
+
+    const req = new NextRequest("http://localhost:3000/api/webhooks/biometrics", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const res = await POST(req);
+    assert.strictEqual(res.status, 200);
+    const body = await res.json();
+    assert.strictEqual(body.snapshot.sleepHours, 6.8);
+    assert.strictEqual(body.snapshot.hrvMs, 58);
+    assert.strictEqual(body.snapshot.deepSleepMinutes, 45);
+    assert.strictEqual(body.snapshot.restingHeartRateBpm, 56);
+  });
+
+  it("handles non-positive hrvBaselineMs without division by zero or NaN", () => {
+    const zeroBaseline = calculateReadinessScore({
+      sleepHours: 7.0,
+      hrvMs: 45,
+      hrvBaselineMs: 0,
+    });
+    assert.ok(!isNaN(zeroBaseline.score));
+    assert.ok(zeroBaseline.score > 0 && zeroBaseline.score <= 100);
+
+    const negativeBaseline = calculateReadinessScore({
+      sleepHours: 7.0,
+      hrvMs: 45,
+      hrvBaselineMs: -10,
+    });
+    assert.ok(!isNaN(negativeBaseline.score));
+    assert.ok(negativeBaseline.score > 0 && negativeBaseline.score <= 100);
+  });
 });
+

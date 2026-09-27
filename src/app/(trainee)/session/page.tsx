@@ -327,8 +327,13 @@ function SessionFlow() {
             <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">
               Last Night&apos;s Sleep
             </span>
-            <span className="text-[11px] font-mono text-emerald-400">
-              {sleepHours} Hours
+            <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 tabular-nums">
+              {latestSnapshot && sleepHours === latestSnapshot.sleepHours ? (
+                <span className="text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 px-1.5 py-0.2 rounded text-[10px] font-sans font-medium">
+                  ⌚ Watch Synced
+                </span>
+              ) : null}
+              <span>{sleepHours}h</span>
             </span>
           </div>
 

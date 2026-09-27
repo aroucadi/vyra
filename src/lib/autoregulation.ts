@@ -123,8 +123,9 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
 
   // Modulate with HRV (sympathetic vs parasympathetic tone)
   let hrvDelta = 0;
-  if (typeof hrvMs === "number") {
-    const ratio = hrvMs / hrvBaselineMs;
+  if (typeof hrvMs === "number" && !isNaN(hrvMs)) {
+    const baseline = hrvBaselineMs && hrvBaselineMs > 0 ? hrvBaselineMs : 55;
+    const ratio = hrvMs / baseline;
     if (ratio <= 0.8 || hrvMs < 40) {
       hrvDelta = -15; // Severe sympathetic suppression
     } else if (ratio <= 0.9) {
@@ -136,7 +137,7 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
 
   // Modulate with Deep Sleep (NREM 3 restorative sleep)
   let deepSleepDelta = 0;
-  if (typeof deepSleepMinutes === "number") {
+  if (typeof deepSleepMinutes === "number" && !isNaN(deepSleepMinutes)) {
     if (deepSleepMinutes < 35) {
       deepSleepDelta = -10;
     } else if (deepSleepMinutes < 50) {
@@ -148,7 +149,7 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
 
   // Modulate with Resting Heart Rate
   let rhrDelta = 0;
-  if (typeof restingHeartRateBpm === "number") {
+  if (typeof restingHeartRateBpm === "number" && !isNaN(restingHeartRateBpm)) {
     if (restingHeartRateBpm >= 68) {
       rhrDelta = -5;
     }
@@ -203,8 +204,8 @@ export function generateAutoregulationPlan(
   const cnsFatigueDetected = state !== "optimal";
 
   const biometricNotes: string[] = [];
-  if (typeof readinessInput.hrvMs === "number") {
-    const baseline = readinessInput.hrvBaselineMs || 55;
+  if (typeof readinessInput.hrvMs === "number" && !isNaN(readinessInput.hrvMs)) {
+    const baseline = readinessInput.hrvBaselineMs && readinessInput.hrvBaselineMs > 0 ? readinessInput.hrvBaselineMs : 55;
     const diffPct = Math.round(((readinessInput.hrvMs - baseline) / baseline) * 100);
     if (diffPct <= -15) {
       biometricNotes.push(`HRV suppressed ${Math.abs(diffPct)}% (${readinessInput.hrvMs}ms)`);
@@ -214,7 +215,7 @@ export function generateAutoregulationPlan(
       biometricNotes.push(`HRV baseline (${readinessInput.hrvMs}ms)`);
     }
   }
-  if (typeof readinessInput.deepSleepMinutes === "number") {
+  if (typeof readinessInput.deepSleepMinutes === "number" && !isNaN(readinessInput.deepSleepMinutes)) {
     biometricNotes.push(`Deep Sleep ${readinessInput.deepSleepMinutes}m`);
   }
   const bioSummary = biometricNotes.length > 0 ? ` [${biometricNotes.join(" · ")}]` : "";

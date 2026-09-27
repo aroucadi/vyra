@@ -55,17 +55,18 @@ export async function POST(req: NextRequest) {
 
     const {
       traineeId,
-      sleepHours,
-      deepSleepMinutes,
-      remSleepMinutes,
-      hrvMs,
-      restingHeartRateBpm,
-      activeEnergyBurnedKcal,
       date,
       source = "apple_health",
     } = body;
 
-    if (!traineeId || typeof sleepHours !== "number" || isNaN(sleepHours) || sleepHours < 0 || sleepHours > 24) {
+    const parseNumber = (val: unknown): number | undefined => {
+      if (val === undefined || val === null || val === "") return undefined;
+      const num = typeof val === "number" ? val : parseFloat(String(val));
+      return isNaN(num) ? undefined : num;
+    };
+
+    const parsedSleepHours = parseNumber(body.sleepHours);
+    if (!traineeId || parsedSleepHours === undefined || parsedSleepHours < 0 || parsedSleepHours > 24) {
       return NextResponse.json(
         {
           error: "Invalid payload: 'traineeId' (string) and 'sleepHours' (number between 0 and 24) are required.",
@@ -74,6 +75,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const deepSleepMinutes = parseNumber(body.deepSleepMinutes);
+    const remSleepMinutes = parseNumber(body.remSleepMinutes);
+    const hrvMs = parseNumber(body.hrvMs);
+    const restingHeartRateBpm = parseNumber(body.restingHeartRateBpm);
+    const activeEnergyBurnedKcal = parseNumber(body.activeEnergyBurnedKcal);
+
     // Determine target calendar date (YYYY-MM-DD)
     const targetDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
       ? date
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Compute deterministic readiness score & CNS fatigue state
     const readiness = calculateReadinessScore({
-      sleepHours,
+      sleepHours: parsedSleepHours,
       hrvMs,
       deepSleepMinutes,
       restingHeartRateBpm,
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
       traineeId,
       date: targetDate,
       source: (source as WearableDeviceSource) || "apple_health",
-      sleepHours,
+      sleepHours: parsedSleepHours,
       deepSleepMinutes,
       remSleepMinutes,
       hrvMs,
@@ -107,7 +114,7 @@ export async function POST(req: NextRequest) {
       traineeId,
       readinessScore: readiness.score,
       readinessState: readiness.state,
-      sleepHours,
+      sleepHours: parsedSleepHours,
       hrvMs,
       deepSleepMinutes,
       source: snapshot.source,

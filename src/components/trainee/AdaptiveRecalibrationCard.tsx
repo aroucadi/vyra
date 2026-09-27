@@ -2,13 +2,15 @@
 
 import React from "react";
 import { AutoregulationPlan } from "@/lib/autoregulation";
-import { ShieldAlert, Check, RefreshCw, Zap, ArrowRight } from "lucide-react";
+import { WearableBiometricSnapshot } from "@/lib/types";
+import { ShieldAlert, Check, RefreshCw, Zap, ArrowRight, Watch } from "lucide-react";
 
 interface AdaptiveRecalibrationCardProps {
   plan: AutoregulationPlan;
   onAccept: () => void;
   onDismiss: () => void;
   isApplied: boolean;
+  wearableSnapshot?: WearableBiometricSnapshot | null;
 }
 
 export function AdaptiveRecalibrationCard({
@@ -16,17 +18,26 @@ export function AdaptiveRecalibrationCard({
   onAccept,
   onDismiss,
   isApplied,
+  wearableSnapshot,
 }: AdaptiveRecalibrationCardProps) {
   // If optimal recovery and no fatigue, show quiet progressive overload badge
   if (!plan.cnsFatigueDetected) {
     return (
       <div className="bg-slate-900/70 border border-emerald-500/30 rounded-2xl p-4 transition-all">
         {/* Element 1: Eyebrow */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-            Optimal CNS Readiness · {plan.sleepHours}h Sleep
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+              Optimal CNS Readiness · {plan.sleepHours}h Sleep
+            </span>
+          </div>
+          {wearableSnapshot && (
+            <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-emerald-300 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">
+              <Watch className="w-3 h-3 text-emerald-400" />
+              <span>Watch · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
+            </span>
+          )}
         </div>
 
         {/* Element 2: Value / Content */}
@@ -59,9 +70,17 @@ export function AdaptiveRecalibrationCard({
             {plan.headline}
           </span>
         </div>
-        <span className="text-xs font-mono tabular-nums text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
-          {plan.sleepHours}h sleep
-        </span>
+        <div className="flex items-center gap-1.5">
+          {wearableSnapshot && (
+            <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-amber-300 bg-amber-950/60 border border-amber-800/40 px-2 py-0.5 rounded-full">
+              <Watch className="w-3 h-3 text-amber-400" />
+              <span>Watch · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
+            </span>
+          )}
+          <span className="text-xs font-mono tabular-nums text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+            {plan.sleepHours}h sleep
+          </span>
+        </div>
       </div>
 
       {/* 2. Element 2: Primary Recalibration Hero Value */}

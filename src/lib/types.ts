@@ -287,3 +287,34 @@ export interface TraineeRosterItem {
   }[];
   totalVolumeKg: number;
 }
+
+export type WearableDeviceSource = "apple_health" | "whoop" | "oura" | "garmin" | "manual";
+
+export interface WearableBiometricSnapshot {
+  id: string;
+  traineeId: string;
+  date: string; // YYYY-MM-DD
+  source: WearableDeviceSource;
+  sleepHours: number;
+  deepSleepMinutes?: number;
+  remSleepMinutes?: number;
+  hrvMs?: number; // Heart Rate Variability (rMSSD / SDNN)
+  restingHeartRateBpm?: number;
+  activeEnergyBurnedKcal?: number;
+  readinessScore?: number; // 0 - 100
+  cnsFatigueDetected?: boolean;
+  receivedAt: string; // ISO timestamp
+}
+
+export interface InboundBiometricsPayload {
+  traineeId: string;
+  secretKey?: string;
+  date?: string; // YYYY-MM-DD (defaults to today)
+  source?: WearableDeviceSource;
+  sleepHours: number;
+  deepSleepMinutes?: number;
+  remSleepMinutes?: number;
+  hrvMs?: number;
+  restingHeartRateBpm?: number;
+  activeEnergyBurnedKcal?: number;
+}

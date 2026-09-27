@@ -128,8 +128,15 @@ function SessionFlow() {
     return () => clearInterval(timer);
   }, [restTimerSec]);
 
+  // Check latest biometric snapshot from Apple Watch / Wearable
+  const latestSnapshot = React.useMemo(() => {
+    return appStore.getLatestWearableBiometrics(currentUser.id);
+  }, [currentUser.id]);
+
   // Autoregulation & Readiness State
-  const [sleepHours, setSleepHours] = useState<number>(5.5);
+  const [sleepHours, setSleepHours] = useState<number>(() => {
+    return latestSnapshot ? latestSnapshot.sleepHours : 5.5;
+  });
   const [isRecalibrationApplied, setIsRecalibrationApplied] = useState<boolean>(false);
   const [isRecalibrationDismissed, setIsRecalibrationDismissed] = useState<boolean>(false);
 
@@ -147,8 +154,13 @@ function SessionFlow() {
   }, [exercises]);
 
   const autoregulationPlan = React.useMemo(() => {
-    return generateAutoregulationPlan(minimalTargets, { sleepHours });
-  }, [minimalTargets, sleepHours]);
+    return generateAutoregulationPlan(minimalTargets, {
+      sleepHours,
+      hrvMs: latestSnapshot?.hrvMs,
+      deepSleepMinutes: latestSnapshot?.deepSleepMinutes,
+      restingHeartRateBpm: latestSnapshot?.restingHeartRateBpm,
+    });
+  }, [minimalTargets, sleepHours, latestSnapshot]);
 
   const handleAcceptRecalibration = () => {
     setExercises((prev) =>
@@ -352,6 +364,7 @@ function SessionFlow() {
               onAccept={handleAcceptRecalibration}
               onDismiss={handleDismissRecalibration}
               isApplied={isRecalibrationApplied}
+              wearableSnapshot={latestSnapshot}
             />
           )}
         </section>

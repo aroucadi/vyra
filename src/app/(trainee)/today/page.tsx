@@ -60,7 +60,15 @@ export default function TodayPage() {
           href="/session?mode=preview"
           className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full shadow-sm transition cursor-pointer"
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span
+            className={`w-2 h-2 rounded-full animate-pulse ${
+              readinessStatus.includes("Fatigued")
+                ? "bg-amber-400"
+                : readinessStatus.includes("Suboptimal")
+                ? "bg-amber-300"
+                : "bg-emerald-400"
+            }`}
+          />
           <span className="text-xs font-semibold text-slate-200">{readinessStatus}</span>
         </Link>
       </header>

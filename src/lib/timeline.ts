@@ -156,6 +156,19 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
     moments.find((m) => m.status === "upcoming") ||
     moments[moments.length - 1];
 
+  // Check latest biometric snapshot for today
+  const latestBiometrics = appStore.getLatestWearableBiometrics(userId);
+  let readinessStatus = "Ready";
+  if (latestBiometrics) {
+    if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 60) {
+      readinessStatus = "Fatigued (CNS)";
+    } else if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 80) {
+      readinessStatus = "Suboptimal";
+    } else {
+      readinessStatus = "Optimal";
+    }
+  }
+
   // Live dynamic cross-pillar insight connecting signals
   let insight: PresentationInsight;
   if (sessionCompleted && sessionVolume > 0) {
@@ -172,6 +185,16 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
       sentence: "Scheduled recovery day. Parasympathetic tone prioritized — focus on 3L hydration and 8+ hours restorative sleep.",
       whyPrompt: "Why is parasympathetic recovery emphasized today?",
     };
+  } else if (latestBiometrics) {
+    const srcName = latestBiometrics.source === "apple_health" ? "Apple Watch" : "Wearable";
+    const hrvPart = latestBiometrics.hrvMs ? ` with ${latestBiometrics.hrvMs}ms HRV` : "";
+    const modPart = latestBiometrics.cnsFatigueDetected ? "axial loads auto-calibrated" : "full overload target prescribed";
+    insight = {
+      id: "insight_wearable_sync",
+      sources: ["sleep", "train"],
+      sentence: `Slept ${latestBiometrics.sleepHours}h${hrvPart} via ${srcName}. Autonomic recovery is ${readinessStatus.toLowerCase()} — ${modPart}.`,
+      whyPrompt: `How does my ${latestBiometrics.sleepHours}h sleep and HRV from ${srcName} determine my workout load?`,
+    };
   } else {
     insight = {
       id: "insight_sleep_train_1",
@@ -185,6 +208,6 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
     moments,
     heroMoment,
     insight,
-    readinessStatus: "Ready",
+    readinessStatus,
   };
 }

@@ -11,6 +11,10 @@ export interface TraineeReadinessInput {
   sleepHours: number;
   sorenessRating?: number; // 1-5 (1=fresh, 5=severe)
   energyRating?: number;   // 1-5 (1=exhausted, 5=peaked)
+  hrvMs?: number;          // Overnight HRV (rMSSD in milliseconds)
+  hrvBaselineMs?: number;  // Rolling 14-day baseline (default 55ms)
+  deepSleepMinutes?: number; // NREM 3 deep sleep duration
+  restingHeartRateBpm?: number; // Overnight resting HR
 }
 
 export interface ExerciseAutoregulation {
@@ -80,13 +84,22 @@ export function isAxialLoadedExercise(exerciseName: string): boolean {
 }
 
 /**
- * Computes a normalized readiness score (0-100) from sleep and subjective feedback.
+ * Computes a normalized readiness score (0-100) from sleep, subjective feedback,
+ * and biometric wearable telemetry (overnight HRV, deep sleep, resting HR).
  */
 export function calculateReadinessScore(input: TraineeReadinessInput): {
   score: number;
   state: ReadinessState;
 } {
-  const { sleepHours, sorenessRating = 2, energyRating = 3 } = input;
+  const {
+    sleepHours,
+    sorenessRating = 2,
+    energyRating = 3,
+    hrvMs,
+    hrvBaselineMs = 55,
+    deepSleepMinutes,
+    restingHeartRateBpm,
+  } = input;
 
   // Base score from sleep duration
   let baseScore = 50;
@@ -108,7 +121,43 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
   // Modulate with energy (higher energy increases score)
   const energyBonus = (energyRating - 3) * 5;
 
-  const finalScore = Math.max(15, Math.min(100, Math.round(baseScore - sorenessPenalty + energyBonus)));
+  // Modulate with HRV (sympathetic vs parasympathetic tone)
+  let hrvDelta = 0;
+  if (typeof hrvMs === "number") {
+    const ratio = hrvMs / hrvBaselineMs;
+    if (ratio <= 0.8 || hrvMs < 40) {
+      hrvDelta = -15; // Severe sympathetic suppression
+    } else if (ratio <= 0.9) {
+      hrvDelta = -8; // Mild HRV suppression
+    } else if (ratio >= 1.15) {
+      hrvDelta = 5; // Parasympathetic supercompensation
+    }
+  }
+
+  // Modulate with Deep Sleep (NREM 3 restorative sleep)
+  let deepSleepDelta = 0;
+  if (typeof deepSleepMinutes === "number") {
+    if (deepSleepMinutes < 35) {
+      deepSleepDelta = -10;
+    } else if (deepSleepMinutes < 50) {
+      deepSleepDelta = -5;
+    } else if (deepSleepMinutes >= 75) {
+      deepSleepDelta = 5;
+    }
+  }
+
+  // Modulate with Resting Heart Rate
+  let rhrDelta = 0;
+  if (typeof restingHeartRateBpm === "number") {
+    if (restingHeartRateBpm >= 68) {
+      rhrDelta = -5;
+    }
+  }
+
+  const finalScore = Math.max(
+    15,
+    Math.min(100, Math.round(baseScore - sorenessPenalty + energyBonus + hrvDelta + deepSleepDelta + rhrDelta))
+  );
 
   let state: ReadinessState = "optimal";
   if (finalScore < 60) {
@@ -153,15 +202,32 @@ export function generateAutoregulationPlan(
   const sleep = readinessInput.sleepHours;
   const cnsFatigueDetected = state !== "optimal";
 
+  const biometricNotes: string[] = [];
+  if (typeof readinessInput.hrvMs === "number") {
+    const baseline = readinessInput.hrvBaselineMs || 55;
+    const diffPct = Math.round(((readinessInput.hrvMs - baseline) / baseline) * 100);
+    if (diffPct <= -15) {
+      biometricNotes.push(`HRV suppressed ${Math.abs(diffPct)}% (${readinessInput.hrvMs}ms)`);
+    } else if (diffPct >= 15) {
+      biometricNotes.push(`HRV elevated +${diffPct}% (${readinessInput.hrvMs}ms)`);
+    } else {
+      biometricNotes.push(`HRV baseline (${readinessInput.hrvMs}ms)`);
+    }
+  }
+  if (typeof readinessInput.deepSleepMinutes === "number") {
+    biometricNotes.push(`Deep Sleep ${readinessInput.deepSleepMinutes}m`);
+  }
+  const bioSummary = biometricNotes.length > 0 ? ` [${biometricNotes.join(" · ")}]` : "";
+
   let headline = "Optimal Readiness: Progressive Overload Target";
-  let clinicalRationale = "CNS recovery peaked. Execute planned loading and target top-end rep targets.";
+  let clinicalRationale = `CNS recovery peaked${bioSummary}. Execute planned loading and target top-end rep targets.`;
 
   if (state === "depleted") {
     headline = "CNS Fatigue Detected · Spinal Load Mitigation";
-    clinicalRationale = `Sleep duration (${sleep}h) indicates compromised neuromuscular recovery. Axial loads down-regulated by 8–10% and RIR buffer increased to prevent form degradation.`;
+    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} indicates compromised neuromuscular recovery. Axial loads down-regulated by 8–10% and RIR buffer increased to prevent form degradation.`;
   } else if (state === "suboptimal") {
     headline = "Moderate Recovery · Conservative Load Modulation";
-    clinicalRationale = `Sleep duration (${sleep}h) is slightly below baseline. Primary compound intensity modulated by ~5% with an added +1 RIR buffer.`;
+    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} is slightly below baseline. Primary compound intensity modulated by ~5% with an added +1 RIR buffer.`;
   }
 
   const prescriptionDeltas: ExerciseAutoregulation[] = exercises.map((ex) => {

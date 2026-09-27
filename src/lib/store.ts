@@ -12,6 +12,7 @@ import {
   HydrationGoal,
   HydrationLog,
   EquipmentType,
+  WearableBiometricSnapshot,
 } from "./types";
 import { seedExercises } from "@/db/seed/exercises";
 import {
@@ -36,6 +37,7 @@ export interface AppDatabase {
   supplementLogs: SupplementLog[];
   hydrationGoals: HydrationGoal[];
   hydrationLogs: HydrationLog[];
+  wearableBiometrics: WearableBiometricSnapshot[];
 }
 
 const coachUser: User = {
@@ -885,7 +887,31 @@ class Store {
       supplementLogs: seedSupplementLogs,
       hydrationGoals: [masterHydrationGoal, ...seedHydrationGoals],
       hydrationLogs: seedHydrationLogs,
+      wearableBiometrics: [],
     };
+  }
+
+  saveWearableBiometrics(
+    snapshot: Omit<WearableBiometricSnapshot, "id" | "receivedAt">
+  ): WearableBiometricSnapshot {
+    const fullSnapshot: WearableBiometricSnapshot = {
+      ...snapshot,
+      id: `wearable_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      receivedAt: new Date().toISOString(),
+    };
+    this.db.wearableBiometrics = this.db.wearableBiometrics || [];
+    this.db.wearableBiometrics.unshift(fullSnapshot);
+    return fullSnapshot;
+  }
+
+  getLatestWearableBiometrics(traineeId: string): WearableBiometricSnapshot | undefined {
+    this.db.wearableBiometrics = this.db.wearableBiometrics || [];
+    return this.db.wearableBiometrics.find((b) => b.traineeId === traineeId);
+  }
+
+  getWearableBiometricsHistory(traineeId: string): WearableBiometricSnapshot[] {
+    this.db.wearableBiometrics = this.db.wearableBiometrics || [];
+    return this.db.wearableBiometrics.filter((b) => b.traineeId === traineeId);
   }
 
   getCurrentUser(): User {

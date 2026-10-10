@@ -1,20 +1,18 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { appStore } from "@/lib/store";
-import { MessageSquare, Send, Sparkles, Dumbbell, Clock, RefreshCw, Check } from "lucide-react";
+import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine";
+import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
+import { MessageSquare, Send, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 
 interface Message {
   id: string;
   sender: "user" | "coach";
   text: string;
-  action?: {
-    label: string;
-    applied?: boolean;
-    onApply?: () => void;
-  };
+  card?: CoachSmartActionCardData;
 }
 
 function CoachChat() {
@@ -47,49 +45,13 @@ function CoachChat() {
       text: query,
     };
 
-    let coachReply: Message;
-
-    if (query.toLowerCase().includes("sleep") || query.toLowerCase().includes("recovery")) {
-      coachReply = {
-        id: `msg_coach_${Date.now()}`,
-        sender: "coach",
-        text: "You logged 7h 20m with 82ms HRV. Your autonomic recovery is elevated, so full training volume is supported today.",
-      };
-    } else if (query.toLowerCase().includes("short on time") || query.toLowerCase().includes("time")) {
-      coachReply = {
-        id: `msg_coach_${Date.now()}`,
-        sender: "coach",
-        text: "Condensed to 30 min: 2 top sets for compound lifts, superset rear delts, and drop isolations.",
-        action: {
-          label: "Apply 30-min condensed session",
-          applied: false,
-          onApply: () => alert("30-minute condensed session applied to today's workout."),
-        },
-      };
-    } else if (query.toLowerCase().includes("swap")) {
-      coachReply = {
-        id: `msg_coach_${Date.now()}`,
-        sender: "coach",
-        text: "Incline Machine Press can swap to 30° Incline Dumbbell Press or High-to-Low Cable Flye with matching tension profiles.",
-        action: {
-          label: "Swap to Incline Dumbbell Press",
-          applied: false,
-          onApply: () => alert("Swapped to Incline Dumbbell Press for today."),
-        },
-      };
-    } else if (query.toLowerCase().includes("weight") || query.toLowerCase().includes("why")) {
-      coachReply = {
-        id: `msg_coach_${Date.now()}`,
-        sender: "coach",
-        text: "75 kg is based on your 10-rep set at 2 RIR last Thursday. Progressive overload calls for matching reps before adding 2.5 kg.",
-      };
-    } else {
-      coachReply = {
-        id: `msg_coach_${Date.now()}`,
-        sender: "coach",
-        text: "Understood. Maintaining your 16-week periodization trajectory. Focus on strict scapular retraction today.",
-      };
-    }
+    const coachResolved = resolveCoachQuery(currentUser.id, query);
+    const coachReply: Message = {
+      id: coachResolved.id,
+      sender: "coach",
+      text: coachResolved.text,
+      card: coachResolved.card,
+    };
 
     setMessages((prev) => [...prev, userMsg, coachReply]);
     setInput("");
@@ -140,21 +102,13 @@ function CoachChat() {
               )}
             >
               {m.text}
-
-              {m.action && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    m.action?.onApply?.();
-                    m.action!.applied = true;
-                  }}
-                  className="mt-2.5 w-full py-2 px-3 bg-slate-950 hover:bg-slate-800 border border-slate-700 rounded-xl text-[11px] font-semibold text-emerald-400 flex items-center justify-center gap-1.5 transition"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>{m.action.label}</span>
-                </button>
-              )}
             </div>
+
+            {m.card && (
+              <div className="w-full max-w-[95%]">
+                <CoachSmartActionCard card={m.card} traineeId={currentUser.id} />
+              </div>
+            )}
           </div>
         ))}
       </div>

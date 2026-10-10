@@ -13,6 +13,8 @@ export type VyraTelemetryEvent =
   | "workout_set_logged"
   | "workout_completed"
   | "supplement_checklist_toggled"
+  | "coach_smart_action_applied"
+  | "coach_smart_action_dismissed"
   | "paywall_viewed"
   | "subscription_started";
 

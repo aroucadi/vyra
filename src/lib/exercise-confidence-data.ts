@@ -201,6 +201,70 @@ export const CONFIDENCE_GUIDES_MAP: Record<string, ExerciseConfidenceGuide> = {
     }
   },
 
+  "chest-supported incline db y-raise_dumbbell": {
+    exerciseName: "Chest-Supported Incline DB Y-Raise",
+    equipmentType: "dumbbell",
+    hardware: {
+      type: "free_weight",
+      typeLabel: "Adjustable Bench + Dumbbell Station",
+      commonAliases: ["Incline Y-Raise", "Lower Trap Y-Raise", "Prone Incline Y-Raise"],
+      setupSteps: [
+        "Set adjustable bench to 30° to 45° incline notch.",
+        "Pick light dumbbells (2–4 kg) or micro-plates; prone torso flush against bench.",
+        "Hang arms down with thumbs pointing up and outward at 10 and 2 o'clock."
+      ],
+    },
+    mechanics: {
+      gripType: "neutral",
+      gripWidth: "wide",
+      wristCue: "Thumbs point toward ceiling; wrists rigid; do not let weights rotate downward.",
+      threeCues: [
+        "Form a wide 'Y' shape at top.",
+        "Lead with thumbs, not pinkies.",
+        "Hold 1-second squeeze at top."
+      ],
+      mentalCue: "Slide your shoulder blades down into your back pockets as your arms elevate."
+    },
+    proprioception: {
+      primaryMuscle: "Lower Trapezius & Posterior Rotators",
+      targetFeel: "By rep 10–12: deep localized burn in the mid-to-lower scapular depression zone.",
+      normalSensations: ["Posterior deltoids and infraspinatus assisting; bench fully unloads lower back."],
+      redFlagStop: "Neck shrugging up or arching lower spine off bench: reduce weight to micro-plates."
+    }
+  },
+
+  "inverted trx / ring face pull_bodyweight": {
+    exerciseName: "Inverted TRX / Ring Face Pull",
+    equipmentType: "bodyweight",
+    hardware: {
+      type: "bodyweight_station",
+      typeLabel: "Suspension Trainer / Gymnastic Rings",
+      commonAliases: ["TRX Face Pull", "Ring Face Pull", "Bodyweight Posture Pull"],
+      setupSteps: [
+        "Secure suspension straps/rings overhead to a rigid pull-up bar or ceiling anchor.",
+        "Grip handles with neutral palms; walk feet forward to a 45° backward lean.",
+        "Brace glutes and abs in a rigid straight plank line from heels to ears."
+      ],
+    },
+    mechanics: {
+      gripType: "neutral",
+      gripWidth: "shoulder_width",
+      wristCue: "Rotate thumbs backward past ears at the end of the pull; wrists stay straight.",
+      threeCues: [
+        "Maintain rigid plank line.",
+        "Pull hands to temple height.",
+        "Rotate knuckles back and pause 1s."
+      ],
+      mentalCue: "Show your biceps to the wall behind you while maintaining a rock-hard core."
+    },
+    proprioception: {
+      primaryMuscle: "Rear Deltoids, Lower Traps & Rotator Cuff",
+      targetFeel: "By rep 12: fiery burn across the back of shoulders and between shoulder blades.",
+      normalSensations: ["Core and glute isometric engagement supporting the suspended plank."],
+      redFlagStop: "Sagging hips or jerking with hips: step feet backward to reduce lean angle."
+    }
+  },
+
   // --- TRICEP PUSHDOWN & EXTENSION ---
   "overhead cable rope tricep extension_cable": {
     exerciseName: "Overhead Cable Rope Tricep Extension",

@@ -77,15 +77,15 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     const wed = w1.days[2];
     const thu = w1.days[3];
 
-    assert.strictEqual(mon.blocks[0].exercises.length, 4, 'Monday must have 4 slots');
+    assert.strictEqual(mon.blocks[0].exercises.length, 3, 'Monday must have 3 slots');
     assert.strictEqual(tue.blocks[0].exercises.length, 3, 'Tuesday must have 3 slots');
-    assert.strictEqual(wed.blocks[0].exercises.length, 5, 'Wednesday must have 5 slots');
-    assert.strictEqual(thu.blocks[0].exercises.length, 5, 'Thursday must have 5 slots');
+    assert.strictEqual(wed.blocks[0].exercises.length, 3, 'Wednesday must have 3 slots');
+    assert.strictEqual(thu.blocks[0].exercises.length, 3, 'Thursday must have 3 slots');
 
     // Thursday Slot 3 Drop set
     const thuSlot3 = thu.blocks[0].exercises[2];
     assert.strictEqual(thuSlot3.hasDropSet, true);
-    assert.ok(thuSlot3.dropSetGuidance && thuSlot3.dropSetGuidance.includes('30%'));
+    assert.ok(thuSlot3.dropSetGuidance && thuSlot3.dropSetGuidance.includes('Burnout'));
   });
 
   it('verifies seed metrics track Alaa baseline starting from 49.0 kg', () => {

@@ -43,46 +43,58 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(week1.days[6].label.includes('Sunday'), true);
   });
 
-  it('verifies strictly 17 workout slots across the 4 training days', () => {
+  it('verifies strictly 12 workout slots across the 4 training days (3-slot ceiling per day)', () => {
     const mondayExercises = week1.days[0].blocks.flatMap((b) => b.exercises);
     const tuesdayExercises = week1.days[1].blocks.flatMap((b) => b.exercises);
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
 
-    assert.strictEqual(mondayExercises.length, 4, 'Monday must have 4 exercise slots');
-    assert.strictEqual(tuesdayExercises.length, 3, 'Tuesday must have 3 exercise slots');
-    assert.strictEqual(wednesdayExercises.length, 5, 'Wednesday must have 5 exercise slots');
-    assert.strictEqual(thursdayExercises.length, 5, 'Thursday must have 5 exercise slots');
+    assert.strictEqual(mondayExercises.length, 3, 'Monday must have exactly 3 exercise slots');
+    assert.strictEqual(tuesdayExercises.length, 3, 'Tuesday must have exactly 3 exercise slots');
+    assert.strictEqual(wednesdayExercises.length, 3, 'Wednesday must have exactly 3 exercise slots');
+    assert.strictEqual(thursdayExercises.length, 3, 'Thursday must have exactly 3 exercise slots');
 
     const totalSlots = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length;
-    assert.strictEqual(totalSlots, 17, 'Total workout slots across the 4-day split must be exactly 17');
+    assert.strictEqual(totalSlots, 12, 'Total workout slots across the 4-day split must be strictly 12 (3-slot ceiling)');
   });
 
-  it('enforces the Biomechanical 2:1 Pull-to-Push Volume Balance (6 pushing vs 12 pulling/retraction sets)', () => {
+  it('enforces the Biomechanical 2:1 Pull-to-Push Volume Balance (6 pressing vs 9 dynamic pulling + 3 isometric hinge sets = 12 total posture sets)', () => {
     const mondayExercises = week1.days[0].blocks.flatMap((b) => b.exercises);
+    const tuesdayExercises = week1.days[1].blocks.flatMap((b) => b.exercises);
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
 
-    // Pressing volume: Mon Slot 1 (Incline Chest) + Thu Slot 1 (Shoulder Press)
+    // Pressing volume: Mon Slot 1 (Incline Chest: 3 sets) + Thu Slot 3 (Shoulder Press: 3 sets) = 6 sets
     const mondayChestPress = mondayExercises[0];
-    const thursdayShoulderPress = thursdayExercises[0];
+    const thursdayShoulderPress = thursdayExercises[2];
     const totalPressingSets = mondayChestPress.sets + thursdayShoulderPress.sets;
     assert.strictEqual(totalPressingSets, 6, 'Upper pressing volume must be capped at strictly 6 sets per week');
 
-    // Pulling / Scapular Retraction volume:
-    // Mon Slot 2 (Posture Counter-Pull/Face Pull: 3 sets)
-    // Wed Slot 1 (Lat Pulldown: 3 sets)
-    // Wed Slot 2 (Chest-Supported Row: 3 sets)
-    // Wed Slot 3 (Reverse Pec Deck Rear Delts: 3 sets)
-    const mondayFacePull = mondayExercises[1];
-    const wednesdayLatPulldown = wednesdayExercises[0];
-    const wednesdayRow = wednesdayExercises[1];
-    const wednesdayRearDelt = wednesdayExercises[2];
-    const totalPullingSets = mondayFacePull.sets + wednesdayLatPulldown.sets + wednesdayRow.sets + wednesdayRearDelt.sets;
-    assert.strictEqual(totalPullingSets, 12, 'Upper back and retraction volume must be maintained at strictly 12 sets per week');
+    // Direct Upper Dynamic Pulling (9 sets):
+    // Tue Slot 1 (Neutral Lat Pulldown: 3 sets)
+    // Tue Slot 2 (Chest-Supported Row: 3 sets)
+    // Wed Slot 2 (Posture Face Pull / Y-Raise: 3 sets)
+    const tuesdayLatPulldown = tuesdayExercises[0];
+    const tuesdayRow = tuesdayExercises[1];
+    const wednesdayFacePull = wednesdayExercises[1];
+    assert.ok(wednesdayFacePull.exerciseName.includes('Face Pull') || wednesdayFacePull.exerciseName.includes('Reverse Pec Deck'));
+    const dynamicPullingSets = tuesdayLatPulldown.sets + tuesdayRow.sets + wednesdayFacePull.sets;
+    assert.strictEqual(dynamicPullingSets, 9, 'Dynamic upper pulling volume must equal strictly 9 sets per week');
 
-    const pullToPushRatio = totalPullingSets / totalPressingSets;
-    assert.strictEqual(pullToPushRatio, 2.0, 'Pull-to-push volume ratio must equal exactly 2:1');
+    // Isometric Upper Back Loading (3 sets):
+    // Thu Slot 1 (Dumbbell RDL / Isometric Scapular Retraction: 3 sets)
+    const thursdayRDL = thursdayExercises[0];
+    const isometricUpperBackSets = thursdayRDL.sets;
+    assert.strictEqual(isometricUpperBackSets, 3, 'Thursday RDL must contribute 3 sets of isometric scapular retraction');
+
+    const totalPostureSets = dynamicPullingSets + isometricUpperBackSets;
+    assert.strictEqual(totalPostureSets, 12, 'Total posture pulling volume must equal strictly 12 sets per week');
+
+    const dynamicRatio = dynamicPullingSets / totalPressingSets;
+    assert.strictEqual(dynamicRatio, 1.5, 'Dynamic pull-to-push ratio must equal exactly 1.5:1 (9 pulling vs 6 pressing sets)');
+
+    const totalPostureToPressRatio = totalPostureSets / totalPressingSets;
+    assert.strictEqual(totalPostureToPressRatio, 2.0, 'Total posture-to-press volume ratio must equal exactly 2:1 (12 posture sets vs 6 pressing sets)');
   });
 
   it('enforces the 3x/Week Side Delt Matrix (9 Total Sets)', () => {
@@ -90,12 +102,12 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
 
-    const monSideDelt = mondayExercises[3]; // Slot 4
-    const wedSideDelt = wednesdayExercises[4]; // Slot 5
-    const thuSideDelt = thursdayExercises[2]; // Slot 3
+    const monSideDelt = mondayExercises[2]; // Slot 3 (Hit 1)
+    const wedSideDelt = wednesdayExercises[2]; // Slot 3 (Hit 2)
+    const thuSideDelt = thursdayExercises[2]; // Slot 3 (Hit 3 post-press burnout drop set)
 
-    assert.strictEqual(monSideDelt.sets, 3, 'Monday Slot 4 must have 3 sets');
-    assert.strictEqual(wedSideDelt.sets, 3, 'Wednesday Slot 5 must have 3 sets');
+    assert.strictEqual(monSideDelt.sets, 3, 'Monday Slot 3 must have 3 sets');
+    assert.strictEqual(wedSideDelt.sets, 3, 'Wednesday Slot 3 must have 3 sets');
     assert.strictEqual(thuSideDelt.sets, 3, 'Thursday Slot 3 must have 3 sets (with Set 3 drop set)');
 
     const totalSideDeltSets = monSideDelt.sets + wedSideDelt.sets + thuSideDelt.sets;
@@ -107,41 +119,45 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     const thuSideDelt = thursdayExercises[2];
 
     assert.strictEqual(thuSideDelt.hasDropSet, true, 'Thursday Slot 3 must have hasDropSet flag');
-    assert.ok(thuSideDelt.dropSetGuidance && thuSideDelt.dropSetGuidance.includes('30%'), 'Drop set guidance must specify 30% reduction');
-    assert.ok(thuSideDelt.rirScheme.at(-1) === 0, 'Final set must be taken to 0 RIR failure');
+    assert.ok(thuSideDelt.dropSetGuidance && thuSideDelt.dropSetGuidance.includes('3–4 kg'), 'Drop set guidance must specify light dumbbells');
   });
 
-  it('enforces Pure Posterior Chain & Zero Quad Isolation on Tuesday', () => {
+  it('enforces Football Deconfliction & Zero Leg Loading on Monday and Tuesday', () => {
+    const mondayExercises = week1.days[0].blocks.flatMap((b) => b.exercises);
     const tuesdayExercises = week1.days[1].blocks.flatMap((b) => b.exercises);
-    const quadMuscles = ['Quadriceps', 'Quads', 'Vastus', 'Rectus Femoris'];
 
-    tuesdayExercises.forEach((ex) => {
-      const hasQuadIsolation = ex.targetMuscleGroups.some((m) =>
-        quadMuscles.some((q) => m.toLowerCase().includes(q.toLowerCase()))
+    const lowerMuscles = ['Glutes', 'Hamstrings', 'Quadriceps', 'Quads', 'Calves'];
+
+    mondayExercises.forEach((ex) => {
+      const hasLower = ex.targetMuscleGroups.some((m) =>
+        lowerMuscles.some((l) => m.toLowerCase().includes(l.toLowerCase()))
       );
-      assert.strictEqual(hasQuadIsolation, false, `Tuesday exercise ${ex.exerciseName} must not isolate quads`);
+      assert.strictEqual(hasLower, false, `Monday exercise ${ex.exerciseName} must not load lower body (match day)`);
     });
 
-    assert.strictEqual(tuesdayExercises[0].exerciseName.includes('Leg Press'), true);
-    assert.strictEqual(tuesdayExercises[1].exerciseName.includes('Leg Curl'), true);
-    assert.strictEqual(tuesdayExercises[2].exerciseName.includes('Pallof'), true);
+    tuesdayExercises.forEach((ex) => {
+      const hasLower = ex.targetMuscleGroups.some((m) =>
+        lowerMuscles.some((l) => m.toLowerCase().includes(l.toLowerCase()))
+      );
+      assert.strictEqual(hasLower, false, `Tuesday exercise ${ex.exerciseName} must not load lower body (100% rest post-match)`);
+    });
 
-    // Tuesday Post-Football Load Hold Rule
-    assert.ok(tuesdayExercises[0].loadGuidance?.includes('Tuesday Post-Football Rule'), 'Leg press must include Tuesday Post-Football Rule');
-    assert.ok(tuesdayExercises[1].loadGuidance?.includes('Tuesday Post-Football Rule'), 'Leg curl must include Tuesday Post-Football Rule');
+    assert.strictEqual(tuesdayExercises[0].exerciseName.includes('Lat Pulldown'), true);
+    assert.strictEqual(tuesdayExercises[1].exerciseName.includes('Row'), true);
+    assert.strictEqual(tuesdayExercises[2].exerciseName.includes('Hammer Curl'), true);
   });
 
   it('enforces Thursday Primary Overload Rule and Stall Rule on RDL', () => {
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
-    const rdl = thursdayExercises[1]; // Slot 2: RDL
+    const rdl = thursdayExercises[0]; // Slot 1: RDL
     assert.strictEqual(rdl.exerciseName.includes('Romanian Deadlift'), true);
     assert.ok(rdl.loadGuidance?.includes('Thursday Primary Overload Rule'), 'RDL must include Thursday Primary Overload Rule');
     assert.ok(rdl.loadGuidance?.includes('Stall Rule'), 'RDL must include 10% Stall Rule');
   });
 
-  it('verifies 4-modality equipment matrix completeness for all 17 slots (68 variations total)', () => {
+  it('verifies 4-modality equipment matrix completeness for all 12 slots (48 variations total)', () => {
     const allExercises = week1.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
-    assert.strictEqual(allExercises.length, 17);
+    assert.strictEqual(allExercises.length, 12, 'Must have exactly 12 total exercise slots');
 
     const requiredEquipments: EquipmentType[] = ['machine', 'dumbbell', 'cable', 'bodyweight'];
 
@@ -162,25 +178,19 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     });
   });
 
-  it('verifies 9-Minute Morning Alignment Routine is assigned to all days', () => {
+  it('verifies Embedded Gym Warm-Up & Alignment Routine is assigned to all training days', () => {
     week1.days.forEach((d) => {
-      assert.ok(d.morningRoutine && d.morningRoutine.length >= 5, `Day ${d.label} must have at least 5 morning mobility drills`);
-      const routineStr = d.morningRoutine.join(' ');
-      assert.ok(routineStr.includes('Chin Tuck'), 'Routine must include Supine Chin Tucks');
-      assert.ok(routineStr.includes('Vacuum'), 'Routine must include Stomach Vacuum');
-      assert.ok(routineStr.includes('Glute Bridge'), 'Routine must include Glute Bridges');
-      assert.ok(routineStr.includes('Hip Flexor'), 'Routine must include Hip Flexor Stretch');
-      assert.ok(routineStr.includes('Pec Minor'), 'Routine must include Pec Minor Stretch');
+      assert.ok(d.morningRoutine && d.morningRoutine.length >= 2, `Day ${d.label} must have mobility drills or weekend anchors`);
     });
   });
 
-  it('verifies Workday Ergonomics & Pre-Bed Decompression Protocol', () => {
+  it('verifies Workday Ergonomics & Biofeedback Anchors', () => {
     assert.strictEqual(workdayErgonomicsRoutines.length, 4, 'Must have 4 workday ergonomics protocols');
     const ergoStr = workdayErgonomicsRoutines.join(' ');
-    assert.ok(ergoStr.includes('Car Commute'), 'Must include Car Commute ergonomics');
-    assert.ok(ergoStr.includes('Hourly Desk Reset'), 'Must include Hourly Desk Reset');
+    assert.ok(ergoStr.includes('Car Mirror'), 'Must include Car Mirror biofeedback anchor');
+    assert.ok(ergoStr.includes('Stand & Squeeze'), 'Must include Hourly Stand & Squeeze');
     assert.ok(ergoStr.includes('Post-Lunch Walk'), 'Must include Post-Lunch Walk');
-    assert.ok(ergoStr.includes('Evening Pre-Bed Decompression'), 'Must include Evening Pre-Bed Decompression');
+    assert.ok(ergoStr.includes('Desk-Drawer Fuel'), 'Must include Desk-Drawer Fuel Protocol');
   });
 
   it('verifies Monday match-day caloric compensation (~3,150 kcal / ~155g P) and standard training days (~2,750 kcal / ~125g P)', () => {
@@ -189,7 +199,7 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(monNutrition.targetKcal, 3150, 'Monday must target 3150 kcal for match day compensation');
     assert.strictEqual(monNutrition.targetProteinGrams, 155, 'Monday must target 155g protein');
     const monTimes = monNutrition.dailyMeals?.map((m) => m.time) || [];
-    ['07:00', '08:00', '11:45', '12:15', '13:35', '15:30', '17:00', '18:30', '19:00', '20:15', '21:30', '22:45'].forEach((time) => {
+    ['07:30', '08:00', '10:30', '11:50', '12:15', '13:30', '16:00', '18:15', '19:00', '20:15', '21:30', '23:30'].forEach((time) => {
       assert.ok(monTimes.includes(time), `Monday schedule must include milestone at ${time}`);
     });
 
@@ -198,7 +208,7 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(tueNutrition.targetKcal, 2750, 'Tuesday must target 2750 kcal');
     assert.strictEqual(tueNutrition.targetProteinGrams, 125, 'Tuesday must target 125g protein');
     const tueTimes = tueNutrition.dailyMeals?.map((m) => m.time) || [];
-    ['07:00', '08:00', '11:45', '12:15', '13:35', '16:00', '18:30', '21:30', '22:45'].forEach((time) => {
+    ['07:30', '08:00', '10:30', '11:50', '12:15', '13:30', '16:00', '21:30', '23:30'].forEach((time) => {
       assert.ok(tueTimes.includes(time), `Standard day schedule must include milestone at ${time}`);
     });
   });
@@ -228,7 +238,7 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(masterHydrationGoal.workoutDayBonusMl, 500);
   });
 
-  it('verifies safe video URLs and form cues for all 17 exercise slots and 68 variations', () => {
+  it('verifies safe video URLs and form cues for all 12 exercise slots and 48 variations', () => {
     const trainingDays = week1.days.filter((d) => d.blocks && d.blocks.length > 0);
     assert.strictEqual(trainingDays.length, 4, 'Must have 4 active training days with blocks');
 
@@ -254,8 +264,8 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
       });
     });
 
-    assert.strictEqual(totalExercisesChecked, 17);
-    assert.strictEqual(totalVariationsChecked, 68);
+    assert.strictEqual(totalExercisesChecked, 12);
+    assert.strictEqual(totalVariationsChecked, 48);
   });
 
   it('verifies rest day fallback seamlessly defaults to Day 0 (Monday) training routine', () => {

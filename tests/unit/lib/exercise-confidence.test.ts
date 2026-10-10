@@ -122,7 +122,7 @@ describe("Exercise Confidence Card (ECC) & Stealth Gym Mode Engine", () => {
       });
     });
 
-    assert.equal(totalSlotsChecked, 17, "Master blueprint must have exactly 17 workout slots");
-    assert.equal(totalVariationsChecked, 68, "Master blueprint must have 68 variations (17 slots × 4 options)");
+    assert.equal(totalSlotsChecked, 12, "Master blueprint must have exactly 12 workout slots (3-slot ceiling)");
+    assert.equal(totalVariationsChecked, 48, "Master blueprint must have 48 variations (12 slots × 4 options)");
   });
 });

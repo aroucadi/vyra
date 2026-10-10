@@ -70,7 +70,7 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     }
   });
 
-  it("verifies 2:1 pull-to-push postural balance and zero quad isolation", () => {
+  it("verifies 2:1 pull-to-push postural balance and zero leg loading on Tuesday", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program);
 
@@ -80,35 +80,38 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     const wed = week1.days[2]; // Wednesday
     const thu = week1.days[3]; // Thursday
 
-    // Monday Pressing vs Pulling
-    const monPressingSets = mon.blocks[0].exercises[0].sets; // Incline Machine Press (3 sets)
-    const monPullingSets = mon.blocks[0].exercises[1].sets; // Face pulls (3 sets)
+    // Pressing volume: Mon Slot 1 (Incline Chest: 3 sets) + Thu Slot 3 (Shoulder Press: 3 sets)
+    const monPressingSets = mon.blocks[0].exercises[0].sets;
+    const thuPressingSets = thu.blocks[0].exercises[2].sets;
     assert.equal(monPressingSets, 3);
-    assert.equal(monPullingSets, 3);
-
-    // Wednesday Back & Rear Delt sets
-    const wedPullingSets = wed.blocks[0].exercises
-      .slice(0, 3)
-      .reduce((sum, ex) => sum + ex.sets, 0); // Lat pulldown (3) + Machine row (3) + Rear delt (3) = 9
-    assert.equal(wedPullingSets, 9);
-
-    // Thursday Pressing
-    const thuPressingSets = thu.blocks[0].exercises[0].sets; // Shoulder press (3)
     assert.equal(thuPressingSets, 3);
 
+    // Dynamic Upper Pulling & Posture sets (9 sets):
+    // Tue Slot 1 (Lat Pulldown: 3 sets) + Tue Slot 2 (Row: 3 sets) + Wed Slot 2 (Face Pull / Y-Raise: 3 sets) = 9 sets
+    const dynamicUpperPullingSets =
+      tue.blocks[0].exercises[0].sets +
+      tue.blocks[0].exercises[1].sets +
+      wed.blocks[0].exercises[1].sets;
+    assert.equal(dynamicUpperPullingSets, 9, "Dynamic upper pulling must be 9 sets (1.5:1 dynamic ratio)");
+
+    // Isometric Upper Back Retraction:
+    // Thu Slot 1 (RDL isometric retraction: 3 sets)
+    const thuIsometricScapularSets = thu.blocks[0].exercises[0].sets;
+    assert.equal(thuIsometricScapularSets, 3);
+
     const totalWeeklyPressing = monPressingSets + thuPressingSets; // 6 sets
-    const totalWeeklyPulling = monPullingSets + wedPullingSets; // 12 sets
+    const totalWeeklyPosturePulling = dynamicUpperPullingSets + thuIsometricScapularSets; // 12 sets
     assert.equal(
-      totalWeeklyPulling / totalWeeklyPressing,
+      totalWeeklyPosturePulling / totalWeeklyPressing,
       2,
       "Volume ratio must be exactly 2:1 pull-to-push for internal rotation posture reset"
     );
 
-    // Tuesday: Pelvic reset lower body
+    // Tuesday: Zero quad / leg loading post-football (Upper B only)
     tue.blocks[0].exercises.forEach((ex) => {
       assert.ok(
-        !ex.targetMuscleGroups.includes("Quadriceps"),
-        `Exercise ${ex.exerciseName} must not isolate quads (100% posterior chain)`
+        !ex.targetMuscleGroups.includes("Quadriceps") && !ex.targetMuscleGroups.includes("Hamstrings"),
+        `Exercise ${ex.exerciseName} must not load legs (100% upper body post-football)`
       );
     });
   });

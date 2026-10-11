@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vyra — Personal Life Optimization Super App",
-  description: "High-performance fitness, postural architecture, and life optimization super app for certified coaches and ambitious individuals.",
+  title: "VYRA",
+  description: "Postural hypertrophy and athletic progression protocol.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Vyra",
+    title: "VYRA",
   },
   formatDetection: {
     telephone: false,

@@ -87,7 +87,7 @@ export default function ProgramCalendarPage() {
           <Card.Glance
             eyebrow={isSelectedToday ? "Today's Prescription" : `Scheduled Day ${selectedDayOfWeek + 1}`}
             title={selectedDay.label}
-            status={`${exercises.length} exercises · ~55 min · Target RIR 2`}
+            status={`${exercises.length} exercises · ~34 min · Target RIR 2`}
           />
 
           {/* Compact Exercise List (name + target reps only) */}

@@ -90,13 +90,16 @@ export default function YouPage() {
             <span className="text-[11px] text-slate-400">Dark (Obsidian)</span>
           </div>
 
-          <div className="flex items-center justify-between p-4 text-slate-200">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-400">KG</span>
-              <span>Weight Units</span>
+          <Link
+            href="/install"
+            className="flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
+          >
+            <div className="flex items-center gap-3 text-slate-200">
+              <span className="text-xs font-bold text-emerald-400">PWA</span>
+              <span>Install to Home Screen</span>
             </div>
-            <span className="text-[11px] text-emerald-400 font-semibold">Kilograms (Metric)</span>
-          </div>
+            <ChevronRight className="w-4 h-4 text-slate-500" />
+          </Link>
         </div>
       </section>
 

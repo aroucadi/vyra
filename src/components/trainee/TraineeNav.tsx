@@ -20,7 +20,10 @@ export function TraineeNav() {
   ];
 
   return (
-    <nav aria-label="Primary Navigation" className="fixed bottom-0 left-0 right-0 z-40 bg-[#0B0F17]/95 backdrop-blur-md border-t border-slate-800/80 max-w-md mx-auto">
+    <nav
+      aria-label="Primary Navigation"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-[#0B0F17]/95 backdrop-blur-md border-t border-slate-800/80 max-w-[480px] mx-auto pb-[env(safe-area-inset-bottom,0px)]"
+    >
       <div className="flex items-center justify-around h-16 px-4">
         {navItems.map((item) => {
           const Icon = item.icon;

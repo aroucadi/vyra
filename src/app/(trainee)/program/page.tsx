@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { Plan } from "@/components/primitives/Plan";
 import { Card } from "@/components/primitives/Card";
 import { Dumbbell, Clock, ArrowRight, ShieldCheck, Moon, Flame } from "lucide-react";
 import { clsx } from "clsx";
+import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 
 export default function ProgramCalendarPage() {
   const currentUser = appStore.getCurrentUser();
@@ -118,6 +119,9 @@ export default function ProgramCalendarPage() {
           </Card.Action>
         </Card>
       )}
+
+      {/* Weekly Volume & Postural Allocation Dashboard */}
+      <WeeklyVolumeDashboard />
 
     </div>
   );

@@ -529,6 +529,70 @@ export const CONFIDENCE_GUIDES_MAP: Record<string, ExerciseConfidenceGuide> = {
     }
   },
 
+  "45° leg press (feet mid/high placement)_machine": {
+    exerciseName: "45° Leg Press (Feet Mid/High Placement)",
+    equipmentType: "machine",
+    hardware: {
+      type: "plate_loaded",
+      typeLabel: "45-Degree Incline Sled Leg Press",
+      commonAliases: ["Leg Press", "45 Degree Leg Press", "Incline Sled Press"],
+      setupSteps: [
+        "Position feet shoulder-width, mid-to-high on sled footplate.",
+        "Press platform up slightly to disengage side safety lockout handles.",
+        "Keep tailbone and lumbar spine glued firmly to the seat pad throughout."
+      ],
+    },
+    mechanics: {
+      gripType: "neutral",
+      gripWidth: "narrow",
+      wristCue: "Firmly grip side machine handles to anchor pelvis down into seat pad.",
+      threeCues: [
+        "Feet placed shoulder-width mid/high.",
+        "Drive through heels and mid-foot.",
+        "Stop depth before lumbar tuck."
+      ],
+      mentalCue: "Drive the platform away by extending through your hips and heels like jumping."
+    },
+    proprioception: {
+      primaryMuscle: "Glutes & Quadriceps",
+      targetFeel: "By rep 8–10: powerful muscle burn across glutes and thighs with zero lumbar strain.",
+      normalSensations: ["Deep hip flexion and glute tension; smooth knee tracking over second toe."],
+      redFlagStop: "Butt wink or lower back rounding off the back pad: stop immediately and set higher safeties."
+    }
+  },
+
+  "seated leg extension machine_machine": {
+    exerciseName: "Seated Leg Extension Machine",
+    equipmentType: "machine",
+    hardware: {
+      type: "pin_selectorized",
+      typeLabel: "Pin-Selected Seated Knee Extensor Station",
+      commonAliases: ["Leg Extension", "Quad Extension", "Seated Knee Extension"],
+      setupSteps: [
+        "Align machine pivot axis with your knee joint line.",
+        "Adjust backrest so hips are flexed at 90° with back firmly supported.",
+        "Set lower shin roller to sit comfortably just above your ankle joint."
+      ],
+    },
+    mechanics: {
+      gripType: "neutral",
+      gripWidth: "narrow",
+      wristCue: "Grip side handles firmly to prevent hips from lifting during extension.",
+      threeCues: [
+        "Hips flexed at 90 degrees.",
+        "1-second pause at full extension.",
+        "Strict 3-second eccentric lower."
+      ],
+      mentalCue: "Kick your shins upward and squeeze your quads like steel bands around your patella."
+    },
+    proprioception: {
+      primaryMuscle: "Quadriceps (Vastus Medialis & Lateralis)",
+      targetFeel: "Fiery, localized quad pump and tendon loading without hip flexor irritation.",
+      normalSensations: ["Patellar tendon tension adaptation; deep vastus burn by rep 10–12."],
+      redFlagStop: "Sharp anterior knee pain or hips rising off seat: reduce weight pin."
+    }
+  },
+
   // --- BICEPS ---
   "incline dumbbell bicep curl_dumbbell": {
     exerciseName: "Incline Dumbbell Bicep Curl",

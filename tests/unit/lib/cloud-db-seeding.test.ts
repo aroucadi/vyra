@@ -79,7 +79,11 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
 
     assert.strictEqual(mon.blocks[0].exercises.length, 3, 'Monday must have 3 slots');
     assert.strictEqual(tue.blocks[0].exercises.length, 3, 'Tuesday must have 3 slots');
-    assert.strictEqual(wed.blocks[0].exercises.length, 3, 'Wednesday must have 3 slots');
+    // Wednesday has 3 functional slots across 2 blocks: Block 1 straight (2 exercises) + Block 2 superset (2 exercises: 3A Face Pull, 3B Lateral Raise)
+    assert.strictEqual(wed.blocks.length, 2, 'Wednesday must have 2 blocks (straight + superset)');
+    assert.strictEqual(wed.blocks[0].exercises.length, 2, 'Wednesday Block 1 must have 2 exercises (Leg Press + Leg Extension)');
+    assert.strictEqual(wed.blocks[1].exercises.length, 2, 'Wednesday Block 2 must have 2 superset movements (3A Face Pull + 3B Lateral Raise)');
+    assert.strictEqual(wed.blocks.flatMap((b) => b.exercises).length, 4, 'Wednesday must have 4 total exercises across 3 functional slots');
     assert.strictEqual(thu.blocks[0].exercises.length, 3, 'Thursday must have 3 slots');
 
     // Thursday Slot 3 Drop set

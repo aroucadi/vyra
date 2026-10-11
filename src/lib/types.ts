@@ -103,6 +103,14 @@ export interface ExercisePrescription {
   hasDropSet?: boolean;
   dropSetGuidance?: string;
   confidenceGuide?: ExerciseConfidenceGuide;
+  category?: string;
+  subMovementOrder?: string; // e.g. "3A", "3B"
+  supersetTag?: string;
+  interSetRestSeconds?: number;
+  weekRirGuidance?: {
+    weeks1_2?: string;
+    week3Plus?: string;
+  };
 }
 
 export interface Block {
@@ -110,6 +118,9 @@ export interface Block {
   order: number;
   type: BlockType;
   exercises: ExercisePrescription[];
+  tag?: string;
+  bannerText?: string;
+  rounds?: number;
 }
 
 export interface DailyMealSlot {

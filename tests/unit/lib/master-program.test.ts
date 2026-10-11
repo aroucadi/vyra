@@ -87,11 +87,11 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     assert.equal(thuPressingSets, 3);
 
     // Dynamic Upper Pulling & Posture sets (9 sets):
-    // Tue Slot 1 (Lat Pulldown: 3 sets) + Tue Slot 2 (Row: 3 sets) + Wed Slot 2 (Face Pull / Y-Raise: 3 sets) = 9 sets
+    // Tue Slot 1 (Lat Pulldown: 3 sets) + Tue Slot 2 (Row: 3 sets) + Wed Slot 3A (Face Pull: 3 sets) = 9 sets
     const dynamicUpperPullingSets =
       tue.blocks[0].exercises[0].sets +
       tue.blocks[0].exercises[1].sets +
-      wed.blocks[0].exercises[1].sets;
+      wed.blocks[1].exercises[0].sets;
     assert.equal(dynamicUpperPullingSets, 9, "Dynamic upper pulling must be 9 sets (1.5:1 dynamic ratio)");
 
     // Isometric Upper Back Retraction:

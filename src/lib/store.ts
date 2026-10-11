@@ -1333,8 +1333,8 @@ class Store {
     const resolved = resolveProgramDay(program.startDate);
     const elapsedDays = Math.max(0, resolved.elapsedDays);
     let scheduledWorkouts = 0;
-    // Count past scheduled workouts strictly up to elapsed days
-    for (let d = 0; d < elapsedDays; d++) {
+    // Count past scheduled workouts up to elapsed days (inclusive of current program day)
+    for (let d = 0; d <= elapsedDays; d++) {
       const wIdx = Math.floor(d / 7);
       const dIdx = d % 7;
       const week = program.weeks[wIdx];

@@ -11,6 +11,7 @@ import {
 import { appStore } from "@/lib/store";
 import { logWeightAction } from "@/lib/actions/metrics";
 import { calculateEstimated1RM } from "@/lib/utils";
+import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 
 export default function ProgressPage() {
   const currentUser = appStore.getCurrentUser();
@@ -173,6 +174,9 @@ export default function ProgressPage() {
           ))}
         </div>
       </section>
+
+      {/* 2. Weekly Volume Dashboard & Biomechanical Architecture */}
+      <WeeklyVolumeDashboard />
 
       {/* 3. Personal Records Trophy Cabinet */}
       <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3">

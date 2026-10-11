@@ -33,6 +33,10 @@ import { clsx } from "clsx";
 interface ActiveExercise {
   id: string;
   name: string;
+  category?: string;
+  subMovementOrder?: string;
+  supersetTag?: string;
+  interSetRestSeconds?: number;
   targetSets: number;
   repLow: number;
   repHigh: number;
@@ -75,17 +79,21 @@ function SessionFlow() {
     const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
     return exPrescriptions.map((ex) => {
       const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
-      const defaultWeight = pb ? pb.weightKg : 60;
+      const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);
       const defaultReps = pb ? pb.reps : Math.round((ex.repRangeLow + ex.repRangeHigh) / 2);
 
       return {
         id: ex.id,
         name: ex.exerciseName,
+        category: ex.category,
+        subMovementOrder: ex.subMovementOrder,
+        supersetTag: ex.supersetTag,
+        interSetRestSeconds: ex.interSetRestSeconds,
         targetSets: ex.sets || 3,
         repLow: ex.repRangeLow,
         repHigh: ex.repRangeHigh,
         targetRir: ex.rirScheme?.[0] ?? 2,
-        restSeconds: ex.restSeconds || 90,
+        restSeconds: ex.restSeconds !== undefined ? ex.restSeconds : 90,
         lastBestWeight: defaultWeight,
         lastBestReps: defaultReps,
         formCue: ex.formCueText,
@@ -226,9 +234,6 @@ function SessionFlow() {
       return updated;
     });
 
-    // Auto-start rest timer
-    setRestTimerSec(activeEx.restSeconds);
-
     // Track set logging telemetry
     telemetry.track(
       "workout_set_logged",
@@ -238,15 +243,45 @@ function SessionFlow() {
         reps: activeEx.currentReps,
         set_index: activeEx.completedSets.length + 1,
         is_pr: isPR,
+        sub_movement_order: activeEx.subMovementOrder,
       },
       currentUser.id
     );
 
-    // If all sets for this exercise complete, move to next after brief pause or if user chooses
-    if (newCompleted.length >= activeEx.targetSets && !isFinalExercise) {
-      setTimeout(() => {
-        setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1));
-      }, 400);
+    // Workflow & Rest Timer logic:
+    // Slot 1 (Leg Press): 90s countdown timer
+    // Slot 2 (Leg Extension): 75s countdown timer
+    // Superset Slot 3:
+    //  - 3A (Face Pull): 0s rest -> Immediately prompt user for 3B
+    //  - 3B (Lateral Raise): 60s rest countdown -> loop back to 3A for next round
+    if (activeEx.subMovementOrder === "3A") {
+      setRestTimerSec(null);
+      const next3BIndex = exercises.findIndex((e, idx) => idx > currentExIndex && e.subMovementOrder === "3B");
+      if (next3BIndex !== -1) {
+        setTimeout(() => {
+          setCurrentExIndex(next3BIndex);
+        }, 150);
+      }
+    } else if (activeEx.subMovementOrder === "3B") {
+      setRestTimerSec(60);
+      const partner3AIndex = exercises.findIndex((e) => e.subMovementOrder === "3A");
+      const current3BRounds = newCompleted.length;
+      if (current3BRounds < activeEx.targetSets && partner3AIndex !== -1) {
+        setTimeout(() => {
+          setCurrentExIndex(partner3AIndex);
+        }, 200);
+      } else if (current3BRounds >= activeEx.targetSets && !isFinalExercise) {
+        setTimeout(() => {
+          setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1));
+        }, 400);
+      }
+    } else {
+      setRestTimerSec(activeEx.restSeconds);
+      if (newCompleted.length >= activeEx.targetSets && !isFinalExercise) {
+        setTimeout(() => {
+          setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1));
+        }, 400);
+      }
     }
   };
 
@@ -382,8 +417,15 @@ function SessionFlow() {
           {exercises.map((ex, idx) => (
             <div key={ex.id} className="py-2.5 first:pt-2 last:pb-0 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2.5 truncate pr-2">
-                <span className="font-mono text-slate-500 text-[10px] w-4">{idx + 1}.</span>
+                <span className="font-mono text-slate-500 text-[10px] w-5">
+                  {ex.subMovementOrder || `${idx + 1}.`}
+                </span>
                 <span className="font-medium text-slate-200 truncate">{ex.name}</span>
+                {ex.subMovementOrder && (
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
+                    Superset
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 font-mono text-[11px] tabular">
                 <span className="text-emerald-400 font-semibold">{ex.currentWeight}kg</span>
@@ -534,13 +576,45 @@ function SessionFlow() {
       {/* 2. Main Gym Floor Card (1 Exercise at a Time) */}
       <main className="flex-1 flex flex-col justify-center py-4 space-y-6">
         
+        {/* Station-Locked Superset Banner & Sub-Movement Indicator */}
+        {activeEx.supersetTag && (
+          <div className="p-3 bg-indigo-950/50 border border-indigo-700/60 rounded-xl space-y-1.5 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                Station-Locked Superset
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200 border border-indigo-700/50">
+                Round {Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of {activeEx.targetSets}
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-200">
+              {activeEx.subMovementOrder === "3A" ? (
+                <span>👉 <strong>3A: Cable Face Pull (Eye-level)</strong> · 0s rest → immediately slide pulley down for 3B</span>
+              ) : (
+                <span>👉 <strong>3B: Cable Lateral Raise (Knee-level)</strong> · 60s rest triggered after set before next round</span>
+              )}
+            </div>
+            <div className="text-[10px] font-mono text-indigo-300/80">
+              {activeEx.supersetTag}
+            </div>
+          </div>
+        )}
+
         {/* Exercise Header + Tips Trigger */}
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight leading-snug">
-                {activeEx.name}
-              </h2>
+              <div className="flex items-center gap-2">
+                {activeEx.subMovementOrder && (
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    {activeEx.subMovementOrder}
+                  </span>
+                )}
+                <h2 className="text-lg font-bold text-white tracking-tight leading-snug">
+                  {activeEx.name}
+                </h2>
+              </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
                 Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps · RIR {activeEx.targetRir}
               </p>
@@ -618,8 +692,20 @@ function SessionFlow() {
 
         {/* Big Log Set Button (Effort: 1 tap, <= 5s) */}
         <Log.Confirm
-          label={`Log Set ${Math.min(currentSetNum, activeEx.targetSets)} ✓`}
-          subLabel={isFinalSetOfExercise ? "Final set for this exercise" : "Next rest timer auto-starts"}
+          label={
+            activeEx.subMovementOrder
+              ? `Done · Log ${activeEx.subMovementOrder} (Round ${Math.min(currentSetNum, activeEx.targetSets)}) ✓`
+              : `Log Set ${Math.min(currentSetNum, activeEx.targetSets)} ✓`
+          }
+          subLabel={
+            activeEx.subMovementOrder === "3A"
+              ? "0s Rest · Immediate transition to 3B"
+              : activeEx.subMovementOrder === "3B"
+              ? "Triggers 60s rest countdown before next round"
+              : isFinalSetOfExercise
+              ? "Final set for this exercise"
+              : `${activeEx.restSeconds}s rest timer auto-starts`
+          }
           onClick={handleLogSet}
         />
 

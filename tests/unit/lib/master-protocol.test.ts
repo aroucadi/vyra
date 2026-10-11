@@ -43,7 +43,7 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(week1.days[6].label.includes('Sunday'), true);
   });
 
-  it('verifies strictly 12 workout slots across the 4 training days (3-slot ceiling per day)', () => {
+  it('verifies strictly 3 functional workout slots per day across the 4 training days (with Wednesday station-locked superset)', () => {
     const mondayExercises = week1.days[0].blocks.flatMap((b) => b.exercises);
     const tuesdayExercises = week1.days[1].blocks.flatMap((b) => b.exercises);
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
@@ -51,11 +51,13 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
 
     assert.strictEqual(mondayExercises.length, 3, 'Monday must have exactly 3 exercise slots');
     assert.strictEqual(tuesdayExercises.length, 3, 'Tuesday must have exactly 3 exercise slots');
-    assert.strictEqual(wednesdayExercises.length, 3, 'Wednesday must have exactly 3 exercise slots');
+    // Wednesday has 3 functional slots (Slot 1 Leg Press, Slot 2 Leg Extension, Slot 3 Superset 3A Face Pull + 3B Lateral Raise)
+    assert.strictEqual(wednesdayExercises.length, 4, 'Wednesday must have 4 exercises across 3 functional slots');
+    assert.strictEqual(week1.days[2].blocks.length, 2, 'Wednesday must have 2 blocks (straight + superset)');
     assert.strictEqual(thursdayExercises.length, 3, 'Thursday must have exactly 3 exercise slots');
 
-    const totalSlots = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length;
-    assert.strictEqual(totalSlots, 12, 'Total workout slots across the 4-day split must be strictly 12 (3-slot ceiling)');
+    const totalPrescriptions = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length;
+    assert.strictEqual(totalPrescriptions, 13, 'Total exercise prescriptions across the 4-day split must be strictly 13 (12 functional slots)');
   });
 
   it('enforces the Biomechanical 2:1 Pull-to-Push Volume Balance (6 pressing vs 9 dynamic pulling + 3 isometric hinge sets = 12 total posture sets)', () => {
@@ -73,10 +75,10 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     // Direct Upper Dynamic Pulling (9 sets):
     // Tue Slot 1 (Neutral Lat Pulldown: 3 sets)
     // Tue Slot 2 (Chest-Supported Row: 3 sets)
-    // Wed Slot 2 (Posture Face Pull / Y-Raise: 3 sets)
+    // Wed Slot 3A (Posture Face Pull: 3 sets)
     const tuesdayLatPulldown = tuesdayExercises[0];
     const tuesdayRow = tuesdayExercises[1];
-    const wednesdayFacePull = wednesdayExercises[1];
+    const wednesdayFacePull = wednesdayExercises[2]; // Index 2 is Slot 3A Face Pull
     assert.ok(wednesdayFacePull.exerciseName.includes('Face Pull') || wednesdayFacePull.exerciseName.includes('Reverse Pec Deck'));
     const dynamicPullingSets = tuesdayLatPulldown.sets + tuesdayRow.sets + wednesdayFacePull.sets;
     assert.strictEqual(dynamicPullingSets, 9, 'Dynamic upper pulling volume must equal strictly 9 sets per week');
@@ -95,6 +97,10 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
 
     const totalPostureToPressRatio = totalPostureSets / totalPressingSets;
     assert.strictEqual(totalPostureToPressRatio, 2.0, 'Total posture-to-press volume ratio must equal exactly 2:1 (12 posture sets vs 6 pressing sets)');
+
+    // Quadriceps volume check: Slot 1 (Leg Press: 3 sets) + Slot 2 (Leg Extension: 3 sets) = 6 sets
+    const wedQuadSets = wednesdayExercises[0].sets + wednesdayExercises[1].sets;
+    assert.strictEqual(wedQuadSets, 6, 'Wednesday must deliver 6 direct quad sets (Leg Press 3 + Leg Extension 3)');
   });
 
   it('enforces the 3x/Week Side Delt Matrix (9 Total Sets)', () => {
@@ -102,12 +108,12 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
 
-    const monSideDelt = mondayExercises[2]; // Slot 3 (Hit 1)
-    const wedSideDelt = wednesdayExercises[2]; // Slot 3 (Hit 2)
-    const thuSideDelt = thursdayExercises[2]; // Slot 3 (Hit 3 post-press burnout drop set)
+    const monSideDelt = mondayExercises[2]; // Mon Slot 3 (Hit 1)
+    const wedSideDelt = wednesdayExercises[3]; // Wed Slot 3B (Hit 2 in cable superset)
+    const thuSideDelt = thursdayExercises[2]; // Thu Slot 3 (Hit 3 post-press burnout drop set)
 
     assert.strictEqual(monSideDelt.sets, 3, 'Monday Slot 3 must have 3 sets');
-    assert.strictEqual(wedSideDelt.sets, 3, 'Wednesday Slot 3 must have 3 sets');
+    assert.strictEqual(wedSideDelt.sets, 3, 'Wednesday Slot 3B must have 3 sets');
     assert.strictEqual(thuSideDelt.sets, 3, 'Thursday Slot 3 must have 3 sets (with Set 3 drop set)');
 
     const totalSideDeltSets = monSideDelt.sets + wedSideDelt.sets + thuSideDelt.sets;
@@ -155,9 +161,9 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.ok(rdl.loadGuidance?.includes('Stall Rule'), 'RDL must include 10% Stall Rule');
   });
 
-  it('verifies 4-modality equipment matrix completeness for all 12 slots (48 variations total)', () => {
+  it('verifies 4-modality equipment matrix completeness for all 13 exercise slots (52 variations total)', () => {
     const allExercises = week1.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
-    assert.strictEqual(allExercises.length, 12, 'Must have exactly 12 total exercise slots');
+    assert.strictEqual(allExercises.length, 13, 'Must have exactly 13 total exercise prescriptions');
 
     const requiredEquipments: EquipmentType[] = ['machine', 'dumbbell', 'cable', 'bodyweight'];
 
@@ -238,7 +244,7 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
     assert.strictEqual(masterHydrationGoal.workoutDayBonusMl, 500);
   });
 
-  it('verifies safe video URLs and form cues for all 12 exercise slots and 48 variations', () => {
+  it('verifies safe video URLs and form cues for all 13 exercise prescriptions and 52 variations', () => {
     const trainingDays = week1.days.filter((d) => d.blocks && d.blocks.length > 0);
     assert.strictEqual(trainingDays.length, 4, 'Must have 4 active training days with blocks');
 
@@ -264,8 +270,8 @@ describe('The Master Hypertrophy & Postural Architecture Protocol Test Suite', (
       });
     });
 
-    assert.strictEqual(totalExercisesChecked, 12);
-    assert.strictEqual(totalVariationsChecked, 48);
+    assert.strictEqual(totalExercisesChecked, 13);
+    assert.strictEqual(totalVariationsChecked, 52);
   });
 
   it('verifies rest day fallback seamlessly defaults to Day 0 (Monday) training routine', () => {

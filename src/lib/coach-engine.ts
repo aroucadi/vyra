@@ -1,14 +1,14 @@
 import { appStore } from "./store";
 import { resolveProgramDay } from "./utils";
 
-export type CoachCardActionType = "swap" | "condense" | "autoregulate" | "nutrition" | "none";
+export type CoachCardActionType = "swap" | "condense" | "autoregulate" | "nutrition" | "load_explanation" | "none";
 
 export interface CoachSmartActionCardData {
   type: CoachCardActionType;
   eyebrow: string;
   headline: string;
   subtext: string;
-  ctaLabel: string;
+  ctaLabel?: string;
   targetDayLabel?: string;
   details: {
     label: string;
@@ -22,6 +22,15 @@ export interface CoachSmartActionCardData {
     loadFactor?: number;
     rirDelta?: number;
     dayOfWeek?: number;
+  };
+  // Optional interactive calculator or formula metadata for Intelligent UI
+  interactiveData?: {
+    formula: string;
+    baselineWeightKg: number;
+    currentReps: number;
+    targetReps: number;
+    nextIncrementKg: number;
+    conditionSummary: string;
   };
 }
 
@@ -189,7 +198,32 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
 
     return {
       id: responseId,
-      text: `Your working load targets (${pbWeight} kg baseline) follow our strict Double Progression rule: you must hit the upper ceiling of your prescribed rep range (e.g. 5 clean reps @ 2 RIR) across all scheduled working sets before earning a 2.5 kg weight bump. This prevents ego-lifting and builds genuine tendon resilience.`,
+      text: `Your working load targets (${pbWeight} kg baseline) follow our strict Double Progression rule: you must hit the upper ceiling of your prescribed rep range (e.g. 10 clean reps @ 2 RIR) across all scheduled working sets before earning a +2.5 kg weight bump. This prevents ego-lifting and builds genuine tendon resilience.`,
+      card: {
+        type: "load_explanation",
+        eyebrow: "BIOMECHANICAL PROGRESSION · FORMULA & MATH",
+        headline: "Double Progression Ceiling Model",
+        subtext: "Weight remains locked until rep ceiling is achieved across 100% of working sets. Math runs deterministically in code.",
+        ctaLabel: "Review in Exercise Library",
+        targetDayLabel: targetDay.label,
+        details: [
+          { label: "Current Load", value: `${pbWeight} kg` },
+          { label: "Rep Target", value: "8–10 Reps" },
+          { label: "Next Step", value: `+2.5 kg (@ 10r)` },
+        ],
+        actionPayload: {
+          actionType: "load_explanation",
+          dayOfWeek: targetDay.dayOfWeek,
+        },
+        interactiveData: {
+          formula: "Next Load = Current Load + 2.5kg (if Reps >= 10 on all 3 sets)",
+          baselineWeightKg: pbWeight,
+          currentReps: 9,
+          targetReps: 10,
+          nextIncrementKg: 2.5,
+          conditionSummary: "1 more clean rep needed on Set 3 to unlock 142.5 kg next session.",
+        },
+      },
     };
   }
 

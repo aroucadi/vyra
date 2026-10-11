@@ -85,4 +85,14 @@ describe("Vyra AI Coach Smart Action Cards & Program Mutation Engine", () => {
     assert.strictEqual(res.success, true);
     assert.ok(res.adjustedExercises.length > 0, "Should adjust target day exercises with RIR buffer");
   });
+
+  it("resolves why this weight query into interactive Double Progression formula card with deterministic math", () => {
+    const response = resolveCoachQuery(alaaId, "Why this weight prescribed for my squats?");
+    assert.ok(response.card, "Must generate a Smart Action Card for load explanation");
+    assert.strictEqual(response.card?.type, "load_explanation");
+    assert.ok(response.card?.interactiveData, "Card must include interactiveData with deterministic math");
+    assert.ok(response.card?.interactiveData?.formula.includes("Next Load = Current Load + 2.5kg"));
+    assert.strictEqual(response.card?.interactiveData?.nextIncrementKg, 2.5);
+    assert.ok(response.card?.details.some((d) => d.label === "Rep Target" && d.value === "8–10 Reps"));
+  });
 });

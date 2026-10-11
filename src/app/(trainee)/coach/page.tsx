@@ -21,6 +21,7 @@ function CoachChat() {
   const currentUser = appStore.getCurrentUser();
 
   const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "m_welcome",
@@ -37,7 +38,7 @@ function CoachChat() {
 
   const handleSend = (textToSend?: string) => {
     const query = textToSend || input;
-    if (!query.trim()) return;
+    if (!query.trim() || isStreaming) return;
 
     const userMsg: Message = {
       id: `msg_user_${Date.now()}`,
@@ -45,16 +46,23 @@ function CoachChat() {
       text: query,
     };
 
-    const coachResolved = resolveCoachQuery(currentUser.id, query);
-    const coachReply: Message = {
-      id: coachResolved.id,
-      sender: "coach",
-      text: coachResolved.text,
-      card: coachResolved.card,
-    };
-
-    setMessages((prev) => [...prev, userMsg, coachReply]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setIsStreaming(true);
+
+    const coachResolved = resolveCoachQuery(currentUser.id, query);
+
+    // Progressive visual streaming compiler: first render text tokens, then resolve interactive card into reserved boundaries
+    setTimeout(() => {
+      const coachReply: Message = {
+        id: coachResolved.id,
+        sender: "coach",
+        text: coachResolved.text,
+        card: coachResolved.card,
+      };
+      setMessages((prev) => [...prev, coachReply]);
+      setIsStreaming(false);
+    }, 280);
   };
 
   const quickChips = [
@@ -111,6 +119,21 @@ function CoachChat() {
             )}
           </div>
         ))}
+
+        {/* Intelligent UI Progressive Streaming Reserved Space (Zero-CLS) */}
+        {isStreaming && (
+          <div className="flex flex-col items-start space-y-2 animate-in fade-in duration-200">
+            <div className="p-3.5 rounded-2xl rounded-bl-none bg-slate-900 border border-slate-800 text-xs text-slate-300 max-w-[85%] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[11px] text-slate-400">Composing action card...</span>
+            </div>
+            <div className="w-full max-w-[95%] h-36 rounded-2xl bg-slate-900/40 border border-slate-800/60 p-4 space-y-3 animate-pulse">
+              <div className="h-3 w-1/3 bg-slate-800 rounded" />
+              <div className="h-4 w-2/3 bg-slate-800 rounded" />
+              <div className="h-10 w-full bg-slate-800/60 rounded-xl" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Contextual Quick Chips */}

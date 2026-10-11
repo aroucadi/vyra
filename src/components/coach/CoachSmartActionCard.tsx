@@ -142,15 +142,43 @@ export function CoachSmartActionCard({
             ))}
           </div>
         )}
+
+        {/* Intelligent UI Interactive Math / Formula Container */}
+        {card.interactiveData && (
+          <div className="mt-2.5 p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-emerald-400 font-semibold uppercase tracking-wider">Formula in Code</span>
+              <span className="text-slate-400 font-mono">Deterministic Math</span>
+            </div>
+            <code className="block text-[10px] text-slate-300 font-mono bg-slate-900/90 px-2 py-1 rounded border border-slate-800">
+              {card.interactiveData.formula}
+            </code>
+            <p className="text-[10px] text-slate-400 italic">
+              {card.interactiveData.conditionSummary}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* 3. Element 3: Supporting Action (Single Dominant CTA) */}
+      {/* 3. Element 3: Supporting Action (Single Dominant CTA + 1-Tap Undo) */}
       <div>
         {isApplied ? (
           <div className="space-y-2">
-            <div className="w-full py-2.5 px-3 bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2">
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span className="truncate">{statusMessage || "Blueprint Updated"}</span>
+            <div className="w-full py-2.5 px-3 bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-xl flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 truncate">
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span className="truncate">{statusMessage || "Blueprint Updated"}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsApplied(false);
+                  setStatusMessage("");
+                }}
+                className="text-[11px] underline text-slate-400 hover:text-white px-1.5 py-0.5 cursor-pointer font-medium"
+              >
+                Undo
+              </button>
             </div>
             <Link
               href="/session?mode=preview"
@@ -162,14 +190,24 @@ export function CoachSmartActionCard({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleApply}
-              className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{card.ctaLabel}</span>
-            </button>
+            {card.type === "load_explanation" ? (
+              <Link
+                href="/exercises"
+                className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{card.ctaLabel || "View Exercises"}</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleApply}
+                className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{card.ctaLabel || "Apply Mutation"}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleDismiss}

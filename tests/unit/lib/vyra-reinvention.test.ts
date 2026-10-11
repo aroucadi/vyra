@@ -85,4 +85,22 @@ describe("VYRA Life OS Reinvention & Experience Engine", () => {
     assert.ok(timeline.insight?.sources.includes("train"), "cross-pillar insight must include train pillar");
     assert.ok(timeline.insight?.sentence.includes("2,000 kg"), "insight must mention completed volume");
   });
+
+  test("deriveDayTimeline correctly calculates moment status at 07:00, 12:15, and 18:30", () => {
+    const uncompletedDateStr = "2026-11-20";
+    // Clock at 07:00 AM (Hour 7)
+    const morningTimeline = deriveDayTimeline(alaaId, uncompletedDateStr, 7);
+    const morningHydration = morningTimeline.moments.find((m) => m.id === "moment_hydration_morning");
+    assert.strictEqual(morningHydration?.status, "now", "at 07:00 AM, morning hydration should be now");
+
+    // Clock at 12:15 PM (Hour 12)
+    const middayTimeline = deriveDayTimeline(alaaId, uncompletedDateStr, 12);
+    const middayWorkout = middayTimeline.moments.find((m) => m.id === "moment_workout");
+    assert.strictEqual(middayWorkout?.status, "now", "at 12:15 PM, workout should be now");
+
+    // Clock at 18:30 PM (Hour 18)
+    const eveningTimeline = deriveDayTimeline(alaaId, uncompletedDateStr, 18);
+    const eveningWorkout = eveningTimeline.moments.find((m) => m.id === "moment_workout");
+    assert.strictEqual(eveningWorkout?.status, "past", "at 18:30 PM, midday workout should collapse to past");
+  });
 });

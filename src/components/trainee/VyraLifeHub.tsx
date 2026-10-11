@@ -68,7 +68,7 @@ export const VYRA_PILLARS: LifePillar[] = [
     tagline: "Biomarker Tracking, Recovery & Sleep Optimization",
     icon: HeartPulse,
     status: "preview",
-    statusBadge: "Integrated Life OS",
+    statusBadge: "Integrated System",
     badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
     headlineMetric: "HRV & Recovery 92%",
     highlights: [
@@ -129,8 +129,8 @@ export function VyraLifeHub({ compact = false }: { compact?: boolean }) {
               VY
             </div>
             <div>
-              <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">Vyra Life OS</h3>
-              <p className="text-[10px] text-slate-400">Personal Life Optimization Super App</p>
+              <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">Vyra Hub</h3>
+              <p className="text-[10px] text-slate-400">Personal Optimization Hub</p>
             </div>
           </div>
           <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-[#0B0F17] border border-[#334155] text-cyan-400">
@@ -198,9 +198,9 @@ export function VyraLifeHub({ compact = false }: { compact?: boolean }) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-extrabold text-slate-100 tracking-tight">Vyra Life OS</h2>
+              <h2 className="text-base font-extrabold text-slate-100 tracking-tight">Vyra Hub</h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono font-medium">
-                Super App Hub
+                Integrated Hub
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">

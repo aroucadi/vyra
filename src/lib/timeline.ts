@@ -97,11 +97,11 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHo
   let readinessStatus = "Awaiting check-in";
   if (latestBiometrics) {
     if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 60) {
-      readinessStatus = "Fatigued (CNS)";
+      readinessStatus = "Light day suggested";
     } else if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 80) {
-      readinessStatus = "Suboptimal";
+      readinessStatus = "Moderate recovery";
     } else {
-      readinessStatus = "Optimal";
+      readinessStatus = "Full recovery";
     }
   }
 
@@ -199,7 +199,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHo
     insight = {
       id: "insight_train_recovery_live",
       sources: ["train", "eat", "sleep"],
-      sentence: `Completed ${sessionVolume.toLocaleString()} kg load today. 40 g protein and 400 mg evening magnesium prioritized for myofibrillar and CNS recovery.`,
+      sentence: `Completed ${sessionVolume.toLocaleString()} kg load today. 40 g protein and 400 mg evening magnesium prioritized for muscle and overnight recovery.`,
       whyPrompt: `How does my ${sessionVolume.toLocaleString()} kg training load impact my post-workout nutrition and evening sleep recovery?`,
     };
   } else if (latestBiometrics) {

@@ -159,8 +159,8 @@ describe("Vyra Apple Health & Wearables Biometric Ingestion Engine", () => {
     // Verify deriveDayTimeline responds with dynamic sync status
     const timeline = deriveDayTimeline(alaaId, today);
     assert.ok(
-      timeline.readinessStatus.includes("Fatigued") || timeline.readinessStatus.includes("Suboptimal"),
-      `Readiness status must reflect CNS fatigue (got: ${timeline.readinessStatus})`
+      timeline.readinessStatus.includes("Light") || timeline.readinessStatus.includes("Moderate"),
+      `Readiness status must reflect lowered recovery (got: ${timeline.readinessStatus})`
     );
   });
 

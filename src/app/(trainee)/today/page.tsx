@@ -64,11 +64,11 @@ export default function TodayPage() {
         <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full shadow-sm text-xs">
           <span
             className={`w-2 h-2 rounded-full ${
-              readinessStatus.includes("Fatigued")
+              readinessStatus.includes("Light")
                 ? "bg-amber-400 animate-pulse"
-                : readinessStatus.includes("Suboptimal")
+                : readinessStatus.includes("Moderate")
                 ? "bg-amber-300"
-                : readinessStatus.includes("Optimal")
+                : readinessStatus.includes("Full")
                 ? "bg-emerald-400"
                 : "bg-slate-500"
             }`}

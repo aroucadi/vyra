@@ -127,4 +127,58 @@ describe("Vyra Biomechanical Autoregulation Engine", () => {
     assert.strictEqual(curl.isSubstituted, false);
     assert.strictEqual(curl.adaptedRir, 2);
   });
+
+  it("provides deterministic load adaptation outputs for exact sleep hours", () => {
+    // 5.0h sleep test
+    const plan5h = generateAutoregulationPlan(sampleExercises, { sleepHours: 5.0 });
+    const squat5h = plan5h.prescriptionDeltas.find((e) => e.id === "ex_squat")!;
+    assert.strictEqual(squat5h.adaptedWeightKg, 125); // 140 * 0.90 = 126 -> 125 kg (2.5 step)
+    assert.strictEqual(squat5h.adaptedSets, 3);
+    assert.strictEqual(squat5h.isSubstituted, true);
+
+    // 6.0h sleep test
+    const plan6h = generateAutoregulationPlan(sampleExercises, { sleepHours: 6.0 });
+    const squat6h = plan6h.prescriptionDeltas.find((e) => e.id === "ex_squat")!;
+    assert.strictEqual(squat6h.adaptedWeightKg, 132.5); // 140 * 0.95 = 133 -> 132.5 kg
+    assert.strictEqual(squat6h.adaptedSets, 4);
+    assert.strictEqual(squat6h.isSubstituted, false);
+
+    // 8.0h sleep test
+    const plan8h = generateAutoregulationPlan(sampleExercises, { sleepHours: 8.0 });
+    const squat8h = plan8h.prescriptionDeltas.find((e) => e.id === "ex_squat")!;
+    assert.strictEqual(squat8h.adaptedWeightKg, 140);
+    assert.strictEqual(squat8h.adaptedSets, 4);
+    assert.strictEqual(squat8h.isSubstituted, false);
+  });
+
+  it("verifies undo state logic restores original exercise weights and names", () => {
+    // Simulate applying adaptation
+    const plan = generateAutoregulationPlan(sampleExercises, { sleepHours: 5.0 });
+    const originalSnapshot = sampleExercises.map((e) => ({ ...e }));
+
+    // Apply adaptation
+    let currentExercises = sampleExercises.map((e) => {
+      const delta = plan.prescriptionDeltas.find((d) => d.id === e.id);
+      if (!delta) return { ...e };
+      return {
+        ...e,
+        name: delta.adaptedName,
+        targetSets: delta.adaptedSets,
+        targetRir: delta.adaptedRir,
+        plannedWeightKg: delta.adaptedWeightKg,
+      };
+    });
+
+    const adaptedSquat = currentExercises.find((e) => e.id === "ex_squat")!;
+    assert.strictEqual(adaptedSquat.name, "Hack Squat Machine");
+    assert.strictEqual(adaptedSquat.plannedWeightKg, 125);
+
+    // Undo action (restore snapshot)
+    currentExercises = originalSnapshot.map((e) => ({ ...e }));
+    const restoredSquat = currentExercises.find((e) => e.id === "ex_squat")!;
+    assert.strictEqual(restoredSquat.name, "Barbell Back Squat");
+    assert.strictEqual(restoredSquat.plannedWeightKg, 140);
+    assert.strictEqual(restoredSquat.targetSets, 4);
+  });
 });
+

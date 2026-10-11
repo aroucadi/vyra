@@ -24,7 +24,7 @@ export function SessionAdjustmentSheet({
   const chips = [
     { label: "Short on time (30 min)", query: "I am short on time today, condense my workout to 30 min." },
     { label: "Swap machine press", query: "I need an alternative exercise for the machine press." },
-    { label: "Deload lower back", query: "My lower back feels tight today, adjust spinal axial loads." },
+    { label: "Go lighter on legs", query: "My lower body feels fatigued today, adjust leg loads by 10%." },
     { label: "Why this weight?", query: "Why was this specific weight prescribed for my sets?" },
   ];
 

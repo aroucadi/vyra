@@ -29,7 +29,7 @@ export function AdaptiveRecalibrationCard({
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-              Optimal CNS Readiness · {plan.sleepHours}h Sleep
+              Full Recovery · You said {plan.sleepHours}h sleep
             </span>
           </div>
           {wearableSnapshot && (
@@ -44,14 +44,14 @@ export function AdaptiveRecalibrationCard({
         <div className="mb-3">
           <p className="text-sm font-semibold text-white">Full Recovery Capacity</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Target upper rep ceiling with planned RIR. Conditions optimal for progressive overload.
+            Target upper rep ceiling with planned RIR. Conditions ready for progressive overload.
           </p>
         </div>
 
         {/* Element 3: Supporting Status */}
         <div className="flex items-center gap-2 text-xs font-mono tabular-nums text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 rounded-lg px-2.5 py-1.5 w-fit">
           <Zap className="w-3.5 h-3.5" />
-          <span>Overload Mode Active (0% CNS Penalty)</span>
+          <span>Full Progression Active</span>
         </div>
       </div>
     );
@@ -115,9 +115,18 @@ export function AdaptiveRecalibrationCard({
       {/* 3. Element 3: Supporting Action (Single Dominant CTA + Secondary Ghost) */}
       <div className="flex items-center gap-2">
         {isApplied ? (
-          <div className="w-full py-2.5 px-4 bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2">
-            <Check className="w-4 h-4 stroke-[3]" />
-            <span>Recalibrated Plan Active</span>
+          <div className="w-full flex items-center justify-between py-2 px-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Adapted Plan Active</span>
+            </div>
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="text-[11px] underline text-slate-400 hover:text-white px-1.5 py-0.5 cursor-pointer font-medium"
+            >
+              Undo
+            </button>
           </div>
         ) : (
           <>
@@ -127,7 +136,7 @@ export function AdaptiveRecalibrationCard({
               className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Accept & Recalibrate</span>
+              <span>Apply Adapted Weights</span>
             </button>
             <button
               type="button"

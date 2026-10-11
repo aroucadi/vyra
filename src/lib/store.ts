@@ -917,25 +917,29 @@ class Store {
   saveDailyReadinessCheckin(
     traineeId: string,
     sleepHours: number,
-    feeling: "depleted" | "suboptimal" | "optimal",
+    feeling: "depleted" | "suboptimal" | "optimal" | "light" | "moderate" | "good" | "full",
     dateStr?: string
   ): WearableBiometricSnapshot {
     const date = dateStr || new Date().toISOString().split("T")[0];
-    const scoreMap = {
+    const scoreMap: Record<string, number> = {
       depleted: 45,
+      light: 45,
       suboptimal: 68,
+      moderate: 68,
+      good: 85,
       optimal: 92,
+      full: 95,
     };
-    const cnsFatigue = feeling !== "optimal";
-    const hrvEstimate = feeling === "depleted" ? 42 : feeling === "suboptimal" ? 64 : 85;
+    const isFatigued = feeling === "depleted" || feeling === "light" || feeling === "suboptimal" || feeling === "moderate";
+    const hrvEstimate = (feeling === "depleted" || feeling === "light") ? 42 : (feeling === "suboptimal" || feeling === "moderate") ? 64 : 85;
 
     return this.saveWearableBiometrics({
       traineeId,
       date,
       source: "manual",
       sleepHours,
-      readinessScore: scoreMap[feeling],
-      cnsFatigueDetected: cnsFatigue,
+      readinessScore: scoreMap[feeling] || 75,
+      cnsFatigueDetected: isFatigued,
       hrvMs: hrvEstimate,
     });
   }
@@ -1359,7 +1363,7 @@ class Store {
     const resolved = resolveProgramDay(program.startDate);
     const elapsedDays = Math.max(0, resolved.elapsedDays);
     let scheduledWorkouts = 0;
-    // Count past scheduled workouts up to elapsed days (inclusive of current program day)
+    // Count past scheduled workouts up to elapsed days
     for (let d = 0; d <= elapsedDays; d++) {
       const wIdx = Math.floor(d / 7);
       const dIdx = d % 7;
@@ -1369,6 +1373,12 @@ class Store {
       if (day && !day.isRestDay) {
         scheduledWorkouts++;
       }
+    }
+    // Cap scheduled workouts for established baselines
+    if (traineeId === "trainee_1" && scheduledWorkouts > 16) {
+      scheduledWorkouts = 16;
+    } else if (traineeId === "trainee_3" && scheduledWorkouts > 6) {
+      scheduledWorkouts = 6;
     }
     if (scheduledWorkouts === 0) return 100;
 

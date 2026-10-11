@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Share, PlusSquare, Smartphone, CheckCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { telemetry } from "@/lib/telemetry";
 
 export default function InstallPage() {
   const [isStandalone, setIsStandalone] = useState(false);
@@ -15,6 +16,10 @@ export default function InstallPage() {
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true;
       setIsStandalone(standalone);
+
+      if (standalone) {
+        telemetry.track("install_detected", { mode: "standalone", platform: "ios_pwa" });
+      }
 
       const ua = window.navigator.userAgent.toLowerCase();
       const iosDevice = /iphone|ipad|ipod/.test(ua);

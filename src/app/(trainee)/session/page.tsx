@@ -114,6 +114,7 @@ function SessionFlow() {
   const [sessionDurationSec, setSessionDurationSec] = useState(0);
   const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
   const [sessionStartTime] = useState(() => new Date().toISOString());
+  const [lastSetLoggedAt, setLastSetLoggedAt] = useState<number>(() => Date.now());
 
   // Overall session clock
   useEffect(() => {
@@ -170,7 +171,14 @@ function SessionFlow() {
     });
   }, [minimalTargets, sleepHours, latestSnapshot]);
 
+  // Keep snapshot of un-adapted exercises for true Undo support
+  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ActiveExercise[] | null>(null);
+
   const handleAcceptRecalibration = () => {
+    // Preserve snapshot prior to applying
+    if (!originalExercisesSnapshot) {
+      setOriginalExercisesSnapshot(exercises);
+    }
     setExercises((prev) =>
       prev.map((ex) => {
         const delta = autoregulationPlan.prescriptionDeltas.find((d) => d.id === ex.id);
@@ -194,6 +202,15 @@ function SessionFlow() {
   };
 
   const handleDismissRecalibration = () => {
+    // If it was applied, undo back to original exercises
+    if (isRecalibrationApplied && originalExercisesSnapshot) {
+      setExercises(originalExercisesSnapshot);
+      setIsRecalibrationApplied(false);
+      telemetry.track("workout_recalibration_undone", {
+        sleep_hours: sleepHours,
+      }, currentUser.id);
+      return;
+    }
     setIsRecalibrationDismissed(true);
     telemetry.track("workout_recalibration_dismissed", {
       sleep_hours: sleepHours,
@@ -234,7 +251,11 @@ function SessionFlow() {
       return updated;
     });
 
-    // Track set logging telemetry
+    // Track set logging telemetry with seconds_per_set
+    const now = Date.now();
+    const secondsPerSet = Math.max(1, Math.round((now - lastSetLoggedAt) / 1000));
+    setLastSetLoggedAt(now);
+
     telemetry.track(
       "workout_set_logged",
       {
@@ -244,6 +265,7 @@ function SessionFlow() {
         set_index: activeEx.completedSets.length + 1,
         is_pr: isPR,
         sub_movement_order: activeEx.subMovementOrder,
+        seconds_per_set: secondsPerSet,
       },
       currentUser.id
     );
@@ -372,11 +394,12 @@ function SessionFlow() {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { hours: 5.0, label: "5h (Depleted)" },
-              { hours: 6.5, label: "6.5h (Normal)" },
-              { hours: 8.0, label: "8h+ (Peaked)" },
+              { hours: 5.0, label: "Under 5 h" },
+              { hours: 6.0, label: "6 h" },
+              { hours: 7.0, label: "7 h" },
+              { hours: 8.0, label: "8 h or more" },
             ].map((option) => (
               <button
                 key={option.hours}
@@ -449,12 +472,14 @@ function SessionFlow() {
         <button
           type="button"
           onClick={() => {
+            const secondsToStart = Math.max(1, Math.round((Date.now() - new Date(sessionStartTime).getTime()) / 1000));
             telemetry.track(
-              "workout_preview_viewed",
+              "session_started",
               {
                 exercise_count: exercises.length,
                 is_recalibrated: isRecalibrationApplied,
                 sleep_hours: sleepHours,
+                seconds_to_start: secondsToStart,
               },
               currentUser.id
             );
@@ -776,7 +801,7 @@ function SessionFlow() {
               <SheetTitle>{activeEx.name}</SheetTitle>
             </div>
             <SheetDescription>
-              Biomechanics, setup notch blueprint, and progression rules.
+              Setup guide and progression cues.
             </SheetDescription>
           </SheetHeader>
 

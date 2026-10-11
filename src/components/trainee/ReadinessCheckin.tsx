@@ -15,10 +15,10 @@ export function ReadinessCheckin({ userId, onCheckedIn }: ReadinessCheckinProps)
   const [submitting, setSubmitting] = useState(false);
 
   const options = [
-    { label: "<5h", sub: "Depleted", feeling: "depleted" as const, hours: 4.5, color: "text-rose-400 border-rose-500/30" },
-    { label: "6h", sub: "Suboptimal", feeling: "suboptimal" as const, hours: 6.0, color: "text-amber-400 border-amber-500/30" },
-    { label: "7h", sub: "Rested", feeling: "optimal" as const, hours: 7.2, color: "text-emerald-400 border-emerald-500/30" },
-    { label: "8h+", sub: "Optimal", feeling: "optimal" as const, hours: 8.5, color: "text-emerald-400 border-emerald-500/30" },
+    { label: "Under 5 h", sub: "Lighter day", feeling: "light" as const, hours: 4.5, color: "text-rose-400 border-rose-500/30" },
+    { label: "6 h", sub: "Moderate", feeling: "moderate" as const, hours: 6.0, color: "text-amber-400 border-amber-500/30" },
+    { label: "7 h", sub: "Good", feeling: "good" as const, hours: 7.2, color: "text-emerald-400 border-emerald-500/30" },
+    { label: "8 h or more", sub: "Full recovery", feeling: "full" as const, hours: 8.5, color: "text-emerald-400 border-emerald-500/30" },
   ];
 
   const handleSelect = (idx: number) => {

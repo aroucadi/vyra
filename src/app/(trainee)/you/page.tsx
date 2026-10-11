@@ -91,6 +91,17 @@ export default function YouPage() {
           </div>
 
           <Link
+            href="/your-data"
+            className="flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
+          >
+            <div className="flex items-center gap-3 text-slate-200">
+              <span className="text-xs font-bold text-slate-400">DATA</span>
+              <span>Your Data & Privacy</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-500" />
+          </Link>
+
+          <Link
             href="/install"
             className="flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
           >

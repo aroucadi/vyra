@@ -137,7 +137,7 @@ export function SupplementStackDrawer({
                 checked={!!logs["m7_magnesium"]}
                 onToggle={(checked) => handleToggle("supp_proto_sleep", "m7_magnesium", "Magnesium Bisglycinate", checked)}
                 title="Magnesium Bisglycinate"
-                subtitle="400 mg elemental magnesium · CNS parasympathetic shift"
+                subtitle="400 mg elemental magnesium · Supports evening wind-down"
                 badge="Sleep"
               />
               <Checkin
@@ -145,7 +145,7 @@ export function SupplementStackDrawer({
                 checked={!!logs["m8_theanine"]}
                 onToggle={(checked) => handleToggle("supp_proto_sleep", "m8_theanine", "L-Theanine", checked)}
                 title="L-Theanine"
-                subtitle="200 mg · Alpha brain wave induction"
+                subtitle="200 mg · Supports calm sleep onset"
               />
             </div>
           </div>

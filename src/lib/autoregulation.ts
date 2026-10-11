@@ -220,12 +220,12 @@ export function generateAutoregulationPlan(
   }
   const bioSummary = biometricNotes.length > 0 ? ` [${biometricNotes.join(" · ")}]` : "";
 
-  let headline = "Optimal Readiness: Progressive Overload Target";
-  let clinicalRationale = `CNS recovery peaked${bioSummary}. Execute planned loading and target top-end rep targets.`;
+  let headline = "Full Recovery · Progressive Overload";
+  let clinicalRationale = `Recovery capacity peaked${bioSummary}. Execute planned loading and target top-end rep targets.`;
 
   if (state === "depleted") {
-    headline = "CNS Fatigue Detected · Spinal Load Mitigation";
-    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} indicates compromised neuromuscular recovery. Axial loads down-regulated by 8–10% and RIR buffer increased to prevent form degradation.`;
+    headline = "Lower Recovery Today · Suggested Adjustments";
+    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} indicates lower neuromuscular readiness. Heavy spinal loads adjusted down by 8–10% and RIR buffer increased to maintain technical form.`;
   } else if (state === "suboptimal") {
     headline = "Moderate Recovery · Conservative Load Modulation";
     clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} is slightly below baseline. Primary compound intensity modulated by ~5% with an added +1 RIR buffer.`;
@@ -271,8 +271,8 @@ export function generateAutoregulationPlan(
         rationale = "Standard volume maintained with conservative RIR buffer.";
       }
     } else {
-      // Optimal: encourage progressive overload
-      rationale = "Full nervous system recovery. Target upper rep ceiling @ planned RIR.";
+      // Full recovery: encourage progressive overload
+      rationale = "Full recovery readiness. Target upper rep ceiling @ planned RIR.";
     }
 
     const adaptedWeightKg = roundWeightStandard(ex.plannedWeightKg * loadFactor);

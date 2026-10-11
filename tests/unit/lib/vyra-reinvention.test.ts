@@ -22,10 +22,14 @@ describe("VYRA Life OS Reinvention & Experience Engine", () => {
       );
     }
 
-    // Single cross-pillar insight
-    assert.ok(timeline.insight.sentence.length > 0, "insight sentence must be non-empty");
-    assert.ok(timeline.insight.sources.length >= 2, "insight must connect at least 2 pillars");
-    assert.ok(timeline.insight.whyPrompt.length > 0, "insight must provide an AI coach prompt");
+    // When no readiness input or session exists, insight is undefined (honest data rule)
+    if (timeline.insight) {
+      assert.ok(timeline.insight.sentence.length > 0, "insight sentence must be non-empty");
+      assert.ok(timeline.insight.sources.length >= 2, "insight must connect at least 2 pillars");
+      assert.ok(timeline.insight.whyPrompt.length > 0, "insight must provide an AI coach prompt");
+    } else {
+      assert.strictEqual(timeline.hasReadinessInput, false, "without insight, readiness input is false");
+    }
   });
 
   test("formatDoseGram eliminates floating point precision noise", () => {
@@ -77,7 +81,8 @@ describe("VYRA Life OS Reinvention & Experience Engine", () => {
     assert.ok(workoutMoment, "workout moment must exist");
     assert.strictEqual(workoutMoment.status, "past", "workout moment should be marked as past");
     assert.strictEqual(workoutMoment.badge, "Done", "completed workout should have 'Done' badge");
-    assert.ok(timeline.insight.sources.includes("train"), "cross-pillar insight must include train pillar");
-    assert.ok(timeline.insight.sentence.includes("2,000 kg"), "insight must mention completed volume");
+    assert.ok(timeline.insight, "cross-pillar insight must exist when session is completed");
+    assert.ok(timeline.insight?.sources.includes("train"), "cross-pillar insight must include train pillar");
+    assert.ok(timeline.insight?.sentence.includes("2,000 kg"), "insight must mention completed volume");
   });
 });

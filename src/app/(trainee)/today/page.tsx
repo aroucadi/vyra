@@ -9,12 +9,15 @@ import { Card } from "@/components/primitives/Card";
 import { Insight } from "@/components/primitives/Insight";
 import { Plan } from "@/components/primitives/Plan";
 import { SupplementStackDrawer } from "@/components/trainee/SupplementStackDrawer";
-import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
+import { ReadinessCheckin } from "@/components/trainee/ReadinessCheckin";
+import { SessionAdjustmentSheet } from "@/components/trainee/SessionAdjustmentSheet";
+import { ArrowRight, SlidersHorizontal, CheckCircle2 } from "lucide-react";
 
 export default function TodayPage() {
   const router = useRouter();
   const currentUser = appStore.getCurrentUser();
   const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState(false);
+  const [isAdjustSheetOpen, setIsAdjustSheetOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
   React.useEffect(() => {
@@ -23,8 +26,8 @@ export default function TodayPage() {
     }
   }, []);
 
-  // Derive unified Day timeline from current state (reactive to tick)
-  const { moments, heroMoment, insight, readinessStatus } = React.useMemo(
+  // Derive clock-aware Day timeline from current state
+  const { moments, heroMoment, insight, readinessStatus, hasReadinessInput, isRestDay } = React.useMemo(
     () => deriveDayTimeline(currentUser.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentUser.id, tick]
@@ -39,13 +42,15 @@ export default function TodayPage() {
   };
 
   const handleWhyClick = () => {
-    router.push(`/coach?prompt=${encodeURIComponent(insight.whyPrompt)}`);
+    if (insight?.whyPrompt) {
+      setIsAdjustSheetOpen(true);
+    }
   };
 
   return (
-    <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
+    <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-5 animate-in fade-in duration-300">
       
-      {/* 1. Header: One-line greeting + quiet readiness chip */}
+      {/* 1. Header: Date greeting + quiet readiness chip */}
       <header className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium text-slate-400">
@@ -56,54 +61,77 @@ export default function TodayPage() {
           </h1>
         </div>
 
-        <Link
-          href="/session?mode=preview"
-          className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full shadow-sm transition cursor-pointer"
-        >
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full shadow-sm text-xs">
           <span
-            className={`w-2 h-2 rounded-full animate-pulse ${
+            className={`w-2 h-2 rounded-full ${
               readinessStatus.includes("Fatigued")
-                ? "bg-amber-400"
+                ? "bg-amber-400 animate-pulse"
                 : readinessStatus.includes("Suboptimal")
                 ? "bg-amber-300"
-                : "bg-emerald-400"
+                : readinessStatus.includes("Optimal")
+                ? "bg-emerald-400"
+                : "bg-slate-500"
             }`}
           />
-          <span className="text-xs font-semibold text-slate-200">{readinessStatus}</span>
-        </Link>
+          <span className="font-medium text-slate-300">{readinessStatus}</span>
+        </div>
       </header>
 
-      {/* 2. Single Cross-Pillar Insight (Max 1 visible) */}
-      <Insight
-        sentence={insight.sentence}
-        sourcePillars={insight.sources}
-        whyPrompt={insight.whyPrompt}
-        onWhyClick={handleWhyClick}
-      />
+      {/* 2. Morning Readiness Check-in (Prominently displayed until answered) */}
+      {!hasReadinessInput && (
+        <ReadinessCheckin
+          userId={currentUser.id}
+          onCheckedIn={() => setTick((t) => t + 1)}
+        />
+      )}
 
-      {/* 3. Hero Moment: Today's Training Focus */}
+      {/* 3. Cross-Pillar Insight (ONLY displayed when real data exists) */}
+      {insight && (
+        <Insight
+          sentence={insight.sentence}
+          sourcePillars={insight.sources}
+          whyPrompt={insight.whyPrompt}
+          onWhyClick={handleWhyClick}
+        />
+      )}
+
+      {/* 4. Hero Moment: Today's Immediate Action */}
       {heroMoment && (
         <Card variant="hero">
           <Card.Glance
-            eyebrow="Current Focus"
+            eyebrow={heroMoment.status === "now" ? "Current Focus" : "Next Focus"}
             time={heroMoment.time}
             title={heroMoment.title}
             status={heroMoment.glance}
           />
+
           <Card.Action>
             {heroMoment.actionHref ? (
-              <Link
-                href={heroMoment.actionHref}
-                className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-              >
-                <span>{heroMoment.actionLabel || "Start Workout"}</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </Link>
+              <div className="space-y-2">
+                <Link
+                  href={heroMoment.actionHref}
+                  className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <span>{heroMoment.actionLabel || "Start Workout"}</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </Link>
+
+                {!isRestDay && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAdjustSheetOpen(true)}
+                    className="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Adjust session (swap machine, short on time)</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setIsSuppDrawerOpen(true)}
-                className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{heroMoment.actionLabel || "Log Protocols"}</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -113,11 +141,11 @@ export default function TodayPage() {
         </Card>
       )}
 
-      {/* 4. The Day Timeline: Chronological Stream of Moments */}
-      <section className="space-y-3 pt-2">
+      {/* 5. The Day Timeline: Chronological Stream of Moments */}
+      <section className="space-y-3 pt-1">
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-          <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">
-            Today&apos;s Timeline
+          <span className="font-semibold text-xs text-slate-300">
+            Today&apos;s Schedule
           </span>
           <button
             type="button"
@@ -140,6 +168,13 @@ export default function TodayPage() {
         onOpenChange={setIsSuppDrawerOpen}
         userId={currentUser.id}
         onUpdate={() => setTick((t) => t + 1)}
+      />
+
+      {/* 1-Tap Session Adjustment Sheet */}
+      <SessionAdjustmentSheet
+        isOpen={isAdjustSheetOpen}
+        onOpenChange={setIsAdjustSheetOpen}
+        userId={currentUser.id}
       />
 
     </div>

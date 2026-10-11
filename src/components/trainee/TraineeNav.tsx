@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, MessageSquare, Compass, User as UserIcon } from "lucide-react";
+import { Calendar, Dumbbell, User as UserIcon } from "lucide-react";
 import { clsx } from "clsx";
 
 export function TraineeNav() {
@@ -15,8 +15,7 @@ export function TraineeNav() {
 
   const navItems = [
     { label: "Today", href: "/today", icon: Calendar },
-    { label: "Coach", href: "/coach", icon: MessageSquare },
-    { label: "Life", href: "/life", icon: Compass },
+    { label: "Program", href: "/program", icon: Dumbbell },
     { label: "You", href: "/you", icon: UserIcon },
   ];
 

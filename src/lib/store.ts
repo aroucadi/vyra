@@ -914,6 +914,32 @@ class Store {
     return this.db.wearableBiometrics.filter((b) => b.traineeId === traineeId);
   }
 
+  saveDailyReadinessCheckin(
+    traineeId: string,
+    sleepHours: number,
+    feeling: "depleted" | "suboptimal" | "optimal",
+    dateStr?: string
+  ): WearableBiometricSnapshot {
+    const date = dateStr || new Date().toISOString().split("T")[0];
+    const scoreMap = {
+      depleted: 45,
+      suboptimal: 68,
+      optimal: 92,
+    };
+    const cnsFatigue = feeling !== "optimal";
+    const hrvEstimate = feeling === "depleted" ? 42 : feeling === "suboptimal" ? 64 : 85;
+
+    return this.saveWearableBiometrics({
+      traineeId,
+      date,
+      source: "manual",
+      sleepHours,
+      readinessScore: scoreMap[feeling],
+      cnsFatigueDetected: cnsFatigue,
+      hrvMs: hrvEstimate,
+    });
+  }
+
   getCurrentUser(): User {
     return this.db.currentUser;
   }

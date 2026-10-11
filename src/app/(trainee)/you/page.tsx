@@ -43,7 +43,7 @@ export default function YouPage() {
         </div>
         <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl text-center">
           <div className="text-base font-bold text-white tabular">
-            {totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume}
+            {totalVolume > 0 ? (totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume) : "—"}
           </div>
           <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Vol (kg)</div>
         </div>
@@ -85,19 +85,26 @@ export default function YouPage() {
           <div className="flex items-center justify-between p-4 text-slate-200">
             <div className="flex items-center gap-3">
               <Moon className="w-4 h-4 text-indigo-400" />
-              <span>Appearance & Theme</span>
+              <span>Theme</span>
             </div>
-            <span className="text-[11px] text-slate-400 font-mono">Dark (Obsidian)</span>
+            <span className="text-[11px] text-slate-400">Dark (Obsidian)</span>
+          </div>
+
+          <div className="flex items-center justify-between p-4 text-slate-200">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-400">KG</span>
+              <span>Weight Units</span>
+            </div>
+            <span className="text-[11px] text-emerald-400 font-semibold">Kilograms (Metric)</span>
           </div>
         </div>
       </section>
 
-      {/* Hidden Developer Trigger */}
+      {/* Hidden Developer Trigger - Clean Gesture on Version String */}
       <section className="pt-8 pb-4 text-center">
         <DeveloperMenu currentUser={currentUser}>
-          <div className="text-[11px] text-slate-500 hover:text-slate-400 transition select-none">
-            <p className="font-mono">VYRA Life OS · v1.0.0-rc1</p>
-            <p className="text-[10px] text-slate-600 mt-0.5">Tap 5 times for Developer Sandbox</p>
+          <div className="text-[11px] text-slate-600 hover:text-slate-500 transition select-none cursor-default">
+            <p>VYRA · v1.0.0-rc1</p>
           </div>
         </DeveloperMenu>
       </section>

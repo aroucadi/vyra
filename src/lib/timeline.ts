@@ -38,17 +38,22 @@ export function formatDoseGram(val: number): string {
   return `${Number(val.toFixed(1))} g`;
 }
 
-/**
- * Derives the unified Day Timeline from current user, program, and logs
- */
-export function deriveDayTimeline(userId: string, targetDateStr?: string): {
+export interface DayTimelineResult {
   moments: TimelineMoment[];
   heroMoment?: TimelineMoment;
-  insight: PresentationInsight;
+  insight?: PresentationInsight; // undefined if no real data exists
   readinessStatus: string;
-} {
+  hasReadinessInput: boolean;
+  isRestDay: boolean;
+}
+
+/**
+ * Derives the unified Day Timeline from current user, program, logs, and device clock
+ */
+export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHour?: number): DayTimelineResult {
   const dateStr = targetDateStr || new Date().toISOString().split("T")[0];
   const program = appStore.getActiveProgramForTrainee(userId);
+  const currentHour = mockHour !== undefined ? mockHour : new Date().getHours();
 
   const resolved = program
     ? resolveProgramDay(program.startDate)
@@ -76,6 +81,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
 
   const exCount = todaySession?.blocks ? todaySession.blocks.reduce((acc, b) => acc + b.exercises.length, 0) : 0;
   const hasSession = !!todaySession && !todaySession.isRestDay && exCount > 0;
+  const isRestDay = !hasSession;
   
   const userSessions = appStore.getSessions(userId);
   const todaySessionLog = userSessions.find((s: WorkoutSession) => s.date === dateStr);
@@ -84,6 +90,37 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
     ? todaySessionLog.setLogs.reduce((acc, log) => acc + log.weightKg * log.reps, 0)
     : 0;
 
+  // 3. Biometric & Readiness Check-in Check
+  const latestBiometrics = appStore.getLatestWearableBiometrics(userId);
+  const hasReadinessInput = !!(latestBiometrics && latestBiometrics.date === dateStr);
+  
+  let readinessStatus = "Awaiting check-in";
+  if (latestBiometrics) {
+    if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 60) {
+      readinessStatus = "Fatigued (CNS)";
+    } else if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 80) {
+      readinessStatus = "Suboptimal";
+    } else {
+      readinessStatus = "Optimal";
+    }
+  }
+
+  // 4. Clock-aware moment status calculation
+  // Morning hydration: 07:00 (hour 7)
+  const hydStatus: "past" | "now" | "upcoming" = hydrationChecked || currentHour > 9 ? "past" : currentHour >= 6 ? "now" : "upcoming";
+  
+  // Morning stack: 08:00 (hour 8)
+  const mornStatus: "past" | "now" | "upcoming" = isMorningComplete || currentHour > 11 ? "past" : currentHour >= 8 ? "now" : "upcoming";
+  
+  // Midday Workout: 12:15 (hour 12-14)
+  const workoutStatus: "past" | "now" | "upcoming" = sessionCompleted || currentHour >= 16 ? "past" : currentHour >= 11 ? "now" : "upcoming";
+  
+  // Recovery fuel: 13:30 (hour 13-15)
+  const fuelStatus: "past" | "now" | "upcoming" = sessionCompleted ? (currentHour >= 15 ? "past" : "now") : currentHour >= 16 ? "past" : "upcoming";
+  
+  // Evening stack: 21:30 (hour 21+)
+  const eveStatus: "past" | "now" | "upcoming" = isEveningComplete ? "past" : currentHour >= 20 ? "now" : "upcoming";
+
   const moments: TimelineMoment[] = [
     {
       id: "moment_hydration_morning",
@@ -91,7 +128,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
       time: "07:00",
       title: "Mineral Hydration",
       glance: `${todayHydration > 0 ? todayHydration : 500} ml`,
-      status: hydrationChecked ? "past" : "upcoming",
+      status: hydStatus,
       learnType: "hydration",
     },
     {
@@ -104,7 +141,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
         : morningTaken > 0
         ? `${morningTaken}/3 taken · D3, Omega-3, B-Complex`
         : "D3+K2, Omega-3, B-Complex",
-      status: isMorningComplete ? "past" : morningTaken > 0 ? "now" : "upcoming",
+      status: mornStatus,
       badge: isMorningComplete ? "Done" : `${morningTaken}/3`,
       learnType: "supplements",
     },
@@ -116,11 +153,11 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
       glance: sessionCompleted
         ? `${sessionVolume > 0 ? sessionVolume.toLocaleString() + " kg volume" : "Completed"} · Recorded`
         : hasSession
-        ? `${exCount} exercises · ~55 min`
+        ? `${exCount} exercises · ~34 min`
         : "Postural symmetry & light walk",
-      status: sessionCompleted ? "past" : "now",
+      status: workoutStatus,
       badge: sessionCompleted ? "Done" : undefined,
-      actionLabel: sessionCompleted ? "View Progress" : "Start Workout",
+      actionLabel: sessionCompleted ? "View Progress" : isRestDay ? "Review Mobility" : "Start Workout",
       actionHref: sessionCompleted ? "/progress" : `/session?day=${todaySession?.id || "day_1"}&mode=preview`,
       learnType: "workout",
     },
@@ -129,8 +166,8 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
       pillar: "eat",
       time: "13:30",
       title: "Recovery Fuel & Creatine",
-      glance: "40g Protein · 6.9 g Creatine",
-      status: sessionCompleted ? "now" : "upcoming",
+      glance: "40 g Protein · 5 g Creatine",
+      status: fuelStatus,
       actionLabel: "Log Protocols",
       learnType: "supplements",
     },
@@ -144,7 +181,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
         : eveningTaken > 0
         ? `${eveningTaken}/2 taken · Magnesium & Theanine`
         : "Magnesium Glycinate (400 mg)",
-      status: isEveningComplete ? "past" : "upcoming",
+      status: eveStatus,
       badge: isEveningComplete ? "Done" : "Sleep",
       learnType: "supplements",
     },
@@ -156,51 +193,24 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
     moments.find((m) => m.status === "upcoming") ||
     moments[moments.length - 1];
 
-  // Check latest biometric snapshot for today
-  const latestBiometrics = appStore.getLatestWearableBiometrics(userId);
-  let readinessStatus = "Ready";
-  if (latestBiometrics) {
-    if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 60) {
-      readinessStatus = "Fatigued (CNS)";
-    } else if (latestBiometrics.readinessScore && latestBiometrics.readinessScore < 80) {
-      readinessStatus = "Suboptimal";
-    } else {
-      readinessStatus = "Optimal";
-    }
-  }
-
-  // Live dynamic cross-pillar insight connecting signals
-  let insight: PresentationInsight;
+  // Live dynamic cross-pillar insight connecting REAL signals only
+  let insight: PresentationInsight | undefined = undefined;
   if (sessionCompleted && sessionVolume > 0) {
     insight = {
       id: "insight_train_recovery_live",
       sources: ["train", "eat", "sleep"],
-      sentence: `Completed ${sessionVolume.toLocaleString()} kg load today. 40g protein and 400mg evening magnesium prioritized for myofibrillar and CNS recovery.`,
+      sentence: `Completed ${sessionVolume.toLocaleString()} kg load today. 40 g protein and 400 mg evening magnesium prioritized for myofibrillar and CNS recovery.`,
       whyPrompt: `How does my ${sessionVolume.toLocaleString()} kg training load impact my post-workout nutrition and evening sleep recovery?`,
     };
-  } else if (!hasSession) {
-    insight = {
-      id: "insight_rest_recovery",
-      sources: ["sleep", "eat"],
-      sentence: "Scheduled recovery day. Parasympathetic tone prioritized — focus on 3L hydration and 8+ hours restorative sleep.",
-      whyPrompt: "Why is parasympathetic recovery emphasized today?",
-    };
   } else if (latestBiometrics) {
-    const srcName = latestBiometrics.source === "apple_health" ? "Apple Watch" : "Wearable";
-    const hrvPart = latestBiometrics.hrvMs ? ` with ${latestBiometrics.hrvMs}ms HRV` : "";
-    const modPart = latestBiometrics.cnsFatigueDetected ? "axial loads auto-calibrated" : "full overload target prescribed";
+    const srcName = latestBiometrics.source === "apple_health" ? "Apple Watch" : latestBiometrics.source === "manual" ? "Morning Check-in" : "Wearable";
+    const hrvPart = latestBiometrics.hrvMs ? ` · ${latestBiometrics.hrvMs} ms HRV` : "";
+    const modPart = latestBiometrics.cnsFatigueDetected ? "axial spinal loads deloaded" : "full progressive overload target prescribed";
     insight = {
       id: "insight_wearable_sync",
       sources: ["sleep", "train"],
-      sentence: `Slept ${latestBiometrics.sleepHours}h${hrvPart} via ${srcName}. Autonomic recovery is ${readinessStatus.toLowerCase()} — ${modPart}.`,
-      whyPrompt: `How does my ${latestBiometrics.sleepHours}h sleep and HRV from ${srcName} determine my workout load?`,
-    };
-  } else {
-    insight = {
-      id: "insight_sleep_train_1",
-      sources: ["sleep", "train"],
-      sentence: "Slept 7h 20m with 82ms HRV. Autonomic recovery is high — full training volume prescribed.",
-      whyPrompt: "Why was full volume prescribed for today based on my recovery metrics?",
+      sentence: `Logged ${latestBiometrics.sleepHours}h sleep${hrvPart} via ${srcName}. Readiness is ${readinessStatus.toLowerCase()} — ${modPart}.`,
+      whyPrompt: `How does my ${latestBiometrics.sleepHours}h sleep from ${srcName} determine my workout load?`,
     };
   }
 
@@ -209,5 +219,7 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string): {
     heroMoment,
     insight,
     readinessStatus,
+    hasReadinessInput,
+    isRestDay,
   };
 }

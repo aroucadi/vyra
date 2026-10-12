@@ -31,7 +31,7 @@ export async function runSeed(customDbUrl?: string) {
   const totalSets = allExercises.reduce((acc, ex) => acc + ex.sets, 0);
   const totalVariations = allExercises.reduce((acc, ex) => acc + (ex.equipmentVariations?.length || 0), 0);
 
-  console.log(`✓ Athlete Profile: ${userAlaa.name} (${userAlaa.heightCm} cm, 49.0 kg, BMI 16.4)`);
+  console.log(`✓ Athlete Profile: ${userAlaa.name} (${userAlaa.heightCm} cm)`);
   console.log(`✓ Protocol Title: "${masterProg.title}"`);
   console.log(`✓ Architecture: ${masterProg.durationWeeks} Weeks • ${masterProg.weeks.length * 7} Days • ${allExercises.length} Workout Slots/Wk • ${totalSets} Working Sets/Wk`);
   console.log(`✓ Equipment Matrix: ${totalVariations} Multi-Modality Variations (${allExercises.length} slots × 4 equipment options)`);

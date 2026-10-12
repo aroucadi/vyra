@@ -33,11 +33,10 @@ export const userAlaa: User = {
   sex: 'male',
   dob: '1987-03-15',
   injuries: [
-    'Clinically Underweight (BMI 16.4 / 49 kg at 173 cm: consult physician or registered dietitian before starting to rule out underlying medical issues and ensure safe weight gain)',
-    'Detrained Lifter (11-month layoff: muscle memory allows strength and volume to return rapidly; Weeks 1–3 conservative baseline loading)',
-    'Anterior Pelvic Tilt (APT) & Forward Pelvic Sway (load glutes, hamstrings, and anterior core; avoid lumbar hyperextension; frequent position changes every 45–60 min)',
+    'Detrained Lifter (11-month layoff: Weeks 1–3 conservative baseline loading)',
+    'Anterior Pelvic Tilt & Forward Pelvic Sway (load glutes, hamstrings, and anterior core; avoid lumbar hyperextension)',
     'Shoulder Internal Rotation (mandates strict 2:1 pull-to-push volume, strengthening retractors, rear delts, and lower traps)',
-    'Monday Night Football Management (high-velocity sprinting & cutting: Tuesday maintenance load vs Thursday primary overload)',
+    'Monday Night Football Management (Tuesday maintenance load vs Thursday primary overload)',
   ],
   goals: [
     'Rebuild Clavicular Upper Chest Shelf (30° upward pressing path with full serratus protraction)',

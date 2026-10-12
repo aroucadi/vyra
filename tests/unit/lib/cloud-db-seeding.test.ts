@@ -35,11 +35,10 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     assert.strictEqual(userAlaa.sex, 'male');
     assert.strictEqual(userAlaa.dob, '1987-03-15');
 
-    // Clinical underweight advisory & goals
-    const hasMedicalAdvisory = userAlaa.injuries.some((inj) =>
-      inj.includes('Clinically Underweight') && inj.includes('BMI 16.4') && inj.includes('49 kg')
-    );
-    assert.strictEqual(hasMedicalAdvisory, true, 'Profile must include BMI 16.4 clinical underweight notice');
+    // Posture and mobility anchors
+    const hasPelvicTilt = userAlaa.injuries.some((inj) => inj.includes('Anterior Pelvic Tilt'));
+    const hasShoulderRotation = userAlaa.injuries.some((inj) => inj.includes('Shoulder Internal Rotation'));
+    assert.strictEqual(hasPelvicTilt && hasShoulderRotation, true, 'Profile must include posture anchors');
 
     const hasTargetGain = userAlaa.goals.some((g) => g.includes('+0.25 to +0.40 kg/week'));
     assert.strictEqual(hasTargetGain, true, 'Goals must include +0.25 to +0.40 kg/week rate');

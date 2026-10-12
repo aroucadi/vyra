@@ -10,6 +10,8 @@ export async function GET() {
     {
       status: 'healthy',
       service: 'vyra-app',
+      buildVersion: 'v1.0.0-rc1',
+      commitHash: process.env.COMMIT_SHA || 'd5a3297',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(uptime),
       environment: process.env.NODE_ENV || 'development',

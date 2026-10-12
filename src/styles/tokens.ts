@@ -1,5 +1,5 @@
-﻿/**
- * VYRA Life OS — 3-Layer Design Token Architecture
+/**
+ * VYRA Design Tokens — 3-Layer Token Architecture
  * Sourced via ui-ux-pro-max & design-system skill
  */
 

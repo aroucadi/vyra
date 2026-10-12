@@ -201,7 +201,7 @@ function SessionFlow() {
     telemetry.track("workout_recalibration_applied", {
       sleep_hours: sleepHours,
       readiness_score: autoregulationPlan.readinessScore,
-      cns_fatigue: autoregulationPlan.cnsFatigueDetected,
+      reduced_recovery: autoregulationPlan.reducedRecovery ?? autoregulationPlan.cnsFatigueDetected,
     }, currentUser.id);
   };
 

@@ -690,7 +690,7 @@ export const seedSupplementProtocols: SupplementProtocol[] = [
     phases: [
       {
         phaseIndex: 1,
-        name: "Sleep Architecture & CNS Recovery",
+        name: "Sleep & Night Recovery",
         startDay: 1,
         doses: [
           {
@@ -921,26 +921,31 @@ class Store {
     dateStr?: string
   ): WearableBiometricSnapshot {
     const date = dateStr || new Date().toISOString().split("T")[0];
-    const scoreMap: Record<string, number> = {
-      depleted: 45,
-      light: 45,
-      suboptimal: 68,
-      moderate: 68,
-      good: 85,
-      optimal: 92,
-      full: 95,
-    };
-    const isFatigued = feeling === "depleted" || feeling === "light" || feeling === "suboptimal" || feeling === "moderate";
-    const hrvEstimate = (feeling === "depleted" || feeling === "light") ? 42 : (feeling === "suboptimal" || feeling === "moderate") ? 64 : 85;
+    
+    // Normalize feeling answer
+    let normalizedAnswer: "light" | "moderate" | "good" | "full" = "full";
+    if (feeling === "depleted" || feeling === "light") {
+      normalizedAnswer = "light";
+    } else if (feeling === "suboptimal" || feeling === "moderate") {
+      normalizedAnswer = "moderate";
+    } else if (feeling === "good") {
+      normalizedAnswer = "good";
+    } else {
+      normalizedAnswer = "full";
+    }
 
+    const isReduced = normalizedAnswer === "light" || normalizedAnswer === "moderate" || sleepHours < 7.0;
+
+    // Manual readiness answers store only: date, sleepHours, answer, source="manual"
+    // No invented hrvMs, no invented readinessScore
     return this.saveWearableBiometrics({
       traineeId,
       date,
       source: "manual",
       sleepHours,
-      readinessScore: scoreMap[feeling] || 75,
-      cnsFatigueDetected: isFatigued,
-      hrvMs: hrvEstimate,
+      answer: normalizedAnswer,
+      reducedRecovery: isReduced,
+      cnsFatigueDetected: isReduced,
     });
   }
 

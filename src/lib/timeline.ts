@@ -203,15 +203,26 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHo
       whyPrompt: `How does my ${sessionVolume.toLocaleString()} kg training load impact my post-workout nutrition and evening sleep recovery?`,
     };
   } else if (latestBiometrics) {
-    const srcName = latestBiometrics.source === "apple_health" ? "Apple Watch" : latestBiometrics.source === "manual" ? "Morning Check-in" : "Wearable";
-    const hrvPart = latestBiometrics.hrvMs ? ` · ${latestBiometrics.hrvMs} ms HRV` : "";
-    const modPart = latestBiometrics.cnsFatigueDetected ? "axial spinal loads deloaded" : "full progressive overload target prescribed";
-    insight = {
-      id: "insight_wearable_sync",
-      sources: ["sleep", "train"],
-      sentence: `Logged ${latestBiometrics.sleepHours}h sleep${hrvPart} via ${srcName}. Readiness is ${readinessStatus.toLowerCase()} — ${modPart}.`,
-      whyPrompt: `How does my ${latestBiometrics.sleepHours}h sleep from ${srcName} determine my workout load?`,
-    };
+    const isManual = latestBiometrics.source === "manual";
+    const isReduced = latestBiometrics.reducedRecovery ?? latestBiometrics.cnsFatigueDetected;
+    const modPart = isReduced ? "heavy lifts are lighter today" : "full progression active";
+
+    if (isManual) {
+      insight = {
+        id: "insight_wearable_sync",
+        sources: ["sleep", "train"],
+        sentence: `You said ${latestBiometrics.sleepHours} h sleep. ${modPart}.`,
+        whyPrompt: `Why does my sleep answer change today's workout?`,
+      };
+    } else {
+      const hrvPart = latestBiometrics.hrvMs ? ` · ${latestBiometrics.hrvMs} ms HRV` : "";
+      insight = {
+        id: "insight_wearable_sync",
+        sources: ["sleep", "train"],
+        sentence: `Wearable synced ${latestBiometrics.sleepHours} h sleep${hrvPart}. ${modPart}.`,
+        whyPrompt: `Why does my wearable sync change today's workout?`,
+      };
+    }
   }
 
   return {

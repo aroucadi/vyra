@@ -38,13 +38,14 @@ export interface AutoregulationPlan {
   readinessState: ReadinessState;
   readinessScore: number; // 0 - 100
   sleepHours: number;
-  cnsFatigueDetected: boolean;
+  reducedRecovery: boolean;
+  cnsFatigueDetected: boolean; // Preserved as alias for backward compatibility
   headline: string;
   clinicalRationale: string;
   prescriptionDeltas: ExerciseAutoregulation[];
 }
 
-// Biomechanical classification of high axial spinal loading movements
+// Classification of heavy compound lifts
 const AXIAL_LOADED_PATTERNS = [
   /squat/i,
   /deadlift/i,
@@ -56,23 +57,23 @@ const AXIAL_LOADED_PATTERNS = [
   /barbell row/i,
 ];
 
-// Exercise substitutions when axial spine fatigue requires deloading
+// Exercise substitutions when fatigue warrants machine support
 const AXIAL_SUBSTITUTIONS: Record<string, { replacement: string; reason: string }> = {
   "barbell back squat": {
     replacement: "Hack Squat Machine",
-    reason: "Reduces spinal axial compression by 40% while matching quad hyper-trophy stimulus",
+    reason: "Machine support reduces back strain on low recovery",
   },
   "barbell squat": {
     replacement: "Leg Press Machine",
-    reason: "Eliminates spinal shearing while maintaining knee-extension overload",
+    reason: "Provides stable back support while maintaining leg work",
   },
   "barbell romanian deadlift": {
     replacement: "45° Back / Glute Hyperextension",
-    reason: "Protects lumbar erectors on low sleep while targeting hamstrings/glutes",
+    reason: "Less lower-back fatigue on low sleep while targeting hamstrings",
   },
   "standing barbell overhead press": {
     replacement: "Seated Dumbbell Shoulder Press",
-    reason: "Removes axial lumbar spine stabilization demands under CNS fatigue",
+    reason: "Seated support keeps lifts stable when tired",
   },
 };
 
@@ -201,34 +202,35 @@ export function generateAutoregulationPlan(
 ): AutoregulationPlan {
   const { score, state } = calculateReadinessScore(readinessInput);
   const sleep = readinessInput.sleepHours;
-  const cnsFatigueDetected = state !== "optimal";
+  const reducedRecovery = state !== "optimal";
+  const cnsFatigueDetected = reducedRecovery;
 
   const biometricNotes: string[] = [];
   if (typeof readinessInput.hrvMs === "number" && !isNaN(readinessInput.hrvMs)) {
     const baseline = readinessInput.hrvBaselineMs && readinessInput.hrvBaselineMs > 0 ? readinessInput.hrvBaselineMs : 55;
     const diffPct = Math.round(((readinessInput.hrvMs - baseline) / baseline) * 100);
     if (diffPct <= -15) {
-      biometricNotes.push(`HRV suppressed ${Math.abs(diffPct)}% (${readinessInput.hrvMs}ms)`);
+      biometricNotes.push(`Lower recovery (${readinessInput.hrvMs}ms)`);
     } else if (diffPct >= 15) {
-      biometricNotes.push(`HRV elevated +${diffPct}% (${readinessInput.hrvMs}ms)`);
+      biometricNotes.push(`Higher recovery (${readinessInput.hrvMs}ms)`);
     } else {
-      biometricNotes.push(`HRV baseline (${readinessInput.hrvMs}ms)`);
+      biometricNotes.push(`Baseline recovery (${readinessInput.hrvMs}ms)`);
     }
   }
   if (typeof readinessInput.deepSleepMinutes === "number" && !isNaN(readinessInput.deepSleepMinutes)) {
-    biometricNotes.push(`Deep Sleep ${readinessInput.deepSleepMinutes}m`);
+    biometricNotes.push(`Deep sleep ${readinessInput.deepSleepMinutes}m`);
   }
   const bioSummary = biometricNotes.length > 0 ? ` [${biometricNotes.join(" · ")}]` : "";
 
   let headline = "Full Recovery · Progressive Overload";
-  let clinicalRationale = `Recovery capacity peaked${bioSummary}. Execute planned loading and target top-end rep targets.`;
+  let clinicalRationale = `Good recovery reported${bioSummary}. Proceed with planned weights and rep targets.`;
 
   if (state === "depleted") {
     headline = "Lower Recovery Today · Suggested Adjustments";
-    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} indicates lower neuromuscular readiness. Heavy spinal loads adjusted down by 8–10% and RIR buffer increased to maintain technical form.`;
+    clinicalRationale = `You said ${sleep}h sleep${bioSummary}. Heavy leg and back lifts are lighter today with an extra rep in reserve to keep good form.`;
   } else if (state === "suboptimal") {
     headline = "Moderate Recovery · Conservative Load Modulation";
-    clinicalRationale = `Sleep duration (${sleep}h)${bioSummary} is slightly below baseline. Primary compound intensity modulated by ~5% with an added +1 RIR buffer.`;
+    clinicalRationale = `You said ${sleep}h sleep${bioSummary}. Main lifts are slightly lighter today with an extra rep in reserve.`;
   }
 
   const prescriptionDeltas: ExerciseAutoregulation[] = exercises.map((ex) => {
@@ -242,11 +244,11 @@ export function generateAutoregulationPlan(
     let rationale = "Plan matched to standard progression.";
 
     if (state === "depleted") {
-      rirDelta = 1; // +1 RIR buffer (e.g. RIR 1 -> RIR 2)
+      rirDelta = 1; // +1 RIR buffer
       if (isAxial) {
-        loadFactor = 0.90; // -10% load on axial spinal lifts
-        setDelta = ex.targetSets > 3 ? -1 : 0; // Prune volume set if high
-        rationale = "Axial load reduced 10% & +1 RIR buffer applied to protect spine stability.";
+        loadFactor = 0.90; // -10% load on heavy compounds
+        setDelta = ex.targetSets > 3 ? -1 : 0;
+        rationale = "Heavy lift load reduced 10% with +1 RIR buffer to keep form clean.";
 
         // Check if substitution is beneficial
         const normalizedKey = ex.name.toLowerCase().trim();
@@ -258,21 +260,21 @@ export function generateAutoregulationPlan(
           rationale = `${sub.reason}. ${rationale}`;
         }
       } else {
-        loadFactor = 0.95; // -5% on non-axial exercises
-        rationale = "Accessory load reduced 5% to account for systemic fatigue.";
+        loadFactor = 0.95; // -5%
+        rationale = "Accessory weight slightly reduced to match energy level.";
       }
     } else if (state === "suboptimal") {
       rirDelta = 1;
       if (isAxial) {
         loadFactor = 0.95; // -5% load
-        rationale = "Primary compound load dialed back 5% to preserve technical form.";
+        rationale = "Main lift dialed back 5% to maintain form.";
       } else {
-        loadFactor = 0.98; // Minor 2% touch
-        rationale = "Standard volume maintained with conservative RIR buffer.";
+        loadFactor = 0.98;
+        rationale = "Standard volume with +1 RIR buffer.";
       }
     } else {
-      // Full recovery: encourage progressive overload
-      rationale = "Full recovery readiness. Target upper rep ceiling @ planned RIR.";
+      // Full recovery
+      rationale = "Full recovery. Target top-end rep targets as planned.";
     }
 
     const adaptedWeightKg = roundWeightStandard(ex.plannedWeightKg * loadFactor);
@@ -300,6 +302,7 @@ export function generateAutoregulationPlan(
     readinessState: state,
     readinessScore: score,
     sleepHours: sleep,
+    reducedRecovery,
     cnsFatigueDetected,
     headline,
     clinicalRationale,

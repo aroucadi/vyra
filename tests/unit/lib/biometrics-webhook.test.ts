@@ -60,10 +60,10 @@ describe("Vyra Apple Health & Wearables Biometric Ingestion Engine", () => {
     });
 
     assert.strictEqual(plan.readinessState, "depleted");
-    assert.strictEqual(plan.cnsFatigueDetected, true);
+    assert.strictEqual(plan.reducedRecovery, true);
     assert.ok(
-      plan.clinicalRationale.includes("HRV suppressed") || plan.clinicalRationale.includes("Deep Sleep"),
-      "Clinical rationale must cite autonomic biomarker indicators"
+      plan.clinicalRationale.includes("recovery") || plan.clinicalRationale.includes("sleep"),
+      "Clinical rationale must cite sleep and recovery adjustments"
     );
   });
 

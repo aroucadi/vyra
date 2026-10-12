@@ -307,13 +307,15 @@ export interface WearableBiometricSnapshot {
   date: string; // YYYY-MM-DD
   source: WearableDeviceSource;
   sleepHours: number;
+  answer?: "light" | "moderate" | "good" | "full" | string;
   deepSleepMinutes?: number;
   remSleepMinutes?: number;
-  hrvMs?: number; // Heart Rate Variability (rMSSD / SDNN)
+  hrvMs?: number; // Heart Rate Variability (rMSSD / SDNN) - Only present for real wearables
   restingHeartRateBpm?: number;
   activeEnergyBurnedKcal?: number;
-  readinessScore?: number; // 0 - 100
-  cnsFatigueDetected?: boolean;
+  readinessScore?: number; // 0 - 100 - Only present for real wearables
+  reducedRecovery?: boolean;
+  cnsFatigueDetected?: boolean; // Deprecated alias preserved for migration
   receivedAt: string; // ISO timestamp
 }
 

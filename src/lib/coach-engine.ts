@@ -139,35 +139,38 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     };
   }
 
-  // 3. SLEEP / HRV / AUTOREGULATION RECOVERY INTENT
+  // 3. SLEEP / RECOVERY INTENT
   if (
     normalized.includes("sleep") ||
     normalized.includes("recovery") ||
     normalized.includes("tired") ||
     normalized.includes("fatigue") ||
     normalized.includes("sore") ||
-    normalized.includes("hrv") ||
     normalized.includes("readiness")
   ) {
-    const sleep = biometrics ? biometrics.sleepHours : 5.5;
-    const hrv = biometrics ? biometrics.hrvMs : 41;
-    const isFatigued = biometrics?.cnsFatigueDetected || sleep < 6.5 || (hrv && hrv < 45);
+    const sleep = biometrics ? biometrics.sleepHours : 6.0;
+    const isManual = !biometrics || biometrics.source === "manual";
+    const isFatigued = biometrics?.reducedRecovery || biometrics?.cnsFatigueDetected || sleep < 7.0;
 
     if (isFatigued) {
+      const sourceCopy = isManual
+        ? `You said ${sleep}h sleep.`
+        : `Your wearable logged ${sleep}h sleep.`;
+
       return {
         id: responseId,
-        text: `Your Apple Watch telemetry logged ${sleep}h sleep with ${hrv ? `${hrv}ms HRV` : "low recovery"}. Autonomic suppression indicates parasympathetic debt. Axial spinal loading should be dialed back by 10% with a +1 RIR safety buffer to prevent form degradation.`,
+        text: `${sourceCopy} Heavy leg and back lifts are lighter today with an extra rep in reserve to keep good form.`,
         card: {
           type: "autoregulate",
-          eyebrow: "BIOMETRIC CNS DELOAD · APPLE HEALTH SYNCED",
-          headline: "Axial Deload -10% · +1 RIR Buffer",
-          subtext: `Compensates for ${sleep}h sleep and ${hrv || 41}ms HRV. Reduces spinal compression while maintaining muscular hypertrophy.`,
-          ctaLabel: `Apply Deload to ${targetDay.label}`,
+          eyebrow: "RECOVERY ADJUSTMENT",
+          headline: "Main Lifts -10% · +1 Rep in Reserve",
+          subtext: `Compensates for ${sleep}h sleep. Heavy leg and back lifts are lighter today.`,
+          ctaLabel: `Apply Adjustment to ${targetDay.label}`,
           targetDayLabel: targetDay.label,
           details: [
-            { label: "Axial Load Delta", value: "-10%" },
-            { label: "RIR Buffer", value: "+1 Safety" },
-            { label: "Spine Safety", value: "Protected" },
+            { label: "Compound Lift Delta", value: "-10%" },
+            { label: "Reserve Buffer", value: "+1 Rep" },
+            { label: "Target Form", value: "Clean" },
           ],
           actionPayload: {
             actionType: "autoregulate",
@@ -178,9 +181,13 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
         },
       };
     } else {
+      const sourceCopy = isManual
+        ? `You said ${sleep}h sleep.`
+        : `Your wearable logged ${sleep}h sleep.`;
+
       return {
         id: responseId,
-        text: `Your Apple Watch recorded ${sleep}h sleep with ${hrv}ms HRV. Autonomic recovery is peaked (optimal readiness). Your nervous system is primed for top-end progressive overload. Planned weights and RIR targets remain active.`,
+        text: `${sourceCopy} You are well rested. Planned weights and rep targets remain active.`,
       };
     }
   }
@@ -201,7 +208,7 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
       text: `Your working load targets (${pbWeight} kg baseline) follow our strict Double Progression rule: you must hit the upper ceiling of your prescribed rep range (e.g. 10 clean reps @ 2 RIR) across all scheduled working sets before earning a +2.5 kg weight bump. This prevents ego-lifting and builds genuine tendon resilience.`,
       card: {
         type: "load_explanation",
-        eyebrow: "BIOMECHANICAL PROGRESSION · FORMULA & MATH",
+        eyebrow: "PROGRESSION RULES · FORMULA & MATH",
         headline: "Double Progression Ceiling Model",
         subtext: "Weight remains locked until rep ceiling is achieved across 100% of working sets. Math runs deterministically in code.",
         ctaLabel: "Review in Exercise Library",

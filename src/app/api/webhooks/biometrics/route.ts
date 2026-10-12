@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
       restingHeartRateBpm,
       activeEnergyBurnedKcal,
       readinessScore: readiness.score,
+      reducedRecovery: readiness.state !== "optimal",
       cnsFatigueDetected: readiness.state !== "optimal",
     });
 
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
         autoregulation: {
           score: readiness.score,
           state: readiness.state,
+          reducedRecovery: readiness.state !== "optimal",
           cnsFatigueDetected: readiness.state !== "optimal",
         },
       },

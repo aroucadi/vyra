@@ -20,8 +20,10 @@ export function AdaptiveRecalibrationCard({
   isApplied,
   wearableSnapshot,
 }: AdaptiveRecalibrationCardProps) {
+  const isReduced = plan.reducedRecovery ?? plan.cnsFatigueDetected;
+
   // If optimal recovery and no fatigue, show quiet progressive overload badge
-  if (!plan.cnsFatigueDetected) {
+  if (!isReduced) {
     return (
       <div className="bg-slate-900/70 border border-emerald-500/30 rounded-2xl p-4 transition-all">
         {/* Element 1: Eyebrow */}
@@ -32,10 +34,10 @@ export function AdaptiveRecalibrationCard({
               Full Recovery · You said {plan.sleepHours}h sleep
             </span>
           </div>
-          {wearableSnapshot && (
+          {wearableSnapshot && wearableSnapshot.source !== "manual" && (
             <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-emerald-300 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">
               <Watch className="w-3 h-3 text-emerald-400" />
-              <span>Watch · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
+              <span>Wearable · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
             </span>
           )}
         </div>
@@ -71,10 +73,10 @@ export function AdaptiveRecalibrationCard({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {wearableSnapshot && (
+          {wearableSnapshot && wearableSnapshot.source !== "manual" && (
             <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-amber-300 bg-amber-950/60 border border-amber-800/40 px-2 py-0.5 rounded-full">
               <Watch className="w-3 h-3 text-amber-400" />
-              <span>Watch · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
+              <span>Wearable · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
             </span>
           )}
           <span className="text-xs font-mono tabular-nums text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">

@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { appStore } from "../../../src/lib/store.ts";
+import { resolveProgramDay } from "../../../src/lib/utils.ts";
 
 describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", () => {
   it("verifies Alaa Pro and Alaa personas exist and are actively linked", () => {
@@ -200,5 +201,46 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     assert.ok(marcusRoster);
     assert.equal(marcusRoster.adherencePercentage, 50);
     assert.ok(marcusRoster.alerts.some((a) => a.type === "missed_sessions"));
+  });
+
+  it("verifies opening session directly on Wednesday resolves Day 2 without falling back to Day 0", () => {
+    const program = appStore.getActiveProgramForTrainee("trainee_alaa");
+    assert.ok(program, "Active program must exist");
+    const week1 = program.weeks[0];
+    assert.ok(week1, "Week 1 must exist");
+
+    // Wednesday is dayOfWeek 2
+    const wednesdayDay = week1.days.find((d) => d.dayOfWeek === 2 && !d.isRestDay);
+    assert.ok(wednesdayDay, "Wednesday training day must exist");
+    assert.equal(wednesdayDay.id, "prog_master_w1_d2");
+    assert.ok(wednesdayDay.label.toLowerCase().includes("wednesday") || wednesdayDay.label.toLowerCase().includes("delts"));
+
+    // Verify resolving by day ID directly (simulating /session?day=prog_master_w1_d2)
+    const dayParam = "prog_master_w1_d2";
+    const targetDay = week1.days.find((d) => d.id === dayParam);
+    assert.ok(targetDay, "Direct query targetDay must be found");
+    assert.equal(targetDay.id, "prog_master_w1_d2");
+    assert.equal(targetDay.dayOfWeek, 2);
+    assert.notEqual(targetDay.id, week1.days[0].id, "Target day must NOT fallback to Day 0 (Monday)");
+
+    // Verify resolving with simulated Wednesday date
+    // Program start date is "2026-10-12" (Monday, dayOfWeek 0)
+    // 2 days later is "2026-10-14" (Wednesday, dayOfWeek 2)
+    const resolvedWed = resolveProgramDay(program.startDate, "2026-10-14");
+    assert.equal(resolvedWed.dayOfWeek, 2);
+    assert.equal(resolvedWed.weekIndex, 1);
+
+    const autoResolvedWed = week1.days.find((d) => d.dayOfWeek === resolvedWed.dayOfWeek && !d.isRestDay);
+    assert.ok(autoResolvedWed, "Auto-resolved day for Wednesday clock must exist");
+    assert.equal(autoResolvedWed.id, "prog_master_w1_d2");
+    assert.equal(autoResolvedWed.label, wednesdayDay.label);
+
+    // Verify rest day (Friday = dayOfWeek 4) resolves to undefined instead of silently falling back to Day 0
+    const resolvedFri = resolveProgramDay(program.startDate, "2026-10-16");
+    assert.equal(resolvedFri.dayOfWeek, 4);
+    const scheduledFri = week1.days.find((d) => d.dayOfWeek === resolvedFri.dayOfWeek);
+    assert.ok(scheduledFri?.isRestDay);
+    const targetDayOnRest = (scheduledFri && !scheduledFri.isRestDay) ? scheduledFri : undefined;
+    assert.equal(targetDayOnRest, undefined, "Rest days must resolve to undefined to prompt day selection instead of silent Day 0 fallback");
   });
 });

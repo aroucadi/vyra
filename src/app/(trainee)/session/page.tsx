@@ -63,24 +63,27 @@ function SessionFlow() {
     ? resolveProgramDay(program.startDate)
     : { weekIndex: 1, dayOfWeek: 0, started: true };
 
-  // Resolve target program day (defaults to today's scheduled day, falling back to Monday Day 0)
+  // Resolve target program day based on query parameter or today's exact scheduled day
   const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
+  
+  // Explicitly check for today's scheduled day:
+  const scheduledToday = currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek);
+  
   const targetDay: ProgramDay | undefined = dayParam
     ? currentWeek?.days.find((d) => d.id === dayParam) || program?.weeks.flatMap((w) => w.days).find((d) => d.id === dayParam)
-    : currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek) || currentWeek?.days.find((d) => d.dayOfWeek === 0 && !d.isRestDay);
+    : (scheduledToday && !scheduledToday.isRestDay)
+    ? scheduledToday
+    : undefined;
 
   // Flow mode: "preview" | "active" | "summary"
   const initialMode = (searchParams.get("mode") as "preview" | "active" | "summary") || "preview";
   const [mode, setMode] = useState<"preview" | "active" | "summary">(initialMode);
+  const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
 
   // Exercises initialization
   const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
-    let activeDay = targetDay;
-    if (!activeDay || !activeDay.blocks || activeDay.blocks.length === 0) {
-      activeDay = currentWeek?.days.find((d) => d.dayOfWeek === 0 && d.blocks && d.blocks.length > 0) || currentWeek?.days[0];
-    }
-    if (!activeDay || !activeDay.blocks) return [];
-    const exPrescriptions = activeDay.blocks.flatMap((b) => b.exercises);
+    if (!targetDay || !targetDay.blocks) return [];
+    const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
     return exPrescriptions.map((ex) => {
       const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
       const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);
@@ -109,6 +112,47 @@ function SessionFlow() {
       };
     });
   });
+
+  // Re-sync exercises whenever targetDay changes
+  useEffect(() => {
+    if (!targetDay || !targetDay.blocks) {
+      setExercises([]);
+      return;
+    }
+    const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
+    setExercises(
+      exPrescriptions.map((ex) => {
+        const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
+        const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);
+        const defaultReps = pb ? pb.reps : Math.round((ex.repRangeLow + ex.repRangeHigh) / 2);
+
+        return {
+          id: ex.id,
+          name: ex.exerciseName,
+          category: ex.category,
+          subMovementOrder: ex.subMovementOrder,
+          supersetTag: ex.supersetTag,
+          interSetRestSeconds: ex.interSetRestSeconds,
+          targetSets: ex.sets || 3,
+          repLow: ex.repRangeLow,
+          repHigh: ex.repRangeHigh,
+          targetRir: ex.rirScheme?.[0] ?? 2,
+          restSeconds: ex.restSeconds !== undefined ? ex.restSeconds : 90,
+          lastBestWeight: defaultWeight,
+          lastBestReps: defaultReps,
+          formCue: ex.formCueText,
+          videoUrl: ex.videoUrl,
+          loadGuidance: ex.loadGuidance || "Double progression: add 2.5 kg once top rep target is reached.",
+          completedSets: [],
+          currentWeight: defaultWeight,
+          currentReps: defaultReps,
+        };
+      })
+    );
+    setCurrentExIndex(0);
+    setIsRecalibrationApplied(false);
+    setIsRecalibrationDismissed(false);
+  }, [targetDay?.id]);
 
   const [currentExIndex, setCurrentExIndex] = useState(0);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
@@ -373,14 +417,45 @@ function SessionFlow() {
           </span>
         </header>
 
-        <div className="space-y-1">
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            {targetDay?.label || "Upper Hypertrophy"}
-          </h1>
-          <p className="text-xs text-slate-400">
-            {exercises.length} exercises · ~55 min · Target RIR 2
-          </p>
-        </div>
+        {!targetDay ? (
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4">
+            <h1 className="text-lg font-bold text-white">Choose today&apos;s session</h1>
+            <p className="text-xs text-slate-400">
+              No workout is scheduled for today. Select a session from your active blueprint below.
+            </p>
+            <div className="space-y-2 pt-2">
+              {currentWeek?.days.filter((d) => !d.isRestDay).map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => router.push(`/session?day=${d.id}&mode=preview`)}
+                  className="w-full p-3.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-left transition flex items-center justify-between"
+                >
+                  <span className="text-xs font-bold text-white">{d.label}</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">Select →</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-white tracking-tight">
+                {targetDay.label}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setIsDayPickerOpen(true)}
+                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg"
+              >
+                Different day
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              {exercises.length} exercises · ~55 min · Target RIR 2
+            </p>
+          </div>
+        )}
 
         {/* Readiness Input & Autoregulation Section */}
         <section className="space-y-3">
@@ -475,6 +550,7 @@ function SessionFlow() {
         {/* Single Dominant Begin Action */}
         <button
           type="button"
+          disabled={!targetDay || exercises.length === 0}
           onClick={() => {
             const secondsToStart = Math.max(1, Math.round((Date.now() - new Date(sessionStartTime).getTime()) / 1000));
             telemetry.track(
@@ -489,10 +565,50 @@ function SessionFlow() {
             );
             setMode("active");
           }}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+          className={clsx(
+            "w-full py-4 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2",
+            !targetDay || exercises.length === 0
+              ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+              : "bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 cursor-pointer"
+          )}
         >
           <span>Begin Workout</span>
         </button>
+
+        {/* Different Day Picker Sheet */}
+        <Sheet open={isDayPickerOpen} onOpenChange={setIsDayPickerOpen}>
+          <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-4">
+            <SheetHeader className="text-left space-y-1">
+              <SheetTitle className="text-base font-bold text-white">Choose a Different Session</SheetTitle>
+              <SheetDescription className="text-xs text-slate-400">
+                Select a scheduled training day from your current blueprint week.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="space-y-2 pt-2">
+              {currentWeek?.days.filter((d) => !d.isRestDay).map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => {
+                    setIsDayPickerOpen(false);
+                    router.push(`/session?day=${d.id}&mode=preview`);
+                  }}
+                  className={clsx(
+                    "w-full p-3.5 rounded-xl text-left transition flex items-center justify-between border cursor-pointer",
+                    d.id === targetDay?.id
+                      ? "bg-slate-900 border-emerald-500/50 text-emerald-400"
+                      : "bg-slate-950 border-slate-800 hover:border-slate-700 text-white"
+                  )}
+                >
+                  <span className="text-xs font-bold">{d.label}</span>
+                  {d.id === targetDay?.id && (
+                    <span className="text-[10px] font-mono text-emerald-400">Current</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }

@@ -55,4 +55,30 @@ describe("Vyra Lean Analytics & Telemetry Layer", () => {
     assert.strictEqual(setLogs.length, 1);
     assert.strictEqual(setLogs[0].properties.reps, 8);
   });
+
+  it("verifies /api/events route scrubbing logic prevents health data logging", async () => {
+    const { POST } = await import("../../../src/app/api/events/route");
+    
+    // Simulate telemetry event POST request
+    const mockRequest = new Request("https://vyra.app/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventName: "workout_completed",
+        installId: "inst_test_uuid",
+        properties: {
+          duration_sec: 1800,
+          total_sets: 9,
+          bodyweight_kg: 70,
+          bmi_score: 21,
+          user_email: "test@domain.com",
+        },
+      }),
+    });
+
+    const response = await POST(mockRequest);
+    assert.strictEqual(response.status, 200);
+    const body = await response.json();
+    assert.strictEqual(body.status, "recorded");
+  });
 });

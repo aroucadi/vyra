@@ -64,8 +64,28 @@ class TelemetryService {
         this.buffer.shift();
       }
 
-      // In production, dispatch asynchronously to PostHog, Segment, or GCP PubSub
+      // In browser runtime, dispatch asynchronously to /api/events endpoint
       if (process.env.NODE_ENV !== "test" && typeof window !== "undefined") {
+        try {
+          let installId = localStorage.getItem("vyra_install_id");
+          if (!installId) {
+            installId = `inst_${Math.random().toString(36).substring(2, 10)}`;
+            localStorage.setItem("vyra_install_id", installId);
+          }
+
+          fetch("/api/events", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              eventName,
+              installId,
+              properties: sanitizedProps,
+              timestamp: record.timestamp,
+            }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
+
         // Log quietly in development
         if (process.env.NODE_ENV === "development") {
           console.debug(`[Telemetry] ${eventName}`, sanitizedProps);

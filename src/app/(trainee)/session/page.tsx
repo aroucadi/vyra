@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { generateAutoregulationPlan, MinimalExerciseTarget } from "@/lib/autoregulation";
 import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibrationCard";
 import { telemetry } from "@/lib/telemetry";
+import { persistClientWorkoutSession, triggerBackupDownload } from "@/lib/storage";
 import {
   ArrowLeft,
   Clock,
@@ -394,6 +395,7 @@ function SessionFlow() {
       currentUser.id
     );
 
+    await persistClientWorkoutSession(completedSession);
     await saveSessionAction(completedSession);
     setMode("summary");
   };
@@ -674,14 +676,30 @@ function SessionFlow() {
           </div>
         </div>
 
-        {/* Done / Return Action */}
-        <button
-          type="button"
-          onClick={() => router.push("/today")}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition"
-        >
-          Done · Return to Today
-        </button>
+        {/* Done & Backup Actions */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => router.push("/today")}
+            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition"
+          >
+            Done · Return to Today
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const exportPayload = {
+                user: { id: currentUser.id, name: currentUser.name },
+                sessions: appStore.getSessions(currentUser.id),
+                readinessLogs: appStore.getWearableBiometricsHistory(currentUser.id),
+              };
+              triggerBackupDownload(exportPayload, `vyra-backup-${currentUser.id}-${new Date().toISOString().split("T")[0]}.json`);
+            }}
+            className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold rounded-xl transition"
+          >
+            Export Backup
+          </button>
+        </div>
 
       </div>
     );

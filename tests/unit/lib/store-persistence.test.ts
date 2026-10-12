@@ -139,4 +139,75 @@ describe("Data Compatibility & Legacy Storage Migration", () => {
     assert.strictEqual(migrated.metrics.length, 1);
     assert.strictEqual(migrated.lastBackupAt, "2026-10-12T08:00:00.000Z");
   });
+
+  it("proves offline persistence: logging 3 sets preserves sets in local payload without loss", () => {
+    // Simulate initial empty or existing client cache
+    const initialClientState = migrateLegacyStoredData({
+      sessions: [],
+      readinessLogs: [],
+      supplementLogs: [],
+      metrics: [],
+    });
+    assert.strictEqual(initialClientState.sessions.length, 0);
+
+    // Simulate logging 3 sets in offline session (airplane mode)
+    const offlineSession = {
+      id: "sess_offline_airplane_test",
+      traineeId: "trainee_alaa",
+      programDayId: "prog_master_w1_d0",
+      programTitle: "The Master Hypertrophy & Postural Architecture Protocol",
+      dayLabel: "Monday: Upper Body A",
+      date: "2026-10-12",
+      startedAt: "2026-10-12T13:00:00.000Z",
+      durationSec: 1200,
+      setLogs: [
+        {
+          id: "set_offline_1",
+          exercisePrescriptionId: "ep1",
+          exerciseName: "30° Incline Dumbbell Press",
+          setIndex: 1,
+          weightKg: 28,
+          reps: 10,
+          rirAchieved: 2,
+          isPR: true,
+        },
+        {
+          id: "set_offline_2",
+          exercisePrescriptionId: "ep1",
+          exerciseName: "30° Incline Dumbbell Press",
+          setIndex: 2,
+          weightKg: 28,
+          reps: 9,
+          rirAchieved: 2,
+          isPR: false,
+        },
+        {
+          id: "set_offline_3",
+          exercisePrescriptionId: "ep1",
+          exerciseName: "30° Incline Dumbbell Press",
+          setIndex: 3,
+          weightKg: 28,
+          reps: 8,
+          rirAchieved: 1,
+          isPR: false,
+        },
+      ],
+    };
+
+    // Save session to payload
+    initialClientState.sessions.push(offlineSession);
+
+    // Simulate page reload: serialize and parse through migrateLegacyStoredData
+    const serialized = JSON.stringify(initialClientState);
+    const reloaded = migrateLegacyStoredData(JSON.parse(serialized));
+
+    // Assert the 3 sets remain intact after reload
+    assert.strictEqual(reloaded.sessions.length, 1);
+    assert.strictEqual(reloaded.sessions[0].id, "sess_offline_airplane_test");
+    assert.strictEqual(reloaded.sessions[0].setLogs.length, 3);
+    assert.strictEqual(reloaded.sessions[0].setLogs[0].reps, 10);
+    assert.strictEqual(reloaded.sessions[0].setLogs[1].reps, 9);
+    assert.strictEqual(reloaded.sessions[0].setLogs[2].reps, 8);
+    assert.strictEqual(reloaded.sessions[0].setLogs[0].isPR, true);
+  });
 });

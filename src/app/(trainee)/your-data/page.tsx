@@ -1,14 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
-import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle, HardDrive, RefreshCw } from "lucide-react";
+import { isStoragePersisted, requestPersistentStorage, clearClientStorage, triggerBackupDownload } from "@/lib/storage";
 
 export default function YourDataPage() {
   const currentUser = appStore.getCurrentUser();
   const [copied, setCopied] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [isPersisted, setIsPersisted] = useState<boolean | null>(null);
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
+
+  useEffect(() => {
+    isStoragePersisted().then((res) => setIsPersisted(res));
+    if (typeof window !== "undefined") {
+      const ts = localStorage.getItem("vyra_last_backup_at");
+      if (ts) setLastBackup(ts);
+    }
+  }, []);
+
+  const handleRequestPersist = async () => {
+    const granted = await requestPersistentStorage();
+    setIsPersisted(granted);
+  };
 
   const handleExport = () => {
     const data = {
@@ -20,25 +36,19 @@ export default function YourDataPage() {
       sessions: appStore.getSessions(currentUser.id),
       metrics: appStore.getMetrics(currentUser.id),
       readinessLogs: appStore.getWearableBiometricsHistory(currentUser.id),
-      exportedAt: new Date().toISOString(),
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `vyra-export-${currentUser.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ts = triggerBackupDownload(data, `vyra-export-${currentUser.id}.json`);
+    setLastBackup(ts);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (typeof window !== "undefined") {
       const confirmed = window.confirm("Are you sure you want to delete all locally stored session data?");
       if (confirmed) {
-        localStorage.clear();
+        await clearClientStorage();
         setDeleted(true);
       }
     }
@@ -76,12 +86,44 @@ export default function YourDataPage() {
         </p>
       </section>
 
-      {/* Export */}
+      {/* Storage Durability & Eviction Protection */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-semibold text-white">Export Your Data</h2>
-            <p className="text-[11px] text-slate-400 mt-0.5">Download a complete JSON export of your logged history</p>
+            <div className="flex items-center gap-2 text-xs font-semibold text-white">
+              <HardDrive className="w-4 h-4 text-cyan-400" />
+              <span>Offline Storage Durability</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {isPersisted === true
+                ? "Persistent storage granted. Safari will not evict your data."
+                : isPersisted === false
+                ? "Best-effort storage. iOS may clear data after 7 days without use."
+                : "Checking browser storage status..."}
+            </p>
+          </div>
+          {isPersisted === false && (
+            <button
+              type="button"
+              onClick={handleRequestPersist}
+              className="px-3 py-1.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/40 border border-cyan-800/60 text-xs font-semibold text-cyan-300 transition"
+            >
+              Protect
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* Export & Backup */}
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xs font-semibold text-white">Export & Backup</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {lastBackup
+                ? `Last backup: ${new Date(lastBackup).toLocaleDateString()} ${new Date(lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : "No backups downloaded yet"}
+            </p>
           </div>
           <button
             type="button"
@@ -89,7 +131,7 @@ export default function YourDataPage() {
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer"
           >
             {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Download className="w-3.5 h-3.5" />}
-            <span>{copied ? "Exported" : "Export"}</span>
+            <span>{copied ? "Exported" : "Export backup"}</span>
           </button>
         </div>
       </section>

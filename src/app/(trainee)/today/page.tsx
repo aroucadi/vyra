@@ -128,14 +128,24 @@ export default function TodayPage() {
                 )}
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setIsSuppDrawerOpen(true)}
-                className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>{heroMoment.actionLabel || "Log Protocols"}</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSuppDrawerOpen(true)}
+                  className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{heroMoment.actionLabel || "Log Protocols"}</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </button>
+
+                <Link
+                  href="/session?day=prog_master_w1_d0&mode=preview"
+                  className="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Start Monday Upper A Workout →</span>
+                </Link>
+              </div>
             )}
           </Card.Action>
         </Card>

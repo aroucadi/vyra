@@ -10,6 +10,8 @@ export default function InstallPage() {
   const [isIOS, setIsIOS] = useState(false);
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
+  const [isChromeIOS, setIsChromeIOS] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const standalone =
@@ -24,6 +26,10 @@ export default function InstallPage() {
       const ua = window.navigator.userAgent.toLowerCase();
       const iosDevice = /iphone|ipad|ipod/.test(ua);
       setIsIOS(iosDevice);
+
+      // Detect Chrome on iOS (uses CriOS in userAgent)
+      const chromeOnIOS = /crios/.test(ua);
+      setIsChromeIOS(chromeOnIOS);
 
       // Detect in-app browsers like Instagram, WhatsApp, Messenger
       const inApp = /fban|fbav|instagram|whatsapp|line|micromessenger/.test(ua);
@@ -94,7 +100,9 @@ export default function InstallPage() {
                   <Share className="w-4 h-4 text-emerald-400" />
                 </div>
                 <p className="text-xs text-slate-400">
-                  In Safari&apos;s bottom toolbar, tap the standard iOS Share icon (square with arrow pointing up).
+                  {isChromeIOS
+                    ? "In Chrome on iPhone, tap the Share icon located in the top address bar (or tap the ••• menu in the bottom right and tap Share)."
+                    : "In Safari or Chrome, tap the Share icon (square with arrow pointing upward)."}
                 </p>
               </div>
             </div>
@@ -109,7 +117,7 @@ export default function InstallPage() {
                   <PlusSquare className="w-4 h-4 text-cyan-400" />
                 </div>
                 <p className="text-xs text-slate-400">
-                  Scroll down the share sheet and select <strong>&quot;Add to Home Screen&quot;</strong>. Tap <strong>Add</strong> in the top-right corner.
+                  Scroll down the menu list and select <strong>&quot;Add to Home Screen&quot;</strong>. Tap <strong>Add</strong> in the top-right corner.
                 </p>
               </div>
             </div>
@@ -120,11 +128,11 @@ export default function InstallPage() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">Launch from Home Screen</h3>
+                  <h3 className="text-sm font-bold text-white">Open VYRA from Home Screen</h3>
                   <Smartphone className="w-4 h-4 text-indigo-400" />
                 </div>
                 <p className="text-xs text-slate-400">
-                  Find the VYRA icon on your home screen and open it. It now runs without browser URL bars, with instant full-screen speed.
+                  Tap the VYRA icon on your home screen. It will launch instantly in standalone app mode with zero login required.
                 </p>
               </div>
             </div>
@@ -135,7 +143,7 @@ export default function InstallPage() {
               href="/today"
               className="w-full py-3.5 px-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
             >
-              <span>Continue in Safari for now →</span>
+              <span>Continue in Browser for now →</span>
             </Link>
           </div>
 

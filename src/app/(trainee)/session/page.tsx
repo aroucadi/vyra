@@ -63,11 +63,11 @@ function SessionFlow() {
     ? resolveProgramDay(program.startDate)
     : { weekIndex: 1, dayOfWeek: 0, started: true };
 
-  // Resolve target program day
+  // Resolve target program day (defaults to today's scheduled day, falling back to Monday Day 0)
   const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
   const targetDay: ProgramDay | undefined = dayParam
     ? currentWeek?.days.find((d) => d.id === dayParam) || program?.weeks.flatMap((w) => w.days).find((d) => d.id === dayParam)
-    : currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek);
+    : currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek) || currentWeek?.days.find((d) => d.dayOfWeek === 0 && !d.isRestDay);
 
   // Flow mode: "preview" | "active" | "summary"
   const initialMode = (searchParams.get("mode") as "preview" | "active" | "summary") || "preview";
@@ -75,8 +75,12 @@ function SessionFlow() {
 
   // Exercises initialization
   const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
-    if (!targetDay || !targetDay.blocks) return [];
-    const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
+    let activeDay = targetDay;
+    if (!activeDay || !activeDay.blocks || activeDay.blocks.length === 0) {
+      activeDay = currentWeek?.days.find((d) => d.dayOfWeek === 0 && d.blocks && d.blocks.length > 0) || currentWeek?.days[0];
+    }
+    if (!activeDay || !activeDay.blocks) return [];
+    const exPrescriptions = activeDay.blocks.flatMap((b) => b.exercises);
     return exPrescriptions.map((ex) => {
       const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
       const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);

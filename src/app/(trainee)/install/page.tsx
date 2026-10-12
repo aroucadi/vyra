@@ -88,6 +88,16 @@ export default function InstallPage() {
             </div>
           )}
 
+          {/* iOS Safari Recommendation banner */}
+          <div className="p-4 bg-slate-900 border border-emerald-500/30 rounded-2xl text-xs space-y-1 text-slate-300">
+            <div className="font-bold text-white flex items-center gap-1.5">
+              <span>Use Safari for best experience</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Apple restricts PWA standalone installation on iOS primarily to Safari. If you are in Chrome or another browser, copy this URL and open it in Safari: <span className="font-mono text-emerald-400">vyra.fit</span>
+            </p>
+          </div>
+
           {/* 3 Step Cards */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
             <div className="flex items-start gap-3.5">
@@ -100,9 +110,7 @@ export default function InstallPage() {
                   <Share className="w-4 h-4 text-emerald-400" />
                 </div>
                 <p className="text-xs text-slate-400">
-                  {isChromeIOS
-                    ? "In Chrome on iPhone, tap the Share icon located in the top address bar (or tap the ••• menu in the bottom right and tap Share)."
-                    : "In Safari or Chrome, tap the Share icon (square with arrow pointing upward)."}
+                  In Safari, tap the Share icon (square with arrow pointing up) in the bottom navigation bar.
                 </p>
               </div>
             </div>

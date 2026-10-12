@@ -1361,11 +1361,11 @@ class Store {
     return log;
   }
 
-  calculateWorkoutAdherence(traineeId: string): number {
+  calculateWorkoutAdherence(traineeId: string, refDateStr?: string): number {
     const program = this.getActiveProgramForTrainee(traineeId);
     if (!program) return 100;
 
-    const resolved = resolveProgramDay(program.startDate);
+    const resolved = resolveProgramDay(program.startDate, refDateStr);
     const elapsedDays = Math.max(0, resolved.elapsedDays);
     let scheduledWorkouts = 0;
     // Count past scheduled workouts up to elapsed days
@@ -1378,12 +1378,6 @@ class Store {
       if (day && !day.isRestDay) {
         scheduledWorkouts++;
       }
-    }
-    // Cap scheduled workouts for established baselines
-    if (traineeId === "trainee_1" && scheduledWorkouts > 16) {
-      scheduledWorkouts = 16;
-    } else if (traineeId === "trainee_3" && scheduledWorkouts > 6) {
-      scheduledWorkouts = 6;
     }
     if (scheduledWorkouts === 0) return 100;
 

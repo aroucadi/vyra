@@ -376,7 +376,7 @@ function createStandardDays(weekId: string) {
       id: `${weekId}_d5`,
       weekId,
       dayOfWeek: 5,
-      label: "Rest & Parasympathetic Recovery",
+      label: "Rest & Recovery",
       isRestDay: true,
       morningRoutine: ["Sleep 8+ hours, light stretching"],
       nutrition: {

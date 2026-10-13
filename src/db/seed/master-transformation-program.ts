@@ -320,7 +320,7 @@ export const weekendDailyMeals: DailyMealSlot[] = [
     label: 'Sleep',
     foods: 'Plain water as needed',
     supplements: 'None',
-    rationale: 'Parasympathetic tissue rebuilding.',
+    rationale: 'Restorative tissue rebuilding.',
     calories: 0,
     proteinGrams: 0,
   },
@@ -1092,12 +1092,12 @@ export function createBlueprintDays(weekId: string, _weekIndex?: number): Progra
       blocks: [],
     },
 
-    // SATURDAY: Full Parasympathetic Regeneration & Weekend Shake Anchor
+    // SATURDAY: Rest & Recovery & Weekend Shake Anchor
     {
       id: `${weekId}_d5`,
       weekId,
       dayOfWeek: 5,
-      label: 'Saturday: Full Parasympathetic Regeneration',
+      label: 'Saturday: Rest & Recovery',
       isRestDay: true,
       morningRoutine: [
         'Weekend Morning Hydration: 500ml water upon waking',

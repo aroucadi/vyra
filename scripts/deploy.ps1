@@ -16,10 +16,10 @@ Write-Host "`n=========================================" -ForegroundColor Cyan
 Write-Host "   VYRA Provable Cloud Run Deployer       " -ForegroundColor Cyan
 Write-Host "=========================================`n" -ForegroundColor Cyan
 
-# 1. Pre-flight Check: Dirty Working Tree
-$gitStatus = (git status --porcelain)
+# 1. Pre-flight Check: Dirty Working Tree (tracked modifications)
+$gitStatus = (git status --porcelain -uno)
 if ($gitStatus) {
-    Write-Error "DEPLOY REFUSED: Git working tree is dirty. Stash or commit all changes before deploying."
+    Write-Error "DEPLOY REFUSED: Git working tree has uncommitted modifications. Stash or commit all changes before deploying."
     exit 1
 }
 

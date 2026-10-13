@@ -10,15 +10,17 @@
 
 | Domain | Feature Area | Deprioritization Rationale | Required Gate to Re-open | Est. Complexity |
 | :--- | :--- | :--- | :--- | :--- |
-| **Telemetry** | Apple HealthKit / Health Auto Export | Requires native wrapper or third-party webhooks; high schema maintenance; manual 1-tap sleep prompt suffices. | 30 continuous workout sessions logged; user requests automated recovery ingest. | Medium |
-| **Telemetry** | Oura & Whoop Webhook Ingestion | High third-party API drift; OAuth2 account token refresh handling; potential latency. | Verified demand for continuous overnight HRV / resting heart rate auto-scoring. | Medium |
-| **Architecture** | Life Hub (Five-Pillar Dashboard) | Multi-pillar surface distracted from workout execution; high cognitive load; diluted wedge focus. | Core Train pillar retention established (>80% weekly adherence over 8 weeks). | Large |
-| **Intelligence** | Freeform Physiological AI Coach | Open-ended chat creates hallucination risk, token costs, and in-gym friction vs instant deterministic chips. | Lifter requests custom training block periodization or natural-language query support. | Large |
-| **Pillar: Sleep** | Restorative Sleep Architecture | Premature without validated sleep data source; static advice caused user distrust. | Continuous wearable data pipeline or daily protocol check-in consistency. | Medium |
-| **Pillar: Style** | Aesthetic & Posture Ergonomics | Zero crossover with in-gym training wedge; diluted brand credibility during launch. | Posture/mobility routine integration requested after fundamental strength cycle. | Low |
-| **Pillar: Network** | Athletic Circles & Local Venues | Social features before single-player utility creates empty ghost-town networks. | 10+ active local lifters using VYRA independently. | High |
-| **Cloud & Sync** | Server-side Database (Firestore / Postgres) | Client-side IndexedDB + offline write queue solved immediate zero-friction gym logging. | Lifter uses >1 device (e.g., iPhone in gym, iPad/Mac desktop at home). | Medium |
-| **Delivery** | Native iOS App (Capacitor / Swift) | PWA via Safari / Chrome on iOS meets install and offline requirements without App Store review friction. | Requirement for Background Sync API or true CoreBluetooth hardware access. | High |
+| **Telemetry** | Apple HealthKit / Health Auto Export | Requires native wrapper or third-party webhooks; high schema maintenance; manual 1-tap sleep prompt suffices. | 10 active paying lifters; >80% weekly retention over 4 weeks; explicit user request for auto recovery ingest. | Medium |
+| **Telemetry** | Oura & Whoop Webhook Ingestion | High third-party API drift; OAuth2 account token refresh handling; potential latency. | 10 active paying lifters; verified demand for continuous overnight HRV / resting heart rate auto-scoring. | Medium |
+| **Architecture** | Life Hub (Five-Pillar Dashboard) | Multi-pillar surface distracted from workout execution; high cognitive load; diluted wedge focus. | 10 active paying lifters; core Train pillar retention established (>80% weekly adherence over 8 weeks). | Large |
+| **Intelligence** | Freeform Physiological AI Coach | Open-ended chat creates hallucination risk, token costs, and in-gym friction vs instant deterministic chips. | 10 active paying lifters; request for custom training block periodization or natural-language query support. | Large |
+| **Pillar: Sleep** | Restorative Sleep Architecture | Premature without validated sleep data source; static advice caused user distrust. | Continuous wearable data pipeline or daily protocol check-in consistency across 10 active paying lifters. | Medium |
+| **Pillar: Style** | Aesthetic & Posture Ergonomics | Zero crossover with in-gym training wedge; diluted brand credibility during launch. | Posture/mobility routine integration requested after fundamental strength cycle across 10 paying lifters. | Low |
+| **Pillar: Network** | Athletic Circles & Local Venues | Social features before single-player utility creates empty ghost-town networks. | 25+ active local lifters in the same metro area using VYRA independently. | High |
+| **Cloud & Sync** | Server-side Database (Firestore / Postgres) | Client-side IndexedDB + offline write queue solved immediate zero-friction gym logging. | Lifter uses >1 device (e.g., iPhone in gym, iPad/Mac desktop at home) or account recovery needed. | Medium |
+| **Delivery** | Native iOS App (Capacitor / Swift) | PWA via Safari / Chrome on iOS meets install and offline requirements without App Store review friction. | Requirement for Background Sync API, Live Activities, or true CoreBluetooth hardware access. | High |
+| **Monetization** | GCC Local Payment Gateways (Tap / Moyasar) | Premature before core retention and willingness-to-pay are empirically validated. | 5 manual paying beta users onboarded via direct invoice or wire transfer. | Medium |
+| **Localization** | GCC Fasting & Ramadan Training Mode | Seasonal requirement; shifts training and nutrition timeline around Suhoor/Iftar. | Upcoming Ramadan cycle with at least 5 active regional lifters. | Medium |
 
 ---
 
@@ -95,3 +97,25 @@
      - Web Push API with VAPID keys for workout reminders and rest interval countdowns when app is minimized.
   3. **Live Activities (iOS)**:
      - Real-time Dynamic Island and Lock Screen workout widgets displaying current set, exercise, and ticking rest timer.
+
+---
+
+### 2.6 Regional Adaptation: GCC Local Payments & Ramadan Mode
+- **Objective**: Serve regional athletic cohorts in the Gulf (UAE, Saudi Arabia, Qatar) without premature billing friction.
+- **Components**:
+  1. **GCC Local Payment Gateways**:
+     - Tap Payments or Moyasar integration for local Apple Pay, Mada (KSA), and KNET (Kuwait).
+     - Gate: Re-open only after 5 beta users pay manually via Stripe payment links or direct invoices.
+  2. **Ramadan & Intermittent Fasting Mode**:
+     - Shifts daily nutrition milestones, hydration loading, and session timing around Suhoor and Iftar windows.
+     - Adjusts pre-workout hydration reminders to the post-maghrib training window.
+
+---
+
+### 2.7 Strict Medical Boundaries & Regulatory Safeguards
+- **Non-Negotiable Boundary**: VYRA is strictly an athletic progression, postural hypertrophy, and strength training logger.
+- **Rules**:
+  1. Never diagnose, treat, prevent, or prescribe clinical interventions for any medical condition.
+  2. Never store or request clinical laboratory diagnostics, medications, or pathological data.
+  3. Autoregulation suggestions are strictly training load adaptations based on self-reported sleep hours (e.g. reducing target sets or adding RIR buffer), never medical advice.
+

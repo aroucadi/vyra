@@ -1,9 +1,18 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest', '.']
+    args: [
+      'build',
+      '--build-arg', 'COMMIT_SHA=${_COMMIT_SHA}',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest',
+      '.'
+    ]
 
-  # Push the image to Artifact Registry
+  # Push the images to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}']
+
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest']
 
@@ -15,7 +24,7 @@ steps:
       - 'deploy'
       - 'vyra-app'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -23,6 +32,12 @@ steps:
       - '--port'
       - '8080'
       - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'COMMIT_SHA=${_COMMIT_SHA}'
+
+substitutions:
+  _COMMIT_SHA: 'latest'
 
 images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest'

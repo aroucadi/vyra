@@ -16,7 +16,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest']
 
-  # Deploy container image to Cloud Run
+  # Deploy container image to Cloud Run (US Central)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: 
@@ -27,6 +27,25 @@ steps:
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
       - '--region'
       - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'COMMIT_SHA=${_COMMIT_SHA}'
+
+  # Deploy container image to Cloud Run (Doha, Qatar)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: 
+      - 'run'
+      - 'deploy'
+      - 'vyra-app'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
+      - '--region'
+      - 'me-central1'
       - '--platform'
       - 'managed'
       - '--port'

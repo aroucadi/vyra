@@ -30,7 +30,10 @@ import {
   HelpCircle,
   X,
   FastForward,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { soundService } from "@/lib/in-gym/sound";
 import { clsx } from "clsx";
 
 interface ActiveExercise {
@@ -164,6 +167,7 @@ function SessionFlow() {
   // Timer states
   const [sessionDurationSec, setSessionDurationSec] = useState(0);
   const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
+  const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => soundService.getIsMuted());
   const [sessionStartTime] = useState(() => new Date().toISOString());
   const [lastSetLoggedAt, setLastSetLoggedAt] = useState<number>(() => Date.now());
 
@@ -176,12 +180,21 @@ function SessionFlow() {
     return () => clearInterval(interval);
   }, [mode]);
 
-  // Rest countdown timer
+  // Rest countdown timer with athletic audio/haptic chime triggers
   useEffect(() => {
     if (restTimerSec === null || restTimerSec <= 0) return;
     const timer = setInterval(() => {
       setRestTimerSec((prev) => {
-        if (prev === null || prev <= 1) return null;
+        if (prev === null) return null;
+        if (prev <= 1) {
+          // Play dual-tone rest completion chime (880Hz -> 1760Hz) & haptic double-pulse
+          soundService.playRestChime();
+          return null;
+        }
+        if (prev <= 4 && prev > 1) {
+          // Gentle pip on final 3 seconds (3, 2, 1)
+          soundService.playCountdownPip();
+        }
         return prev - 1;
       });
     }, 1000);
@@ -927,22 +940,43 @@ function SessionFlow() {
           onClick={handleLogSet}
         />
 
-        {/* Auto Rest Timer Overlay (Subtle, 1-tap Skip) */}
+        {/* Auto Rest Timer Overlay (Subtle, 1-tap Skip + Audio Chime Toggle) */}
         {restTimerSec !== null && (
           <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-200">
             <div className="flex items-center gap-2 text-slate-300">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span>Rest Interval:</span>
+              <span>Rest:</span>
               <span className="font-mono font-bold text-white text-sm tabular">{restTimerSec}s</span>
+              <span className="text-[10px] font-mono text-emerald-400/80 px-1.5 py-0.2 rounded bg-emerald-500/10 hidden sm:inline">
+                Chime & Haptic Active
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setRestTimerSec(null)}
-              className="text-[11px] font-semibold text-cyan-400 hover:underline flex items-center gap-1"
-            >
-              <span>Skip</span>
-              <FastForward className="w-3 h-3" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isSoundMuted;
+                  setIsSoundMuted(next);
+                  soundService.setMuted(next);
+                }}
+                aria-label={isSoundMuted ? "Unmute rest timer audio" : "Mute rest timer audio"}
+                className="p-1 rounded-md text-slate-400 hover:text-white transition"
+              >
+                {isSoundMuted ? (
+                  <VolumeX className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRestTimerSec(null)}
+                className="text-[11px] font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+              >
+                <span>Skip</span>
+                <FastForward className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         )}
 

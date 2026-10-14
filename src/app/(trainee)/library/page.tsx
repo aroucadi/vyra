@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
+import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
 import { TraineeNav } from "@/components/trainee/TraineeNav";
-import { Search, Dumbbell, Filter, ArrowLeft, Disc, Sparkles, ChevronRight } from "lucide-react";
+import { Search, Dumbbell, Filter, ArrowLeft, Disc, Sparkles, ChevronRight, User } from "lucide-react";
 import { clsx } from "clsx";
 
 const MUSCLE_GROUPS = [
@@ -34,6 +35,7 @@ export default function TraineeExerciseLibraryPage() {
   const [query, setQuery] = useState("");
   const [selectedMuscle, setSelectedMuscle] = useState("all");
   const [selectedEquipment, setSelectedEquipment] = useState("all");
+  const [showBodyMap, setShowBodyMap] = useState(false);
   const [exercises, setExercises] = useState<RagExercise[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<RagExercise | null>(null);
@@ -91,9 +93,24 @@ export default function TraineeExerciseLibraryPage() {
               <p className="text-[10px] font-mono text-slate-400">6,554 Biomechanical Movements</p>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-            Sub-1ms Engine
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowBodyMap((prev) => !prev)}
+              className={clsx(
+                "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border transition flex items-center gap-1 cursor-pointer",
+                showBodyMap
+                  ? "bg-emerald-500 text-slate-950 border-emerald-500 shadow-sm"
+                  : "bg-slate-900 text-slate-300 border-slate-800 hover:text-white"
+              )}
+            >
+              <User className="w-2.5 h-2.5" />
+              <span>{showBodyMap ? "Hide Map" : "Body Map"}</span>
+            </button>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline">
+              Sub-1ms Engine
+            </span>
+          </div>
         </div>
 
         {/* Search Bar with Gym Shorthands Callout */}
@@ -154,7 +171,14 @@ export default function TraineeExerciseLibraryPage() {
       </header>
 
       {/* 2. Main List of Exercises */}
-      <main className="p-4 flex-1 space-y-2.5">
+      <main className="p-4 flex-1 space-y-3">
+        {/* Interactive Anatomical Silhouette (Progressive Disclosure) */}
+        {showBodyMap && (
+          <AnatomicalBodyMap
+            selectedMuscle={selectedMuscle}
+            onSelectMuscle={(mId) => setSelectedMuscle(mId)}
+          />
+        )}
         {loading && exercises.length === 0 ? (
           <div className="py-12 text-center space-y-2">
             <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto" />

@@ -20,6 +20,30 @@ export function ExerciseDetailSheet({
   onClose,
   onSelectAsSubstitute,
 }: ExerciseDetailSheetProps) {
+  const [substitutes, setSubstitutes] = React.useState<RagExercise[]>([]);
+
+  React.useEffect(() => {
+    if (!exercise || !isOpen) return;
+    let active = true;
+    const fetchSubs = async () => {
+      try {
+        const res = await fetch(`/api/exercises?muscle=${encodeURIComponent(exercise.target)}&limit=4`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) {
+          const filtered = (data.exercises || []).filter((e: RagExercise) => e.id !== exercise.id).slice(0, 3);
+          setSubstitutes(filtered);
+        }
+      } catch {
+        // fail silently
+      }
+    };
+    fetchSubs();
+    return () => {
+      active = false;
+    };
+  }, [exercise?.id, exercise?.target, isOpen]);
+
   if (!exercise) return null;
 
   const isBarbellOrSmith =
@@ -92,6 +116,41 @@ export function ExerciseDetailSheet({
                     {idx + 1}
                   </span>
                   <p className="text-[11.5px] leading-snug">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Element 4: Direct Biomechanical Swaps (Outside of workout) */}
+        {substitutes.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-800/80">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Biomechanical Swap Alternatives
+            </span>
+            <div className="space-y-1.5">
+              {substitutes.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs"
+                >
+                  <div className="space-y-0.5 min-w-0 pr-2">
+                    <div className="font-semibold text-white truncate">{sub.name}</div>
+                    <div className="text-[10px] font-mono text-slate-400">{sub.equipment} · {sub.target}</div>
+                  </div>
+                  {onSelectAsSubstitute && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectAsSubstitute(sub);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/20 text-[10px] font-mono font-bold transition shrink-0 cursor-pointer"
+                    >
+                      Swap
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

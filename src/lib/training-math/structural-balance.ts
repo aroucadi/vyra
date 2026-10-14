@@ -16,42 +16,18 @@ function safeGetExerciseById(id: string) {
   }
 }
 
-export const EVALUATION_MODES = Object.freeze({
-  LOAD_RATIO: 'load-ratio',
-  BODYWEIGHT_RATIO: 'bodyweight-ratio',
-  REP_COUNT: 'rep-count',
-});
-
-export const BALANCE_STATUSES = Object.freeze({
-  BALANCED: 'balanced',
-  BORDERLINE: 'borderline',
-  WEAK: 'weak',
-  NO_DATA: 'no-data',
-});
-
-export type BalanceStatus = (typeof BALANCE_STATUSES)[keyof typeof BALANCE_STATUSES] | 'insufficient_data';
-
-export const BORDERLINE_BAND_PCT = 5;
-export const LB_TO_KG = 0.45359237;
-
-export interface RoleDefinition {
-  id: string;
-  label: string;
-  evaluationMode: string;
-  exerciseIds: string[];
-  anchorRoleId?: string;
-  targetPct?: number;
-  targetPctFemale?: number;
-  reps?: number;
-  repsTarget?: number;
-  repsTargetFemale?: number;
-}
-
-export interface TemplateDefinition {
-  id: string;
-  label: string;
-  roles: RoleDefinition[];
-}
+export * from './structural-balance-types';
+import {
+  EVALUATION_MODES,
+  BALANCE_STATUSES,
+  BalanceStatus,
+  BORDERLINE_BAND_PCT,
+  LB_TO_KG,
+  RoleDefinition,
+  TemplateDefinition,
+  ResolvedCurrentLift,
+  RoleEvaluationResult,
+} from './structural-balance-types';
 
 export const TEMPLATES: Record<string, TemplateDefinition> = {
   poliquin: {
@@ -308,16 +284,6 @@ export function withOverride(
   return { ...(overrides || {}), [key]: { id: exId || null, _ts: now } };
 }
 
-export interface ResolvedCurrentLift {
-  estKg?: number;
-  repsKg?: number;
-  w: number;
-  r: number;
-  d: string;
-  t?: number;
-  exId: string;
-}
-
 const LIFTER_MOVEMENT = /\b(pull[- ]?ups?|chin[- ]?ups?|muscle[- ]?ups?|dips?)\b/i;
 const BENCH_DIP_IDS = new Set(['1755']);
 
@@ -539,19 +505,6 @@ export function ratioFor(
   return (current.r / (ctx.targetPct || 10)) * 100;
 }
 
-export interface RoleEvaluationResult {
-  roleId: string;
-  configuredExerciseId: string | null;
-  mappedExerciseId: string | null;
-  targetPct: number;
-  actualPct: number | null;
-  status: string;
-  current: ResolvedCurrentLift | null;
-  isOverridden: boolean;
-  needsBodyweight: boolean;
-  needsAnchor: boolean;
-}
-
 export function computeBalance(
   S: {
     unit?: string;
@@ -610,7 +563,7 @@ export function computeBalance(
     return {
       roleId: role.id,
       configuredExerciseId,
-      mappedExerciseId: current.exId,
+      mappedExerciseId: current.exId || null,
       targetPct,
       actualPct,
       status: classify(actualPct, classifyTarget),

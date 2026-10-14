@@ -7,7 +7,7 @@ import { resolveProgramDay } from "@/lib/utils";
 import { ProgramDay, ExercisePrescription } from "@/lib/types";
 import { Plan } from "@/components/primitives/Plan";
 import { Card } from "@/components/primitives/Card";
-import { Dumbbell, Clock, ArrowRight, ShieldCheck, Moon, Flame } from "lucide-react";
+import { Dumbbell, Clock, ArrowRight, ShieldCheck, Moon, Flame, Activity } from "lucide-react";
 import { clsx } from "clsx";
 import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 
@@ -52,9 +52,18 @@ export default function ProgramCalendarPage() {
           <span className="text-[11px] font-mono text-slate-500">Block 1 Hypertrophy</span>
         </div>
         <h1 className="text-xl font-bold text-white tracking-tight">Program Schedule</h1>
-        <p className="text-xs text-slate-400">
-          Periodized progression calibrated to your recovery curve.
-        </p>
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-xs text-slate-400">
+            Periodized progression calibrated to your recovery curve.
+          </p>
+          <Link
+            href="/posture"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition flex-shrink-0"
+          >
+            <Activity className="w-3 h-3" />
+            <span>Posture Radar</span>
+          </Link>
+        </div>
       </header>
 
       {/* 7-Day Calendar Strip */}

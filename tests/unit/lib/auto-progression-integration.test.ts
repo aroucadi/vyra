@@ -185,7 +185,7 @@ describe('Auto-Progression & Deload Integration Suite', () => {
       assert.strictEqual(presc.kind, 'deload');
       assert.ok(presc.weight !== undefined && presc.weight < 100);
       assert.strictEqual(presc.weight, 90);
-      assert.ok(presc.formattedWhy.includes('90 kg') && presc.formattedWhy.includes('Stuck for 3 sessions'));
+      assert.ok(presc.formattedWhy.includes('Epley deload to 90 kg'));
     });
   });
 

@@ -875,7 +875,7 @@ export const seedHydrationLogs: HydrationLog[] = [
 
 // Initial Database Singleton
 class Store {
-  private db: AppDatabase;
+  private db!: AppDatabase;
 
   constructor() {
     this.reset();

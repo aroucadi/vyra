@@ -40,6 +40,7 @@ export interface RagExercise {
   maleVariant?: string;
   variantOf?: string;
   textSource?: string;
+  videoUrl?: string;
 }
 
 export interface ExerciseQueryConstraints {

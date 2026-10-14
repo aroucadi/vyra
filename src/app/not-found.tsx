@@ -33,7 +33,7 @@ export default function NotFound() {
           </Link>
 
           <Link
-            href="/library"
+            href="/exercises"
             className="w-full h-11 px-4 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
           >
             <BookOpen className="w-4 h-4 text-emerald-400" />

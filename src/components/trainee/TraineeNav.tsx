@@ -16,7 +16,7 @@ export function TraineeNav() {
   const navItems = [
     { label: "Today", href: "/today", icon: Calendar },
     { label: "Program", href: "/program", icon: Dumbbell },
-    { label: "Library", href: "/library", icon: BookOpen },
+    { label: "Exercises", href: "/exercises", icon: BookOpen },
     { label: "You", href: "/you", icon: UserIcon },
   ];
 

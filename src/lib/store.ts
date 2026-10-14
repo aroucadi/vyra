@@ -23,7 +23,7 @@ import {
   masterHydrationGoal,
   seedMetricsAlaa,
 } from "@/db/seed/master-transformation-program";
-import { checkIsPersonalRecord, resolveProgramDay } from "./utils";
+import { checkIsPersonalRecord, resolveProgramDay, toLocalDateString } from "./utils";
 
 // In-memory single-source-of-truth state for realistic local/preview runs
 export interface AppDatabase {
@@ -94,19 +94,19 @@ const traineeMarcusV: User = {
 const getStartDateTwentyOneDaysAgo = () => {
   const d = new Date();
   d.setDate(d.getDate() - 21);
-  return d.toISOString().split("T")[0];
+  return toLocalDateString(d);
 };
 
 const getStartDateSevenDaysAgo = () => {
   const d = new Date();
   d.setDate(d.getDate() - 7);
-  return d.toISOString().split("T")[0];
+  return toLocalDateString(d);
 };
 
 const getEndDateTwentyDaysAhead = () => {
   const d = new Date();
   d.setDate(d.getDate() + 19);
-  return d.toISOString().split("T")[0];
+  return toLocalDateString(d);
 };
 
 const defaultProgram: Program = {
@@ -449,15 +449,18 @@ const sarahProgram: Program = {
 // Alex: 15 completed sessions out of 16 scheduled workouts up to today (93.75% -> 94%)
 const seedAlexSessions: WorkoutSession[] = Array.from({ length: 15 }, (_, i) => {
   const dayOffset = 21 - Math.floor((i * 21) / 15);
+  const d = new Date();
+  d.setDate(d.getDate() - dayOffset);
+  const dateStr = toLocalDateString(d);
   return {
     id: `sess_alex_${i + 1}`,
     traineeId: "trainee_1",
     programDayId: `week_${Math.floor(i / 4) + 1}_d${i % 4}`,
     programTitle: "Hypertrophy Block 1",
     dayLabel: i % 2 === 0 ? "Push Hypertrophy A" : "Pull Hypertrophy A",
-    date: new Date(Date.now() - dayOffset * 86400000).toISOString().split("T")[0],
-    startedAt: new Date(Date.now() - dayOffset * 86400000 - 3600000).toISOString(),
-    endedAt: new Date(Date.now() - dayOffset * 86400000).toISOString(),
+    date: dateStr,
+    startedAt: new Date(d.getTime() - 3600000).toISOString(),
+    endedAt: d.toISOString(),
     durationSec: 3200,
     notes: i === 0 ? "Felt strong. Bench paused easily at 80kg." : undefined,
     setLogs: [
@@ -503,7 +506,7 @@ const seedMarcusSessions: WorkoutSession[] = [
     programDayId: "marcus_w1_d0",
     programTitle: "Strength Foundations",
     dayLabel: "Push Hypertrophy A",
-    date: new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0],
+    date: (() => { const d = new Date(); d.setDate(d.getDate() - 6); return toLocalDateString(d); })(),
     startedAt: new Date(Date.now() - 6 * 86400000 - 3000000).toISOString(),
     endedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
     durationSec: 3000,
@@ -517,7 +520,7 @@ const seedMarcusSessions: WorkoutSession[] = [
     programDayId: "marcus_w1_d1",
     programTitle: "Strength Foundations",
     dayLabel: "Pull Hypertrophy A",
-    date: new Date(Date.now() - 5 * 86400000).toISOString().split("T")[0],
+    date: (() => { const d = new Date(); d.setDate(d.getDate() - 5); return toLocalDateString(d); })(),
     startedAt: new Date(Date.now() - 5 * 86400000 - 2800000).toISOString(),
     endedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
     durationSec: 2800,
@@ -531,7 +534,7 @@ const seedMarcusSessions: WorkoutSession[] = [
     programDayId: "marcus_w1_d3",
     programTitle: "Strength Foundations",
     dayLabel: "Push Hypertrophy B",
-    date: new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0],
+    date: (() => { const d = new Date(); d.setDate(d.getDate() - 3); return toLocalDateString(d); })(),
     startedAt: new Date(Date.now() - 3 * 86400000 - 2500000).toISOString(),
     endedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
     durationSec: 2500,
@@ -552,7 +555,7 @@ const seedMetrics: BodyMetricEntry[] = Array.from({ length: 14 }, (_, i) => {
   return {
     id: `bm_${i}`,
     traineeId: "trainee_1",
-    date: d.toISOString().split("T")[0],
+    date: toLocalDateString(d),
     weightKg: Math.round((baseWeight + variation) * 10) / 10,
     source: "manual",
   };
@@ -733,12 +736,14 @@ export const seedHydrationGoals: HydrationGoal[] = [
   },
 ];
 
-const todayDateStr = new Date().toISOString().split("T")[0];
+const todayDateStr = toLocalDateString();
 
 export const seedSupplementLogs: SupplementLog[] = [
   // Alex Rivera (trainee_1): 11 taken, 1 skipped out of 12 scheduled logs (11/12 = 91.67% -> 92%)
   ...Array.from({ length: 11 }, (_, i) => {
     const dayOffset = Math.floor(i / 2);
+    const d = new Date();
+    d.setDate(d.getDate() - dayOffset);
     return {
       id: `spl_alex_taken_${i + 1}`,
       traineeId: "trainee_1",
@@ -746,9 +751,9 @@ export const seedSupplementLogs: SupplementLog[] = [
       protocolId: i % 2 === 0 ? "sp_d3k2" : "sp_omega3",
       supplementName: i % 2 === 0 ? "Vitamin D3 + K2" : "Omega-3 Fish Oil (EPA/DHA)",
       doseId: i % 2 === 0 ? "sp_d3k2_d1" : "sp_omega3_d1",
-      scheduledDate: new Date(Date.now() - dayOffset * 86400000).toISOString().split("T")[0],
+      scheduledDate: toLocalDateString(d),
       status: "taken" as const,
-      takenAt: new Date(Date.now() - dayOffset * 86400000 - 3 * 3600000).toISOString(),
+      takenAt: new Date(d.getTime() - 3 * 3600000).toISOString(),
     };
   }),
   {
@@ -758,7 +763,7 @@ export const seedSupplementLogs: SupplementLog[] = [
     protocolId: "sp_d3k2",
     supplementName: "Vitamin D3 + K2",
     doseId: "sp_d3k2_d1",
-    scheduledDate: new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0],
+    scheduledDate: (() => { const d = new Date(); d.setDate(d.getDate() - 6); return toLocalDateString(d); })(),
     status: "skipped" as const,
   },
   // Marcus Vance (trainee_3): 2 taken, 3 skipped out of 5 logs (2/5 = 40% < 70%)
@@ -769,7 +774,7 @@ export const seedSupplementLogs: SupplementLog[] = [
     protocolId: "sp_creatine",
     supplementName: "Creatine Monohydrate",
     doseId: "sp_cr_d1",
-    scheduledDate: new Date(Date.now() - 4 * 86400000).toISOString().split("T")[0],
+    scheduledDate: (() => { const d = new Date(); d.setDate(d.getDate() - 4); return toLocalDateString(d); })(),
     status: "taken",
     takenAt: new Date(Date.now() - 4 * 86400000 - 2 * 3600000).toISOString(),
   },
@@ -780,7 +785,7 @@ export const seedSupplementLogs: SupplementLog[] = [
     protocolId: "sp_creatine",
     supplementName: "Creatine Monohydrate",
     doseId: "sp_cr_d1",
-    scheduledDate: new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0],
+    scheduledDate: (() => { const d = new Date(); d.setDate(d.getDate() - 3); return toLocalDateString(d); })(),
     status: "taken",
     takenAt: new Date(Date.now() - 3 * 86400000 - 2 * 3600000).toISOString(),
   },
@@ -791,7 +796,7 @@ export const seedSupplementLogs: SupplementLog[] = [
     protocolId: "sp_creatine",
     supplementName: "Creatine Monohydrate",
     doseId: "sp_cr_d1",
-    scheduledDate: new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0],
+    scheduledDate: (() => { const d = new Date(); d.setDate(d.getDate() - 2); return toLocalDateString(d); })(),
     status: "skipped",
   },
   {
@@ -801,7 +806,7 @@ export const seedSupplementLogs: SupplementLog[] = [
     protocolId: "sp_creatine",
     supplementName: "Creatine Monohydrate",
     doseId: "sp_cr_d1",
-    scheduledDate: new Date(Date.now() - 1 * 86400000).toISOString().split("T")[0],
+    scheduledDate: (() => { const d = new Date(); d.setDate(d.getDate() - 1); return toLocalDateString(d); })(),
     status: "skipped",
   },
   {
@@ -820,21 +825,25 @@ export const seedSupplementLogs: SupplementLog[] = [
 // Alex Rivera (trainee_1): Target is 3500ml. 3000ml / 3500ml = 85.7% -> 86% per day across 6 past days
 const seedAlexHydrationLogs: HydrationLog[] = [];
 for (let d = 1; d <= 6; d++) {
-  const dateStr = new Date(Date.now() - d * 86400000).toISOString().split("T")[0];
+  const dt = new Date();
+  dt.setDate(dt.getDate() - d);
+  const dateStr = toLocalDateString(dt);
   seedAlexHydrationLogs.push(
-    { id: `hl_a_${d}_1`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 4 * 3600000).toISOString() },
-    { id: `hl_a_${d}_2`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 2 * 3600000).toISOString() },
-    { id: `hl_a_${d}_3`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(Date.now() - d * 86400000 - 1 * 3600000).toISOString() }
+    { id: `hl_a_${d}_1`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(dt.getTime() - 4 * 3600000).toISOString() },
+    { id: `hl_a_${d}_2`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(dt.getTime() - 2 * 3600000).toISOString() },
+    { id: `hl_a_${d}_3`, traineeId: "trainee_1", date: dateStr, amountMl: 1000, loggedAt: new Date(dt.getTime() - 1 * 3600000).toISOString() }
   );
 }
 
 // Marcus Vance (trainee_3): Target is 3000ml. 1500ml / 3000ml = 50% (< 60%)
 const seedMarcusHydrationLogs: HydrationLog[] = [];
 for (let d = 1; d <= 5; d++) {
-  const dateStr = new Date(Date.now() - d * 86400000).toISOString().split("T")[0];
+  const dt = new Date();
+  dt.setDate(dt.getDate() - d);
+  const dateStr = toLocalDateString(dt);
   seedMarcusHydrationLogs.push(
-    { id: `hl_m_${d}_1`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(Date.now() - d * 86400000 - 4 * 3600000).toISOString() },
-    { id: `hl_m_${d}_2`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(Date.now() - d * 86400000 - 2 * 3600000).toISOString() }
+    { id: `hl_m_${d}_1`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(dt.getTime() - 4 * 3600000).toISOString() },
+    { id: `hl_m_${d}_2`, traineeId: "trainee_3", date: dateStr, amountMl: 750, loggedAt: new Date(dt.getTime() - 2 * 3600000).toISOString() }
   );
 }
 
@@ -869,6 +878,10 @@ class Store {
   private db: AppDatabase;
 
   constructor() {
+    this.reset();
+  }
+
+  reset() {
     defaultProgram.supplementProtocols = seedSupplementProtocols;
     defaultProgram.hydrationGoal = seedHydrationGoals[0];
 
@@ -1230,14 +1243,18 @@ class Store {
   getMetrics(traineeId: string): BodyMetricEntry[] {
     return this.db.metrics
       .filter((m) => m.traineeId === traineeId)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => {
+        const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (diff !== 0) return diff;
+        return a.id.localeCompare(b.id);
+      });
   }
 
   addMetric(traineeId: string, weightKg: number, date?: string): BodyMetricEntry {
     const entry: BodyMetricEntry = {
       id: `bm_${Date.now()}`,
       traineeId,
-      date: date || new Date().toISOString().split("T")[0],
+      date: date || toLocalDateString(),
       weightKg,
       source: "manual",
     };
@@ -1386,7 +1403,7 @@ class Store {
   }
 
   calculateSupplementAdherence(traineeId: string): number {
-    const today = new Date().toISOString().split("T")[0];
+    const today = toLocalDateString();
     const logs = this.db.supplementLogs.filter(
       (l) => l.traineeId === traineeId && l.scheduledDate <= today
     );
@@ -1400,7 +1417,7 @@ class Store {
     const goal = this.getHydrationGoal(traineeId);
     if (!goal || goal.dailyTargetMl <= 0) return 100;
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = toLocalDateString();
     const logs = this.db.hydrationLogs.filter(
       (l) => l.traineeId === traineeId && l.date <= today
     );

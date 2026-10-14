@@ -6,19 +6,33 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Formats a Date object to YYYY-MM-DD in local time without UTC offset drift.
+ */
+export function toLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parses a YYYY-MM-DD string into a local midnight Date object.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+/**
  * Resolves current week index (1-based) and day of week (0=Mon..6=Sun)
  * given a program's start date (YYYY-MM-DD) and a reference date (default: today).
  */
 export function resolveProgramDay(startDateStr: string, refDateStr?: string) {
-  const start = new Date(startDateStr);
-  const now = refDateStr ? new Date(refDateStr) : new Date();
-
-  // Reset to midnight UTC/local comparison
-  start.setHours(0, 0, 0, 0);
-  now.setHours(0, 0, 0, 0);
+  const start = parseLocalDate(startDateStr);
+  const now = refDateStr ? parseLocalDate(refDateStr) : parseLocalDate(toLocalDateString());
 
   const diffMs = now.getTime() - start.getTime();
-  const elapsedDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const elapsedDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   if (elapsedDays < 0) {
     // Program hasn't started yet

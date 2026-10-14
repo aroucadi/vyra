@@ -56,3 +56,28 @@ try {
 } catch {
     Write-Error "Health check failed: $_"
 }
+
+# 4. Probe PWA Asset Status Codes
+$pwaEndpoints = @(
+    "/install",
+    "/sw.js",
+    "/manifest.webmanifest",
+    "/apple-touch-icon.png",
+    "/icon-192.png",
+    "/icon-512.png"
+)
+
+Write-Host "`n--- Checking PWA Assets ---" -ForegroundColor Cyan
+foreach ($ep in $pwaEndpoints) {
+    try {
+        $resp = Invoke-WebRequest -Uri "$ServiceUrl$ep" -Method Get -TimeoutSec 10 -UseBasicParsing
+        Write-Host "$ep -> $($resp.StatusCode)" -ForegroundColor Green
+        if ($resp.StatusCode -ne 200) {
+            Write-Error "Asset check failed for $ep (Status: $($resp.StatusCode))"
+            exit 1
+        }
+    } catch {
+        Write-Error "Failed to fetch $ep : $_"
+        exit 1
+    }
+}

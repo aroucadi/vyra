@@ -10,21 +10,21 @@
 
 | Domain | Feature Area | Deprioritization Rationale | Required Gate to Re-open | Est. Complexity |
 | :--- | :--- | :--- | :--- | :--- |
-| **Telemetry** | Apple Watch & HealthKit Sync | Native bridge / third-party webhooks; high schema drift; manual 1-tap sleep prompt suffices. | OWNER DECISION (Set no automatic thresholds). | Medium |
-| **Telemetry** | Oura & Whoop Webhook Ingestion | High third-party API drift; OAuth2 token refresh; potential latency. | OWNER DECISION. | Medium |
-| **Cloud & Sync** | Server-side Database (Firestore / Postgres) | Client-side IndexedDB + offline queue solves gym logging. IndexedDB is Done today. | Before any second user, or before the first real logs matter (Not "multiple devices"). | Medium |
-| **Security & Auth** | Server-side Auth with Allow-list | Client token gate removed; minimal session needed before public multi-user release. | Hard requirement before onboarding lifter #2 (Allow-list of 2 verified emails). | Medium |
-| **Nutrition** | Diet & Nutrition Guidance | General macro advice diluted workout execution wedge. | Legal review plus written advice boundaries strictly separating training from clinical dietetics. | Medium |
-| **Medical** | Medical Tracking & Pathology | Out of scope; regulatory and clinical liability risk. | Legal review plus written advice boundaries (Strict non-diagnostic athletic boundaries). | High |
-| **Architecture** | Life Hub (Five-Pillar Dashboard) | Multi-pillar surface distracted from workout execution; high cognitive load; diluted wedge focus. | Core Train pillar retention established (>80% weekly adherence over 8 weeks). | Large |
-| **Intelligence** | Freeform Physiological AI Coach | Open-ended chat creates hallucination risk, token costs, and in-gym friction vs instant deterministic chips. | 10 active paying lifters; request for custom training block periodization or natural-language query support. | Large |
-| **Pillar: Sleep** | Restorative Sleep Architecture | Premature without validated sleep data source; static advice caused user distrust. | Continuous wearable data pipeline or daily protocol check-in consistency across 10 active paying lifters. | Medium |
-| **Pillar: Style** | Aesthetic & Posture Ergonomics | Zero crossover with in-gym training wedge; diluted brand credibility during launch. | Posture/mobility routine integration requested after fundamental strength cycle across 10 paying lifters. | Low |
-| **Pillar: Network** | Athletic Circles & Local Venues | Social features before single-player utility creates empty ghost-town networks. | 25+ active local lifters in the same metro area using VYRA independently. | High |
-| **Delivery** | Native iOS App (Capacitor / Swift) | PWA via Safari / Chrome on iOS meets install and offline requirements. Native-only: Taptic haptics, Live Activities, HealthKit, Apple Watch. | Requirement for Background Sync API, Live Activities, or true CoreBluetooth hardware access. | High |
-| **PWA Features** | Web Push Notifications | Web Push is a standard PWA capability (iOS 16.4+ standalone mode), not native-only. | User requests workout reminders or rest interval countdowns when app is minimized. | Low |
-| **Monetization** | GCC Local Payment Gateways (Tap / Moyasar) | Premature before core retention and willingness-to-pay are empirically validated. | 5 manual paying beta users onboarded via direct invoice or wire transfer; GCC data-residency review. | Medium |
-| **Localization** | Arabic / RTL & Ramadan Training Mode | Regional seasonal requirement; shifts training and nutrition timeline around Suhoor/Iftar. | Arabic language support & upcoming Ramadan cycle with regional lifters. | Medium |
+| **Telemetry** | Apple Watch & HealthKit Sync | Native bridge / third-party webhooks; high schema drift; manual 1-tap sleep prompt suffices. | OWNER DECISION | Medium |
+| **Telemetry** | Oura & Whoop Webhook Ingestion | High third-party API drift; OAuth2 token refresh; potential latency. | OWNER DECISION | Medium |
+| **Cloud & Sync** | Server-side Database (Firestore / Postgres) | Client-side IndexedDB + offline queue solves gym logging. IndexedDB is Done today. | OWNER DECISION | Medium |
+| **Security & Auth** | Server-side Auth with Allow-list | Client token gate removed; minimal session needed before public multi-user release. | OWNER DECISION | Medium |
+| **Nutrition** | Diet & Nutrition Guidance | General macro advice diluted workout execution wedge. | OWNER DECISION | Medium |
+| **Medical** | Medical Tracking & Pathology | Out of scope; regulatory and clinical liability risk. | OWNER DECISION | High |
+| **Architecture** | Life Hub (Five-Pillar Dashboard) | Multi-pillar surface distracted from workout execution; high cognitive load; diluted wedge focus. | OWNER DECISION | Large |
+| **Intelligence** | Freeform Physiological AI Coach | Open-ended chat creates hallucination risk, token costs, and in-gym friction vs instant deterministic chips. | OWNER DECISION | Large |
+| **Pillar: Sleep** | Restorative Sleep Architecture | Premature without validated sleep data source; static advice caused user distrust. | OWNER DECISION | Medium |
+| **Pillar: Style** | Aesthetic & Posture Ergonomics | Zero crossover with in-gym training wedge; diluted brand credibility during launch. | OWNER DECISION | Low |
+| **Pillar: Network** | Athletic Circles & Local Venues | Social features before single-player utility creates empty ghost-town networks. | OWNER DECISION | High |
+| **Delivery** | Native iOS App (Capacitor / Swift) | PWA via Safari / Chrome on iOS meets install and offline requirements. Native-only: Taptic haptics, Live Activities, HealthKit, Apple Watch. | OWNER DECISION | High |
+| **PWA Features** | Web Push Notifications | Web Push is a standard PWA capability (iOS 16.4+ standalone mode), not native-only. | OWNER DECISION | Low |
+| **Monetization** | GCC Local Payment Gateways | Premature before core retention and willingness-to-pay are empirically validated. | OWNER DECISION | Medium |
+| **Localization** | Arabic / RTL & Ramadan Training Mode | Regional seasonal requirement; shifts training and nutrition timeline around Suhoor/Iftar. | OWNER DECISION | Medium |
 
 ---
 
@@ -108,8 +108,8 @@
 - **Objective**: Serve regional athletic cohorts in the Gulf (UAE, Saudi Arabia, Qatar) without premature billing friction.
 - **Components**:
   1. **GCC Local Payment Gateways**:
-     - Tap Payments or Moyasar integration for local Apple Pay, Mada (KSA), and KNET (Kuwait).
-     - Gate: Re-open only after 5 beta users pay manually via Stripe payment links or direct invoices.
+     - Local payment gateway integration for regional debit schemes and digital wallets.
+     - Gate: OWNER DECISION.
   2. **Ramadan & Intermittent Fasting Mode**:
      - Shifts daily nutrition milestones, hydration loading, and session timing around Suhoor and Iftar windows.
      - Adjusts pre-workout hydration reminders to the post-maghrib training window.

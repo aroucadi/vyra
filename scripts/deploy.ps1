@@ -7,7 +7,10 @@ param (
     [string]$ServiceName = "vyra-app",
 
     [Parameter(Mandatory = $false)]
-    [string]$Region = "us-central1"
+    [string]$Region = "us-central1",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$DryRun = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,6 +55,18 @@ if (Test-Path "D:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gclo
 }
 
 Write-Host "Submitting Cloud Build with substitutions _COMMIT_SHA=$commitSha..." -ForegroundColor Cyan
+$buildCommand = "$GcloudCmd builds submit --project $ProjectId --config cloudbuild.yaml --substitutions `"_COMMIT_SHA=$commitSha`" ."
+
+if ($DryRun) {
+    Write-Host "`n[DRY RUN MODE ENABLED]" -ForegroundColor Magenta
+    Write-Host "All pre-flight checks passed." -ForegroundColor Green
+    Write-Host "Resolved Commit SHA: $commitSha ($fullSha)" -ForegroundColor Green
+    Write-Host "Substitutions:        _COMMIT_SHA=$commitSha" -ForegroundColor Green
+    Write-Host "Build Command:        $buildCommand" -ForegroundColor Green
+    Write-Host "Dry run completed successfully. No build was submitted." -ForegroundColor Magenta
+    exit 0
+}
+
 & $GcloudCmd builds submit `
     --project $ProjectId `
     --config cloudbuild.yaml `

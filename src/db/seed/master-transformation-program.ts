@@ -10,6 +10,7 @@ import {
   DailyMealSlot,
   MealPlanPrescription,
 } from '@/lib/types';
+import { toLocalDateString } from '@/lib/utils';
 
 // Trainer: Alaa Pro
 export const userAlaaPro: User = {
@@ -1131,11 +1132,11 @@ export function generateMaster16WeekProgram(): Program {
   const day = startDate.getDay();
   const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
   startDate.setDate(diff);
-  const startStr = startDate.toISOString().split('T')[0];
+  const startStr = toLocalDateString(startDate);
 
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + 16 * 7 - 1);
-  const endStr = endDate.toISOString().split('T')[0];
+  const endStr = toLocalDateString(endDate);
 
   const weeks: ProgramWeek[] = [];
   for (let w = 1; w <= 16; w++) {

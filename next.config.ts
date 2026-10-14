@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/exercises",
+        destination: "/library",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

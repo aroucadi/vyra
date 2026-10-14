@@ -10,7 +10,7 @@ export function TrainerNav() {
   const links = [
     { label: "Client Roster", href: "/roster", icon: Users },
     { label: "Program Builder", href: "/program/new", icon: ClipboardList },
-    { label: "Exercise Library", href: "/exercises", icon: Dumbbell },
+    { label: "Exercise Library", href: "/library", icon: Dumbbell },
   ];
 
   return (

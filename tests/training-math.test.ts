@@ -16,9 +16,9 @@ describe('Training Math Engine', () => {
     });
 
     it('adjusts estimate when RIR is provided', () => {
-      // 10 reps with 2 RIR -> effective reps = 12
+      // 10 reps with 2 RIR -> effective reps = 12 (weighted ensemble yields 138.7kg vs 133.3kg at 0 RIR)
       const estimate = estimate1RM(100, 10, { rir: 2 });
-      expect(estimate).toBeGreaterThan(140);
+      expect(estimate).toBe(138.7);
     });
 
     it('returns null for extreme rep counts beyond cap', () => {

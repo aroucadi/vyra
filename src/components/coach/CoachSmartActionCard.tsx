@@ -192,7 +192,7 @@ export function CoachSmartActionCard({
           <div className="flex items-center gap-2">
             {card.type === "load_explanation" ? (
               <Link
-                href="/exercises"
+                href="/library"
                 className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />

@@ -99,4 +99,24 @@ describe('Structural Balance Radar & Intelligent Posture Suite', () => {
       assert.strictEqual(hasEntitlement('ENTERPRISE', 'structural_balance_radar'), true);
     });
   });
+
+  describe('Posture API Route Contract', () => {
+    it('executes GET /api/posture and returns structured radar evaluation payload', async () => {
+      const { GET } = await import('@/app/api/posture/route');
+      const { NextRequest } = await import('next/server');
+
+      const req = new NextRequest('http://localhost/api/posture?template=poliquin');
+      const res = await GET(req);
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+
+      assert.strictEqual(data.template, 'poliquin');
+      assert.ok(data.templateLabel);
+      assert.ok(Array.isArray(data.results));
+      assert.ok(data.results.length >= 4);
+      assert.ok(data.labels);
+      assert.ok(Object.keys(data.labels).length >= 4);
+    });
+  });
 });

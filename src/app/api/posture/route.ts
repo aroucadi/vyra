@@ -6,6 +6,8 @@ import {
   TemplateDefinition,
 } from '@/lib/training-math/structural-balance';
 
+import { searchExercises } from '@/lib/rag/exercise-search';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
@@ -24,16 +26,26 @@ export async function GET(req: NextRequest) {
       d: s.date,
       start: new Date(s.startedAt).getTime(),
       bw: latestBw,
-      entries: s.setLogs.map((log) => ({
-        id: log.exercisePrescriptionId,
-        sets: [
-          {
-            done: true,
-            w: log.weightKg,
-            r: log.reps,
-          },
-        ],
-      })),
+      entries: s.setLogs.map((log) => {
+        let canonicalId = log.exercisePrescriptionId;
+        if (log.exerciseName) {
+          const match = searchExercises(log.exerciseName, { limit: 1 });
+          if (match && match.length > 0) {
+            canonicalId = match[0].id;
+          }
+        }
+        return {
+          id: canonicalId,
+          prescriptionId: log.exercisePrescriptionId,
+          sets: [
+            {
+              done: true,
+              w: log.weightKg,
+              r: log.reps,
+            },
+          ],
+        };
+      }),
     }));
 
     const evaluationContext = {

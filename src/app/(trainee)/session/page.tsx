@@ -32,8 +32,10 @@ import {
   FastForward,
   Volume2,
   VolumeX,
+  ArrowRightLeft,
 } from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
+import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
 import { clsx } from "clsx";
 
 interface ActiveExercise {
@@ -56,6 +58,8 @@ interface ActiveExercise {
   completedSets: { weight: number; reps: number; isPR: boolean }[];
   currentWeight: number;
   currentReps: number;
+  target?: string;
+  equipment?: string;
 }
 
 function SessionFlow() {
@@ -115,6 +119,8 @@ function SessionFlow() {
         completedSets: [],
         currentWeight: defaultWeight,
         currentReps: defaultReps,
+        target: ex.targetMuscleGroups?.[0] || "chest",
+        equipment: ex.selectedEquipment || "barbell",
       };
     });
   });
@@ -152,6 +158,8 @@ function SessionFlow() {
           completedSets: [],
           currentWeight: defaultWeight,
           currentReps: defaultReps,
+          target: ex.targetMuscleGroups?.[0] || "chest",
+          equipment: ex.selectedEquipment || "barbell",
         };
       })
     );
@@ -163,6 +171,14 @@ function SessionFlow() {
   const [currentExIndex, setCurrentExIndex] = useState(0);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
+  const [isSwapDrawerOpen, setIsSwapDrawerOpen] = useState(false);
+  const [swapTargetExercise, setSwapTargetExercise] = useState<{
+    id?: string;
+    name: string;
+    target: string;
+    equipment: string;
+    bodyPart?: string;
+  } | null>(null);
 
   // Timer states
   const [sessionDurationSec, setSessionDurationSec] = useState(0);
@@ -557,12 +573,27 @@ function SessionFlow() {
           ))}
         </div>
 
-        {/* Coach Assistant Link */}
+        {/* Substitution Copilot Trigger */}
         <div className="flex items-center justify-between text-xs px-1 text-slate-400">
-          <span>Need substitutions or equipment swap?</span>
-          <Link href="/coach?prompt=I%20need%20to%20swap%20an%20exercise%20for%20today" className="text-emerald-400 font-semibold hover:underline">
-            Ask Coach →
-          </Link>
+          <span>Equipment occupied or need substitutions?</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (exercises.length > 0) {
+                setSwapTargetExercise({
+                  id: exercises[0].id,
+                  name: exercises[0].name,
+                  target: exercises[0].target || "chest",
+                  equipment: exercises[0].equipment || "barbell",
+                });
+                setIsSwapDrawerOpen(true);
+              }
+            }}
+            className="text-emerald-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <span>Swap Copilot →</span>
+          </button>
         </div>
 
         {/* Single Dominant Begin Action */}
@@ -851,15 +882,35 @@ function SessionFlow() {
               </div>
             </div>
 
-            {/* Non-blocking Tips Trigger Button */}
-            <button
-              type="button"
-              onClick={() => setIsTipsOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 transition flex-shrink-0"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Tips</span>
-            </button>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setSwapTargetExercise({
+                    id: activeEx.id,
+                    name: activeEx.name,
+                    target: activeEx.target || "chest",
+                    equipment: activeEx.equipment || "barbell",
+                  });
+                  setIsSwapDrawerOpen(true);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer"
+                aria-label="Swap occupied exercise equipment"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Swap</span>
+              </button>
+
+              {/* Non-blocking Tips Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsTipsOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 transition"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Tips</span>
+              </button>
+            </div>
           </div>
 
           {/* Reference Line: Last Best Session */}
@@ -1097,6 +1148,30 @@ function SessionFlow() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* INTELLIGENT SUBSTITUTION COPILOT DRAWER (Spec 017) */}
+      <SubstitutionCopilotDrawer
+        isOpen={isSwapDrawerOpen}
+        onClose={() => setIsSwapDrawerOpen(false)}
+        currentExercise={swapTargetExercise}
+        onApplySubstitute={(candidate) => {
+          setExercises((prev) =>
+            prev.map((ex, idx) => {
+              const matches = (swapTargetExercise?.id && ex.id === swapTargetExercise.id) || idx === currentExIndex;
+              if (!matches) return ex;
+              return {
+                ...ex,
+                name: candidate.name,
+                formCue: candidate.instructions?.[0] || ex.formCue,
+                equipment: candidate.equipment,
+                target: candidate.target,
+                currentWeight: candidate.equipment.toLowerCase().includes("body") ? 0 : ex.currentWeight,
+              };
+            })
+          );
+          setIsSwapDrawerOpen(false);
+        }}
+      />
 
     </div>
   );

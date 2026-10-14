@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RagExercise } from "@/types/exercise-rag";
 import { PlateCalculatorPopover } from "@/components/trainee/PlateCalculatorPopover";
+import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
 import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
+import { SubstitutionCandidate } from "@/lib/training-math/substitution-copilot";
 import {
   Sparkles,
   ArrowRightLeft,
@@ -15,7 +17,8 @@ import {
   ExternalLink,
   ArrowRight,
   Disc,
-  Info
+  Zap,
+  ListOrdered,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -35,7 +38,20 @@ function extractGoldenCues(instructions?: string[]): { setupCue: string; driveCu
   }
 
   const setupCue = instructions[0];
-  const executionKeywords = ["press", "pull", "push", "lift", "drive", "extend", "curl", "row", "squat", "contract", "raise"];
+  const executionKeywords = [
+    "press",
+    "pull",
+    "push",
+    "lift",
+    "drive",
+    "extend",
+    "curl",
+    "row",
+    "squat",
+    "contract",
+    "raise",
+    "explode",
+  ];
   let driveCue = instructions.length > 2 ? instructions[2] : instructions[1] || instructions[0];
 
   for (let i = 1; i < instructions.length; i++) {
@@ -55,8 +71,9 @@ export function ExerciseDetailSheet({
   onClose,
   onSelectAsSubstitute,
 }: ExerciseDetailSheetProps) {
-  const [activeTab, setActiveTab] = useState<"form" | "swaps">("form");
-  const [showFullSteps, setShowFullSteps] = useState(false);
+  const [activeTab, setActiveTab] = useState<"cues" | "steps" | "swaps">("cues");
+  const [showFullMap, setShowFullMap] = useState(false);
+  const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
 
   // Fetch contextual biomechanical substitutes
@@ -65,11 +82,23 @@ export function ExerciseDetailSheet({
     let active = true;
     const fetchSubs = async () => {
       try {
-        const res = await fetch(`/api/exercises?muscle=${encodeURIComponent(exercise.target)}&limit=4`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const res = await fetch(
+          `/api/substitutions?name=${encodeURIComponent(exercise.name)}&target=${encodeURIComponent(exercise.target)}&equipment=${encodeURIComponent(exercise.equipment)}&limit=3`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (active && data.substitutes && data.substitutes.length > 0) {
+            setCandidates(data.substitutes);
+            setSubstitutes(data.substitutes.map((c: SubstitutionCandidate) => c.exercise));
+            return;
+          }
+        }
+        // Fallback to basic muscle query if needed
+        const fallback = await fetch(`/api/exercises?muscle=${encodeURIComponent(exercise.target)}&limit=4`);
+        if (!fallback.ok) return;
+        const fbData = await fallback.json();
         if (active) {
-          const filtered = (data.exercises || []).filter((e: RagExercise) => e.id !== exercise.id).slice(0, 3);
+          const filtered = (fbData.exercises || []).filter((e: RagExercise) => e.id !== exercise.id).slice(0, 3);
           setSubstitutes(filtered);
         }
       } catch {
@@ -80,13 +109,13 @@ export function ExerciseDetailSheet({
     return () => {
       active = false;
     };
-  }, [exercise?.id, exercise?.target, isOpen]);
+  }, [exercise?.id, exercise?.name, exercise?.target, exercise?.equipment, isOpen]);
 
   // Reset internal states on open
   useEffect(() => {
     if (isOpen) {
-      setActiveTab("form");
-      setShowFullSteps(false);
+      setActiveTab("cues");
+      setShowFullMap(false);
     }
   }, [isOpen, exercise?.id]);
 
@@ -131,68 +160,85 @@ export function ExerciseDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        {/* 2. Segmented 2-Tab Navigation (Progressive Disclosure) */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-xl">
+        {/* 2. Segmented 3-Tab Progressive Navigation */}
+        <div className="grid grid-cols-3 p-1 bg-slate-950 border border-slate-800 rounded-xl">
           <button
             type="button"
-            onClick={() => setActiveTab("form")}
+            onClick={() => setActiveTab("cues")}
             className={clsx(
-              "h-9 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
-              activeTab === "form"
-                ? "bg-emerald-500 text-slate-950 shadow-sm"
+              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+              activeTab === "cues"
+                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Form & Anatomy</span>
+            <Zap className="w-3 h-3" />
+            <span>Coach Cues</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("steps")}
+            className={clsx(
+              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+              activeTab === "steps"
+                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <ListOrdered className="w-3 h-3" />
+            <span>Full Steps</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("swaps")}
             className={clsx(
-              "h-9 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
               activeTab === "swaps"
-                ? "bg-emerald-500 text-slate-950 shadow-sm"
+                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Equipment & Swaps</span>
+            <ArrowRightLeft className="w-3 h-3" />
+            <span>Swaps{substitutes.length > 0 ? ` (${substitutes.length})` : ""}</span>
           </button>
         </div>
 
-        {/* TAB 1: FORM & ANATOMICAL VISUALIZATION */}
-        {activeTab === "form" && (
-          <div className="space-y-4">
-            {/* Visualizer: Anatomical Target Silhouette */}
-            <AnatomicalBodyMap
-              selectedMuscle={exercise.target}
-              secondaryMuscles={exercise.secondaryMuscles || []}
-              mode="visualizer"
-            />
+        {/* TAB 1: COACH CUES & ANATOMICAL SPOTLIGHT (High-Signal Hero) */}
+        {activeTab === "cues" && (
+          <div className="space-y-3">
+            {/* Split Hero: Micro-Spotlight + 2 Kinetic Anchors */}
+            <div className="grid grid-cols-[84px_1fr] gap-2.5 items-stretch">
+              {/* Left Column: Anatomical Tension Spotlight */}
+              <div className="flex flex-col">
+                <AnatomicalTensionSpotlight
+                  primaryMuscle={exercise.target}
+                  secondaryMuscles={exercise.secondaryMuscles || []}
+                  className="h-full justify-center"
+                />
+              </div>
 
-            {/* Golden Biomechanical Cues (Setup vs Drive) */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                Golden Biomechanical Cues
-              </span>
-
-              <div className="grid gap-2">
-                {/* Golden Cue 1: Setup */}
-                <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-1">
+              {/* Right Column: Setup Anchor & Kinetic Drive */}
+              <div className="flex flex-col justify-between gap-2">
+                {/* Anchor 1: Setup */}
+                <div className="p-2.5 bg-slate-900/70 border border-slate-800 rounded-xl space-y-1">
                   <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
-                    <span>1. Setup & Anchor</span>
+                    <Zap className="w-3 h-3 text-cyan-400 shrink-0" />
+                    <span>1. Setup Anchor</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-snug">{setupCue}</p>
+                  <p className="text-[11px] text-slate-200 leading-snug line-clamp-3">
+                    {setupCue}
+                  </p>
                 </div>
 
-                {/* Golden Cue 2: Drive */}
-                <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-1">
+                {/* Anchor 2: Kinetic Drive */}
+                <div className="p-2.5 bg-slate-900/70 border border-slate-800 rounded-xl space-y-1">
                   <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                    <span>2. Drive & Trajectory</span>
+                    <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>2. Kinetic Drive</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-snug">{driveCue}</p>
+                  <p className="text-[11px] text-slate-200 leading-snug line-clamp-3">
+                    {driveCue}
+                  </p>
                 </div>
               </div>
             </div>
@@ -203,46 +249,73 @@ export function ExerciseDetailSheet({
                 href={exercise.videoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full h-10 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-200 flex items-center justify-between transition"
+                className="w-full h-9 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-200 flex items-center justify-between transition"
               >
                 <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-emerald-400" />
+                  <Video className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Watch Biomechanical Form Cue</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
               </a>
             )}
 
-            {/* Expandable Full 5-Step Protocol */}
-            {exercise.instructions && exercise.instructions.length > 2 && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowFullSteps(!showFullSteps)}
-                  className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
-                >
-                  <span>{showFullSteps ? "Hide Detailed Steps" : `View All ${exercise.instructions.length} Detailed Steps`}</span>
-                  {showFullSteps ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
+            {/* Optional Full Interactive Body Map Drawer */}
+            <div className="pt-0.5">
+              <button
+                type="button"
+                onClick={() => setShowFullMap(!showFullMap)}
+                className="w-full py-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <span>{showFullMap ? "Collapse Full Body Map" : "Expand Full Interactive Body Map"}</span>
+                {showFullMap ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
 
-                {showFullSteps && (
-                  <div className="mt-2 space-y-2 p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs text-slate-300">
-                    {exercise.instructions.map((step, idx) => (
-                      <div key={idx} className="flex items-start gap-2">
-                        <span className="w-4 h-4 rounded-full bg-slate-800 text-slate-400 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <p className="text-[11px] leading-relaxed text-slate-300">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              {showFullMap && (
+                <div className="mt-2">
+                  <AnatomicalBodyMap
+                    selectedMuscle={exercise.target}
+                    secondaryMuscles={exercise.secondaryMuscles || []}
+                    mode="visualizer"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* TAB 2: EQUIPMENT & 1-TAP SWAPS */}
+        {/* TAB 2: FULL STEP-BY-STEP PROTOCOL */}
+        {activeTab === "steps" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Step-by-Step Biomechanical Execution
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">
+                {(exercise.instructions || []).length} Steps
+              </span>
+            </div>
+
+            <div className="space-y-2 p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-300">
+              {exercise.instructions && exercise.instructions.length > 0 ? (
+                exercise.instructions.map((step, idx) => (
+                  <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-slate-900 last:border-0">
+                    <span className="w-5 h-5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <p className="text-xs leading-relaxed text-slate-200">{step}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 py-2 text-center">
+                  Execute with stable posture and controlled eccentric phase.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: EQUIPMENT & 1-TAP SWAPS */}
         {activeTab === "swaps" && (
           <div className="space-y-4">
             {/* Equipment Context Card */}
@@ -275,33 +348,54 @@ export function ExerciseDetailSheet({
 
               <div className="space-y-2 pt-1">
                 {substitutes.length > 0 ? (
-                  substitutes.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs"
-                    >
-                      <div className="space-y-0.5 min-w-0 pr-3">
-                        <div className="font-semibold text-white truncate">{sub.name}</div>
-                        <div className="text-[10px] font-mono text-slate-400">
-                          {sub.equipment} · <span className="text-emerald-400">{sub.target}</span>
+                  substitutes.map((sub) => {
+                    const match = candidates.find((c) => c.exercise.id === sub.id);
+                    return (
+                      <div
+                        key={sub.id}
+                        className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5 min-w-0 pr-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-white truncate">{sub.name}</span>
+                              {match && (
+                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  {Math.round(match.similarityScore * 100)}%
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              {sub.equipment} · <span className="text-emerald-400">{sub.target}</span>
+                              {match && (
+                                <span className="text-cyan-400 ml-1">· {match.resistanceProfile}</span>
+                              )}
+                            </div>
+                          </div>
+                          {onSelectAsSubstitute ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelectAsSubstitute(sub);
+                                onClose();
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs transition shrink-0 cursor-pointer shadow-sm"
+                            >
+                              Swap
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-mono text-slate-500">Available</span>
+                          )}
                         </div>
+                        {match?.biomechanicalRationale && (
+                          <div className="text-[11px] text-slate-300 leading-snug bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
+                            <span className="text-emerald-400 font-semibold font-mono text-[10px]">COACH: </span>
+                            {match.biomechanicalRationale}
+                          </div>
+                        )}
                       </div>
-                      {onSelectAsSubstitute ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSelectAsSubstitute(sub);
-                            onClose();
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs transition shrink-0 cursor-pointer shadow-sm"
-                        >
-                          Swap
-                        </button>
-                      ) : (
-                        <span className="text-[10px] font-mono text-slate-500">Available</span>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/60 text-center text-xs text-slate-400">
                     No immediate substitutes found for {exercise.target}.

@@ -12,6 +12,8 @@ import { Card } from "@/components/primitives/Card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { generateAutoregulationPlan, MinimalExerciseTarget } from "@/lib/autoregulation";
 import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibrationCard";
+import { OverloadPrescriptionCard } from "@/components/trainee/OverloadPrescriptionCard";
+import { computeExercisePrescription } from "@/lib/progression-adapter";
 import { telemetry } from "@/lib/telemetry";
 import { persistClientWorkoutSession, triggerBackupDownload } from "@/lib/storage";
 import {
@@ -397,6 +399,7 @@ function SessionFlow() {
 
     await persistClientWorkoutSession(completedSession);
     await saveSessionAction(completedSession);
+    appStore.saveSession(completedSession);
     setMode("summary");
   };
 
@@ -628,6 +631,25 @@ function SessionFlow() {
       0
     );
     const durationMin = Math.max(1, Math.round(sessionDurationSec / 60));
+    const userTier = ((currentUser as any).tier as any) || "PRO";
+    const userSessions = appStore.getSessions(currentUser.id);
+
+    const overloadPrescriptions = exercises.map((ex) => {
+      const presc = computeExercisePrescription(userSessions, {
+        id: ex.id,
+        name: ex.name,
+        sets: ex.targetSets,
+        repRangeLow: ex.repLow,
+        repRangeHigh: ex.repHigh,
+        lastWeightKg: ex.currentWeight,
+        loadGuidance: ex.loadGuidance,
+      });
+      return {
+        exerciseName: ex.name,
+        ...presc,
+        previousWeight: ex.currentWeight,
+      };
+    });
 
     return (
       <div className="flex-1 pb-12 px-4 pt-12 max-w-md mx-auto w-full space-y-8 animate-in zoom-in-95 duration-300">
@@ -664,6 +686,34 @@ function SessionFlow() {
               {prCount > 0 ? `+${prCount} PR` : "Solid"}
             </div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Records</div>
+          </div>
+        </div>
+
+        {/* Biomechanical Overload & Deload Prescriptions */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+              Next Session Prescriptions
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400 font-bold">
+              Biomechanical Overload
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {overloadPrescriptions.map((p, idx) => (
+              <OverloadPrescriptionCard
+                key={`${p.exerciseName}_${idx}`}
+                exerciseName={p.exerciseName}
+                policyName={p.policyName}
+                kind={p.kind}
+                weight={p.weight}
+                reps={p.reps}
+                previousWeight={p.previousWeight}
+                formattedWhy={p.formattedWhy}
+                userTier={userTier}
+              />
+            ))}
           </div>
         </div>
 
@@ -781,6 +831,11 @@ function SessionFlow() {
               <p className="text-xs text-slate-400 font-mono mt-0.5">
                 Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps · RIR {activeEx.targetRir}
               </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                  Overload Ceiling: {activeEx.repHigh} reps
+                </span>
+              </div>
             </div>
 
             {/* Non-blocking Tips Trigger Button */}

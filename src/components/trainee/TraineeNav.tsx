@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, Dumbbell, User as UserIcon } from "lucide-react";
+import { Calendar, Dumbbell, User as UserIcon, BookOpen } from "lucide-react";
 import { clsx } from "clsx";
 
 export function TraineeNav() {
@@ -16,6 +16,7 @@ export function TraineeNav() {
   const navItems = [
     { label: "Today", href: "/today", icon: Calendar },
     { label: "Program", href: "/program", icon: Dumbbell },
+    { label: "Library", href: "/library", icon: BookOpen },
     { label: "You", href: "/you", icon: UserIcon },
   ];
 

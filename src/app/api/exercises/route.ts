@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const q = searchParams.get('q') || '';
+    const q = (searchParams.get('q') || '').trim();
     const muscle = searchParams.get('muscle') || '';
     const equipment = searchParams.get('equipment') || '';
     const category = searchParams.get('category') || '';
-    const limit = parseInt(searchParams.get('limit') || '30', 10);
+    const rawLimit = parseInt(searchParams.get('limit') || '30', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 30;
 
     let results = q ? searchExercises(q, { limit: 100 }) : loadExerciseCatalogue().exercises;
 

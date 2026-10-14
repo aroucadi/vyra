@@ -52,4 +52,36 @@ describe('Spec 013: Exercise Catalogue Browser & Search Performance', () => {
       assert.ok(ex.equipment.toLowerCase().includes('dumbbell'));
     }
   });
+
+  it('verifies /api/exercises route handles parameters and caching cleanly', async () => {
+    const { GET } = await import('@/app/api/exercises/route');
+    const { NextRequest } = await import('next/server');
+
+    // 1. Valid shorthand query
+    const req1 = new NextRequest('http://localhost/api/exercises?q=lat&limit=5');
+    const res1 = await GET(req1);
+    assert.equal(res1.status, 200);
+    const data1 = await res1.json();
+    assert.equal(data1.exercises.length, 5);
+    assert.ok(data1.total > 0);
+    assert.ok(res1.headers.get('cache-control')?.includes('stale-while-revalidate'));
+
+    // 2. Sanitization on invalid negative limit
+    const req2 = new NextRequest('http://localhost/api/exercises?q=rdl&limit=-99');
+    const res2 = await GET(req2);
+    assert.equal(res2.status, 200);
+    const data2 = await res2.json();
+    assert.ok(data2.exercises.length > 0, 'Should fall back to default limit');
+
+    // 3. Combined muscle and equipment filter
+    const req3 = new NextRequest('http://localhost/api/exercises?muscle=chest&equipment=dumbbell&limit=10');
+    const res3 = await GET(req3);
+    assert.equal(res3.status, 200);
+    const data3 = await res3.json();
+    assert.ok(data3.exercises.length > 0);
+    for (const ex of data3.exercises) {
+      assert.ok(ex.equipment.toLowerCase().includes('dumbbell'));
+    }
+  });
 });
+

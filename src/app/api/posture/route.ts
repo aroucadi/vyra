@@ -13,9 +13,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const templateKey = searchParams.get('template') || 'poliquin';
+    const rawTemplateKey = (searchParams.get('template') || 'poliquin').toLowerCase().trim();
     const activeTemplate: TemplateDefinition =
-      TEMPLATES[templateKey] || TEMPLATES.poliquin;
+      Object.prototype.hasOwnProperty.call(TEMPLATES, rawTemplateKey)
+        ? TEMPLATES[rawTemplateKey]
+        : TEMPLATES.poliquin;
 
     const currentUser = appStore.getCurrentUser();
     const sessions = appStore.getSessions(currentUser.id);

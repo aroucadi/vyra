@@ -13,10 +13,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing or invalid eventName' }, { status: 400 });
     }
 
-    // Scrub health and PII before logging to stdout
-    const sanitizedProps: Record<string, unknown> = {};
-    if (properties && typeof properties === 'object') {
+    // Scrub health, PII, and prototype injection before logging to stdout
+    const sanitizedProps: Record<string, unknown> = Object.create(null);
+    if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
       for (const [key, value] of Object.entries(properties)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          continue;
+        }
         if (/password|email|token|secret|credit|weight|bmi|condition|injury|bodyweight/i.test(key)) {
           continue;
         }

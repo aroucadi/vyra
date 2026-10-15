@@ -5,13 +5,14 @@ import { findBiomechanicalSubstitutes } from '@/lib/training-math/substitution-c
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const name = searchParams.get('name') || '';
-    const target = searchParams.get('target') || '';
-    const equipment = searchParams.get('equipment') || '';
+    const name = (searchParams.get('name') || '').trim();
+    const target = (searchParams.get('target') || '').trim();
+    const equipment = (searchParams.get('equipment') || '').trim();
     const category = searchParams.get('category') || undefined;
     const excludedParam = searchParams.get('excluded') || '';
     const preferredParam = searchParams.get('preferred') || '';
-    const limit = Math.min(Number(searchParams.get('limit')) || 3, 10);
+    const rawLimit = parseInt(searchParams.get('limit') || '3', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 10) : 3;
 
     if (!target && !name) {
       return NextResponse.json(

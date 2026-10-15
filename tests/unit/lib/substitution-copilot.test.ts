@@ -146,4 +146,31 @@ describe('Spec 017: Intelligent Biomechanical Substitution Copilot Suite', () =>
       assert.ok(substitutes.every((s) => s.exercise.equipment === 'dumbbell'), 'All returned substitutes are dumbbells');
     });
   });
+
+  describe('GET /api/substitutions Route Contract & Security Sanitization', () => {
+    it('sanitizes negative and invalid limits to safe defaults', async () => {
+      const { GET } = await import('@/app/api/substitutions/route');
+      const { NextRequest } = await import('next/server');
+
+      // 1. Negative limit should fallback to 3, not slice backwards
+      const reqNegative = new NextRequest('http://localhost/api/substitutions?name=Incline%20Dumbbell%20Press&target=chest&limit=-5');
+      const resNegative = await GET(reqNegative);
+      assert.strictEqual(resNegative.status, 200);
+      const dataNegative = await resNegative.json();
+      assert.ok(dataNegative.success);
+      assert.ok(dataNegative.substitutes.length > 0 && dataNegative.substitutes.length <= 3);
+
+      // 2. Missing name and target returns 400 Bad Request
+      const reqEmpty = new NextRequest('http://localhost/api/substitutions');
+      const resEmpty = await GET(reqEmpty);
+      assert.strictEqual(resEmpty.status, 400);
+
+      // 3. Excessively high limit clamped to 10
+      const reqExcessive = new NextRequest('http://localhost/api/substitutions?target=chest&limit=999');
+      const resExcessive = await GET(reqExcessive);
+      assert.strictEqual(resExcessive.status, 200);
+      const dataExcessive = await resExcessive.json();
+      assert.ok(dataExcessive.substitutes.length <= 10);
+    });
+  });
 });

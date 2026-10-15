@@ -39,6 +39,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/library",
+        destination: "/exercises",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

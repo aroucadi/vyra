@@ -5,13 +5,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { RagExercise } from "@/types/exercise-rag";
 import { PlateCalculatorPopover } from "@/components/trainee/PlateCalculatorPopover";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
-import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
 import { SubstitutionCandidate } from "@/lib/training-math/substitution-copilot";
 import {
   Sparkles,
   ArrowRightLeft,
-  ChevronDown,
-  ChevronUp,
   Video,
   CheckCircle2,
   ExternalLink,
@@ -72,7 +69,6 @@ export function ExerciseDetailSheet({
   onSelectAsSubstitute,
 }: ExerciseDetailSheetProps) {
   const [activeTab, setActiveTab] = useState<"cues" | "steps" | "swaps">("cues");
-  const [showFullMap, setShowFullMap] = useState(false);
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
 
@@ -115,7 +111,6 @@ export function ExerciseDetailSheet({
   useEffect(() => {
     if (isOpen) {
       setActiveTab("cues");
-      setShowFullMap(false);
     }
   }, [isOpen, exercise?.id]);
 
@@ -131,16 +126,16 @@ export function ExerciseDetailSheet({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-5 space-y-4 max-h-[88vh] overflow-y-auto"
+        className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-5 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl"
       >
-        {/* 1. Header (Eyebrow + Title + Plate Popover) */}
-        <SheetHeader className="text-left space-y-1">
+        {/* 1. Header (Eyebrow + Capitalized Title + Plate Popover) */}
+        <SheetHeader className="text-left space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                 {exercise.category || "Strength"}
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800">
+              <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800">
                 {exercise.equipment}
               </span>
             </div>
@@ -152,16 +147,16 @@ export function ExerciseDetailSheet({
               />
             )}
           </div>
-          <SheetTitle className="text-lg font-bold text-white tracking-tight pt-1">
+          <SheetTitle className="text-lg font-bold text-white tracking-tight capitalize pt-0.5">
             {exercise.name}
           </SheetTitle>
           <SheetDescription className="text-xs text-slate-400">
-            Primary Target: <span className="text-emerald-400 font-semibold">{exercise.target}</span> · Body Part: <span className="text-slate-300">{exercise.bodyPart}</span>
+            Primary Target: <span className="text-emerald-400 font-semibold capitalize">{exercise.target}</span> · Body Part: <span className="text-slate-300 capitalize">{exercise.bodyPart}</span>
           </SheetDescription>
         </SheetHeader>
 
         {/* 2. Segmented 3-Tab Progressive Navigation */}
-        <div className="grid grid-cols-3 p-1 bg-slate-950 border border-slate-800 rounded-xl">
+        <div className="grid grid-cols-3 p-1 bg-slate-950 border border-slate-800/90 rounded-xl">
           <button
             type="button"
             onClick={() => setActiveTab("cues")}
@@ -172,7 +167,7 @@ export function ExerciseDetailSheet({
                 : "text-slate-400 hover:text-white"
             )}
           >
-            <Zap className="w-3 h-3" />
+            <Zap className="w-3.5 h-3.5" />
             <span>Coach Cues</span>
           </button>
           <button
@@ -185,7 +180,7 @@ export function ExerciseDetailSheet({
                 : "text-slate-400 hover:text-white"
             )}
           >
-            <ListOrdered className="w-3 h-3" />
+            <ListOrdered className="w-3.5 h-3.5" />
             <span>Full Steps</span>
           </button>
           <button
@@ -198,45 +193,51 @@ export function ExerciseDetailSheet({
                 : "text-slate-400 hover:text-white"
             )}
           >
-            <ArrowRightLeft className="w-3 h-3" />
+            <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>Swaps{substitutes.length > 0 ? ` (${substitutes.length})` : ""}</span>
           </button>
         </div>
 
         {/* TAB 1: COACH CUES & ANATOMICAL SPOTLIGHT (High-Signal Hero) */}
         {activeTab === "cues" && (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {/* Split Hero: Micro-Spotlight + 2 Kinetic Anchors */}
-            <div className="grid grid-cols-[84px_1fr] gap-2.5 items-stretch">
-              {/* Left Column: Anatomical Tension Spotlight */}
+            <div className="grid grid-cols-[108px_1fr] gap-3 items-stretch">
+              {/* Left Column: Refined Anatomical Tension Spotlight */}
               <div className="flex flex-col">
                 <AnatomicalTensionSpotlight
                   primaryMuscle={exercise.target}
                   secondaryMuscles={exercise.secondaryMuscles || []}
-                  className="h-full justify-center"
+                  className="h-full justify-between"
                 />
               </div>
 
-              {/* Right Column: Setup Anchor & Kinetic Drive */}
-              <div className="flex flex-col justify-between gap-2">
+              {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
+              <div className="flex flex-col justify-between gap-2.5">
                 {/* Anchor 1: Setup */}
-                <div className="p-2.5 bg-slate-900/70 border border-slate-800 rounded-xl space-y-1">
-                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-cyan-400 shrink-0" />
-                    <span>1. Setup Anchor</span>
+                <div className="p-3 bg-slate-900/80 border border-slate-800/90 rounded-2xl space-y-1 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>1. Setup Anchor</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">Foundation</span>
                   </div>
-                  <p className="text-[11px] text-slate-200 leading-snug line-clamp-3">
+                  <p className="text-xs text-slate-200 leading-snug line-clamp-3 pt-0.5">
                     {setupCue}
                   </p>
                 </div>
 
                 {/* Anchor 2: Kinetic Drive */}
-                <div className="p-2.5 bg-slate-900/70 border border-slate-800 rounded-xl space-y-1">
-                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>2. Kinetic Drive</span>
+                <div className="p-3 bg-slate-900/80 border border-slate-800/90 rounded-2xl space-y-1 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>2. Kinetic Drive</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">Trajectory</span>
                   </div>
-                  <p className="text-[11px] text-slate-200 leading-snug line-clamp-3">
+                  <p className="text-xs text-slate-200 leading-snug line-clamp-3 pt-0.5">
                     {driveCue}
                   </p>
                 </div>
@@ -249,37 +250,15 @@ export function ExerciseDetailSheet({
                 href={exercise.videoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full h-9 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-200 flex items-center justify-between transition"
+                className="w-full h-10 px-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 text-xs font-semibold text-slate-200 flex items-center justify-between transition shadow-xs"
               >
                 <div className="flex items-center gap-2">
-                  <Video className="w-3.5 h-3.5 text-emerald-400" />
+                  <Video className="w-4 h-4 text-emerald-400" />
                   <span>Watch Biomechanical Form Cue</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
               </a>
             )}
-
-            {/* Optional Full Interactive Body Map Drawer */}
-            <div className="pt-0.5">
-              <button
-                type="button"
-                onClick={() => setShowFullMap(!showFullMap)}
-                className="w-full py-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <span>{showFullMap ? "Collapse Full Body Map" : "Expand Full Interactive Body Map"}</span>
-                {showFullMap ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              {showFullMap && (
-                <div className="mt-2">
-                  <AnatomicalBodyMap
-                    selectedMuscle={exercise.target}
-                    secondaryMuscles={exercise.secondaryMuscles || []}
-                    mode="visualizer"
-                  />
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -296,7 +275,7 @@ export function ExerciseDetailSheet({
               </span>
             </div>
 
-            <div className="space-y-2 p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-300">
+            <div className="space-y-2 p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-300">
               {exercise.instructions && exercise.instructions.length > 0 ? (
                 exercise.instructions.map((step, idx) => (
                   <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-slate-900 last:border-0">
@@ -358,7 +337,7 @@ export function ExerciseDetailSheet({
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5 min-w-0 pr-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-white truncate">{sub.name}</span>
+                              <span className="font-semibold text-white truncate capitalize">{sub.name}</span>
                               {match && (
                                 <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                   {Math.round(match.similarityScore * 100)}%
@@ -366,7 +345,7 @@ export function ExerciseDetailSheet({
                               )}
                             </div>
                             <div className="text-[10px] font-mono text-slate-400">
-                              {sub.equipment} · <span className="text-emerald-400">{sub.target}</span>
+                              {sub.equipment} · <span className="text-emerald-400 capitalize">{sub.target}</span>
                               {match && (
                                 <span className="text-cyan-400 ml-1">· {match.resistanceProfile}</span>
                               )}

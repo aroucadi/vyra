@@ -25,7 +25,7 @@ type MuscleRegion =
 function normalizeMuscleRegion(rawName: string): MuscleRegion | null {
   if (!rawName) return null;
   const s = rawName.toLowerCase();
-  if (s.includes("pec") || s.includes("chest")) return "chest";
+  if (s.includes("pec") || s.includes("chest") || s.includes("dip")) return "chest";
   if (s.includes("delt") || s.includes("shoulder")) return "shoulders";
   if (s.includes("tricep")) return "triceps";
   if (s.includes("bicep")) return "biceps";
@@ -71,7 +71,7 @@ export function AnatomicalTensionSpotlight({
         fill: "#10B981",
         stroke: "#34D399",
         strokeWidth: "1.5",
-        filter: "drop-shadow(0px 0px 4px rgba(16, 185, 129, 0.8))",
+        filter: "drop-shadow(0px 0px 5px rgba(16, 185, 129, 0.85))",
       };
     }
     if (state === "secondary") {
@@ -79,48 +79,69 @@ export function AnatomicalTensionSpotlight({
         fill: "#06B6D4",
         stroke: "#22D3EE",
         strokeWidth: "1.2",
-        filter: "drop-shadow(0px 0px 3px rgba(6, 182, 212, 0.6))",
+        filter: "drop-shadow(0px 0px 4px rgba(6, 182, 212, 0.7))",
       };
     }
     return {
       fill: "#0F172A",
       stroke: "#334155",
       strokeWidth: "1",
-      opacity: 0.7,
+      opacity: 0.65,
     };
   };
 
   return (
     <div
       className={clsx(
-        "relative flex flex-col items-center justify-between p-2 rounded-2xl bg-slate-950/90 border border-slate-800/80 shadow-inner select-none",
+        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 shadow-inner select-none",
         className
       )}
       role="img"
       aria-label={`Anatomical tension spotlight showing ${primaryMuscle || "target muscle"}`}
     >
-      {/* 1. Anterior / Posterior View Switcher */}
+      {/* 1. Anterior / Posterior Micro-Segmented Selector */}
       {showToggle && (
-        <button
-          type="button"
-          onClick={() => setView((v) => (v === "front" ? "back" : "front"))}
-          className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition flex items-center gap-1 cursor-pointer"
-          title={`Click to view ${view === "front" ? "posterior" : "anterior"} anatomy`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>{view === "front" ? "Anterior" : "Posterior"}</span>
-        </button>
+        <div className="flex items-center rounded-full bg-slate-900/90 p-0.5 border border-slate-800/80">
+          <button
+            type="button"
+            onClick={() => setView("front")}
+            className={clsx(
+              "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
+              view === "front"
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-white"
+            )}
+            title="View anterior (front) anatomy"
+          >
+            <span className={clsx("w-1 h-1 rounded-full", view === "front" ? "bg-emerald-400" : "bg-transparent")} />
+            <span>Anterior</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("back")}
+            className={clsx(
+              "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
+              view === "back"
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-white"
+            )}
+            title="View posterior (back) anatomy"
+          >
+            <span className={clsx("w-1 h-1 rounded-full", view === "back" ? "bg-emerald-400" : "bg-transparent")} />
+            <span>Posterior</span>
+          </button>
+        </div>
       )}
 
-      {/* 2. Compact Vector Silhouette (64x80 viewBox 0 0 100 130) */}
+      {/* 2. Athletic Vector Silhouette (ViewBox 0 0 100 130) */}
       <svg
         viewBox="0 0 100 130"
-        className="w-16 h-20 my-1 transition-all duration-300"
+        className="w-20 h-24 my-1 transition-all duration-300 drop-shadow-sm"
       >
         <defs>
           <linearGradient id="meshGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10B981" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.08" />
           </linearGradient>
         </defs>
 
@@ -299,14 +320,14 @@ export function AnatomicalTensionSpotlight({
         )}
       </svg>
 
-      {/* 3. Subtle Tension Glow Legend */}
-      <div className="flex items-center gap-2 pt-0.5">
-        <span className="flex items-center gap-1 text-[8px] font-mono text-emerald-400">
+      {/* 3. Tension Glow Legend */}
+      <div className="flex items-center justify-center gap-2.5 pt-1.5 border-t border-slate-900/90 w-full text-[9px] font-mono">
+        <span className="flex items-center gap-1 text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#10B981]" />
           Target
         </span>
         {secondaryRegions.length > 0 && (
-          <span className="flex items-center gap-1 text-[8px] font-mono text-cyan-400">
+          <span className="flex items-center gap-1 text-cyan-400">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_3px_#06B6D4]" />
             Synergist
           </span>

@@ -1,86 +1,93 @@
-﻿# VYRA Life OS — The Five Pillars & Coach Architecture
+# VYRA Autonomous Biomechanical Engine — The Five Production Pillars & Coach Architecture
 
-Fitness is the foundational pillar shipped today. The system is engineered as an extensible shell where the remaining pillars plug in through a standardized contract.
-
----
-
-## 1. Train (Movement & Strength) — BUILD NOW
-- **Promise**: *"Know exactly what to lift, lift it, see yourself grow."*
-- **Moments Contributed to Today**:
-  - Daily workout session (Hero moment).
-  - Pre-workout electrolyte timing.
-  - Post-workout recovery prompt.
-  - Weekly periodization check-in.
-- **Room (`Life` $\rightarrow$ `Train`)**:
-  - Session Preview $\longrightarrow$ Full-Screen Active Workout $\longrightarrow$ Celebration Summary.
-  - Program (7-day calendar strip preview).
-  - Exercise History & PR milestones.
-- **Signals Emitted**: `train.load` (tonnage), `train.soreness`, `train.duration`, `train.pr_hit`.
-- **Signals Consumed**: `sleep.duration`, `sleep.readiness` (modulates load), `nutrition.status` (fuel adequacy).
+Vyra is structured around five production-verified operational pillars and an intelligent connective coaching layer. Every pillar contributes focused moments to `/today`, powers specialized workspaces, and runs on verified deterministic mathematics.
 
 ---
 
-## 2. Eat (Nutrition & Supplements) — BUILD NOW: SUPPLEMENTS
-- **Promise**: *"Eat for your goal without counting your life away."*
-- **Moments Contributed to Today**:
-  - Supplement Stacks by time of day:
-    - *Morning Stack*: Merged D3/K2, Omega-3, B-Complex.
-    - *Workout Stack*: Creatine monohydrate & electrolytes.
-    - *Evening Stack*: Magnesium glycinate wind-down.
-  - Hydration milestone check-ins.
-  - Meal timing confirmations (Phase 2).
-- **Room (`Life` $\rightarrow$ `Eat`)**:
-  - Time-of-day supplement checklist.
-  - Hydration wave target.
-  - Future: Meal logging, macro guidance, grocery synthesis.
-- **Signals Emitted**: `nutrition.supplements_logged`, `nutrition.hydration_ml`, `nutrition.calories_est`.
-- **Signals Consumed**: `train.load` (calorie/carb adjustment), `sleep.quality`.
+## 1. Pillar 1: Biomechanical Math & In-Gym Floor Execution
+- **Scope**: Specs 001–003, 012, 014 (`src/lib/training-math/`, `src/app/(trainee)/session/`)
+- **Promise**: *"Execute every set with sub-second logging speed and mathematically verified load progression."*
+- **Core Capabilities**:
+  - **Submaximal 1RM Engine (`onerm.ts`)**: 7 submaximal formulas (Epley, Brzycki, Lombardi, etc.) + RTS Weighted Ensemble with RIR attenuation.
+  - **Greedy Plate Loader (`plates.ts`)**: Instant per-side barbell loading for Olympic (20kg), Women's (15kg), and Smith machines (0–15kg).
+  - **Automated Overload & Deload Engine (`progression.ts`)**: Double progression, Greyskull LP, and stall streak tracking (3 consecutive misses automatically triggers 10% Epley reset deload).
+  - **In-Gym Focus Engine**: Full-screen 1-exercise focus, `<RestIntervalBar />`, synthetic Web Audio countdown pips (`sound.ts`), and Screen Wake Lock API (`wakelock.ts`).
+- **Surfaces On**:
+  - `/today`: Hero Workout Card with estimated duration and working volume.
+  - `/session`: Active gym floor with pre-filled steppers, plate calculator popover, and rest timers.
+- **Signals Emitted**: `train.set_logged`, `train.tonnage_kg`, `train.stall_detected`, `train.pr_hit`.
+- **Signals Consumed**: `sleep.readiness_score`, `biometrics.hrv_ms` (modulates prescribed working loads).
 
 ---
 
-## 3. Sleep (Rest & Circadian Architecture) — DESIGN ENTRY, LOCKED
-- **Promise**: *"Wake up ready."*
-- **Moments Contributed to Today**:
-  - Morning readiness confirmation (*"Slept 7h20. Good to go."*).
-  - Evening wind-down cue & blue light filter prompt.
-  - Bedtime anchor alert.
-- **Room (`Life` $\rightarrow$ `Sleep`)**:
-  - Calm locked preview tile: *"Circadian rest, sleep stage tracking & HRV recovery engine — Coming soon."*
-- **Signals Emitted**: `sleep.duration`, `sleep.efficiency`, `sleep.hrv_score`, `sleep.readiness`.
-- **Signals Consumed**: `train.tonnage` (recovery demand), `nutrition.caffeine_timing`.
+## 2. Pillar 2: Anatomical Tension & Movement Intelligence
+- **Scope**: Specs 013, 015, 016 (`src/components/trainee/`, `src/lib/rag/`)
+- **Promise**: *"Visualize exact muscular recruitment and eliminate postural imbalances."*
+- **Core Capabilities**:
+  - **6,554-Exercise OpenGym Catalogue Browser (`/exercises`)**: Inverted token index responding in <10ms, supporting 40+ gym shorthands (`db`, `bb`, `rdl`, `ohp`, `sm`).
+  - **`<AnatomicalTensionSpotlight />`**: Pure SVG micro-torso highlighting target prime movers in Emerald (`#10B981`), synergists in Cyan (`#06B6D4`), and neutral anatomy in Slate (`#334155`). Features an anterior/posterior segmented toggle.
+  - **Two Kinetic Anchors**: ⚡ Setup Anchor (spatial stability foundation) and 🎯 Kinetic Drive (concentric trajectory cue).
+  - **`<StructuralBalanceRadar />` (`/posture`)**: Polygonal SVG radar plotting lifter strength ratios against Poliquin, Thibaudeau, and ATG benchmark lifts with automated risk detection.
+- **Surfaces On**:
+  - `/exercises`: Interactive exercise browser with `<ExerciseDetailSheet />`.
+  - `/session`: Micro-tension spotlight and kinetic cues mounted on active set card.
+  - `/posture`: Structural balance dashboard with 1-tap corrective protocol injection.
+- **Signals Emitted**: `anatomy.muscle_worked`, `posture.ratio_scored`, `posture.weakness_flagged`.
+- **Signals Consumed**: `train.pr_hit` (updates benchmark anchor 1RMs).
 
 ---
 
-## 4. Style (Dress & Postural Architecture) — DESIGN ENTRY, LOCKED
-- **Promise**: *"Look like you meant it."*
-- **Moments Contributed to Today**:
-  - Morning outfit suggestion based on weather, schedule, and physique training focus.
-  - Postural scapular alignment check.
-- **Room (`Life` $\rightarrow$ `Style`)**:
-  - Calm locked preview tile: *"Postural drape, V-taper styling & AI capsule wardrobe — Coming soon."*
-- **Signals Emitted**: `style.outfit_logged`, `style.posture_symmetry`.
-- **Signals Consumed**: `weather.temp`, `calendar.events`, `train.scapular_status`.
+## 3. Pillar 3: Intelligent Autoregulation & Substitution Copilot
+- **Scope**: Specs 004, 010, 011, 017 (`src/lib/autoregulation.ts`, `src/lib/coach-engine.ts`)
+- **Promise**: *"Adapt instantly to sleep deficits and occupied gym equipment without breaking flow."*
+- **Core Capabilities**:
+  - **Autoregulation Engine**: Biometric down-regulation buffering axial compound lifts by 5–10% on low HRV or shortened sleep to preserve lumbar safety.
+  - **`<SubstitutionCopilotDrawer />`**: Instant equipment matrix swap (Barbell, Dumbbell, Cable, Machine, Bodyweight) matching muscular subdivisions and resistance curves with 1-tap in-session mutation.
+  - **Agentic RAG Program Builder (`/program/new`)**: Gemini 3.8 Flash generating structured 16-week mesocycles with strict Zod validation and orthopedic safety bounds.
+- **Surfaces On**:
+  - `/today`: `<AdaptiveRecalibrationCard />` surfacing above the workout hero.
+  - `/session`: 1-tap "Swap Exercise" copilot drawer.
+  - `/coach`: Contextual AI concierge chat with `<CoachSmartActionCard />`.
+- **Signals Emitted**: `copilot.exercise_swapped`, `autoregulation.buffer_applied`.
+- **Signals Consumed**: `biometrics.hrv_ms`, `biometrics.sleep_hours`, `feedback.joint_pain`.
 
 ---
 
-## 5. Network (Social, Partners & Radar) — DESIGN ENTRY, LOCKED
-- **Promise**: *"Grow with the right people."*
-- **Moments Contributed to Today**:
-  - Training partner alignment (*"Marcus is training Chest today at 12:15"*).
-  - Local gym occupancy quiet-hour radar.
-  - Shared milestones.
-- **Room (`Life` $\rightarrow$ `Network`)**:
-  - Calm locked preview tile: *"Curated athletic circles, gym occupancy radar & partner workouts — Coming soon."*
-- **Signals Emitted**: `network.partner_confirmed`, `network.run_rsvp`.
-- **Signals Consumed**: `train.pr_hit`, `user.location_context`.
+## 4. Pillar 4: Daily Rhythm, Hydration & Supplementation
+- **Scope**: Specs 003, 006, 007 (`src/app/(trainee)/today/`, `SupplementStackDrawer.tsx`)
+- **Promise**: *"Fuel every session with precision micronutrient timing and circadian hydration."*
+- **Core Capabilities**:
+  - **Circadian Readiness Check-In**: 1-tap morning confirmation capturing sleep quality and subjective recovery.
+  - **Time-of-Day Micronutrient Stacks**:
+    - *Morning Stack*: Vitamin D3/K2 (5,000 IU), Omega-3 (2g), Vitamin B-Complex.
+    - *Workout Stack*: Creatine Monohydrate (5g) and mineral electrolytes.
+    - *Evening Wind-Down Stack*: Magnesium Glycinate (400mg) and L-Theanine (200mg).
+  - **Hydration Wave Tracking**: 3,500ml daily hydration base + 500ml workout volume bonus, tracked via 1-tap increment pills.
+- **Surfaces On**:
+  - `/today`: `<ReadinessCheckin />`, `<SupplementStackDrawer />`, and timeline hydration milestones.
+- **Signals Emitted**: `nutrition.supplements_checked`, `nutrition.hydration_logged_ml`.
+- **Signals Consumed**: `train.tonnage_kg` (adds fluid and electrolyte compensation).
 
 ---
 
-## 6. Coach (Connective Intelligence) — BUILD NOW: LIGHT LAYER
-- **Promise**: *"Your quiet, world-class athletic concierge."*
-- **Access**: Reachable from anywhere via a quiet "Ask Coach" link or contextual chips (*"Swap exercise"*, *"Why this weight?"*, *"Short on time"*).
-- **Core Functionality**:
-  - Exercise substitution (equipment variations).
-  - Load and RPE explanation in 1 concise sentence.
-  - Immediate adaptation to time constraints (e.g. drop from 4 sets to 2 top sets).
-  - Never interrupts or blocks normal flow.
+## 5. Pillar 5: Offline Sync Resilience & Multi-Region Cloud Infrastructure
+- **Scope**: Spec 018 (`src/lib/store/offline-sync.ts`, `public/sw.js`, `cloudbuild.yaml`)
+- **Promise**: *"Zero data loss in concrete basement gyms and sub-20ms latency worldwide."*
+- **Core Capabilities**:
+  - **Set-Level Draft Journaling**: Sub-2ms instant write-ahead persistence to IndexedDB and localStorage with 4-hour crash auto-restore.
+  - **Replay Mutation Queue**: Queues failed network mutations with exponential backoff (`2^attempts * 1000ms`) and jitter, automatically draining upon reconnect.
+  - **Service Worker Precache**: Pre-caches `/exercises` and `/data/exercise-catalogue.json` for full offline searching.
+  - **Multi-Region Managed Cloud Run**: Geo-replicated container deployment across US Central (`us-central1`) and Middle East (Doha, Qatar `me-central1`) on port 8080.
+- **Surfaces On**:
+  - Background infrastructure across all routes; `/you` displays offline cache health and sync status.
+- **Signals Emitted**: `sync.queue_drained`, `sync.draft_restored`, `network.status_change`.
+
+---
+
+## 6. Coach Architecture: Contextual Connective Intelligence
+- **Role**: Coach is the quiet, connective tissue linking biometrics, periodization, and in-gym execution.
+- **Access Points**:
+  - Dedicated concierge at `/coach`.
+  - Contextual action chips in `/session` (`[Swap Exercise]`, `[Why this weight?]`, `[Short on time]`).
+  - Insight card "Why?" links on `/today`.
+- **Operating Rule**: The coach parameterizes vetted, typed `<CoachSmartActionCard />` primitives. It never sends unformatted walls of text and never interrupts the active gym floor without user invocation.

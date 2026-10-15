@@ -1,47 +1,57 @@
-﻿# VYRA Life OS — The 10 Core Principles
+# VYRA Autonomous Biomechanical Engine — The 10 Core Principles
 
-Every screen, interaction, component, and PR must strictly comply with these 10 laws:
+Every interface, component, mathematical algorithm, and design system token across Vyra is governed by these 10 Core Principles:
 
 ---
 
-### Law 1: One Anchor, Many Rooms
-`Today` is the single anchor of the product. The five pillars (Train, Eat, Sleep, Style, Network) are distinct rooms entered seamlessly from a moment on the timeline or through the `Life` tab. Pillars are never dumped onto `Today`.
+### Principle 1: One Anchor, Specialized Workspaces
+`Today` (`/today`) is the single temporal anchor of the athlete's daily routine. Deep workflows are organized into four dedicated, high-performance workspaces: `Program` (`/program`), `Exercises` (`/exercises`), `You` (`/you`), and the full-screen active gym floor (`/session`). Workspaces are clean, focused, and free of extraneous clutter.
 
-### Law 2: Moments, Not Features
-Capabilities are surfaced chronologically and contextually. If an action or datum is not relevant right now, it is hidden from the primary viewport.
+### Principle 2: Moments, Not Features
+Capabilities surface chronologically and contextually based on the athlete's current state. If an action or datum is not relevant right now, it is completely hidden from the primary viewport. Past moments collapse into subtle checkmarks; the active moment stands out as the hero.
 
-### Law 3: One Shared Brain
-Pillars actively communicate through cross-domain signals:
-- Sleep duration/quality modulates training volume & RPE.
-- Training expenditure modulates meal sizing, carb allocation & hydration.
-- Training physique & weather modulate outfit selection.
-Cross-pillar insights are the core differentiator of VYRA and are surfaced as single-sentence observations.
+### Principle 3: One Shared Brain
+Subsystems actively communicate through structured signals:
+- Sleep duration and resting HRV modulate prescribed training volume, axial loading, and RPE.
+- Training tonnage modulates post-workout carbohydrate, fluid, and sodium replenishment.
+- Postural symmetry ratios modulate warm-up activation drills and corrective exercise selection.
+Cross-domain insights are surfaced as concise, single-sentence observations with actionable triggers.
 
-### Law 4: Coach as Connective Tissue
-The AI Coach is reachable quietly from any screen ("Ask", "Swap", "Why?") like Grok in X. It adapts plans and explains rationale. The core application functions with complete autonomy and never *requires* the coach to operate.
+### Principle 4: Coach as Connective Tissue, Never a Blocker
+The AI Coach is reachable quietly from anywhere via contextual chips (`[Swap Exercise]`, `[Why this weight?]`, `[Short on time]`) and header links. It adapts plans, explains biomechanical rationale, and parameterizes typed action cards. The core training loop operates with complete autonomy and never requires AI availability to function.
 
-### Law 5: Three Depths Everywhere
-Every capability offers three progressive depths:
-1. **Glance**: One clean title and one status line.
+### Principle 5: Three Depths Everywhere
+Every capability enforces three progressive disclosure tiers:
+1. **Glance**: One clear eyebrow and one concise status line.
 2. **Act**: Exactly one primary interactive control (one tap to check, one stepper to log).
-3. **Learn**: Detailed form guides, anatomical blueprints, science, and history. **Learn content is ALWAYS behind a tap (Sheet/Drawer), never rendered inline.**
+3. **Learn**: Detailed anatomical spotlights, biomechanical guides, scientific citations, and set history. **Learn content is ALWAYS behind a non-blocking tap (Sheet/Drawer/Popover), never rendered inline.**
 
-### Law 6: Same Primitives Everywhere
-The entire application is constructed from five composable primitives: **Card**, **Check-in**, **Log**, **Insight**, and **Plan**. Once a user learns how to log a training set, they intuitively know how to log sleep, a meal, or a supplement dose.
+### Principle 6: Five Minimalist Compound Primitives
+The entire application is constructed from five composable primitives: **Card**, **Checkin**, **Log**, **Insight**, and **Plan**. Once an athlete learns how to log a training set, they intuitively know how to log readiness, check supplements, or inspect program days.
 
-### Law 7: Calm by Default
-- Maximum 3 visual groups per screen.
-- Exactly one dominant primary action (CTA) per screen state.
-- Strict notification budget (maximum 1 proactive notification per day in normal usage).
-- Zero high-density dashboards on `Today`.
+### Principle 7: Calm by Default & Negative Constraints
+- 60-30-10 Obsidian dark surface hierarchy (`#0B0F17` canvas, `bg-slate-900/60` cards, `#10B981` Emerald primary accent).
+- **Vertical Element Ceiling**: Maximum 3 elements per card context (Category $\to$ Hero Content $\to$ Action).
+- **Single Dominant CTA**: Exactly one solid primary action button per viewport state.
+- **Tabular Numerals**: All numbers, weights, reps, and timers enforce `tabular-nums` to eliminate layout jitter.
+- **No Unsegmented Monoliths**: Zero endless vertical scrolling; progressive disclosure via segmented controls and drawers.
 
-### Law 8: Earn the Complexity
-A Week-1 user experiences a streamlined Week-1 app. Pillars unlock progressively through gentle invitation, behavioral signals, or explicit user intent.
+### Principle 8: Deterministic Math Over Generative Hallucinations
+Sports science math must be mathematically exact:
+- Submaximal 1RM calculations (Epley, Brzycki, Lombardi, etc.) and RTS Weighted Ensembles are computed via verified TypeScript functions.
+- Barbell plate breakdowns use greedy deterministic algorithms matching standard gym inventories.
+- Progression steps and 10% deload triggers execute strictly on stall streak thresholds.
+Generative AI models are strictly prohibited from calculating numbers, loads, or plate distributions.
 
-### Law 9: Strict Effort Budget
-- Any recurring daily action must take **$\le$ 10 seconds**.
-- Smart defaults, pre-filled inputs from the previous session, and optimistic updates.
-- Logging an active workout set must take **$\le$ 5 seconds** and $\le$ 2 taps in the standard path.
+### Principle 9: Strict Effort Budget
+Every recurring in-gym action operates under an aggressive speed budget:
+- Starting a workout from the home screen: $\le$ 2 taps, $\le$ 3 seconds.
+- Logging a gym set on the active floor: $\le$ 2 taps, $\le$ 5 seconds.
+- Searching 6,554 exercises with gym shorthands (`db`, `rdl`, `ohp`): $\le$ 10 milliseconds.
+- Interactive touch targets must be $\ge 44 \times 44\text{px}$ with $\ge 8\text{px}$ spacing to prevent mis-taps with sweaty hands.
 
-### Law 10: Social as an Amplifier
-Community and networking occur natively inside the moment of achievement (e.g. sharing a PR from the workout summary, coordinating with a gym partner, sharing an outfit), never through a noisy, detached social feed.
+### Principle 10: Offline-First Resilience
+The active gym floor must never fail in dead-zone gym basements:
+- Set-level draft journaling persists to IndexedDB and localStorage in <2ms with automatic 4-hour crash recovery.
+- Network mutations are placed in an idempotent replay queue with exponential backoff and jitter.
+- The 6,554-exercise catalogue and PWA assets are precached by the Service Worker, ensuring 100% offline search and execution.

@@ -1,60 +1,68 @@
-# VYRA Life OS — The 12 Core Laws
+# VYRA Autonomous Biomechanical Engine — The 12 Core Laws
 
-Every screen, interaction, component, and Pull Request across VYRA Life OS must strictly pass all 12 Core Laws.
+Every screen, interaction, component, and pull request across Vyra must strictly pass all 12 Core Laws:
 
 ---
 
-### Law 1: One Anchor, Many Rooms
-`Today` (`/today`) is the single home and temporal anchor of the entire product. The capabilities (Train, Eat, Sleep, Style, Network) are quiet rooms entered exclusively from context or through the `Life` overview. Capabilities are never dumped as competing widgets onto the home screen.
+### Law 1: One Anchor, Dedicated Workspaces
+`Today` (`/today`) is the single home and temporal anchor of the entire product. Core capabilities are housed in four dedicated, high-performance workspaces: `Program` (`/program`), `Exercises` (`/exercises`), `You` (`/you`), and the active gym floor (`/session`). Capabilities are never dumped as competing widgets onto the home screen.
 
 ### Law 2: Moments, Not Features
-Capabilities surface strictly by time, user state, and current intent. If an action or datum is not relevant right now, it is completely hidden from the active viewport.
+Capabilities surface strictly by time, athlete state, and immediate intent. If an action or datum is not relevant to the current moment, it is completely hidden from the active viewport.
 
 ### Law 3: One Shared Brain
-Capabilities continuously inform each other through structured biometric and execution signals:
-- Sleep duration and HRV modulate prescribed training volume and RPE.
+Subsystems continuously inform each other through structured biometric and execution signals:
+- Sleep duration and resting HRV modulate prescribed training volume, axial loading, and RPE.
 - Training tonnage modulates post-workout nutrition, sodium, and carbohydrate allocations.
-- Scapular postural focus modulates clothing drape and workspace ergonomics.
-Cross-capability insight is VYRA's unique value and is prominently surfaced as a single-sentence observation.
+- Postural symmetry ratios modulate warm-up activation drills and corrective exercise selection.
+Cross-domain insight is surfaced as a single-sentence observation with an actionable trigger.
 
 ### Law 4: Intent First
-Users express what they need through direct, multi-modal interaction (tapping a smart chip, typing a short command, or toggling a control). The system determines the necessary screen or mutation without forcing the user to navigate the application's internal taxonomy.
+Athletes express what they need through direct, multi-modal interaction (tapping a smart action chip, filtering an equipment pill, or toggling an exercise alternative). The system resolves the mutation immediately without forcing the user to navigate administrative menus.
 
 ### Law 5: AI as Connective Tissue, Never a Gate
-The AI Coach is reachable quietly from anywhere ("Ask", "Swap", "Why?", "Short on time") and is always optional. Every core loop (starting a workout, logging a set, checking supplements, viewing progress) executes autonomously without requiring AI availability.
+The AI Coach is reachable quietly from anywhere via contextual smart chips (`[Swap Exercise]`, `[Short on Time]`, `[Why this weight?]`) and is always optional. Every core loop (starting a workout, logging a set, checking supplements, calculating barbell plates) executes with 100% autonomy without requiring network or AI availability.
 
 ### Law 6: Three Depths Everywhere
 Every capability enforces three progressive disclosure tiers:
 1. **Glance**: One clear title and one status line.
 2. **Act**: Exactly one primary interactive control (one tap to check, one stepper to log).
-3. **Learn**: Deep anatomical blueprints, biomechanical guides, scientific citations, and history. **Learn is ALWAYS behind a non-blocking tap (Sheet/Drawer/Popover), never rendered inline.**
+3. **Learn**: Deep anatomical spotlights, biomechanical guides, scientific citations, and set history. **Learn is ALWAYS behind a non-blocking tap (Sheet/Drawer/Popover), never rendered inline.**
 
 ### Law 7: Same Primitives Everywhere
 The entire application is constructed from a fixed set of five composable compound primitives:
-- `Card` (Glance, Action, Learn slots)
-- `Check-in` (1-tap confirm with smart default)
-- `Log` (numeric stepper and unit confirm)
-- `Insight` (cross-capability observation with "Why?")
+- `Card` (Glance, Action, Learn slots adhering to the 3-element ceiling)
+- `Checkin` (1-tap confirm with smart default)
+- `Log` (numeric stepper and unit confirm with `tabular-nums`)
+- `Insight` (cross-domain observation with actionable trigger)
 - `Plan` (chronological timeline and 7-day strip)
 
-### Law 8: Calm by Default
+### Law 8: Calm by Default & Negative Design Constraints
 - Maximum 3 visual groups per screen.
-- Exactly one dominant primary action (solid CTA) per viewport state.
-- Strict notification budget (maximum 1 proactive alert per day).
-- Zero monolithic metric walls or cognitive overload on the anchor.
+- **Vertical Element Ceiling**: Maximum 3 elements per card context (Category $\to$ Hero Content $\to$ Action).
+- **Single Dominant CTA**: Exactly one solid primary action button (Emerald) per viewport state.
+- **No Unsegmented Monoliths**: Zero endless vertical scrolling; progressive disclosure via tabs and drawers.
+- Strict notification budget: Maximum 1 proactive notification per day.
 
 ### Law 9: Earn the Complexity
-Day-1 users encounter a clean, focused Day-1 product (Strength & Hypertrophy). Additional pillars unlock progressively by gentle invitation or explicit user intent, and every unlock remains 100% reversible.
+Day-1 users encounter a clean, focused Day-1 product (Fast 5s Workout Logging & 6,554-Exercise Search). Advanced capabilities (Automated Progression, 10% Deload Triggers, Poliquin Structural Balance Radar) unlock progressively as training history solidifies.
 
 ### Law 10: Strict Effort Budget
 Every recurring daily action operates under a strict budget:
 - Starting a workout from the home screen: $\le$ 2 taps, $\le$ 3 seconds.
 - Logging a gym set on the active floor: $\le$ 2 taps, $\le$ 5 seconds.
 - Performing a binary check-in: 1 tap.
+- Searching 6,554 exercises with gym shorthands: $\le$ 10 milliseconds.
 - Smart defaults, pre-filled values from the prior session, and optimistic UI updates are mandatory.
 
 ### Law 11: Show Reasoning, Keep Control
-Every suggestion or mutation generated by the system is explainable ("Why?"), editable, undoable, and attributable. The user always retains full manual control and can reverse automated adjustments with a single tap.
+Every suggestion, load modification, or exercise substitution generated by the system is explainable ("Why?"), editable, undoable, and attributable. The user always retains full manual control and can reverse automated adjustments with an immediate 1-tap Undo.
 
-### Law 12: Social and Sharing as an Amplifier
-Sharing and athletic collaboration occur natively within the moment of achievement (e.g., sharing a Personal Record from the session celebration summary or coordinating a training session with a verified gym partner), never via a noisy, detached algorithmic feed.
+### Law 12: Biomechanical Grounding & Deterministic Math
+All calculations (submaximal 1RM estimation, barbell plate loading, deload thresholds, structural balance ratios) must execute via verified, deterministic TypeScript algorithms (`src/lib/training-math/`), never guessed or hallucinated by a generative language model.
+
+---
+
+### Core Engineering Invariants:
+- **Offline-First Invariant**: The active gym floor (`/session`) must function 100% offline via write-ahead IndexedDB journaling and mutation queues (`offline-sync.ts`). Network loss must never disrupt workout logging.
+- **Anatomical Transparency**: Every prescribed movement must visually expose its primary target muscle (Emerald), synergists (Cyan), and two kinetic anchors (⚡ Setup Anchor and 🎯 Kinetic Drive).

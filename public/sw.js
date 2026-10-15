@@ -1,17 +1,19 @@
-// VYRA Service Worker: App-Shell Caching & Offline Workout Logging Queue
-const CACHE_NAME = 'vyra-v1';
+// VYRA Service Worker: App-Shell Caching & Offline Workout Logging Queue (Spec 018 Hardened)
+const CACHE_NAME = 'vyra-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/today',
   '/program',
   '/you',
   '/session',
+  '/exercises',
   '/install',
   '/manifest.webmanifest',
   '/icon.svg',
+  '/data/exercise-catalogue.json',
 ];
 
-// Install: Pre-cache core app shell
+// Install: Pre-cache core app shell and full exercise catalogue index
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -20,7 +22,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: Clean old caches
+// Activate: Clean old caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -31,16 +33,35 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Stale-While-Revalidate for app shell, Network-First for API
+// Fetch: Stale-While-Revalidate for app shell & movement catalogue; Network-First for dynamic APIs
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // For API/Health/Webhooks, network only
+  // 1. Offline Movement & Substitution APIs: Stale-While-Revalidate
+  if (url.pathname.startsWith('/api/exercises') || url.pathname.startsWith('/api/substitutions')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => cachedResponse);
+
+          return cachedResponse || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // 2. Health, webhooks, analytics, telemetry: Network only
   if (url.pathname.startsWith('/api/')) {
     return;
   }
 
-  // Navigation requests: Network first with Cache fallback
+  // 3. Navigation requests: Network first with Cache fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -52,7 +73,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: Stale-While-Revalidate
+  // 4. Static assets & catalogue JSON: Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
@@ -78,7 +99,6 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOfflineSets() {
-  // Dispatches sync event to clients or backend queue
   const clients = await self.clients.matchAll();
   clients.forEach((client) => {
     client.postMessage({ type: 'SYNC_OFFLINE_SETS' });

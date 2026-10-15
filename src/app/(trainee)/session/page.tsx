@@ -15,7 +15,15 @@ import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibr
 import { OverloadPrescriptionCard } from "@/components/trainee/OverloadPrescriptionCard";
 import { computeExercisePrescription } from "@/lib/progression-adapter";
 import { telemetry } from "@/lib/telemetry";
-import { persistClientWorkoutSession, triggerBackupDownload } from "@/lib/storage";
+import {
+  persistClientWorkoutSession,
+  triggerBackupDownload,
+  saveSessionDraft,
+  loadSessionDraft,
+  clearSessionDraft,
+  enqueueMutation,
+  drainMutationQueue,
+} from "@/lib/storage";
 import {
   ArrowLeft,
   Clock,
@@ -187,6 +195,59 @@ function SessionFlow() {
   const [sessionStartTime] = useState(() => new Date().toISOString());
   const [lastSetLoggedAt, setLastSetLoggedAt] = useState<number>(() => Date.now());
 
+  // SPEC 018: Restore draft if recovering from app switch / browser crash in basement dead zone
+  useEffect(() => {
+    async function restoreDraft() {
+      if (!currentUser?.id) return;
+      try {
+        const draft = await loadSessionDraft(currentUser.id, 4);
+        if (draft && draft.exercises && draft.exercises.length > 0) {
+          const hasLoggedSets = draft.exercises.some((e: any) => e.completedSets?.length > 0);
+          const matchesDay = !dayParam || !draft.programDayId || draft.programDayId === dayParam;
+          if (hasLoggedSets && matchesDay) {
+            setExercises(draft.exercises);
+            if (typeof draft.currentExerciseIndex === "number") {
+              setCurrentExIndex(Math.min(draft.currentExerciseIndex, draft.exercises.length - 1));
+            }
+            if (typeof draft.durationSec === "number") {
+              setSessionDurationSec(draft.durationSec);
+            }
+            if (mode === "preview") {
+              setMode("active");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to restore session draft:", err);
+      }
+    }
+    restoreDraft();
+  }, [currentUser?.id, dayParam]);
+
+  // SPEC 018: Auto-replay queued offline mutations on online / window focus
+  useEffect(() => {
+    const handleReplay = async () => {
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        await drainMutationQueue(async (mutation) => {
+          if (mutation.type === "SAVE_SESSION") {
+            await saveSessionAction(mutation.payload);
+            return true;
+          }
+          return false;
+        });
+      }
+    };
+
+    window.addEventListener("online", handleReplay);
+    window.addEventListener("focus", handleReplay);
+    handleReplay();
+
+    return () => {
+      window.removeEventListener("online", handleReplay);
+      window.removeEventListener("focus", handleReplay);
+    };
+  }, []);
+
   // Overall session clock
   useEffect(() => {
     if (mode !== "active") return;
@@ -328,6 +389,8 @@ function SessionFlow() {
         ...updated[currentExIndex],
         completedSets: newCompleted,
       };
+      // SPEC 018: Instant local draft journal (< 2ms) to prevent data loss in basement dead zones
+      saveSessionDraft(currentUser.id, updated, currentExIndex, sessionDurationSec, targetDay?.id);
       return updated;
     });
 
@@ -426,8 +489,19 @@ function SessionFlow() {
       currentUser.id
     );
 
+    // SPEC 018: Clear local draft, persist optimistically to durable storage, and queue network mutation on failure
+    await clearSessionDraft(currentUser.id);
     await persistClientWorkoutSession(completedSession);
-    await saveSessionAction(completedSession);
+    try {
+      await saveSessionAction(completedSession);
+    } catch {
+      await enqueueMutation({
+        id: `mut_${completedSession.id}`,
+        type: "SAVE_SESSION",
+        payload: completedSession,
+        maxAttempts: 5,
+      });
+    }
     appStore.saveSession(completedSession);
     setMode("summary");
   };

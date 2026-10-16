@@ -30,7 +30,8 @@ export type VyraTelemetryEvent =
   | "deep_link_arrived"
   | "coach_invite_accepted"
   | "goal_selected"
-  | "equipment_swapped";
+  | "equipment_swapped"
+  | "mesocycle_frequency_selected";
 
 export interface TelemetryEventRecord {
   eventName: VyraTelemetryEvent;

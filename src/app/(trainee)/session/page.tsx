@@ -14,6 +14,8 @@ import { generateAutoregulationPlan, MinimalExerciseTarget } from "@/lib/autoreg
 import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibrationCard";
 import { OverloadPrescriptionCard } from "@/components/trainee/OverloadPrescriptionCard";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
+import { MesocycleArchitectCard } from "@/components/trainee/MesocycleArchitectCard";
+import { TrainingGoal } from "@/lib/onboarding";
 import { computeExercisePrescription } from "@/lib/progression-adapter";
 import { telemetry } from "@/lib/telemetry";
 import {
@@ -844,6 +846,32 @@ function SessionFlow() {
             Tonnage was high (+{totalVolume} kg). Confirm your recovery shake with 40g protein and 6.9 g creatine within the next 45 minutes.
           </div>
         </div>
+
+        {/* Post-Session 1 Adaptive 16-Week Mesocycle Preview (Spec 027) */}
+        {(() => {
+          const userGoal: TrainingGoal = ((currentUser as any).goals?.[0] as TrainingGoal) || "hypertrophy";
+          const primaryEx = exercises[0];
+          const bestSet = primaryEx?.completedSets?.length
+            ? primaryEx.completedSets.reduce(
+                (best, s) =>
+                  s.weight * (1 + s.reps / 30) > best.weight * (1 + best.reps / 30) ? s : best,
+                primaryEx.completedSets[0]
+              )
+            : null;
+          const benchmark1RmKg = bestSet
+            ? Math.round(bestSet.weight * (1 + bestSet.reps / 30))
+            : primaryEx?.currentWeight
+            ? Math.round(primaryEx.currentWeight * 1.25)
+            : 80;
+
+          return (
+            <MesocycleArchitectCard
+              userId={currentUser.id}
+              goal={userGoal}
+              benchmark1RmKg={benchmark1RmKg}
+            />
+          );
+        })()}
 
         {/* Post-Session 1 Passkey Registration & Cloud Sync Handoff (Spec 021) */}
         <PasskeySyncCard

@@ -209,7 +209,7 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     });
     assert.equal(pos.goal, "posture");
     assert.equal(pos.targets[0].repRange, "10-15");
-    assert.ok(pos.targets[0].whyFormulaText.includes("[Posture Balance]"));
+    assert.ok(pos.targets[0].whyFormulaText.includes("[Posture & Balance]"));
 
     // 4. URL Serialization & Deserialization
     const handoffUrl = buildHandoffQueryUrl("https://app.vyra.fit/today", {

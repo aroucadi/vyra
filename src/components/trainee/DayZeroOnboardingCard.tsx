@@ -280,6 +280,10 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             </span>
           </div>
 
+          <p className="text-[11px] text-slate-400 leading-normal">
+            Start immediately with our default setup (<span className="text-slate-200 font-medium">{TRAINING_GOALS[goal].shortLabel}</span>), or tap Goal to choose a focus.
+          </p>
+
           <p className="text-xs text-slate-400 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>
@@ -789,10 +793,10 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               <span className="text-xs font-mono text-slate-400">Optional · No quiz</span>
             </div>
             <SheetTitle className="text-lg font-bold text-white">
-              Choose your Day-1 training focus
+              Choose your focus, or keep our default
             </SheetTitle>
             <SheetDescription className="text-xs text-slate-400">
-              Selecting a focus recalibrates target rep ranges, target RIR, and load intensity across all lifts in &lt;1ms.
+              Vyra starts with a standard muscle-building setup. Selecting a focus adjusts programming strategy, intensity, and recovery buffers—not just rep counts.
             </SheetDescription>
           </SheetHeader>
 
@@ -836,7 +840,12 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             })}
           </div>
 
-          <div className="pt-2">
+          {/* Provisional Adaptive Notice */}
+          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed">
+            <span className="text-slate-300 font-semibold">Provisional Adaptive Plan:</span> Your full 16-week cycle evolves continuously from your logged sets and gym recovery, not rigid assumptions.
+          </div>
+
+          <div className="pt-1">
             <button
               type="button"
               onClick={() => setIsGoalSheetOpen(false)}

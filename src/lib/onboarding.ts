@@ -72,6 +72,73 @@ export const TRAINING_GOALS: Record<TrainingGoal, GoalDefinition> = {
   },
 };
 
+export type PreferredEquipmentMode = "dumbbell" | "barbell" | "machine" | "cable";
+
+export interface EquipmentManifestation {
+  id: PreferredEquipmentMode;
+  label: string;
+  shortLabel: string;
+  exerciseName: string;
+  equipmentType: "dumbbell" | "barbell" | "machine" | "cable";
+  loadFactor: number;
+  isPerHand: boolean;
+  synergists: string[];
+  setupCue: string;
+}
+
+export const LIFT_ONE_EQUIPMENT_MANIFESTATIONS: Record<PreferredEquipmentMode, EquipmentManifestation> = {
+  dumbbell: {
+    id: "dumbbell",
+    label: "Dumbbells (Free Weight)",
+    shortLabel: "Dumbbells",
+    exerciseName: "Incline Dumbbell Press",
+    equipmentType: "dumbbell",
+    loadFactor: 1.0,
+    isPerHand: true,
+    synergists: ["Anterior Deltoid", "Triceps", "Rotator Cuff"],
+    setupCue: "Set bench at 30°; kick dumbbells up to shoulders with knees.",
+  },
+  barbell: {
+    id: "barbell",
+    label: "Olympic Barbell (20kg Bar)",
+    shortLabel: "Barbell",
+    exerciseName: "Incline Barbell Bench Press",
+    equipmentType: "barbell",
+    loadFactor: 2.125,
+    isPerHand: false,
+    synergists: ["Anterior Deltoid", "Triceps"],
+    setupCue: "Set eyes under bar; grip 1.5× shoulder width with tucked elbows.",
+  },
+  machine: {
+    id: "machine",
+    label: "Selectorized / Lever Chest Press",
+    shortLabel: "Machine",
+    exerciseName: "Plate-Loaded Incline Chest Press",
+    equipmentType: "machine",
+    loadFactor: 2.25,
+    isPerHand: false,
+    synergists: ["Anterior Deltoid", "Triceps (Lateral Head)"],
+    setupCue: "Adjust seat so handles align with mid-chest; keep shoulder blades pinned.",
+  },
+  cable: {
+    id: "cable",
+    label: "Dual Cable Tower Press",
+    shortLabel: "Cables",
+    exerciseName: "Converging Incline Cable Press",
+    equipmentType: "cable",
+    loadFactor: 0.9,
+    isPerHand: true,
+    synergists: ["Clavicular Pectoralis", "Anterior Deltoid"],
+    setupCue: "Set pulleys at hip height; press up and together into peak contraction.",
+  },
+};
+
+export function resolveEquipmentManifestation(
+  mode: PreferredEquipmentMode
+): EquipmentManifestation {
+  return LIFT_ONE_EQUIPMENT_MANIFESTATIONS[mode] || LIFT_ONE_EQUIPMENT_MANIFESTATIONS.dumbbell;
+}
+
 export interface AnchorCalibrationInput {
   anchorLift: AnchorLiftId;
   weight: number;
@@ -80,6 +147,7 @@ export interface AnchorCalibrationInput {
   sleepMode?: SleepWhatIfMode;
   mode?: CalibrationMode;
   goal?: TrainingGoal;
+  equipment?: PreferredEquipmentMode;
 }
 
 export interface GoalAwareKineticCues {
@@ -118,6 +186,7 @@ export interface DayZeroCalibrationResult {
   sleepMode: SleepWhatIfMode;
   calibrationMode: CalibrationMode;
   goal: TrainingGoal;
+  equipment: PreferredEquipmentMode;
   targets: DerivedExerciseTarget[];
 }
 
@@ -450,6 +519,8 @@ export function deriveStartingWeightsFromAnchor(
   const calibrationMode: CalibrationMode = input.mode || "calibrated";
   const goal: TrainingGoal = input.goal || "hypertrophy";
   const goalConfig = TRAINING_GOALS[goal];
+  const equipment: PreferredEquipmentMode = input.equipment || "dumbbell";
+  const equipmentManifestation = resolveEquipmentManifestation(equipment);
   const safeWeight = Math.max(5, Number(input.weight) || 80);
   const safeReps = Math.min(15, Math.max(1, Math.round(Number(input.reps) || 8)));
 
@@ -471,8 +542,34 @@ export function deriveStartingWeightsFromAnchor(
     ? programDay.blocks.flatMap((b) => b.exercises)
     : [];
 
-  const targets: DerivedExerciseTarget[] = exercises.map((ex) => {
-    const { ratio, ratioLabel } = resolvePoliquinWorkingRatio(ex.exerciseName);
+  const targets: DerivedExerciseTarget[] = exercises.map((ex, index) => {
+    let exerciseName = ex.exerciseName;
+    let ratio = 0.32;
+    let ratioLabel = "Poliquin Clavicular Incline DB Ratio (0.32× Bench 1RM per arm)";
+    let setupCue: string | undefined = undefined;
+
+    if (index === 0) {
+      exerciseName = equipmentManifestation.exerciseName;
+      setupCue = equipmentManifestation.setupCue;
+      if (equipment === "barbell") {
+        ratio = 0.68;
+        ratioLabel = "Poliquin Incline Barbell Ratio (0.68× Bench 1RM total bar load)";
+      } else if (equipment === "machine") {
+        ratio = 0.72;
+        ratioLabel = "Plate-Loaded Incline Chest Press Ratio (0.72× Bench 1RM)";
+      } else if (equipment === "cable") {
+        ratio = 0.28;
+        ratioLabel = "Converging Incline Cable Ratio (0.28× Bench 1RM per side)";
+      } else {
+        ratio = 0.32;
+        ratioLabel = "Poliquin Clavicular Incline DB Ratio (0.32× Bench 1RM per arm)";
+      }
+    } else {
+      const resolved = resolvePoliquinWorkingRatio(ex.exerciseName);
+      ratio = resolved.ratio;
+      ratioLabel = resolved.ratioLabel;
+    }
+
     const goalAdjustedRatio = ratio * goalConfig.loadMultiplier;
     const normalWeightKg = roundToGymIncrement(estimatedBench1RmKg * goalAdjustedRatio, "kg");
     // Short sleep applies a 10% load buffer and +1 RIR to protect joint/CNS recovery
@@ -488,14 +585,15 @@ export function deriveStartingWeightsFromAnchor(
         ? ` → -10% short-sleep buffer (${shortSleepWeightKg} kg @ ${targetRir} RIR)`
         : ` (${normalWeightKg} kg @ ${targetRir} RIR)`;
 
-    const whyFormulaText = `${safeWeight} ${unit} × ${safeReps} reps (${anchorLabel}) = ${estimatedBench1RmKg} kg e1RM (Epley) → × ${ratio} ${ratioLabel} [${goalConfig.shortLabel}]${sleepClause}.`;
+    const equipTag = index === 0 ? ` [${equipmentManifestation.shortLabel}]` : "";
+    const whyFormulaText = `${safeWeight} ${unit} × ${safeReps} reps (${anchorLabel}) = ${estimatedBench1RmKg} kg e1RM (Epley) → × ${ratio.toFixed(2)} ${ratioLabel}${equipTag} [${goalConfig.shortLabel}]${sleepClause}.`;
 
     const repRange = goalConfig.repRange;
-    const kineticCues = resolveGoalAwareKineticCues(ex.exerciseName, goal);
+    const kineticCues = resolveGoalAwareKineticCues(exerciseName, goal, setupCue ? { setupAnchor: setupCue } : undefined);
 
     return {
       exerciseId: ex.exerciseId,
-      exerciseName: ex.exerciseName,
+      exerciseName,
       sets: ex.sets,
       repRange,
       targetRir,
@@ -523,6 +621,7 @@ export function deriveStartingWeightsFromAnchor(
     sleepMode,
     calibrationMode,
     goal,
+    equipment,
     targets,
   };
 }
@@ -572,6 +671,7 @@ export function applyCalibratedWeightsToDayOne(
         (t) => t.exerciseId === ex.exerciseId || t.exerciseName === ex.exerciseName
       );
       if (target) {
+        ex.exerciseName = target.exerciseName;
         ex.rirScheme = Array(ex.sets).fill(target.targetRir);
         ex.loadGuidance = `Target: ${target.displayWeight} ${target.unit} (${target.activeWeightKg} kg) · [${TRAINING_GOALS[calibration.goal].shortLabel}] Derived from ${calibration.inputWeight} ${calibration.unit} × ${calibration.inputReps} (${calibration.estimatedBench1RmKg} kg e1RM)`;
         updatedCount++;
@@ -642,12 +742,15 @@ export function buildHandoffQueryUrl(
   if (input.goal && input.goal !== "hypertrophy") {
     params.set("goal", input.goal);
   }
+  if (input.equipment && input.equipment !== "dumbbell") {
+    params.set("equip", input.equipment);
+  }
   const sep = basePath.includes("?") ? "&" : "?";
   return `${basePath}${sep}${params.toString()}`;
 }
 
 /**
- * Parses a handoff URL query string (`?anchor=80x8&unit=kg&lift=barbell_bench&goal=strength`) back into an AnchorCalibrationInput.
+ * Parses a handoff URL query string (`?anchor=80x8&unit=kg&lift=barbell_bench&goal=strength&equip=barbell`) back into an AnchorCalibrationInput.
  */
 export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | null {
   const clean = search.startsWith("?") ? search.slice(1) : search;
@@ -684,6 +787,12 @@ export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | n
       ? goalParam
       : "hypertrophy";
 
+  const equipParam = params.get("equip");
+  const equipment: PreferredEquipmentMode =
+    equipParam === "barbell" || equipParam === "machine" || equipParam === "cable"
+      ? equipParam
+      : "dumbbell";
+
   return {
     anchorLift,
     weight,
@@ -692,5 +801,6 @@ export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | n
     sleepMode,
     mode,
     goal,
+    equipment,
   };
 }

@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import {
   AnchorLiftId,
   CalibrationMode,
+  LIFT_ONE_EQUIPMENT_MANIFESTATIONS,
+  PreferredEquipmentMode,
   SleepWhatIfMode,
   TRAINING_GOALS,
   TrainingGoal,
@@ -19,6 +21,7 @@ import {
   detectInAppWebView,
   parseHandoffQueryUrl,
   resolveDayOneWorkoutDay,
+  resolveEquipmentManifestation,
   resolveGoalAwareKineticCues,
 } from "@/lib/onboarding";
 import { telemetry } from "@/lib/telemetry";
@@ -26,6 +29,7 @@ import { DeepLinkLiftConfig, parseDeepLinkParams, recordDeepLinkAttribution } fr
 import {
   ArrowRight,
   CheckCircle2,
+  Dumbbell,
   ExternalLink,
   HelpCircle,
   History,
@@ -57,9 +61,11 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [sleepMode, setSleepMode] = useState<SleepWhatIfMode>("normal");
   const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>("uncalibrated");
   const [goal, setGoal] = useState<TrainingGoal>("hypertrophy");
+  const [equipment, setEquipment] = useState<PreferredEquipmentMode>("dumbbell");
 
   // Progressive disclosure sheets & popovers
   const [isGoalSheetOpen, setIsGoalSheetOpen] = useState(false);
+  const [isEquipmentSheetOpen, setIsEquipmentSheetOpen] = useState(false);
   const [isCalibrationSheetOpen, setIsCalibrationSheetOpen] = useState(false);
   const [isWhyExpanded, setIsWhyExpanded] = useState(false);
   const [isGymReadySheetOpen, setIsGymReadySheetOpen] = useState(false);
@@ -105,6 +111,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       setUnit(parsed.unit);
       if (parsed.sleepMode) setSleepMode(parsed.sleepMode);
       if (parsed.goal) setGoal(parsed.goal);
+      if (parsed.equipment) setEquipment(parsed.equipment);
       setCalibrationMode(parsed.mode || "calibrated");
     }
   }, [userId, webViewStatus.isInAppWebView, webViewStatus.recommendedBrowser, webViewStatus.sourceApp]);
@@ -144,8 +151,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         sleepMode,
         mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
         goal,
+        equipment,
       }),
-    [userId, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal]
+    [userId, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal, equipment]
   );
 
   const primaryTarget = calibration.targets[0];
@@ -185,12 +193,13 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       sleepMode,
       mode,
       goal,
+      equipment,
     });
     applyCalibratedWeightsToDayOne(userId, applied);
     setIsCalibrationSheetOpen(false);
     telemetry.track(
       "onboarding_step_viewed",
-      { step: "step_3_numbers_calibrated", mode, unit, sleepMode, goal },
+      { step: "step_3_numbers_calibrated", mode, unit, sleepMode, goal, equipment },
       userId
     );
     onCalibrated?.();
@@ -200,7 +209,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
     if (calibrationMode !== "uncalibrated") {
       applyCalibratedWeightsToDayOne(userId, calibration);
     }
-    telemetry.track("session_started", { dayZero: true, calibrationMode, goal }, userId);
+    telemetry.track("session_started", { dayZero: true, calibrationMode, goal, equipment }, userId);
     router.push(`/session?day=${dayId}`);
   };
 
@@ -214,8 +223,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       sleepMode,
       mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
       goal,
+      equipment,
     });
-  }, [anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal]);
+  }, [anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal, equipment]);
 
   const handleCopyHandoffLink = async () => {
     try {
@@ -322,15 +332,29 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             {/* Right: Lead Exercise + Live Calibrated Weight + Plate Popover */}
             <div className="flex flex-col justify-between space-y-2.5">
               <div className="space-y-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
-                    Lift 1 · Primary Driver
-                  </span>
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                      Lift 1 · Primary Driver
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEquipmentSheetOpen(true);
+                        telemetry.track("onboarding_step_viewed", { step: "open_equipment_selector" }, userId);
+                      }}
+                      className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700/80 text-[10px] font-mono text-slate-200 flex items-center gap-1 transition cursor-pointer"
+                      aria-label="Select gym equipment for Lift 1"
+                    >
+                      <Dumbbell className="w-3 h-3 text-cyan-400 shrink-0" />
+                      <span>{LIFT_ONE_EQUIPMENT_MANIFESTATIONS[equipment].shortLabel} ▾</span>
+                    </button>
+                  </div>
                   {calibrationMode === "calibrated" && primaryTarget && (
                     <PlateCalculatorPopover
                       totalWeight={primaryTarget.activeWeightKg}
                       unit={unit}
-                      equipmentType={deepLinkConfig?.slug.includes("db") ? "dumbbell" : "barbell"}
+                      equipmentType={equipment === "barbell" ? "barbell" : equipment === "dumbbell" ? "dumbbell" : "machine"}
                     />
                   )}
                 </div>
@@ -878,6 +902,82 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               className="w-full min-h-[44px] py-2.5 text-xs font-semibold text-slate-400 hover:text-white border border-slate-800 rounded-xl transition cursor-pointer"
             >
               Keep Current Focus ({TRAINING_GOALS[goal].shortLabel})
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* SHEET 4 (Spec 026): In-Gym Equipment Polymorphic Swap Sheet */}
+      <Sheet open={isEquipmentSheetOpen} onOpenChange={setIsEquipmentSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl"
+        >
+          <SheetHeader className="text-left space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                Spec 026 · Equipment In-Place Swap
+              </span>
+              <span className="text-xs font-mono text-slate-400">Instant load conversion</span>
+            </div>
+            <SheetTitle className="text-lg font-bold text-white">
+              Which equipment is free right now?
+            </SheetTitle>
+            <SheetDescription className="text-xs text-slate-400">
+              Bench taken? Switch to barbell, lever machine, or cables instantly. Load calculations, plate calculator, and kinetic cues recalibrate automatically.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-2.5 pt-1">
+            {Object.values(LIFT_ONE_EQUIPMENT_MANIFESTATIONS).map((m) => {
+              const isSelected = equipment === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    const prev = equipment;
+                    setEquipment(m.id);
+                    setIsEquipmentSheetOpen(false);
+                    telemetry.track("equipment_swapped", { from: prev, to: m.id }, userId);
+                  }}
+                  className={`w-full min-h-[58px] p-3.5 rounded-2xl border text-left transition flex items-start justify-between gap-3 cursor-pointer ${
+                    isSelected
+                      ? "bg-slate-800/90 border-cyan-500/60 shadow-lg"
+                      : "bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white leading-tight">
+                        {m.label}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800 text-slate-300">
+                        {m.shortLabel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-snug">
+                      {m.exerciseName} · {m.isPerHand ? "Load per hand" : "Total bar/pin load"}
+                    </p>
+                    <p className="text-[11px] text-cyan-400/90 font-mono">
+                      {m.setupCue}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setIsEquipmentSheetOpen(false)}
+              className="w-full min-h-[44px] py-2.5 text-xs font-semibold text-slate-400 hover:text-white border border-slate-800 rounded-xl transition cursor-pointer"
+            >
+              Keep Current Setup ({LIFT_ONE_EQUIPMENT_MANIFESTATIONS[equipment].shortLabel})
             </button>
           </div>
         </SheetContent>

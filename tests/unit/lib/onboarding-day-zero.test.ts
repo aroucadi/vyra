@@ -8,6 +8,7 @@ import {
   isDayZeroUser,
   parseHandoffQueryUrl,
   resolveDayOneWorkoutDay,
+  resolveEquipmentManifestation,
   resolveGoalAwareKineticCues,
   roundToGymIncrement,
 } from "../../../src/lib/onboarding.ts";
@@ -260,5 +261,85 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     });
     assert.equal(custom.setupAnchor, "Custom Tripod Footing");
     assert.ok(custom.kineticDrive.length > 0);
+  });
+
+  it("11. Spec 026: Intelligent Equipment Polymorphism adapts Lift 1 biomechanical ratios, hardware tags, and handoff serialization", () => {
+    // 1. Dumbbell (Default Baseline)
+    const db = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      equipment: "dumbbell",
+    });
+    assert.equal(db.equipment, "dumbbell");
+    assert.equal(db.targets[0].exerciseName, "Incline Dumbbell Press");
+    assert.equal(db.targets[0].structuralRatio, 0.32);
+    assert.ok(db.targets[0].whyFormulaText.includes("[Dumbbells]"));
+
+    // 2. Olympic Barbell (0.68x e1RM total bar load)
+    const bb = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      equipment: "barbell",
+    });
+    assert.equal(bb.equipment, "barbell");
+    assert.equal(bb.targets[0].exerciseName, "Incline Barbell Bench Press");
+    assert.equal(bb.targets[0].structuralRatio, 0.68);
+    assert.ok(bb.targets[0].whyFormulaText.includes("Poliquin Incline Barbell Ratio"));
+    assert.ok(bb.targets[0].whyFormulaText.includes("[Barbell]"));
+    assert.ok(bb.targets[0].activeWeightKg > db.targets[0].activeWeightKg);
+
+    // 3. Plate-Loaded Machine (0.72x e1RM)
+    const machine = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      equipment: "machine",
+    });
+    assert.equal(machine.equipment, "machine");
+    assert.equal(machine.targets[0].exerciseName, "Plate-Loaded Incline Chest Press");
+    assert.equal(machine.targets[0].structuralRatio, 0.72);
+    assert.ok(machine.targets[0].whyFormulaText.includes("[Machine]"));
+
+    // 4. Cable Press (0.28x e1RM per side)
+    const cable = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      equipment: "cable",
+    });
+    assert.equal(cable.equipment, "cable");
+    assert.equal(cable.targets[0].exerciseName, "Converging Incline Cable Press");
+    assert.equal(cable.targets[0].structuralRatio, 0.28);
+    assert.ok(cable.targets[0].whyFormulaText.includes("[Cables]"));
+
+    // 5. URL Serialization & Deserialization with equipment parameter
+    const handoffUrl = buildHandoffQueryUrl("https://app.vyra.fit/today", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      equipment: "barbell",
+    });
+    assert.ok(handoffUrl.includes("equip=barbell"));
+    const parsed = parseHandoffQueryUrl(handoffUrl.split("?")[1]);
+    assert.equal(parsed?.equipment, "barbell");
+
+    // 6. Verification of Manifestations resolver
+    const manifest = resolveEquipmentManifestation("machine");
+    assert.equal(manifest.shortLabel, "Machine");
+    assert.equal(manifest.exerciseName, "Plate-Loaded Incline Chest Press");
+
+    // 7. Telemetry verification
+    telemetry.clear();
+    telemetry.track("equipment_swapped", { from: "dumbbell", to: "barbell" }, "trainee_1");
+    const equipEvents = telemetry.getEventsByName("equipment_swapped");
+    assert.equal(equipEvents.length, 1);
+    assert.equal(equipEvents[0].properties.to, "barbell");
   });
 });

@@ -19,6 +19,7 @@ import {
   detectInAppWebView,
   parseHandoffQueryUrl,
   resolveDayOneWorkoutDay,
+  resolveGoalAwareKineticCues,
 } from "@/lib/onboarding";
 import { telemetry } from "@/lib/telemetry";
 import { DeepLinkLiftConfig, parseDeepLinkParams, recordDeepLinkAttribution } from "@/lib/deep-link";
@@ -150,6 +151,19 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const primaryTarget = calibration.targets[0];
   const secondaryTargets = calibration.targets.slice(1, 4);
   const dayId = dayOne.programDay?.id || "prog_master_w1_d0";
+
+  const activeCues = useMemo(() => {
+    if (deepLinkConfig) {
+      return resolveGoalAwareKineticCues(deepLinkConfig.displayName, goal, {
+        setupAnchor: deepLinkConfig.setupAnchor,
+        kineticDrive: deepLinkConfig.kineticDrive,
+      });
+    }
+    if (primaryTarget) {
+      return primaryTarget.kineticCues;
+    }
+    return null;
+  }, [deepLinkConfig, goal, primaryTarget]);
 
   const handleUnitToggle = (nextUnit: WeightUnit) => {
     if (nextUnit === unit) return;
@@ -329,16 +343,28 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                 </p>
               </div>
 
-              {/* Deep-link Kinetic Cues (Spec 022) */}
-              {deepLinkConfig && (
-                <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1 text-[10px]">
-                  <div className="flex items-start gap-1 text-slate-300">
-                    <span className="text-cyan-400 font-semibold font-mono uppercase shrink-0">Anchor:</span>
-                    <span className="text-slate-300 leading-tight truncate">{deepLinkConfig.setupAnchor}</span>
+              {/* Intelligent Goal-Aware Kinetic Execution Cues (Spec 025) */}
+              {activeCues && (
+                <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase font-bold text-slate-400">
+                      Kinetic Execution Cues
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                      {activeCues.focusBadge}
+                    </span>
                   </div>
-                  <div className="flex items-start gap-1 text-slate-300">
-                    <span className="text-emerald-400 font-semibold font-mono uppercase shrink-0">Drive:</span>
-                    <span className="text-slate-300 leading-tight truncate">{deepLinkConfig.kineticDrive}</span>
+                  <div className="flex items-start gap-1.5 text-slate-300">
+                    <span className="text-cyan-400 font-semibold font-mono text-[10px] uppercase shrink-0 mt-0.5">Anchor:</span>
+                    <span className="text-slate-300 leading-tight">{activeCues.setupAnchor}</span>
+                  </div>
+                  <div className="flex items-start gap-1.5 text-slate-300">
+                    <span className="text-emerald-400 font-semibold font-mono text-[10px] uppercase shrink-0 mt-0.5">Drive:</span>
+                    <span className="text-slate-300 leading-tight">{activeCues.kineticDrive}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 pt-0.5 border-t border-slate-800/60 font-mono">
+                    <span className="text-amber-400 font-semibold">Tempo:</span>
+                    <span>{activeCues.tempoAdvice}</span>
                   </div>
                 </div>
               )}

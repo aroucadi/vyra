@@ -82,6 +82,13 @@ export interface AnchorCalibrationInput {
   goal?: TrainingGoal;
 }
 
+export interface GoalAwareKineticCues {
+  setupAnchor: string;
+  kineticDrive: string;
+  tempoAdvice: string;
+  focusBadge: string;
+}
+
 export interface DerivedExerciseTarget {
   exerciseId: string;
   exerciseName: string;
@@ -97,6 +104,7 @@ export interface DerivedExerciseTarget {
   ratioLabel: string;
   whyHeadline: string;
   whyFormulaText: string;
+  kineticCues: GoalAwareKineticCues;
 }
 
 export interface DayZeroCalibrationResult {
@@ -307,6 +315,130 @@ export function resolvePoliquinWorkingRatio(exerciseName: string): {
 }
 
 /**
+ * Spec 025: Resolves intelligent, goal-adapted kinetic cues and tempo advice for any exercise.
+ */
+export function resolveGoalAwareKineticCues(
+  exerciseName: string,
+  goal: TrainingGoal,
+  baseCues?: { setupAnchor?: string; kineticDrive?: string }
+): GoalAwareKineticCues {
+  const lower = exerciseName.toLowerCase();
+
+  // 1. Pressing Movements (Incline DB, Flat Bench, Chest Press)
+  if (lower.includes("press") || lower.includes("bench")) {
+    switch (goal) {
+      case "strength":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Plant feet aggressively into floor & pack lats tightly into the bench.",
+          kineticDrive: "Explode through sticking point; drive with maximum intended velocity.",
+          tempoAdvice: "2-0-X-0 (Explosive Concentric)",
+          focusBadge: "Maximal Neural Drive",
+        };
+      case "recomposition":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Retract scapulae; lock ribcage down to maintain constant tension.",
+          kineticDrive: "Continuous rhythmic drive; do not pause or rest at lockout.",
+          tempoAdvice: "2-1-1-0 (Density Rhythm)",
+          focusBadge: "Anti-Catabolic Density",
+        };
+      case "posture":
+        return {
+          setupAnchor: "Neutral cervical spine; depress shoulder blades away from ears.",
+          kineticDrive: "Press strictly in the scapular plane (30° elbow tuck) to protect anterior capsule.",
+          tempoAdvice: "3-1-1-1 (Structural Alignment)",
+          focusBadge: "Capsule Protection",
+        };
+      case "hypertrophy":
+      default:
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Retract scapulae & set bench at 30° to target clavicular fibers.",
+          kineticDrive: baseCues?.kineticDrive || "3-second controlled descent; drive elbows inward toward upper sternum.",
+          tempoAdvice: "3-0-1-0 (Controlled Stretch)",
+          focusBadge: "Deep Stretch & Tension",
+        };
+    }
+  }
+
+  // 2. Vertical & Horizontal Pulling (Lat Pulldown, Rows)
+  if (lower.includes("pulldown") || lower.includes("row") || lower.includes("pull-up") || lower.includes("chin")) {
+    switch (goal) {
+      case "strength":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Brace core 360°; set a slight thoracic arch.",
+          kineticDrive: "Drive elbows down aggressively, snapping bar to upper sternum with power.",
+          tempoAdvice: "1-0-X-0 (Power Pull)",
+          focusBadge: "Motor Unit Recruitment",
+        };
+      case "recomposition":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Maintain tall posture; breathe out smoothly during concentric pull.",
+          kineticDrive: "Rhythmic pull-and-release maintaining high time under tension.",
+          tempoAdvice: "2-0-1-0 (Metabolic Flow)",
+          focusBadge: "Work Capacity & Flow",
+        };
+      case "posture":
+        return {
+          setupAnchor: "Depress scapulae first before initiating elbow bend (anti-shrug).",
+          kineticDrive: "Drive elbows into rear pockets; squeeze rhomboids for 1s at bottom.",
+          tempoAdvice: "2-1-2-1 (Scapular Retraction)",
+          focusBadge: "Kyphosis Correction",
+        };
+      case "hypertrophy":
+      default:
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Grip slightly outside shoulder width; hang into full lat stretch.",
+          kineticDrive: baseCues?.kineticDrive || "Drive elbows down and inward toward rear pockets; squeeze lats.",
+          tempoAdvice: "3-0-1-1 (Peak Lat Contraction)",
+          focusBadge: "Iliac Lat Stretch",
+        };
+    }
+  }
+
+  // 3. Deltoid Isolation & Rear Delts (Lateral Raises, Face Pulls)
+  if (lower.includes("lateral") || lower.includes("raise") || lower.includes("face pull") || lower.includes("delt")) {
+    switch (goal) {
+      case "strength":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Strict torso lock; zero hip momentum or body swing.",
+          kineticDrive: "Accelerate to shoulder height with crisp, authoritative lockout.",
+          tempoAdvice: "1-0-1-0 (Strict Overload)",
+          focusBadge: "Strict Power",
+        };
+      case "recomposition":
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Constant tension; never let weights rest or touch at the bottom.",
+          kineticDrive: "Paced repetitions targeting deep local metabolic burn.",
+          tempoAdvice: "2-0-1-0 (Burnout Density)",
+          focusBadge: "Metabolic Stress",
+        };
+      case "posture":
+        return {
+          setupAnchor: "High pulley anchor; thumbs rotated back; tall cervical spine.",
+          kineticDrive: "Rotate thumbs externally; pull toward forehead with a 1-second scapular squeeze.",
+          tempoAdvice: "2-2-1-2 (Rotator Activation)",
+          focusBadge: "Infraspinatus & Rear Delt Lock",
+        };
+      case "hypertrophy":
+      default:
+        return {
+          setupAnchor: baseCues?.setupAnchor || "Slight 15° forward torso lean; lead with elbows in scapular plane.",
+          kineticDrive: baseCues?.kineticDrive || "Sweep dumbbells outward to the walls; keep constant lateral delt tension.",
+          tempoAdvice: "2-1-1-0 (Continuous Tension)",
+          focusBadge: "Medial Head Isolation",
+        };
+    }
+  }
+
+  // 4. Default / Fallback
+  return {
+    setupAnchor: baseCues?.setupAnchor || "Establish stable joint alignment and brace core.",
+    kineticDrive: baseCues?.kineticDrive || "Control the eccentric phase and drive smoothly through full range of motion.",
+    tempoAdvice: goal === "strength" ? "2-0-X-0" : "3-0-1-0",
+    focusBadge: TRAINING_GOALS[goal]?.shortLabel || "Targeted Form",
+  };
+}
+
+/**
  * Derives all Day-1 exercise starting loads from a single compound anchor input in <1ms.
  */
 export function deriveStartingWeightsFromAnchor(
@@ -359,6 +491,7 @@ export function deriveStartingWeightsFromAnchor(
     const whyFormulaText = `${safeWeight} ${unit} × ${safeReps} reps (${anchorLabel}) = ${estimatedBench1RmKg} kg e1RM (Epley) → × ${ratio} ${ratioLabel} [${goalConfig.shortLabel}]${sleepClause}.`;
 
     const repRange = goalConfig.repRange;
+    const kineticCues = resolveGoalAwareKineticCues(ex.exerciseName, goal);
 
     return {
       exerciseId: ex.exerciseId,
@@ -375,6 +508,7 @@ export function deriveStartingWeightsFromAnchor(
       ratioLabel,
       whyHeadline,
       whyFormulaText,
+      kineticCues,
     };
   });
 

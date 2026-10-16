@@ -8,6 +8,7 @@ import {
   isDayZeroUser,
   parseHandoffQueryUrl,
   resolveDayOneWorkoutDay,
+  resolveGoalAwareKineticCues,
   roundToGymIncrement,
 } from "../../../src/lib/onboarding.ts";
 import { deriveDayTimeline } from "../../../src/lib/timeline.ts";
@@ -229,5 +230,35 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     const goalEvents = telemetry.getEventsByName("goal_selected");
     assert.equal(goalEvents.length, 1);
     assert.equal(goalEvents[0].properties.goal, "strength");
+  });
+
+  it("10. Spec 025: Intelligent Goal-Aware Kinetic Cueing dynamically mutates setup anchors, kinetic drive, and tempo advice", () => {
+    // 1. Hypertrophy (Default) Pressing
+    const hypPress = resolveGoalAwareKineticCues("Incline Dumbbell Press", "hypertrophy");
+    assert.ok(hypPress.setupAnchor.includes("Retract scapulae"));
+    assert.ok(hypPress.kineticDrive.includes("3-second controlled descent"));
+    assert.equal(hypPress.tempoAdvice, "3-0-1-0 (Controlled Stretch)");
+    assert.equal(hypPress.focusBadge, "Deep Stretch & Tension");
+
+    // 2. Strength Pressing
+    const strPress = resolveGoalAwareKineticCues("Incline Dumbbell Press", "strength");
+    assert.ok(strPress.setupAnchor.includes("Plant feet aggressively"));
+    assert.ok(strPress.kineticDrive.includes("Explode through sticking point"));
+    assert.equal(strPress.tempoAdvice, "2-0-X-0 (Explosive Concentric)");
+    assert.equal(strPress.focusBadge, "Maximal Neural Drive");
+
+    // 3. Posture Pulling
+    const posPull = resolveGoalAwareKineticCues("Neutral Lat Pulldown", "posture");
+    assert.ok(posPull.setupAnchor.includes("Depress scapulae first"));
+    assert.ok(posPull.kineticDrive.includes("Drive elbows into rear pockets"));
+    assert.equal(posPull.tempoAdvice, "2-1-2-1 (Scapular Retraction)");
+    assert.equal(posPull.focusBadge, "Kyphosis Correction");
+
+    // 4. Fallback / Custom Base Cues preserve base cues when provided
+    const custom = resolveGoalAwareKineticCues("Barbell Squat", "strength", {
+      setupAnchor: "Custom Tripod Footing",
+    });
+    assert.equal(custom.setupAnchor, "Custom Tripod Footing");
+    assert.ok(custom.kineticDrive.length > 0);
   });
 });

@@ -37,12 +37,13 @@ All 19 core foundational specifications have been designed, implemented, tested,
 | **022** | `022-source-aware-deep-link-entry` | **Source-Aware Entry & Deep-Link Reel Attribution (Spec 022)**: Query param routing (`?lift=incline_db_press&source=reel_spotlight`) matching inbound social video clips 1:1, dynamic Day-0 Hero card override with matching `<AnatomicalTensionSpotlight />` view/muscles, ⚡ Setup Anchor and 🎯 Kinetic Drive cues, and non-PII attribution telemetry. | 7 Unit Tests (14 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
 | **023** | `023-trainer-invite-onboarding` | **B2B2C Trainer-Invite & Onboarding Flow (Spec 023)**: Base64URL invite token encoder/decoder (`encodeTrainerInvite`, `decodeTrainerInvite`), dedicated `/invite/[coachId]` zero-gate landing route with coach credentials and pre-filled 16-week mesocycle, 1-tap invite link generator on `/roster`, and automatic coach-trainee binding in `appStore`. | 4 Unit Tests (12 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
 | **024** | `024-day-zero-goal-selector` | **1-Tap Training Focus & Goal Calibration (Spec 024)**: Non-blocking 1-tap Goal chip on Day-0 card, interactive 4-goal calibration sheet (`Hypertrophy`, `Strength`, `Fat Loss / Recomp`, `Posture Balance`), `<1ms` live recalculation of rep targets, RIR, and loads, handoff URL preservation (`?goal=strength`), and trainee profile persistence. | 1 Unit Test (9 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
+| **025** | `025-intelligent-goal-aware-kinetic-cues` | **Intelligent Goal-Aware Kinetic Cueing (Spec 025)**: Pure helper `resolveGoalAwareKineticCues` dynamically adapting ⚡ Setup Anchors, 🎯 Kinetic Drive, and tempo cadence advice based on the active Training Goal (`Build Muscle`, `Gain Strength`, `Fat Loss`, `Posture Balance`), reactive execution in `<DayZeroOnboardingCard />`, and deep-link cue preservation. | 1 Unit Test (8 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
 
 ### Production Test Verification Summary
-- **Node:Test Standard Unit Test Suites**: 301 / 301 tests passing across 97 test suites.
+- **Node:Test Standard Unit Test Suites**: 302 / 302 tests passing across 97 test suites.
 - **Mobile Walkthrough Integration Suite**: 5 / 5 tests passing (`tests/qa-in-gym-mobile-walkthrough.test.ts`).
 - **Vitest Specialized Engine Suites**: 16 / 16 tests passing across 3 test suites (`tests/training-math.test.ts`, `tests/agentic-rag.test.ts`, `tests/in-gym-execution.test.ts`).
-- **Grand Total**: **322 / 322 passing assertions / tests across all suites (100% pass rate, 0 failures, 0 skipped)**.
+- **Grand Total**: **323 / 323 passing assertions / tests across all suites (100% pass rate, 0 failures, 0 skipped)**.
 
 ---
 

@@ -50,7 +50,7 @@ export function encodeTrainerInvite(payload: TrainerInvitePayload): string {
  * Decodes and validates base64 URL-safe token.
  */
 export function decodeTrainerInvite(token: string): TrainerInvitePayload | null {
-  if (!token) return null;
+  if (!token || token.length > 4096) return null;
   try {
     let base64 = token.replace(/-/g, "+").replace(/_/g, "/");
     while (base64.length % 4) {
@@ -67,16 +67,22 @@ export function decodeTrainerInvite(token: string): TrainerInvitePayload | null 
     const parsed = JSON.parse(json);
     if (!parsed.coachId || !parsed.coachName) return null;
 
+    const sanitizeText = (val: unknown, max = 120): string =>
+      String(val || "")
+        .slice(0, max)
+        .replace(/[<>]/g, "")
+        .trim();
+
     return {
-      coachId: String(parsed.coachId),
-      coachName: String(parsed.coachName),
-      programTitle: String(parsed.programTitle || "16-Week Recomposition & Structural Balance"),
-      weeks: Number(parsed.weeks) || 16,
+      coachId: sanitizeText(parsed.coachId, 64),
+      coachName: sanitizeText(parsed.coachName, 64),
+      programTitle: sanitizeText(parsed.programTitle || "16-Week Recomposition & Structural Balance", 100),
+      weeks: Math.min(52, Math.max(1, Number(parsed.weeks) || 16)),
       anchorLift: parsed.anchorLift === "dumbbell_bench" ? "dumbbell_bench" : "barbell_bench",
-      startingBenchKg: Number(parsed.startingBenchKg) || 80,
+      startingBenchKg: Math.min(400, Math.max(10, Number(parsed.startingBenchKg) || 80)),
       unit: parsed.unit === "lb" ? "lb" : "kg",
-      customNote: parsed.customNote ? String(parsed.customNote) : undefined,
-      traineeName: parsed.traineeName ? String(parsed.traineeName) : undefined,
+      customNote: parsed.customNote ? sanitizeText(parsed.customNote, 240) : undefined,
+      traineeName: parsed.traineeName ? sanitizeText(parsed.traineeName, 64) : undefined,
     };
   } catch {
     return null;

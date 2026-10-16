@@ -154,12 +154,14 @@ export function parseHistoricalWorkoutCsv(csvContent: string): ImportParseResult
     try {
       const rawDate = dateIdx >= 0 ? cleanCols[dateIdx] : cleanCols[0];
       const date = normalizeDateString(rawDate);
-      const workoutName = workoutIdx >= 0 && cleanCols[workoutIdx] ? cleanCols[workoutIdx] : "Workout";
-      const exerciseName = exerciseIdx >= 0 && cleanCols[exerciseIdx] ? cleanCols[exerciseIdx] : cleanCols[1] || "Exercise";
-      const weightKg = weightIdx >= 0 ? Number(cleanCols[weightIdx]) || 0 : 0;
-      const reps = repsIdx >= 0 ? Math.max(1, Math.round(Number(cleanCols[repsIdx]) || 1)) : 10;
-      const setOrder = setOrderIdx >= 0 ? Number(cleanCols[setOrderIdx]) || 1 : rows.length + 1;
-      const rpe = rpeIdx >= 0 && cleanCols[rpeIdx] ? Number(cleanCols[rpeIdx]) : undefined;
+      const workoutName = (workoutIdx >= 0 && cleanCols[workoutIdx] ? cleanCols[workoutIdx] : "Workout").slice(0, 100);
+      const exerciseName = (exerciseIdx >= 0 && cleanCols[exerciseIdx] ? cleanCols[exerciseIdx] : cleanCols[1] || "Exercise").slice(0, 100);
+      const parsedWeight = weightIdx >= 0 ? Number(cleanCols[weightIdx]) || 0 : 0;
+      const weightKg = Math.min(1000, Math.max(0, parsedWeight));
+      const parsedReps = repsIdx >= 0 ? Number(cleanCols[repsIdx]) || 1 : 10;
+      const reps = Math.min(200, Math.max(1, Math.round(parsedReps)));
+      const setOrder = setOrderIdx >= 0 ? Math.min(100, Math.max(1, Number(cleanCols[setOrderIdx]) || 1)) : rows.length + 1;
+      const rpe = rpeIdx >= 0 && cleanCols[rpeIdx] ? Math.min(10, Math.max(1, Number(cleanCols[rpeIdx]))) : undefined;
 
       rows.push({
         date,

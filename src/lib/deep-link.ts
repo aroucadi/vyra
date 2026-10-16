@@ -170,9 +170,11 @@ export function parseDeepLinkParams(
       ? new URLSearchParams(urlOrParams.startsWith("?") ? urlOrParams : `?${urlOrParams}`)
       : urlOrParams;
 
-  const rawLift = searchParams.get("lift") || searchParams.get("exercise");
-  const source = searchParams.get("source") || searchParams.get("utm_source");
-  const campaign = searchParams.get("campaign") || searchParams.get("utm_campaign");
+  const rawLift = (searchParams.get("lift") || searchParams.get("exercise") || "").slice(0, 100);
+  const rawSource = searchParams.get("source") || searchParams.get("utm_source");
+  const source = rawSource ? rawSource.slice(0, 64).replace(/[^a-zA-Z0-9_\-]/g, "") : null;
+  const rawCampaign = searchParams.get("campaign") || searchParams.get("utm_campaign");
+  const campaign = rawCampaign ? rawCampaign.slice(0, 64).replace(/[^a-zA-Z0-9_\-]/g, "") : null;
   const rawUnit = searchParams.get("unit");
   const unit: "kg" | "lb" = rawUnit === "lb" ? "lb" : "kg";
 
@@ -180,7 +182,7 @@ export function parseDeepLinkParams(
   let anchorWeight: number | undefined;
   if (rawAnchor) {
     const num = parseFloat(rawAnchor);
-    if (!isNaN(num) && num > 0) anchorWeight = num;
+    if (!isNaN(num) && num > 0) anchorWeight = Math.min(500, Math.max(1, num));
   }
 
   const liftConfig = resolveDeepLinkLift(rawLift);

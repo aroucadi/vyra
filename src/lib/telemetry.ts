@@ -54,10 +54,10 @@ class TelemetryService {
     userId?: string
   ): void {
     try {
-      // Health & PII filter: Strip any keys that look like emails, passwords, weight, or health conditions
+      // Health & PII filter: Strip personal health fields, bodyweight, emails, and credentials
       const sanitizedProps: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(properties)) {
-        if (/password|email|token|secret|credit|weight|bmi|condition|injury|bodyweight/i.test(key)) {
+        if (/password|email|token|secret|credit|bmi|condition|injury|bodyweight|user_weight|trainee_weight/i.test(key)) {
           continue;
         }
         sanitizedProps[key] = value;

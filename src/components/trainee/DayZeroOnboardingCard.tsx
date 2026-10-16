@@ -61,6 +61,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [sleepMode, setSleepMode] = useState<SleepWhatIfMode>("normal");
   const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>("uncalibrated");
   const [goal, setGoal] = useState<TrainingGoal>("hypertrophy");
+  const [hasInteractedWithGoal, setHasInteractedWithGoal] = useState<boolean>(false);
   const [equipment, setEquipment] = useState<PreferredEquipmentMode>("dumbbell");
 
   // Progressive disclosure sheets & popovers
@@ -209,7 +210,17 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
     if (calibrationMode !== "uncalibrated") {
       applyCalibratedWeightsToDayOne(userId, calibration);
     }
-    telemetry.track("session_started", { dayZero: true, calibrationMode, goal, equipment }, userId);
+    telemetry.track(
+      "session_started",
+      {
+        dayZero: true,
+        calibrationMode,
+        goal,
+        equipment,
+        goal_interaction: hasInteractedWithGoal ? "active" : "default_untouched",
+      },
+      userId
+    );
     router.push(`/session?day=${dayId}`);
   };
 
@@ -872,8 +883,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   type="button"
                   onClick={() => {
                     setGoal(g.id);
+                    setHasInteractedWithGoal(true);
                     setIsGoalSheetOpen(false);
-                    telemetry.track("goal_selected", { goal: g.id }, userId);
+                    telemetry.track("goal_selected", { goal: g.id, interaction_type: "active" }, userId);
                   }}
                   className={`w-full min-h-[58px] p-3.5 rounded-2xl border text-left transition flex items-start justify-between gap-3 cursor-pointer ${
                     isSelected

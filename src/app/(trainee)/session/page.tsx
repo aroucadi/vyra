@@ -402,14 +402,23 @@ function SessionFlow() {
     const secondsPerSet = Math.max(1, Math.round((now - lastSetLoggedAt) / 1000));
     setLastSetLoggedAt(now);
 
+    const prescribedLoad = activeEx.lastBestWeight;
+    const loggedLoad = activeEx.currentWeight;
+    const loadDeltaKg = Number((loggedLoad - prescribedLoad).toFixed(2));
+    const isOverride = prescribedLoad > 0 && Math.abs(loadDeltaKg) > 0.01;
+
     telemetry.track(
       "workout_set_logged",
       {
         exercise_name: activeEx.name,
-        weight_kg: activeEx.currentWeight,
+        prescribed_load_kg: prescribedLoad,
+        logged_load_kg: loggedLoad,
+        load_delta_kg: loadDeltaKg,
+        is_load_override: isOverride,
         reps: activeEx.currentReps,
         set_index: activeEx.completedSets.length + 1,
         is_pr: isPR,
+        equipment: activeEx.equipment,
         sub_movement_order: activeEx.subMovementOrder,
         seconds_per_set: secondsPerSet,
       },

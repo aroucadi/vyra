@@ -56,6 +56,36 @@ describe("Vyra Lean Analytics & Telemetry Layer", () => {
     assert.strictEqual(setLogs[0].properties.reps, 8);
   });
 
+  it("preserves gym load variance telemetry and goal interaction classification", () => {
+    telemetry.track("session_started", {
+      goal: "hypertrophy",
+      goal_interaction: "default_untouched",
+      equipment: "dumbbell",
+    });
+
+    telemetry.track("workout_set_logged", {
+      exercise_name: "Incline Dumbbell Press",
+      prescribed_load_kg: 25,
+      logged_load_kg: 27.5,
+      load_delta_kg: 2.5,
+      is_load_override: true,
+      equipment: "dumbbell",
+      reps: 10,
+    });
+
+    const sessions = telemetry.getEventsByName("session_started");
+    assert.strictEqual(sessions.length, 1);
+    assert.strictEqual(sessions[0].properties.goal_interaction, "default_untouched");
+
+    const sets = telemetry.getEventsByName("workout_set_logged");
+    assert.strictEqual(sets.length, 1);
+    assert.strictEqual(sets[0].properties.prescribed_load_kg, 25);
+    assert.strictEqual(sets[0].properties.logged_load_kg, 27.5);
+    assert.strictEqual(sets[0].properties.load_delta_kg, 2.5);
+    assert.strictEqual(sets[0].properties.is_load_override, true);
+    assert.strictEqual(sets[0].properties.equipment, "dumbbell");
+  });
+
   it("verifies /api/events route scrubbing logic prevents health data logging", async () => {
     const { POST } = await import("../../../src/app/api/events/route");
     

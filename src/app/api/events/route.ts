@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
           continue;
         }
-        if (/password|email|token|secret|credit|weight|bmi|condition|injury|bodyweight/i.test(key)) {
+        if (/password|email|token|secret|credit|bmi|condition|injury|bodyweight|user_weight|trainee_weight/i.test(key)) {
           continue;
         }
         sanitizedProps[key] = value;

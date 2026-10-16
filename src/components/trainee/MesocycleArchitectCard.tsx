@@ -126,7 +126,7 @@ export function MesocycleArchitectCard({
               +{plan.projectedStrengthGainRange.minKg}–{plan.projectedStrengthGainRange.maxKg} kg
             </div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
-              Target Band
+              Primary Lift 1RM Band
             </div>
           </div>
 
@@ -149,7 +149,7 @@ export function MesocycleArchitectCard({
           </div>
         </div>
         <p className="text-[10px] font-mono text-slate-500 text-center">
-          Target ranges are autoregulated estimates from baseline 1RM, not rigid predictions.
+          Model estimates for primary compound 1RM over 16 weeks based on adherence and recovery, not rigid clinical guarantees.
         </p>
       </div>
 

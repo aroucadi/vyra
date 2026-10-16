@@ -33,11 +33,11 @@ export const TRAINING_GOALS: Record<TrainingGoal, GoalDefinition> = {
   hypertrophy: {
     id: "hypertrophy",
     label: "Build Muscle (Default)",
-    shortLabel: "Build Muscle (Default)",
+    shortLabel: "Build Muscle",
     repRange: "8-12",
     targetRir: 2,
     loadMultiplier: 1.0,
-    description: "8–12 reps · Progressive volume & mechanical tension for muscle hypertrophy.",
+    description: "8–12 reps · Progressive volume & clavicular tension for maximum hypertrophy.",
     badgeClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
   },
   strength: {
@@ -52,12 +52,12 @@ export const TRAINING_GOALS: Record<TrainingGoal, GoalDefinition> = {
   },
   recomposition: {
     id: "recomposition",
-    label: "Lose Fat & Maintain Muscle",
-    shortLabel: "Fat Loss & Recomp",
+    label: "Lose Fat & Keep Muscle",
+    shortLabel: "Cut & Preserve",
     repRange: "8-10",
     targetRir: 2,
     loadMultiplier: 0.96,
-    description: "8–10 reps · Anti-catabolic stimulus preserving lean tissue during a caloric deficit.",
+    description: "8–10 reps · Anti-catabolic mechanical tension preserving lean tissue during a caloric cut.",
     badgeClass: "text-amber-400 bg-amber-500/10 border-amber-500/25",
   },
   posture: {
@@ -173,6 +173,7 @@ export interface DerivedExerciseTarget {
   whyHeadline: string;
   whyFormulaText: string;
   kineticCues: GoalAwareKineticCues;
+  brandLeverageNote?: string;
 }
 
 export interface DayZeroCalibrationResult {
@@ -579,7 +580,14 @@ export function deriveStartingWeightsFromAnchor(
     const baseRir = goalConfig.targetRir;
     const targetRir = sleepMode === "short" ? baseRir + 1 : baseRir;
 
-    const whyHeadline = `Why ${displayWeight} ${unit}? Tap to check.`;
+    const isSwappedMachine = index === 0 && (equipment === "machine" || equipment === "cable");
+    const brandLeverageNote = isSwappedMachine
+      ? "Cam & pulley leverage varies across gym brands (e.g. Hammer Strength vs. Life Fitness). Treat this starting load as a calibration probe and adjust freely on Set 1."
+      : undefined;
+
+    const whyHeadline = isSwappedMachine
+      ? `Estimated Pin: ${displayWeight} ${unit} · Calibrate feel on Set 1`
+      : `Why ${displayWeight} ${unit}? Tap to check.`;
     const sleepClause =
       sleepMode === "short"
         ? ` → -10% short-sleep buffer (${shortSleepWeightKg} kg @ ${targetRir} RIR)`
@@ -607,6 +615,7 @@ export function deriveStartingWeightsFromAnchor(
       whyHeadline,
       whyFormulaText,
       kineticCues,
+      brandLeverageNote,
     };
   });
 

@@ -418,6 +418,11 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                       <span className="text-[10px] text-slate-400 block">
                         Estimated from {inputWeight} {unit} anchor · Adjust anytime
                       </span>
+                      {primaryTarget?.brandLeverageNote && (
+                        <span className="text-[10px] font-mono text-cyan-400/90 block pt-0.5 leading-tight">
+                          ℹ Pin estimate (varies by brand) · Calibrate Set 1
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -501,9 +506,16 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                 </div>
 
                 {isWhyExpanded && (
-                  <p className="text-xs text-slate-300 leading-relaxed pt-1 border-t border-slate-800/80 tabular-nums">
-                    {primaryTarget.whyFormulaText}
-                  </p>
+                  <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
+                    <p className="text-xs text-slate-300 leading-relaxed tabular-nums">
+                      {primaryTarget.whyFormulaText}
+                    </p>
+                    {primaryTarget.brandLeverageNote && (
+                      <p className="text-[11px] text-cyan-400/90 font-mono">
+                        {primaryTarget.brandLeverageNote}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

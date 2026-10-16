@@ -119,33 +119,38 @@ export function MesocycleArchitectCard({
       </div>
 
       {/* 3-METRIC SUMMARY CARDS */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
-          <div className="text-base font-bold font-mono text-emerald-400 tabular-nums">
-            +{plan.projectedStrengthGainKg} kg
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
+            <div className="text-xs sm:text-sm font-bold font-mono text-emerald-400 tabular-nums leading-tight">
+              +{plan.projectedStrengthGainRange.minKg}–{plan.projectedStrengthGainRange.maxKg} kg
+            </div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
+              Target Band
+            </div>
           </div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
-            Projected 1RM
-          </div>
-        </div>
 
-        <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
-          <div className="text-base font-bold font-mono text-cyan-400 tabular-nums">
-            +{plan.projectedVolumeIncreasePercent}%
+          <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
+            <div className="text-base font-bold font-mono text-cyan-400 tabular-nums">
+              +{plan.projectedVolumeIncreasePercent}%
+            </div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
+              Volume Ramp
+            </div>
           </div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
-            Volume Ramp
-          </div>
-        </div>
 
-        <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
-          <div className="text-base font-bold font-mono text-slate-200 tabular-nums">
-            {plan.split.restDaysCount} Days
-          </div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
-            Rest &amp; CNS
+          <div className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-2xl text-center">
+            <div className="text-base font-bold font-mono text-slate-200 tabular-nums">
+              {plan.split.restDaysCount} Days
+            </div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5 font-mono">
+              Rest &amp; CNS
+            </div>
           </div>
         </div>
+        <p className="text-[10px] font-mono text-slate-500 text-center">
+          Target ranges are autoregulated estimates from baseline 1RM, not rigid predictions.
+        </p>
       </div>
 
       {/* SPLIT BREAKDOWN */}

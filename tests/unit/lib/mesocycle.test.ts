@@ -10,12 +10,13 @@ import { telemetry } from "../../../src/lib/telemetry.ts";
 
 describe("Spec 027: Post-Session 1 Adaptive 16-Week Mesocycle Architect", () => {
   it("1. Defines rigorous biomechanical split structures for 3, 4, and 5-day frequencies", () => {
-    // 3 Days / Week
+    // 3 Days / Week (Full Body Kinetic Rotation for 2-3x/wk frequency)
     const split3 = MESOCYCLE_SPLITS[3];
     assert.equal(split3.frequency, 3);
-    assert.equal(split3.splitName, "Push / Pull / Legs");
+    assert.equal(split3.splitName, "Full Body Kinetic Rotation (2–3×/wk Frequency)");
     assert.equal(split3.days.length, 3);
     assert.equal(split3.restDaysCount, 4);
+    assert.equal(split3.weeklySetsPerMuscle, 12);
     assert.equal(split3.recommended, false);
 
     // 4 Days / Week (Optimal Recommended)
@@ -60,19 +61,22 @@ describe("Spec 027: Post-Session 1 Adaptive 16-Week Mesocycle Architect", () => 
     const planStrength = resolveMesocyclePlan(4, "strength", 100);
     assert.equal(planStrength.frequency, 4);
     assert.equal(planStrength.goal, "strength");
-    assert.ok(planStrength.projectedStrengthGainKg > 0);
-    assert.equal(planStrength.projectedStrengthGainKg, 18.0); // 100 * 0.18 * 1.0 = 18.0 kg
+    assert.ok(planStrength.projectedStrengthGainRange.minKg > 0);
+    assert.ok(planStrength.projectedStrengthGainRange.maxKg > planStrength.projectedStrengthGainRange.minKg);
+    assert.equal(planStrength.projectedStrengthGainRange.minKg, 12.0); // 100 * 0.12 = 12.0 kg
+    assert.equal(planStrength.projectedStrengthGainRange.maxKg, 22.0); // 100 * 0.22 = 22.0 kg
 
     // 2. Hypertrophy Goal
     const planHyp = resolveMesocyclePlan(4, "hypertrophy", 100);
-    assert.equal(planHyp.projectedStrengthGainKg, 15.0); // 100 * 0.15 = 15.0 kg
-    assert.ok(planHyp.projectedVolumeIncreasePercent > planStrength.projectedStrengthGainKg);
+    assert.equal(planHyp.projectedStrengthGainRange.minKg, 10.0); // 100 * 0.10 = 10.0 kg
+    assert.equal(planHyp.projectedStrengthGainRange.maxKg, 18.0); // 100 * 0.18 = 18.0 kg
+    assert.ok(planHyp.projectedVolumeIncreasePercent > planHyp.projectedStrengthGainRange.minKg);
 
     // 3. Frequency Scaling (5 days yields higher projected volume increase than 3 days)
     const plan3 = resolveMesocyclePlan(3, "hypertrophy", 100);
     const plan5 = resolveMesocyclePlan(5, "hypertrophy", 100);
     assert.ok(plan5.projectedVolumeIncreasePercent > plan3.projectedVolumeIncreasePercent);
-    assert.ok(plan5.projectedStrengthGainKg > plan3.projectedStrengthGainKg);
+    assert.ok(plan5.projectedStrengthGainRange.maxKg > plan3.projectedStrengthGainRange.maxKg);
     // 4. Boundary and Input Hardening
     const negativePlan = resolveMesocyclePlan(4, "strength", -50);
     assert.ok(negativePlan.projectedStrengthGainKg > 0, "Negative benchmark must be clamped to safe minimum");

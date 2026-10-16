@@ -213,6 +213,17 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     assert.equal(pos.targets[0].repRange, "10-15");
     assert.ok(pos.targets[0].whyFormulaText.includes("[Posture & Balance]"));
 
+    // 4. Recomposition / Cut & Preserve
+    const recomp = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      goal: "recomposition",
+    });
+    assert.equal(recomp.goal, "recomposition");
+    assert.ok(recomp.targets[0].whyFormulaText.includes("[Cut & Preserve]"));
+
     // 4. URL Serialization & Deserialization
     const handoffUrl = buildHandoffQueryUrl("https://app.vyra.fit/today", {
       anchorLift: "barbell_bench",
@@ -304,6 +315,10 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     assert.equal(machine.targets[0].exerciseName, "Plate-Loaded Incline Chest Press");
     assert.equal(machine.targets[0].structuralRatio, 0.72);
     assert.ok(machine.targets[0].whyFormulaText.includes("[Machine]"));
+    assert.ok(machine.targets[0].brandLeverageNote);
+    assert.ok(machine.targets[0].brandLeverageNote?.includes("Cam & pulley leverage varies"));
+    assert.ok(machine.targets[0].whyHeadline.includes("Estimated Pin:"));
+    assert.ok(machine.targets[0].whyHeadline.includes("Calibrate feel on Set 1"));
 
     // 4. Cable Press (0.28x e1RM per side)
     const cable = deriveStartingWeightsFromAnchor("trainee_1", {

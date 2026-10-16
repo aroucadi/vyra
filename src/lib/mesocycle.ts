@@ -39,12 +39,18 @@ export interface MesocycleSplitDefinition {
   recommended: boolean;
 }
 
+export interface StrengthGainRange {
+  minKg: number;
+  maxKg: number;
+}
+
 export interface MesocyclePlan {
   frequency: TrainingFrequency;
   goal: TrainingGoal;
   split: MesocycleSplitDefinition;
   phases: MesocyclePhase[];
   projectedStrengthGainKg: number;
+  projectedStrengthGainRange: StrengthGainRange;
   projectedVolumeIncreasePercent: number;
   summaryHeadline: string;
   benchmark1RmKg: number;
@@ -53,31 +59,31 @@ export interface MesocyclePlan {
 export const MESOCYCLE_SPLITS: Record<TrainingFrequency, MesocycleSplitDefinition> = {
   3: {
     frequency: 3,
-    label: "3 Days / Week · Full Recovery",
+    label: "3 Days / Week · Full Body Frequency",
     shortLabel: "3 Days / wk",
-    splitName: "Push / Pull / Legs",
-    description: "Ideal for high-stress schedules, desk workers, and maximum joint recovery between high-intensity bouts.",
+    splitName: "Full Body Kinetic Rotation (2–3×/wk Frequency)",
+    description: "High-stimulus frequency. Hits each major muscle group 2–3× per week with 48h recovery windows between full-body bouts.",
     recommended: false,
     restDaysCount: 4,
-    weeklySetsPerMuscle: 10,
+    weeklySetsPerMuscle: 12,
     days: [
       {
         dayNumber: 1,
-        name: "Push & Clavicular Chest",
-        focus: "Incline Pressing, Triceps & Lateral Delts",
-        targetMuscles: ["Chest", "Anterior Deltoids", "Triceps"],
+        name: "Full Body A (Quad & Incline Press Bias)",
+        focus: "Incline Press, Hack Squat / Leg Press & Chest-Supported Rows",
+        targetMuscles: ["Chest", "Quads", "Upper Back"],
       },
       {
         dayNumber: 2,
-        name: "Pull & Scapular Balance",
-        focus: "Vertical Lat Pulldowns, Chest-Supported Rows & Biceps",
-        targetMuscles: ["Lats", "Rhomboids", "Biceps"],
+        name: "Full Body B (Posterior Chain & Vertical Pull)",
+        focus: "Romanian Deadlift (RDL), Neutral Lat Pulldown & Seated Overhead Press",
+        targetMuscles: ["Hamstrings", "Lats", "Shoulders"],
       },
       {
         dayNumber: 3,
-        name: "Legs & Posterior Chain",
-        focus: "Quad Knee Extension, Hamstring Hinge & Calves",
-        targetMuscles: ["Quadriceps", "Hamstrings", "Calves"],
+        name: "Full Body C (Knee Flexion & Symmetry)",
+        focus: "Walking Lunges / Split Squats, Dips / Cable Press & Weighted Pull-ups",
+        targetMuscles: ["Quads/Glutes", "Triceps/Chest", "Lats/Biceps"],
       },
     ],
   },
@@ -212,20 +218,24 @@ export function resolveMesocyclePlan(
   const split = MESOCYCLE_SPLITS[validFreq] || MESOCYCLE_SPLITS[4];
   const goalConfig = TRAINING_GOALS[validGoal] || TRAINING_GOALS.hypertrophy;
 
-  // Scientific projection models:
-  // Novice/Early Intermediate periodized strength gains typically average 12-18% over a 16-week structured mesocycle.
-  const gainPercentage =
-    validGoal === "strength" ? 0.18 : validGoal === "hypertrophy" ? 0.15 : validGoal === "posture" ? 0.12 : 0.14;
+  // Scientific projection models with empirical uncertainty bounds:
+  // Novice/Early Intermediate periodized strength gains typically average 10-18% over a 16-week structured mesocycle.
+  const freqFactor = validFreq === 5 ? 1.08 : validFreq === 3 ? 0.92 : 1.0;
+  const minPercentage =
+    validGoal === "strength" ? 0.12 : validGoal === "hypertrophy" ? 0.10 : 0.08;
+  const maxPercentage =
+    validGoal === "strength" ? 0.22 : validGoal === "hypertrophy" ? 0.18 : 0.14;
 
-  const projectedStrengthGainKg = Number(
-    (safeBenchmark * gainPercentage * (validFreq === 5 ? 1.08 : validFreq === 3 ? 0.92 : 1.0)).toFixed(1)
-  );
+  const minKg = Number((safeBenchmark * minPercentage * freqFactor).toFixed(1));
+  const maxKg = Number((safeBenchmark * maxPercentage * freqFactor).toFixed(1));
+  const projectedStrengthGainKg = Number(((minKg + maxKg) / 2).toFixed(1));
+  const projectedStrengthGainRange: StrengthGainRange = { minKg, maxKg };
 
   const projectedVolumeIncreasePercent = Math.round(
     (validFreq === 5 ? 26 : validFreq === 4 ? 20 : 14) * (validGoal === "hypertrophy" ? 1.15 : 1.0)
   );
 
-  const summaryHeadline = `+${projectedStrengthGainKg} kg Projected 1RM · ${split.splitName}`;
+  const summaryHeadline = `+${minKg} to +${maxKg} kg Projected Target Band · ${split.splitName}`;
 
   return {
     frequency: validFreq,
@@ -233,6 +243,7 @@ export function resolveMesocyclePlan(
     split,
     phases: STANDARD_MESOCYCLE_PHASES,
     projectedStrengthGainKg,
+    projectedStrengthGainRange,
     projectedVolumeIncreasePercent,
     summaryHeadline,
     benchmark1RmKg: safeBenchmark,

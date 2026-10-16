@@ -521,8 +521,8 @@ export function deriveStartingWeightsFromAnchor(
   const goalConfig = TRAINING_GOALS[goal];
   const equipment: PreferredEquipmentMode = input.equipment || "dumbbell";
   const equipmentManifestation = resolveEquipmentManifestation(equipment);
-  const safeWeight = Math.max(5, Number(input.weight) || 80);
-  const safeReps = Math.min(15, Math.max(1, Math.round(Number(input.reps) || 8)));
+  const safeWeight = Math.min(500, Math.max(5, Number(input.weight) || 80));
+  const safeReps = Math.min(25, Math.max(1, Math.round(Number(input.reps) || 8)));
 
   const rawWeightKg = toKilograms(safeWeight, unit);
   // If user enters Dumbbell Bench (per hand), convert to equivalent Barbell Bench baseline (2 × DB / 0.85)
@@ -761,8 +761,8 @@ export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | n
   const match = /^(\d+(?:\.\d+)?)x(\d+)$/i.exec(anchorRaw.trim());
   if (!match) return null;
 
-  const weight = Number(match[1]);
-  const reps = Number(match[2]);
+  const weight = Math.min(500, Math.max(5, Number(match[1])));
+  const reps = Math.min(25, Math.max(1, Number(match[2])));
   if (!isFinite(weight) || !isFinite(reps) || weight <= 0 || reps <= 0) {
     return null;
   }

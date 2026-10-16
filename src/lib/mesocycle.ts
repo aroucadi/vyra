@@ -205,33 +205,37 @@ export function resolveMesocyclePlan(
   goal: TrainingGoal = "hypertrophy",
   benchmark1RmKg: number = 80
 ): MesocyclePlan {
-  const split = MESOCYCLE_SPLITS[frequency] || MESOCYCLE_SPLITS[4];
-  const goalConfig = TRAINING_GOALS[goal] || TRAINING_GOALS.hypertrophy;
+  const validFreq: TrainingFrequency = frequency === 3 || frequency === 5 ? frequency : 4;
+  const validGoal: TrainingGoal = TRAINING_GOALS[goal] ? goal : "hypertrophy";
+  const safeBenchmark = Math.min(500, Math.max(20, Number(benchmark1RmKg) || 80));
+
+  const split = MESOCYCLE_SPLITS[validFreq] || MESOCYCLE_SPLITS[4];
+  const goalConfig = TRAINING_GOALS[validGoal] || TRAINING_GOALS.hypertrophy;
 
   // Scientific projection models:
   // Novice/Early Intermediate periodized strength gains typically average 12-18% over a 16-week structured mesocycle.
   const gainPercentage =
-    goal === "strength" ? 0.18 : goal === "hypertrophy" ? 0.15 : goal === "posture" ? 0.12 : 0.14;
+    validGoal === "strength" ? 0.18 : validGoal === "hypertrophy" ? 0.15 : validGoal === "posture" ? 0.12 : 0.14;
 
   const projectedStrengthGainKg = Number(
-    (benchmark1RmKg * gainPercentage * (frequency === 5 ? 1.08 : frequency === 3 ? 0.92 : 1.0)).toFixed(1)
+    (safeBenchmark * gainPercentage * (validFreq === 5 ? 1.08 : validFreq === 3 ? 0.92 : 1.0)).toFixed(1)
   );
 
   const projectedVolumeIncreasePercent = Math.round(
-    (frequency === 5 ? 26 : frequency === 4 ? 20 : 14) * (goal === "hypertrophy" ? 1.15 : 1.0)
+    (validFreq === 5 ? 26 : validFreq === 4 ? 20 : 14) * (validGoal === "hypertrophy" ? 1.15 : 1.0)
   );
 
   const summaryHeadline = `+${projectedStrengthGainKg} kg Projected 1RM · ${split.splitName}`;
 
   return {
-    frequency,
-    goal,
+    frequency: validFreq,
+    goal: validGoal,
     split,
     phases: STANDARD_MESOCYCLE_PHASES,
     projectedStrengthGainKg,
     projectedVolumeIncreasePercent,
     summaryHeadline,
-    benchmark1RmKg,
+    benchmark1RmKg: safeBenchmark,
   };
 }
 
@@ -244,14 +248,17 @@ export function saveUserMesocyclePreference(
   goal: TrainingGoal
 ): { success: boolean; programId?: string } {
   try {
+    const validFreq: TrainingFrequency = frequency === 3 || frequency === 5 ? frequency : 4;
+    const validGoal: TrainingGoal = TRAINING_GOALS[goal] ? goal : "hypertrophy";
+
     const user = appStore.getUser(userId);
     if (user) {
-      user.goals = [goal];
+      user.goals = [validGoal];
     }
 
     const activeProgram = appStore.getActiveProgramForTrainee(userId);
     if (activeProgram) {
-      activeProgram.title = `16-Week ${MESOCYCLE_SPLITS[frequency].splitName} (${TRAINING_GOALS[goal].shortLabel})`;
+      activeProgram.title = `16-Week ${MESOCYCLE_SPLITS[validFreq].splitName} (${TRAINING_GOALS[validGoal].shortLabel})`;
       activeProgram.updatedAt = new Date().toISOString();
       return { success: true, programId: activeProgram.id };
     }

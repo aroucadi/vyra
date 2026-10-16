@@ -73,11 +73,25 @@ describe("Spec 027: Post-Session 1 Adaptive 16-Week Mesocycle Architect", () => 
     const plan5 = resolveMesocyclePlan(5, "hypertrophy", 100);
     assert.ok(plan5.projectedVolumeIncreasePercent > plan3.projectedVolumeIncreasePercent);
     assert.ok(plan5.projectedStrengthGainKg > plan3.projectedStrengthGainKg);
+    // 4. Boundary and Input Hardening
+    const negativePlan = resolveMesocyclePlan(4, "strength", -50);
+    assert.ok(negativePlan.projectedStrengthGainKg > 0, "Negative benchmark must be clamped to safe minimum");
+    assert.equal(negativePlan.benchmark1RmKg, 20);
+
+    const extremePlan = resolveMesocyclePlan(4, "strength", 9999);
+    assert.equal(extremePlan.benchmark1RmKg, 500, "Extreme benchmark must be clamped to safe ceiling");
+
+    // Invalid frequency fallback
+    const fallbackPlan = resolveMesocyclePlan(7 as any, "strength", 100);
+    assert.equal(fallbackPlan.frequency, 4, "Invalid frequency must fallback to 4 days");
   });
 
   it("4. Persists mesocycle preference safely and dispatches telemetry events", () => {
     const res = saveUserMesocyclePreference("trainee_1", 4, "hypertrophy");
     assert.equal(res.success, true);
+
+    const invalidRes = saveUserMesocyclePreference("trainee_1", 9 as any, "strength");
+    assert.equal(invalidRes.success, true);
 
     telemetry.clear();
     telemetry.track("mesocycle_frequency_selected", { frequency: 4, goal: "hypertrophy" }, "trainee_1");

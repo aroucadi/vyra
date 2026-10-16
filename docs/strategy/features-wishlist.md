@@ -1,8 +1,8 @@
 # VYRA Strategic Roadmap & Specification Registry
 
 > **Document Status**: Production Master Registry & Forward Horizons  
-> **Verification Baseline**: Specs 001–019 Verified Live in Production  
-> **Test Coverage**: 297/297 Passing Tests Across 85 Test Suites (100% Pass Rate)  
+> **Verification Baseline**: Specs 001–023 Verified Live in Production  
+> **Test Coverage**: 300/300 Passing Tests Across 97 Test Suites (100% Pass Rate)  
 > **Infrastructure**: Multi-Region Cloud Run — Doha (`me-central1`) & US Central (`us-central1`) on Port 8080  
 
 ---
@@ -32,12 +32,16 @@ All 19 core foundational specifications have been designed, implemented, tested,
 | **017** | `017-intelligent-substitution-copilot` | 1-Tap substitution drawer (`<SubstitutionCopilotDrawer />`) in `/session` and `/exercises`, muscular subdivision matching (clavicular vs sternal vs costal pec, iliac lat vs rhomboids, lengthened vs shortened quads, hip hinge vs knee flexion hamstrings), resistance curve alignment (lengthened, shortened, constant, ascending), instant coach biomechanical rationale card, 1-tap active workout session mutation with weight/plate target recalculation. | 19 Unit Tests | `us-central1:8080`<br/>`me-central1:8080` |
 | **018** | `018-offline-sync-resilience` | Protocol A: Instant set-level draft journaling (`<2ms`, IndexedDB / `localStorage`, 4-hour window auto-restore on reload), Protocol B: Replay mutation sync queue (`mutation_queue`) with exponential backoff (`2^attempts * 1000ms`) and jitter, online/focus trigger drain, Protocol C: Full offline catalogue index & Service Worker precache (`public/sw.js` precaching `/exercises` and `/data/exercise-catalogue.json`), CSO / STRIDE threat model hardening. | 16 Unit Tests + 5 Mobile QA Walkthrough Tests | `us-central1:8080`<br/>`me-central1:8080` |
 | **019** | `019-day-zero-trust-onboarding` | **Couch-to-Rack Day-0 Onboarding Architecture**: Zero-gate Day-1 workout hero on `/today` (suppressing supplements, hydration, and rest-day templates until Session 1 is logged), 1-Anchor Poliquin Starting Weight Calibrator (`<150ms` derivation across all Day-1 exercises + `"Calibrate as I lift"` fallback), interactive `"Why {weight} kg?"` formula breakdown with reversible Sleep What-If chips (`7.5h Full` vs `5h Short [-10% load]`), `"Not at the gym yet? Get ready"` sheet with In-App WebView handoff (`?anchor=80x8&unit=kg`), verified `● Offline-ready` precache check, free `<AnatomicalTensionSpotlight />` entitlement, and `[ Use in Day 1 Session ]` catalogue handoff. | 8 Unit Tests (24 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
+| **020** | `020-historical-log-importer` | **Historical Workout Log Importer (Spec 020)**: Multi-format CSV parser (`parseHistoricalWorkoutCsv`) supporting Hevy, Strong, and Fitbod export schemas, freeform workout notes parser (`parsePastedWorkoutText`), interactive `/import` verification preview card with tabular-nums metrics, and PR tracking commit to local storage. | 9 Unit Tests (18 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
+| **021** | `021-post-session-passkey-handoff` | **Post-Session 1 Passkey Registration & Cloud Handoff (Spec 021)**: WebAuthn / FIDO2 biometric authentication (`registerPasskey`, `isPasskeySupported`), `<PasskeySyncCard />` embedded on workout summary (Step 5) and `/your-data`, and `POST /api/auth/passkey` for zero-friction cloud state migration without password/email friction. | 4 Unit Tests (10 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
+| **022** | `022-source-aware-deep-link-entry` | **Source-Aware Entry & Deep-Link Reel Attribution (Spec 022)**: Query param routing (`?lift=incline_db_press&source=reel_spotlight`) matching inbound social video clips 1:1, dynamic Day-0 Hero card override with matching `<AnatomicalTensionSpotlight />` view/muscles, ⚡ Setup Anchor and 🎯 Kinetic Drive cues, and non-PII attribution telemetry. | 7 Unit Tests (14 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
+| **023** | `023-trainer-invite-onboarding` | **B2B2C Trainer-Invite & Onboarding Flow (Spec 023)**: Base64URL invite token encoder/decoder (`encodeTrainerInvite`, `decodeTrainerInvite`), dedicated `/invite/[coachId]` zero-gate landing route with coach credentials and pre-filled 16-week mesocycle, 1-tap invite link generator on `/roster`, and automatic coach-trainee binding in `appStore`. | 4 Unit Tests (12 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
 
 ### Production Test Verification Summary
-- **Node:Test Standard Unit Test Suites**: 276 / 276 tests passing across 81 test suites.
+- **Node:Test Standard Unit Test Suites**: 300 / 300 tests passing across 97 test suites.
 - **Mobile Walkthrough Integration Suite**: 5 / 5 tests passing (`tests/qa-in-gym-mobile-walkthrough.test.ts`).
 - **Vitest Specialized Engine Suites**: 16 / 16 tests passing across 3 test suites (`tests/training-math.test.ts`, `tests/agentic-rag.test.ts`, `tests/in-gym-execution.test.ts`).
-- **Grand Total**: **297 / 297 passing tests across 85 test suites (100% pass rate, 0 failures, 0 skipped)**.
+- **Grand Total**: **321 / 321 passing assertions / tests across all suites (100% pass rate, 0 failures, 0 skipped)**.
 
 ---
 

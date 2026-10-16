@@ -988,6 +988,16 @@ class Store {
     return this.db.users.find((u) => u.id === id);
   }
 
+  addUser(user: User): User {
+    const existingIdx = this.db.users.findIndex((u) => u.id === user.id);
+    if (existingIdx >= 0) {
+      this.db.users[existingIdx] = user;
+    } else {
+      this.db.users.push(user);
+    }
+    return user;
+  }
+
   getExercises(): Exercise[] {
     return this.db.exercises;
   }

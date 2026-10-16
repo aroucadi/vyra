@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { generateAutoregulationPlan, MinimalExerciseTarget } from "@/lib/autoregulation";
 import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibrationCard";
 import { OverloadPrescriptionCard } from "@/components/trainee/OverloadPrescriptionCard";
+import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 import { computeExercisePrescription } from "@/lib/progression-adapter";
 import { telemetry } from "@/lib/telemetry";
 import {
@@ -843,6 +844,13 @@ function SessionFlow() {
             Tonnage was high (+{totalVolume} kg). Confirm your recovery shake with 40g protein and 6.9 g creatine within the next 45 minutes.
           </div>
         </div>
+
+        {/* Post-Session 1 Passkey Registration & Cloud Sync Handoff (Spec 021) */}
+        <PasskeySyncCard
+          userId={currentUser.id}
+          userName={currentUser.name}
+          sessionsCount={appStore.getSessions(currentUser.id).length}
+        />
 
         {/* Done & Backup Actions */}
         <div className="space-y-2">

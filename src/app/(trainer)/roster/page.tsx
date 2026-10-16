@@ -11,8 +11,11 @@ import {
   Plus,
   CheckCircle2,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
+import { generateCoachInviteUrl } from "@/lib/trainer-invite";
 
 export default function TrainerRosterPage() {
   const rosterItems = appStore.getRoster();
@@ -21,22 +24,63 @@ export default function TrainerRosterPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [inviteSent, setInviteSent] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const filteredRoster = rosterItems.filter((item) =>
     item.trainee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.activeProgram?.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.activeProgram && item.activeProgram.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const currentUser = appStore.getCurrentUser();
+  const coachId = currentUser.role === "trainer" || currentUser.role === "both" ? currentUser.id : "coach_1";
+  const coachName = currentUser.name || "Coach Julian";
+
+  const inviteUrl = typeof window !== "undefined"
+    ? generateCoachInviteUrl(window.location.origin, {
+        coachId,
+        coachName,
+        programTitle: "16-Week Recomposition & Structural Balance",
+        weeks: 16,
+        anchorLift: "barbell_bench",
+        startingBenchKg: 80,
+        unit: "kg",
+      })
+    : `/invite/${coachId}`;
+
+  const handleCopyLink = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteUrl);
+      }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
 
   const handleSendInvite = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail || !inviteName) return;
+    if (!inviteName) return;
+
+    // Create trainee in appStore
+    const newTraineeId = `trainee_${Date.now()}`;
+    appStore.addUser({
+      id: newTraineeId,
+      name: inviteName,
+      email: inviteEmail || `${inviteName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+      role: "trainee",
+      injuries: [],
+      goals: ["Strength & Hypertrophy"],
+    });
+
     setInviteSent(true);
     setTimeout(() => {
       setInviteSent(false);
       setShowInviteModal(false);
       setInviteEmail("");
       setInviteName("");
-    }, 2000);
+    }, 2500);
   };
 
   return (
@@ -316,46 +360,87 @@ export default function TrainerRosterPage() {
             {inviteSent ? (
               <div className="p-6 text-center space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-[#10B981] mx-auto" />
-                <h4 className="text-sm font-bold text-white">Invitation Dispatched!</h4>
+                <h4 className="text-sm font-bold text-white">Athlete Added to Roster!</h4>
                 <p className="text-xs text-slate-400">
-                  Onboarding link generated and emailed to {inviteEmail}.
+                  {inviteName} has been enrolled in the 16-week mesocycle.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSendInvite} className="space-y-3 text-xs">
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-mono uppercase text-[10px]">Athlete Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Jordan Lee"
-                    value={inviteName}
-                    onChange={(e) => setInviteName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-mono uppercase text-[10px]">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="jordan@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
-                  />
-                </div>
-
-                <div className="pt-2">
+              <div className="space-y-4 text-xs">
+                {/* 1-Tap Direct Link (Spec 023) */}
+                <div className="p-3.5 rounded-xl bg-[#0F172A] border border-[#1E293B] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                      Instant 1-Tap Onboarding Link
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      Zero Signup Wall
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Pre-fills your 16-week mesocycle and starting weights automatically.
+                  </p>
                   <button
-                    type="submit"
-                    className="w-full py-2.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider transition"
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-750 text-white font-medium flex items-center justify-center gap-2 border border-slate-700 transition cursor-pointer"
                   >
-                    Send Invitation
+                    {copiedLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400 font-bold">Link Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Coach Invite Link</span>
+                      </>
+                    )}
                   </button>
                 </div>
-              </form>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-[#1E293B]"></div>
+                  <span className="flex-shrink mx-2 text-[10px] font-mono text-slate-500 uppercase">
+                    Or Direct Add
+                  </span>
+                  <div className="flex-grow border-t border-[#1E293B]"></div>
+                </div>
+
+                <form onSubmit={handleSendInvite} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-mono uppercase text-[10px]">Athlete Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Jordan Lee"
+                      value={inviteName}
+                      onChange={(e) => setInviteName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-mono uppercase text-[10px]">Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="jordan@example.com (optional)"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider transition cursor-pointer"
+                    >
+                      Add to Roster & Enroll
+                    </button>
+                  </div>
+                </form>
+              </div>
             )}
           </div>
         </div>

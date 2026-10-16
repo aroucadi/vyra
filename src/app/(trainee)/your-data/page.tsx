@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
-import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle, HardDrive, RefreshCw } from "lucide-react";
+import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle, HardDrive, RefreshCw, History } from "lucide-react";
 import { isStoragePersisted, requestPersistentStorage, clearClientStorage, triggerBackupDownload } from "@/lib/storage";
+import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 
 export default function YourDataPage() {
   const currentUser = appStore.getCurrentUser();
@@ -111,6 +112,34 @@ export default function YourDataPage() {
               Protect
             </button>
           )}
+        </div>
+      </section>
+
+      {/* Multi-Device Passkey Sync (Spec 021) */}
+      <PasskeySyncCard
+        userId={currentUser.id}
+        userName={currentUser.name}
+        sessionsCount={appStore.getSessions(currentUser.id).length}
+      />
+
+      {/* Historical Log Importer (Spec 020) */}
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-white">
+              <History className="w-4 h-4 text-emerald-400" />
+              <span>Import Workout History</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Load past workouts from Hevy, Strong, or Fitbod CSV exports.
+            </p>
+          </div>
+          <Link
+            href="/import"
+            className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 transition flex items-center gap-1.5"
+          >
+            <span>Import</span>
+          </Link>
         </div>
       </section>
 

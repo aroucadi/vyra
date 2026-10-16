@@ -19,11 +19,13 @@ import {
   resolveDayOneWorkoutDay,
 } from "@/lib/onboarding";
 import { telemetry } from "@/lib/telemetry";
+import { DeepLinkLiftConfig, parseDeepLinkParams, recordDeepLinkAttribution } from "@/lib/deep-link";
 import {
   ArrowRight,
   CheckCircle2,
   ExternalLink,
   HelpCircle,
+  History,
   Minus,
   Moon,
   Plus,
@@ -57,11 +59,12 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [isGymReadySheetOpen, setIsGymReadySheetOpen] = useState(false);
   const [offlineVerified, setOfflineVerified] = useState(false);
   const [copiedHandoff, setCopiedHandoff] = useState(false);
+  const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkLiftConfig | null>(null);
 
   const webViewStatus = useMemo(() => detectInAppWebView(), []);
   const dayOne = useMemo(() => resolveDayOneWorkoutDay(userId), [userId]);
 
-  // Hydrate from URL query params (?anchor=80x8&unit=kg) if arriving from WebView handoff
+  // Hydrate from URL query params (?anchor=80x8&unit=kg) or deep link (?lift=incline_db_press)
   useEffect(() => {
     if (typeof window === "undefined") return;
     telemetry.track("onboarding_step_viewed", { step: "step_1_see_day_one" }, userId);
@@ -72,6 +75,20 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         { sourceApp: webViewStatus.sourceApp, recommendedBrowser: webViewStatus.recommendedBrowser },
         userId
       );
+    }
+
+    // Spec 022: Source-aware deep-link attribution & lift matching
+    const deepLink = parseDeepLinkParams(window.location.search);
+    if (deepLink.liftConfig) {
+      setDeepLinkConfig(deepLink.liftConfig);
+      recordDeepLinkAttribution(deepLink, userId);
+      if (deepLink.anchorWeight) {
+        setInputWeight(deepLink.anchorWeight);
+        setCalibrationMode("calibrated");
+      }
+      if (deepLink.unit) {
+        setUnit(deepLink.unit);
+      }
     }
 
     const parsed = parseHandoffQueryUrl(window.location.search);
@@ -218,16 +235,22 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         {/* GROUP 1: Eyebrow, Day-1 Title & Honest Trust Line */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-              Day 1 Starts Today
-            </span>
+            {deepLinkConfig ? (
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                From Video · {deepLinkConfig.displayName}
+              </span>
+            ) : (
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                Day 1 Starts Today
+              </span>
+            )}
             <span className="text-xs font-mono text-slate-400 tabular-nums">
               {dayOne.exerciseCount || 6} lifts · ~{dayOne.estimatedMinutes || 38} min
             </span>
           </div>
 
           <h2 className="text-xl font-bold text-white tracking-tight">
-            {dayOne.programDay?.label || "Upper Frame & Symmetry"}
+            {deepLinkConfig ? `${deepLinkConfig.displayName} Session` : (dayOne.programDay?.label || "Upper Frame & Symmetry")}
           </h2>
 
           <p className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -246,8 +269,8 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
           <div className="grid grid-cols-[104px_1fr] gap-3.5 items-stretch p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/90">
             {/* Left: Free Anatomical Tension Spotlight (Visual Match with Launch Clip) */}
             <AnatomicalTensionSpotlight
-              primaryMuscle="pectorals"
-              secondaryMuscles={["anterior deltoid", "triceps"]}
+              primaryMuscle={deepLinkConfig?.primaryMuscle || "pectorals"}
+              secondaryMuscles={deepLinkConfig?.secondaryMuscles || ["anterior deltoid", "triceps"]}
               className="h-full justify-between"
             />
 
@@ -262,18 +285,32 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                     <PlateCalculatorPopover
                       totalWeight={primaryTarget.activeWeightKg}
                       unit={unit}
-                      equipmentType="dumbbell"
+                      equipmentType={deepLinkConfig?.slug.includes("db") ? "dumbbell" : "barbell"}
                     />
                   )}
                 </div>
                 <p className="text-sm font-bold text-white leading-snug">
-                  {primaryTarget?.exerciseName || "Incline Dumbbell Press"}
+                  {deepLinkConfig?.displayName || primaryTarget?.exerciseName || "Incline Dumbbell Press"}
                 </p>
                 <p className="text-xs text-slate-400 tabular-nums">
                   {primaryTarget?.sets || 3} sets × {primaryTarget?.repRange || "8-10"} reps ·{" "}
                   <span className="text-slate-300">{primaryTarget?.targetRir ?? 2} RIR</span>
                 </p>
               </div>
+
+              {/* Deep-link Kinetic Cues (Spec 022) */}
+              {deepLinkConfig && (
+                <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1 text-[10px]">
+                  <div className="flex items-start gap-1 text-slate-300">
+                    <span className="text-cyan-400 font-semibold font-mono uppercase shrink-0">Anchor:</span>
+                    <span className="text-slate-300 leading-tight truncate">{deepLinkConfig.setupAnchor}</span>
+                  </div>
+                  <div className="flex items-start gap-1 text-slate-300">
+                    <span className="text-emerald-400 font-semibold font-mono uppercase shrink-0">Drive:</span>
+                    <span className="text-slate-300 leading-tight truncate">{deepLinkConfig.kineticDrive}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Dynamic Starting Load Box */}
               <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
@@ -607,6 +644,16 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             >
               Not sure? Calibrate as I lift on Set 1
             </button>
+
+            <div className="pt-2 text-center border-t border-slate-900">
+              <Link
+                href="/import"
+                className="text-xs text-slate-400 hover:text-emerald-400 inline-flex items-center gap-1.5 transition-colors"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Already have history? Import Hevy / Strong</span>
+              </Link>
+            </div>
           </div>
         </SheetContent>
       </Sheet>

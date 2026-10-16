@@ -25,7 +25,10 @@ export type VyraTelemetryEvent =
   | "webview_detected"
   | "offline_verified"
   | "install_prompt_shown"
-  | "first_set_logged";
+  | "first_set_logged"
+  | "passkey_registered"
+  | "deep_link_arrived"
+  | "coach_invite_accepted";
 
 export interface TelemetryEventRecord {
   eventName: VyraTelemetryEvent;

@@ -30,8 +30,17 @@ export default function TodayPage() {
     if (search.includes("supplements=open")) {
       setIsSuppDrawerOpen(true);
     }
-    if (search.includes("onboarding=day0") || search.includes("anchor=")) {
+    if (search.includes("user=alaa") || search.includes("view=program") || search.includes("mode=program")) {
+      localStorage.setItem("vyra_user_view", "program");
+      setForceDayZero(false);
+    } else if (search.includes("onboarding=day0") || search.includes("anchor=")) {
+      localStorage.setItem("vyra_user_view", "day0");
       setForceDayZero(true);
+    } else {
+      const savedView = localStorage.getItem("vyra_user_view");
+      if (savedView === "program") {
+        setForceDayZero(false);
+      }
     }
   }, []);
 
@@ -73,13 +82,21 @@ export default function TodayPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setForceDayZero((prev) => (prev === undefined ? !isDayZero : !prev))}
+            onClick={() => {
+              setForceDayZero((prev) => {
+                const next = prev === undefined ? !isDayZero : !prev;
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("vyra_user_view", next ? "day0" : "program");
+                }
+                return next;
+              });
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-full shadow-sm text-xs transition cursor-pointer"
-            title="Toggle Day-1 Starting Weights Calibration"
+            title="Toggle between Day-1 Setup and Active Program"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-medium text-slate-300">
-              {isDayZero ? "Day 1 Setup" : "Calibrate 1RM"}
+              {isDayZero ? "View Active Program" : "Calibrate Day 1"}
             </span>
           </button>
 

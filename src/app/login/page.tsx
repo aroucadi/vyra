@@ -16,8 +16,9 @@ export default function LoginPage() {
     if (passcode.trim() === "1989" || passcode.trim() === "demo" || passcode.trim() === "alaa") {
       if (typeof window !== "undefined") {
         sessionStorage.setItem("vyra_session", "active");
+        localStorage.setItem("vyra_user_view", "program");
       }
-      router.push("/today");
+      router.push("/today?user=alaa");
     } else {
       setError(true);
     }

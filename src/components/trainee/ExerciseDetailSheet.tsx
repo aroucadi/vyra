@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RagExercise } from "@/types/exercise-rag";
 import { PlateCalculatorPopover } from "@/components/trainee/PlateCalculatorPopover";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
 import { SubstitutionCandidate } from "@/lib/training-math/substitution-copilot";
+import { appStore } from "@/lib/store";
+import { resolveDayOneWorkoutDay } from "@/lib/onboarding";
 import {
   Sparkles,
   ArrowRightLeft,
@@ -68,6 +71,7 @@ export function ExerciseDetailSheet({
   onClose,
   onSelectAsSubstitute,
 }: ExerciseDetailSheetProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"cues" | "steps" | "swaps">("cues");
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
@@ -121,6 +125,21 @@ export function ExerciseDetailSheet({
     exercise.equipment.toLowerCase().includes("smith");
 
   const { setupCue, driveCue } = extractGoldenCues(exercise.instructions);
+
+  const handleUseInDayOneSession = () => {
+    const currentUser = appStore.getCurrentUser();
+    const dayOne = resolveDayOneWorkoutDay(currentUser.id);
+    if (dayOne.primaryExercise) {
+      appStore.swapExerciseInActiveProgram(
+        currentUser.id,
+        dayOne.primaryExercise.exerciseName,
+        exercise.name,
+        dayOne.programDay?.dayOfWeek
+      );
+    }
+    onClose();
+    router.push("/today?onboarding=day0");
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -223,7 +242,7 @@ export function ExerciseDetailSheet({
                     </span>
                     <span className="text-[9px] font-mono text-slate-500 uppercase">Foundation</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-[15px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
                     {setupCue}
                   </p>
                 </div>
@@ -237,7 +256,7 @@ export function ExerciseDetailSheet({
                     </span>
                     <span className="text-[9px] font-mono text-slate-500 uppercase">Trajectory</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-[15px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
                     {driveCue}
                   </p>
                 </div>
@@ -385,8 +404,8 @@ export function ExerciseDetailSheet({
           </div>
         )}
 
-        {/* Single Dominant CTA */}
-        <div className="pt-2">
+        {/* Single Dominant CTA + Secondary Close */}
+        <div className="pt-2 space-y-2">
           {onSelectAsSubstitute ? (
             <button
               type="button"
@@ -400,13 +419,23 @@ export function ExerciseDetailSheet({
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs rounded-xl transition cursor-pointer"
-            >
-              Close
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleUseInDayOneSession}
+                className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Use in Day 1 Session</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs rounded-xl transition cursor-pointer"
+              >
+                Close
+              </button>
+            </>
           )}
         </div>
       </SheetContent>

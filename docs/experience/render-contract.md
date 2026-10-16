@@ -45,7 +45,7 @@ The following AI-generated cliches, decorative slop, and lazy defaults are **str
   - Synergist / Fuel / Hydration: `#06B6D4` (Cyan 500)
   - Rest / Recovery / Circadian: `#6366F1` (Indigo 500)
   - Structural Weakness / Joint Alert: `#F43F5E` (Rose 500)
-  - *Rule: Never use more than 1 accent hue on a single card.*
+  - *Rule: Never use more than 1 accent hue on a single UI card container. Explicit Exemption: Functional SVG biomechanical telemetry (`<AnatomicalTensionSpotlight />` and `<StructuralBalanceRadar />`) may pair Emerald `#10B981` (primary prime mover) with Cyan `#06B6D4` (synergist stabilizer) and a functional SVG `drop-shadow(0 0 6px rgba(16,185,129,0.35))` to encode dual-muscle activation.*
 
 ---
 
@@ -55,7 +55,7 @@ All interface motion must conform strictly to `src/lib/motion.ts`:
 
 | Interaction Type | Duration (`ms`) | Curve / Physics | Behavior |
 |:---|:---:|:---|:---|
-| **Tactile Tap / Press** | `150ms` | `cubic-bezier(0.16, 1, 0.3, 1)` | Active state scales to `0.98` for instant tactile response. |
+| **Tactile Tap / Press** | `150ms` | `cubic-bezier(0.16, 1, 0.3, 1)` | Active state scales to `0.98` for instant tactile response; Day-0 calibration updates within `150ms`. |
 | **Checkbox / Set Log** | `100ms` | Instantaneous toggle | Immediate green fill + subtle badge pop ($\zeta = 0.70$). |
 | **Drawer / Sheet Slide** | `400ms` | `cubic-bezier(0.16, 1, 0.3, 1)` | Bottom-to-top sheet with backdrop fade. |
 | **Screen / Hero Entrance** | `750ms` | `cubic-bezier(0.16, 1, 0.3, 1)` | Hero card leads; supporting elements stagger by `60ms`. |
@@ -77,21 +77,21 @@ All interface motion must conform strictly to `src/lib/motion.ts`:
 
 ### 5.1 `<AnatomicalTensionSpotlight />` Micro-Torso
 - **File**: `src/components/trainee/AnatomicalTensionSpotlight.tsx`
-- **Architecture**: Pure vector SVG micro-silhouette. Zero WebGL/canvas dependency, zero layout shift, 0ms render latency.
+- **Architecture**: Pure vector SVG micro-silhouette. Zero WebGL/canvas dependency, zero layout shift, 0ms render latency. Free-tier unlocked (`anatomical_tension_spotlight` in `TIER_CAPABILITIES.FREE`) so the Day-0 onboarding hero matches inbound social clips 1:1.
 - **Micro-Segmented Selector**: Two-state toggle for `Anterior` and `Posterior` anatomical views.
 - **Color Mapping**:
-  - Target Prime Mover: Emerald `#10B981` (`fill-[#10B981]`, glow filter `drop-shadow(0 0 6px rgba(16,185,129,0.35))`)
+  - Target Prime Mover: Emerald `#10B981` (`fill-[#10B981]`, functional SVG filter `drop-shadow(0 0 6px rgba(16,185,129,0.35))`)
   - Synergists & Stabilizers: Cyan `#06B6D4` (`fill-[#06B6D4]`)
   - Neutral Musculature: Dark Slate `#334155` (`fill-slate-700/60`)
-- **Visual Scale**: Max height `160px` in exercise detail sheet; `120px` in active `/session` card.
+- **Visual Scale**: Max height `160px` in exercise detail sheet; `120px` in active `/session` and Day-0 `/today` hero cards.
 
 ### 5.2 Kinetic Anchors Typography Contract
-Every prescribed movement renders exactly two concise kinetic cues:
+Every prescribed movement renders exactly two concise kinetic cues sized for arm's-length gym-floor legibility (`15px–16px`):
 - ⚡ **Setup Anchor**: Spatial foundation, joint placement, and stabilization base.
-  - *Typography*: `text-xs font-semibold text-slate-300`, max 10 words.
+  - *Typography*: `text-[15px] leading-snug text-slate-100`, max 10 words.
   - *Example*: *"Retract scapulae; pack lats tight against bench pad."*
 - 🎯 **Kinetic Drive**: Concentric trajectory, prime mover cue, and velocity intent.
-  - *Typography*: `text-xs font-semibold text-emerald-400`, max 10 words.
+  - *Typography*: `text-[15px] leading-snug text-slate-100`, max 10 words.
   - *Example*: *"Drive elbows toward hips; accelerate through the stick point."*
 
 ### 5.3 `<PlateCalculatorPopover />`

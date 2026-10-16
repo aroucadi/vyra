@@ -17,6 +17,8 @@ export type EntitledFeature =
   | 'catalogue_browsing'
   | 'stealth_gym_mode'
   | 'plate_calculator'
+  | 'anatomical_tension_spotlight'
+  | 'substitution_copilot_preview'
   | 'progression_engine'
   | 'structural_balance_radar'
   | 'autoregulation_advanced'
@@ -28,12 +30,16 @@ export const TIER_CAPABILITIES: Record<SubscriptionTier, Set<EntitledFeature>> =
     'catalogue_browsing',
     'stealth_gym_mode',
     'plate_calculator',
+    'anatomical_tension_spotlight',
+    'substitution_copilot_preview',
   ]),
   PRO: new Set([
     'basic_workout_logging',
     'catalogue_browsing',
     'stealth_gym_mode',
     'plate_calculator',
+    'anatomical_tension_spotlight',
+    'substitution_copilot_preview',
     'progression_engine',
     'structural_balance_radar',
     'autoregulation_advanced',
@@ -44,6 +50,8 @@ export const TIER_CAPABILITIES: Record<SubscriptionTier, Set<EntitledFeature>> =
     'catalogue_browsing',
     'stealth_gym_mode',
     'plate_calculator',
+    'anatomical_tension_spotlight',
+    'substitution_copilot_preview',
     'progression_engine',
     'structural_balance_radar',
     'autoregulation_advanced',

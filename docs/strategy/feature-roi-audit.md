@@ -25,6 +25,11 @@ Every candidate capability is rigorously audited against the 6-dimensional Found
 | **Spec 016: Anatomical Tension Spotlight** | 3 | 5 | 5 | 4 | 2.0 | 1.0 | **5.67** | 🟢 **LIVE** | **Tactile Visual Wedge**: Pure SVG micro-torso (Emerald target, Cyan synergist), zero WebGL lag, 2 kinetic anchors. |
 | **Spec 017: Intelligent Substitution Copilot** | 4 | 5 | 4 | 4 | 2.0 | 1.33 | **5.10** | 🟢 **LIVE** | **Floor Frustration Eliminator**: Instant machine/equipment swap matching muscular subdivision and resistance curve. |
 | **Spec 018: Offline Sync & Resilience** | 3 | 5 | 3 | 4 | 2.0 | 1.0 | **5.00** | 🟢 **LIVE** | **Basement Gym Guarantee**: Instant <2ms draft journaling, mutation replay queue with exponential backoff and jitter. |
+| **Spec 019: Day-0 Trust & Cold-Start Onboarding** | 4 | 5 | 5 | 5 | 1.5 | 1.0 | **7.60** | 🟢 **LIVE** | **Couch-to-Rack Proxy**: 1-Anchor Poliquin starting-weight derivation, `"Why {weight}?"` math proof, Sleep What-If chips, WebView/Offline readiness sheet, free Tension Spotlight hook. |
+| **Spec 020: Historical CSV & AI Log Importer** | 3 | 5 | 4 | 4 | 3.0 | 1.5 | **3.56** | 🟡 **PHASE 4B** | **MVP-Police Sequenced**: Deterministic Hevy/Strong CSV + AI table paste importer. Deferred until Spec 019 cold-start completion is validated. |
+| **Spec 021: Post-Session 1 Passkey Account Save** | 4 | 5 | 3 | 4 | 2.5 | 1.5 | **4.00** | 🟡 **PHASE 4C** | **MVP-Police Sequenced**: 1-tap FaceID/TouchID Passkey creation *after* Session 1 completion. Deferred until Phase 4 PostgreSQL cloud sync is active. |
+| **Spec 022: Source-Aware Deep-Link Entry** | 3 | 4 | 5 | 4 | 2.0 | 1.0 | **5.33** | 🟡 **PHASE 5B** | **MVP-Police Sequenced**: Dynamic Day-0 hero lift matching inbound social clip (`?lift=`). Deferred until social clip volume exceeds 500 taps/week. |
+| **Spec 023: B2B2C Trainer-Invite Onboarding** | 5 | 5 | 4 | 4 | 2.5 | 1.5 | **4.50** | 🟡 **PHASE 6B** | **MVP-Police Sequenced**: Pre-calibrated `/invite/[coachId]` onboarding bypassing calibration. Deferred until Phase 4 Cloud Sync + Phase 6 `app.vyra.fit`. |
 | **Freeform AI Conversational Chatbot** | 2 | 2 | 2 | 2 | 4.0 | 4.0 | **1.00** | 🔴 **KILLED** | **Slop / Liability Trap**: Lifters do not text chatbots between sets. Replaced with 1-tap `<CoachSmartActionCard />`. |
 | **Continuous Unvalidated Wearable Ingestion** | 2 | 2 | 2 | 2 | 5.0 | 4.0 | **0.89** | 🔴 **KILLED** | **Premature Complexity**: OAuth token drift and latency. Replaced with lightweight webhook `POST /api/webhooks/biometrics`. |
 | **Style & Wardrobe Pillar** | 1 | 1 | 1 | 1 | 5.0 | 5.0 | **0.40** | 🔴 **KILLED** | **Toxic Distraction**: Completely alienates serious lifters; zero ICP crossover; destroys brand credibility. |
@@ -32,7 +37,7 @@ Every candidate capability is rigorously audited against the 6-dimensional Found
 
 ---
 
-## 2. In-Depth ROI Scoring Analysis for Specs 014–018
+## 2. In-Depth ROI Scoring Analysis for Specs 014–019
 
 ### Spec 014: In-Session Automated Overload & Deload Prescriptions
 - **Calculated ROI**: **4.80**
@@ -104,6 +109,20 @@ Every candidate capability is rigorously audited against the 6-dimensional Found
 
 ---
 
+### Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ("Couch-to-Rack Proxy")
+- **Calculated ROI**: **7.60** (Highest-ROI Initiative in Registry)
+- **Scoring Breakdown**:
+  - **Revenue (4/5)**: Directly feeds the top of the Autonomous Tier (`$29/mo`) conversion funnel by ensuring new arrivals complete Session 1 instead of bouncing on generic templates or paywalled hooks.
+  - **Retention (5/5)**: Eliminates cold-start distrust (`"Are those numbers right?"`), prevents rest-day / supplement-stack confusion on Day 0, and protects local data from in-app WebView eviction.
+  - **Acquisition (5/5)**: Unlocks `<AnatomicalTensionSpotlight />` as a free top-of-funnel hook (100% visual alignment with social clips) and adds 1-tap `[ Use in Day 1 Session ]` handoff from `/exercises`.
+  - **Learning (5/5)**: Instrumenting `onboarding_step_viewed`, `webview_detected`, `offline_verified`, `install_prompt_shown`, and `first_set_logged` reveals the exact couch-to-gym drop-off funnel.
+  - **Complexity (1.5/5)**: Pure TypeScript Poliquin ratio derivation (`src/lib/onboarding.ts`) reusing existing Epley (`onerm.ts`) and structural balance (`structural-balance.ts`) primitives.
+  - **Risk (1.0/5)**: Zero database schema changes, zero external network dependencies, 100% backward-compatible with seeded profiles.
+- **Formula Proof**:
+  $$\text{ROI} = \frac{4 + 5 + 5 + 5}{1.5 + 1.0} = \frac{19}{2.5} = 7.60$$
+
+---
+
 ## 3. MVP Police & Anti-Bloat Enforcement Orders
 
 ### 1. Permanent Ban on Unfocused Multi-Pillar Scope (Style, Social Network)
@@ -124,17 +143,26 @@ Every candidate capability is rigorously audited against the 6-dimensional Found
 - **Finding**: Clinical diagnostic labels (e.g. medical pathology, clinical advisory codes, underweight warnings) create regulatory liability and violate `AGENTS.md`.
 - **Enforcement**: All copy strictly uses athletic conditioning and load-recovery terminology (e.g., *joint preservation*, *load buffering*, *neuromuscular readiness*).
 
+### 4. Sequenced Deferral of Heavy Onboarding Infrastructure (Specs 020–023)
+- **Status**: 🟡 **DEFERRED TO PHASES 4B–6B (ROADMAPPED FOR LATER IMPLEMENTATION)**
+- **Finding**: During the Spec 019 Onboarding Audit, four high-value onboarding capabilities were evaluated by `mvp-police` and `yc-mvp-scrapper`. While strategically valuable, building them *before* shipping the deterministic 1-Anchor Calibration flow would delay time-to-market:
+  1. **Spec 020 (Historical CSV & AI Log Importer — ROI 3.56)**: Sequenced to **Phase 4B**. 1-Anchor Poliquin calibration (`<25s`) solves 85% of Day-1 load estimation immediately; full Hevy/Strong CSV + AI table paste import will be implemented in Phase 4B once Day-1 completion is benchmarked.
+  2. **Spec 021 (Post-Session 1 Passkey Account Save — ROI 4.00)**: Sequenced to **Phase 4C**. Depends on PostgreSQL + WebAuthn cloud sync (`Phase 4`). Until then, local IndexedDB + `/your-data` JSON export (`"Saved on this phone · Export"`) is 100% honest.
+  3. **Spec 022 (Source-Aware Deep-Link Entry — ROI 5.33)**: Sequenced to **Phase 5B**. Spec 019 ships `[ Use in Day 1 Session ]` from `/exercises` and `?anchor=` query state preservation now; automated social reel deep-link hero swapping unblocks when weekly clip traffic scales.
+  4. **Spec 023 (B2B2C Trainer-Invite Onboarding — ROI 4.50)**: Sequenced to **Phase 6B**. Depends on multi-device cloud persistence (`Phase 4`) and branded domain routing (`app.vyra.fit` in `Phase 6`).
+
 ---
 
 ## 4. The Greenlit Production Engine (Build Scope)
 
-The verified greenlit scope encompasses Specs 001–018, operating as a unified, cohesive biomechanical platform:
+The verified greenlit scope encompasses Specs 001–019, operating as a unified, cohesive biomechanical platform:
 
-1. **In-Gym Execution Floor (`/session`)**: Sub-5s set logging, smart pre-fills, `<PlateCalculatorPopover />`, `<RestIntervalBar />` with synthetic Web Audio chimes, and Screen Wake Lock.
-2. **6,554-Exercise OpenGym Catalogue Browser (`/exercises`)**: Sub-10ms query execution, 40+ gym shorthands, and detailed movement mechanics.
-3. **Anatomical Tension Spotlight (`<AnatomicalTensionSpotlight />`)**: Vector micro-torso highlighting target (Emerald) and synergist (Cyan) muscles with Setup Anchor and Kinetic Drive cues.
-4. **Intelligent Substitution Copilot (`<SubstitutionCopilotDrawer />`)**: 1-tap in-session equipment swap with resistance curve matching and weight recalculation.
-5. **Auto-Progression & Deload Engine (`progression.ts`)**: Double progression, Greyskull LP, stall streaks, and 10% deload resets.
-6. **Structural Balance Radar (`/posture`)**: Poliquin, Thibaudeau, and ATG benchmark ratio analysis.
-7. **Offline Sync Resilience (`offline-sync.ts`)**: Write-ahead IndexedDB set logging and idempotent mutation replay queue.
-8. **Multi-Region Cloud Run Infrastructure**: Geo-replicated deployment in Doha (`me-central1`) and US Central (`us-central1`).
+1. **Zero-Gate Day-0 Onboarding (`/today` + `onboarding.ts`)**: Instant Day-1 hero card with `<AnatomicalTensionSpotlight />`, 1-Anchor Poliquin load derivation (`<150ms`), tappable `"Why {weight} kg?"` formula proof, reversible Sleep What-If chips, and `"Not at the gym yet? Get ready"` WebView/Offline/Install sheet.
+2. **In-Gym Execution Floor (`/session`)**: Sub-5s set logging, smart pre-fills, `<PlateCalculatorPopover />`, `<RestIntervalBar />` with synthetic Web Audio chimes, and Screen Wake Lock.
+3. **6,554-Exercise OpenGym Catalogue Browser (`/exercises`)**: Sub-10ms query execution, 40+ gym shorthands, detailed movement mechanics, and 1-tap `[ Use in Day 1 Session ]` handoff.
+4. **Anatomical Tension Spotlight (`<AnatomicalTensionSpotlight />`)**: Vector micro-torso highlighting target (Emerald) and synergist (Cyan) muscles with Setup Anchor and Kinetic Drive cues (`15px` gym-floor legibility).
+5. **Intelligent Substitution Copilot (`<SubstitutionCopilotDrawer />`)**: 1-tap in-session equipment swap with resistance curve matching and weight recalculation.
+6. **Auto-Progression & Deload Engine (`progression.ts`)**: Double progression, Greyskull LP, stall streaks, and 10% deload resets.
+7. **Structural Balance Radar (`/posture`)**: Poliquin, Thibaudeau, and ATG benchmark ratio analysis.
+8. **Offline Sync Resilience (`offline-sync.ts`)**: Write-ahead IndexedDB set logging and idempotent mutation replay queue.
+9. **Multi-Region Cloud Run Infrastructure**: Geo-replicated deployment in Doha (`me-central1`) and US Central (`us-central1`).

@@ -1,15 +1,15 @@
 # VYRA Strategic Roadmap & Specification Registry
 
 > **Document Status**: Production Master Registry & Forward Horizons  
-> **Verification Baseline**: Specs 001–018 Verified Live in Production  
-> **Test Coverage**: 289/289 Passing Tests Across 84 Test Suites (100% Pass Rate)  
+> **Verification Baseline**: Specs 001–019 Verified Live in Production  
+> **Test Coverage**: 297/297 Passing Tests Across 85 Test Suites (100% Pass Rate)  
 > **Infrastructure**: Multi-Region Cloud Run — Doha (`me-central1`) & US Central (`us-central1`) on Port 8080  
 
 ---
 
-## 1. Completed / Live in Production Registry (Specs 001–018)
+## 1. Completed / Live in Production Registry (Specs 001–019)
 
-All 18 core foundational specifications have been designed, implemented, tested, and shipped to live production environments.
+All 19 core foundational specifications have been designed, implemented, tested, and shipped to live production environments.
 
 | Spec | Exact Title | Core Production Deliverable & Capabilities | Verified Test Coverage | Multi-Region Endpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -31,18 +31,44 @@ All 18 core foundational specifications have been designed, implemented, tested,
 | **016** | `016-anatomical-tension-spotlight` | Interactive SVG micro-silhouette `<AnatomicalTensionSpotlight />` (Emerald `#10B981` target tension, Cyan `#06B6D4` synergist tension, 0ms render latency, zero WebGL/canvas dependency), Anterior/Posterior micro-segmented selector, two kinetic anchors (⚡ **Setup Anchor** and 🎯 **Kinetic Drive**), 3 segmented tabs (Coach Focus, Full Protocol, Direct Swaps), `<PlateCalculatorPopover />` integration. | 18 Unit Tests | `us-central1:8080`<br/>`me-central1:8080` |
 | **017** | `017-intelligent-substitution-copilot` | 1-Tap substitution drawer (`<SubstitutionCopilotDrawer />`) in `/session` and `/exercises`, muscular subdivision matching (clavicular vs sternal vs costal pec, iliac lat vs rhomboids, lengthened vs shortened quads, hip hinge vs knee flexion hamstrings), resistance curve alignment (lengthened, shortened, constant, ascending), instant coach biomechanical rationale card, 1-tap active workout session mutation with weight/plate target recalculation. | 19 Unit Tests | `us-central1:8080`<br/>`me-central1:8080` |
 | **018** | `018-offline-sync-resilience` | Protocol A: Instant set-level draft journaling (`<2ms`, IndexedDB / `localStorage`, 4-hour window auto-restore on reload), Protocol B: Replay mutation sync queue (`mutation_queue`) with exponential backoff (`2^attempts * 1000ms`) and jitter, online/focus trigger drain, Protocol C: Full offline catalogue index & Service Worker precache (`public/sw.js` precaching `/exercises` and `/data/exercise-catalogue.json`), CSO / STRIDE threat model hardening. | 16 Unit Tests + 5 Mobile QA Walkthrough Tests | `us-central1:8080`<br/>`me-central1:8080` |
+| **019** | `019-day-zero-trust-onboarding` | **Couch-to-Rack Day-0 Onboarding Architecture**: Zero-gate Day-1 workout hero on `/today` (suppressing supplements, hydration, and rest-day templates until Session 1 is logged), 1-Anchor Poliquin Starting Weight Calibrator (`<150ms` derivation across all Day-1 exercises + `"Calibrate as I lift"` fallback), interactive `"Why {weight} kg?"` formula breakdown with reversible Sleep What-If chips (`7.5h Full` vs `5h Short [-10% load]`), `"Not at the gym yet? Get ready"` sheet with In-App WebView handoff (`?anchor=80x8&unit=kg`), verified `● Offline-ready` precache check, free `<AnatomicalTensionSpotlight />` entitlement, and `[ Use in Day 1 Session ]` catalogue handoff. | 8 Unit Tests (24 Assertions) | `us-central1:8080`<br/>`me-central1:8080` |
 
 ### Production Test Verification Summary
-- **Node:Test Standard Unit Test Suites**: 268 / 268 tests passing across 80 test suites.
+- **Node:Test Standard Unit Test Suites**: 276 / 276 tests passing across 81 test suites.
 - **Mobile Walkthrough Integration Suite**: 5 / 5 tests passing (`tests/qa-in-gym-mobile-walkthrough.test.ts`).
 - **Vitest Specialized Engine Suites**: 16 / 16 tests passing across 3 test suites (`tests/training-math.test.ts`, `tests/agentic-rag.test.ts`, `tests/in-gym-execution.test.ts`).
-- **Grand Total**: **289 / 289 passing tests across 84 test suites (100% pass rate, 0 failures, 0 skipped)**.
+- **Grand Total**: **297 / 297 passing tests across 85 test suites (100% pass rate, 0 failures, 0 skipped)**.
 
 ---
 
-## 2. Remaining Future Horizons
+## 2. Onboarding & Cold-Start Trust Roadmap (Spec 019 Live + MVP-Police-Deferred Specs 020–023)
 
-With the core single-device, offline-first Biomechanical Engine fully validated in production, future development is structured into three disciplined horizons.
+To ensure zero onboarding or growth capabilities flagged by the `mvp-police` and `founder-operating-system` audits are lost, all deferred onboarding features are formally sequenced into dedicated sub-horizons tied to their prerequisite infrastructure phases:
+
+```
++-------------------------------------------------------------------------------------------------------------+
+| ONBOARDING & TRUST EVOLUTION ROADMAP (SPECS 019 -> 023)                                                     |
++------------------------+------------------------+------------------------+----------------------------------+
+| NOW: SPEC 019 (LIVE)   | PHASE 4B/4C: SPECS     | PHASE 5B: SPEC 022     | PHASE 6B: SPEC 023               |
+| Couch-to-Rack Proxy    | 020 & 021              | Source-Aware Deep Link | B2B2C Trainer-Invite Flow        |
+| 1-Anchor Poliquin Math | CSV/AI Log Importer +  | Reel Clip Matching &   | /invite/[coachId] Pre-Calibrated |
+| "Why {weight}?" Proof  | Post-Session 1 Passkey | Inbound Lift Hero Swap | Mesocycle & Load Handoff         |
++------------------------+------------------------+------------------------+----------------------------------+
+```
+
+| Spec | Target Horizon | Feature Title | Scope & Technical Architecture | Why Deferred by MVP Police (Unblocking Gate) |
+| :---: | :---: | :--- | :--- | :--- |
+| **019** | **Phase 3 (Active / Live)** | `019-day-zero-trust-onboarding` | **Zero-Gate Day-0 Onboarding & Trust Calibration**:<br/>1. **Day-0 Isolation (`isDayZero`)**: Hides supplements, hydration, and rest-day defaults on `/today`; always surfaces Day 1 Workout Hero with `<AnatomicalTensionSpotlight />`.<br/>2. **1-Anchor Poliquin Calibration**: 1 compound lift input (`Weight × Reps` + `kg/lb` toggle) derives all Day-1 loads in `<150ms` via Epley + Poliquin ratios, with `"Not sure? Calibrate as I lift"` fallback.<br/>3. **Interactive Trust Proof**: Tappable `"Why {weight} kg?"` formula breakdown + reversible Sleep What-If toggle (`7.5h Full` vs `5h Short [-10% load]`).<br/>4. **Gym-Ready Sheet & WebView Escape**: Detects Instagram/Reddit/TikTok WebViews (`Open in Safari/Chrome` preserving `?anchor=` state) and verifies Service Worker precache (`● Offline-ready`). | **Approved Immediately (ROI 7.60)**: Solves cold-start trust, Day-0 cognitive overload, and in-app browser eviction with zero backend dependencies. |
+| **020** | **Phase 4B** | `020-historical-log-importer` | **Historical Workout & Program Importer (Hevy / Strong / Fitbod CSV + AI Table Paste)**:<br/>1. **Deterministic CSV Parser**: Drag-and-drop or file-pick `.csv` exports from Hevy, Strong, or Fitbod to automatically seed historical `WorkoutSession` logs, PRs, and 1RM baselines.<br/>2. **AI Vision / Paste Table Importer**: Paste raw text or screenshot of an existing spreadsheet program; model proposes a structured lift table and user confirms every number before saving. | **Deferred by MVP Police until Phase 4B**: Building a multi-format CSV/AI parser before validating cold-start Day-1 session completion via 1-Anchor Calibration (Spec 019) is premature engineering. Unblocks once Day-1 completion exceeds 35%. |
+| **021** | **Phase 4C** | `021-post-session-passkey-handoff` | **Post-Session 1 Passkey Account Save & Cloud Sync Handoff**:<br/>1. **Zero Pre-Session Auth Gate**: Never ask for email or Passkey before Session 1.<br/>2. **Value-Earned Account Prompt**: On the Session 1 Summary Card (after first PR/loads are learned), present a 1-tap `"Back up my workouts with Passkey (FaceID/TouchID)"` sheet that binds the local IndexedDB `userId` to PostgreSQL (`src/db/schema.ts`). | **Deferred by MVP Police until Phase 4C**: Requires server-side PostgreSQL + Drizzle ORM + WebAuthn relying party setup (`Phase 4`). Until Phase 4 ships, `/your-data` JSON export + `"Saved on this phone"` provides honest local persistence. |
+| **022** | **Phase 5B** | `022-source-aware-deep-link-entry` | **Source-Aware Entry & Deep-Link Reel Attribution**:<br/>1. **Inbound Clip Matching**: Reads `?lift=incline_db_press&source=reel_spotlight` so the very first card on `/today` highlights the exact movement and `<AnatomicalTensionSpotlight />` torso from the social clip.<br/>2. **Multi-Variant Attribution Telemetry**: Tracks conversion from specific spotlight clips to first logged set without cookies or PII. | **Deferred by MVP Police until Phase 5B**: Spec 019 already provides `[ Use in Day 1 Session ]` from `/exercises` and `?anchor=` query hydration. Full inbound campaign deep-link routing unblocks when paid/organic social clip volume scales (>500 weekly inbound taps). |
+| **023** | **Phase 6B** | `023-trainer-invite-onboarding` | **B2B2C Trainer-Invite Zero-Calibration Onboarding (`/invite/[coachId]`)**:<br/>1. **Pre-Calibrated Client Link**: Coaches on `/roster` generate a signed invite link containing the trainee's custom 16-week mesocycle and pre-assigned starting loads.<br/>2. **Zero-Input Landing**: Trainee opens link and lands directly on Step 3 (`Check one number`) with their coach's avatar, custom loads pre-filled, and 1-tap `Start Day 1 Session`. | **Deferred by MVP Police until Phase 6B**: Requires multi-device cloud database sync (`Phase 4`) and branded custom domain (`app.vyra.fit` in `Phase 6`) so trainer invite links resolve cross-device. |
+
+---
+
+## 3. Core Infrastructure Horizons (Phases 4–6)
+
+With the core single-device, offline-first Biomechanical Engine and Spec 019 Day-0 Onboarding validated in production, infrastructure scaling follows three disciplined horizons:
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -50,33 +76,31 @@ With the core single-device, offline-first Biomechanical Engine fully validated 
 +------------------------------------+------------------------------------+-------------------------+
 | PHASE 4: CLOUD SYNC & AUTH         | PHASE 5: WEARABLE WEBHOOKS         | PHASE 6: BRANDED PWA    |
 | Multi-Device Cloud Sync & Postgres | Automated Passive Biometrics       | DNS A-Record Activation |
-| WebAuthn / Passkeys + Drizzle ORM  | Apple HealthKit / Whoop / Oura     | app.vyra.fit Anycast IP |
+| WebAuthn / Passkeys + Specs 020/21 | Apple HealthKit + Spec 022         | app.vyra.fit + Spec 023 |
 +------------------------------------+------------------------------------+-------------------------+
 ```
 
-### Phase 4: Multi-Device Cloud Sync & Authentication
+### Phase 4: Multi-Device Cloud Sync, Authentication & Specs 020–021
 
-- **Objective**: Expand Vyra from a single-device, client-centric IndexedDB application to an authenticated, multi-device cloud-synchronized ecosystem without compromising offline gym reliability.
+- **Objective**: Expand Vyra from a single-device, client-centric IndexedDB application to an authenticated, multi-device cloud-synchronized ecosystem without compromising offline gym reliability, while unlocking **Spec 020 (Historical Log Importer)** and **Spec 021 (Post-Session 1 Passkey Handoff)**.
 - **Components & Technical Architecture**:
   1. **Server-Side PostgreSQL Database with Drizzle ORM**:
      - Database schema prepared and typed in `src/db/schema.ts` (`drizzle-orm` and `pg` installed).
      - Relational tables: `users`, `programs`, `program_days`, `exercise_blocks`, `exercises`, `set_logs`, `biometric_snapshots`, `sync_checkpoints`.
-  2. **Passwordless WebAuthn & Passkey Authentication**:
+  2. **Passwordless WebAuthn & Passkey Authentication (Spec 021)**:
+     - Triggered exclusively *after* Session 1 completion (never as a Day-0 signup wall).
      - Modern biometric authentication (FaceID, TouchID, Windows Hello) via FIDO2 / WebAuthn protocols.
      - Fallback: Email magic links issuing `httpOnly`, `Secure`, `SameSite=Strict` session cookies validated via Next.js middleware.
-     - Zero password storage, zero credential leakage risk.
-  3. **Two-Way Idempotent Synchronization Engine**:
+  3. **Two-Way Idempotent Synchronization Engine & Historical Importer (Spec 020)**:
      - Retains client-side IndexedDB as the primary write-ahead cache (`<2ms` set logging).
-     - Client-generated RFC 4122 v4 UUIDs for all workout entities to guarantee conflict-free synchronization.
+     - Deterministic CSV importer for Hevy/Strong/Fitbod logs + AI structured table confirmation.
      - Last-Write-Wins (LWW) conflict resolution with vector clocks and sync checkpoints.
-     - Silent background sync triggered on window focus, visibility change, and network `online` events.
-     - Minimalist UI state: Calm, non-intrusive sync pill (`"Saved"` / `"Syncing..."`).
 
 ---
 
-### Phase 5: Automated Biometrics Webhook Ingestion
+### Phase 5: Automated Biometrics Webhook Ingestion & Spec 022
 
-- **Objective**: Automate the readiness calculation by replacing manual check-in prompts with passive, high-fidelity physiological telemetry streams.
+- **Objective**: Automate the readiness calculation by replacing manual check-in prompts with passive, high-fidelity physiological telemetry streams, and ship **Spec 022 (Source-Aware Deep-Link Entry)**.
 - **Components & Technical Architecture**:
   1. **Wearable Ingestion Pipeline**:
      - Production webhook endpoint: `POST /api/webhooks/biometrics` (established in Spec 008).
@@ -85,37 +109,37 @@ With the core single-device, offline-first Biomechanical Engine fully validated 
   2. **Physiological Signal Normalization**:
      - Extracts sleep architecture (`sleepHours`, `deepSleepMinutes`), autonomic nervous system balance (`hrvMs` / rMSSD), cardiovascular baseline (`restingHeartRateBpm`), and previous day active expenditure (`activeEnergyBurnedKcal`).
      - Normalizes disparate metrics into a unified 0–100 Biomechanical Readiness Index.
-  3. **Intra-Workout Real-Time Autoregulation**:
-     - Cardiovascular recovery feedback: If trainee's heart rate remains elevated (>135 bpm) when the scheduled rest timer expires, the in-gym engine dynamically extends the rest interval by +30 seconds.
-     - Systemic fatigue threshold: Automatic pruning of non-essential accessory volume when intra-workout heart rate variability demonstrates severe neuromuscular depression.
+  3. **Source-Aware Inbound Deep-Link Routing (Spec 022)**:
+     - Matches inbound social reel query params (`?lift=...&source=...`) to dynamically swap the Day-0 Spotlight hero lift to the exact clip the user tapped.
 
 ---
 
-### Phase 6: DNS A-Record Activation & Branded Distribution
+### Phase 6: DNS A-Record Activation, Branded Distribution & Spec 023
 
-- **Objective**: Launch branded, zero-friction global distribution of Vyra as an elite Progressive Web Application (PWA).
+- **Objective**: Launch branded, zero-friction global distribution of Vyra as an elite Progressive Web Application (PWA) at `app.vyra.fit` and unlock **Spec 023 (B2B2C Trainer-Invite Onboarding)**.
 - **Components & Technical Architecture**:
   1. **DNS & Anycast Edge Routing**:
      - Configure DNS A-Record: `app.vyra.fit` pointing to Anycast IP `136.81.52.191`.
      - Cloud Run custom domain mapping with automated TLS 1.3 / SSL certificate provisioning and renewal.
      - Geo-DNS routing requests to the nearest edge: Doha (`me-central1`) for GCC/Middle East trainees (<20ms latency) and US Central (`us-central1`) for North American trainees.
-  2. **App Store Bypass Distribution**:
+  2. **App Store Bypass & Gym-Ready PWA Installation**:
      - Zero 30% App Store revenue tax; zero arbitrary App Store review delays.
-     - Standalone PWA installation flow via `public/manifest.json` and interactive installation guide at `/install`.
-     - Service Worker (`public/sw.js`) precaching all critical static assets, 6,554-exercise catalogue, and route shells for instant launch.
-  3. **Platform API Integrations**:
-     - Full iOS Safari / Android Chrome standalone display mode.
-     - Screen Wake Lock (`navigator.wakeLock`) keeping display illuminated throughout training sessions.
-     - Web Audio API synthesizer for clean, non-intrusive auditory rest interval cues.
+     - Contextual installation prompt integrated directly into the Day-0 `"Not at the gym yet? Get ready"` sheet (Spec 019) and `/install`.
+  3. **B2B2C Trainer-Invite Onboarding (`/invite/[coachId]` — Spec 023)**:
+     - Allows coaches on `/roster` to send pre-calibrated mesocycle links that bypass cold-start calibration entirely.
 
 ---
 
-## 3. Exploratory & Architectural Backlog
+## 4. Exploratory & Architectural Backlog
 
 Features reserved for exploration after validation of Phases 4 through 6:
 
 | Domain | Feature Area | Strategic Rationale | Re-opening Gate | Est. Complexity |
 | :--- | :--- | :--- | :--- | :---: |
+| **Onboarding** | Spec 020: Hevy/Strong CSV & AI Log Importer | Eliminates switching cost for lifters with 2–7 years of historical logs. | Phase 4B (Post-Spec 019 Validation) | Medium |
+| **Onboarding** | Spec 021: Post-Session 1 Passkey Cloud Save | Converts local IndexedDB state into a persistent multi-device cloud account after first value. | Phase 4C (Postgres + WebAuthn Live) | Medium |
+| **Onboarding** | Spec 022: Source-Aware Deep-Link Entry | Guarantees 1:1 visual message match between specific social reel clips and Day-0 Hero Lift 1. | Phase 5B (>500 Weekly Clip Taps) | Low |
+| **Onboarding** | Spec 023: B2B2C Trainer-Invite Flow | Enables VIP coaches to onboard clients with pre-loaded weights in zero taps. | Phase 6B (`app.vyra.fit` + Cloud Sync) | Medium |
 | **Localization** | Ramadan & Fasting Protocol | Shifts training, hydration loading, and nutrient milestones to Suhoor/Iftar windows for GCC athletes. | Owner Gate | Medium |
 | **Monetization** | GCC Local Payment Gateways | Local debit schemes (Mada, KNET, NAPS, Apple Pay) via regional payment orchestration. | Phase 4 Complete | Medium |
 | **Hardware** | Native Taptic Haptics | True hardware-level Taptic pulses for rest alerts via Capacitor `@capacitor/haptics`. | Standalone App Wrap | Low |

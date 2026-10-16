@@ -48,7 +48,7 @@ describe("Vyra Domain Store & Business Logic", () => {
   });
 
   it("records bodyweight metrics and retrieves chronological history", () => {
-    const entry = appStore.addMetric("trainee_1", 80.2, "2026-10-15");
+    const entry = appStore.addMetric("trainee_1", 80.2);
     assert.equal(entry.weightKg, 80.2);
 
     const history = appStore.getMetrics("trainee_1");

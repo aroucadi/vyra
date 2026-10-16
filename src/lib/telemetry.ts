@@ -20,7 +20,12 @@ export type VyraTelemetryEvent =
   | "coach_smart_action_applied"
   | "coach_smart_action_dismissed"
   | "paywall_viewed"
-  | "subscription_started";
+  | "subscription_started"
+  | "onboarding_step_viewed"
+  | "webview_detected"
+  | "offline_verified"
+  | "install_prompt_shown"
+  | "first_set_logged";
 
 export interface TelemetryEventRecord {
   eventName: VyraTelemetryEvent;

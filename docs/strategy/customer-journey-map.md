@@ -49,18 +49,21 @@ flowchart LR
 
 ---
 
-### Stage 2: Day 0 Frictionless Activation (Time-to-Value $< 45$ Seconds)
+### Stage 2: Day 0 Cold-Start Trust & Calibration (Time-to-Personalized-Session $< 30$ Seconds — Spec 019)
 
-- **Anti-Pattern Excluded**: Zero 12-screen onboarding surveys asking for birth dates, favorite music, or upfront credit card details.
-- **The Frictionless Flow**:
-  1. **Landing & Catalogue Discovery (0–15s)**:
-     - Trainee lands directly on `/today` or explores the canonical 6,554-exercise catalogue at `/exercises`.
-     - Types gym shorthand into search (`"db rdl"`, `"ohp"`, `"bench"`) $\rightarrow$ Results render in $<10\text{ms}$ with full anatomical metadata.
-  2. **1-Tap Readiness Declaration (15–30s)**:
-     - A clean, tactile check-in on `/today`: *"How did you sleep last night?"* (`<ReadinessCheckin />`).
-     - Selecting *"5.5h / Sub-optimal"* immediately triggers `<AdaptiveRecalibrationCard />`, adjusting axial compound loads by 5–10% to protect the spine while preserving hypertrophy volume on stable machines.
-  3. **Launch Active Session (30–45s)**:
-     - 1 Tap on primary CTA: `[ Start Today's Protocol ]` $\rightarrow$ Transitions directly into `/session`.
+- **The Arriving Context**: The lifter likely tapped a social clip while on the couch (not standing at a squat rack) and is asking: *"What's my first session, and can I trust its numbers?"*
+- **The 5-Step Couch-to-Rack Flow**:
+  1. **See Day 1 (`0–10s`)**:
+     - Lands directly on `/today` showing **Day 1 Starts Today** (`Upper Frame & Symmetry`) with the free `<AnatomicalTensionSpotlight />` active on Lift 1. Supplements, hydration stacks, and rest-day templates are hidden until Session 1 is completed.
+     - Trust line reads: `No account. No card. Saved on this phone · Export`.
+  2. **1-Anchor Poliquin Calibration (`10–25s`)**:
+     - Taps `[ Set My Starting Weights ]` $\rightarrow$ Enters 1 compound lift (`Barbell Bench Press` or `Flat Dumbbell Press`, e.g., `80 kg × 8`) or selects `"Not sure? Calibrate as I lift"`.
+     - Within `<150ms`, the engine computes Epley 1RM (`101.3 kg`) and applies Poliquin structural ratios to populate every Day-1 exercise.
+  3. **Check One Number & Reversible Sleep What-If (`25–40s`)**:
+     - Taps **`Why 32.5 kg? Tap to check`** to inspect the exact formula and inputs, and tests the reversible **Sleep What-If** toggle (`7.5h` vs `5h [-10% load]`).
+  4. **Start Session or Get Ready for the Gym**:
+     - Primary CTA: `[ Start Day 1 Session ]` $\rightarrow$ Enters `/session` with calibrated loads pre-filled.
+     - Secondary CTA: `[ Not at the gym yet? Get ready ]` $\rightarrow$ Verifies Service Worker offline cache (`● Offline-ready`), offers 1-tap Safari/Chrome WebView handoff (`?anchor=80x8&unit=kg`), and links to `/install`.
 
 ---
 
@@ -71,7 +74,7 @@ Occurs directly inside the active workout floor (`/session`):
 1. **Tactile Anatomical Tension Visualization**:
    - Trainee inspects the exercise detail card featuring `<AnatomicalTensionSpotlight />`.
    - The vector micro-torso illuminates the target muscle in Emerald (`#10B981`) and synergists in Cyan (`#06B6D4`).
-   - Two kinetic anchors guide execution:
+   - Two kinetic anchors (`15px` gym-floor legibility) guide execution:
      - ⚡ **Setup Anchor**: *"Scapulae retracted and depressed into bench arch."*
      - 🎯 **Kinetic Drive**: *"Drive elbows inward through palms to peak contraction."*
 2. **Instant In-Gym Equipment Substitution**:
@@ -86,7 +89,7 @@ Occurs directly inside the active workout floor (`/session`):
 
 ### Stage 4: Day 1–7 Core Habit Loop
 
-- **Cadence**: 4–5 lifting sessions per week + daily morning/evening supplement check-offs on `/today`.
+- **Cadence**: 4–5 lifting sessions per week + daily morning/evening supplement check-offs on `/today` (unlocked after Session 1).
 - **The In-Gym Execution Loop (Sub-5 Seconds per Set)**:
   - Trainee finishes set $\rightarrow$ Pre-filled weight and reps already loaded.
   - Taps stepper if reps differed $\rightarrow$ Taps `[ Log Set ]`.
@@ -124,14 +127,14 @@ Synchronized with `src/lib/telemetry.ts` and non-blocking event dispatchers:
 
 | Event Name | Trigger Context | Payload Metadata (Zero PII) | Strategic Purpose |
 | :--- | :--- | :--- | :--- |
-| `readiness_declared` | Trainee submits sleep hours on `/today`. | `sleepHours`, `isAdapted` (boolean) | Measures activation and autoregulation adoption rate. |
-| `session_started` | Trainee enters `/session`. | `programId`, `dayNumber`, `slotCount` | Tracks core session initiation. |
-| `set_logged` | Trainee logs a completed working set. | `exerciseId`, `weightKg`, `reps`, `rir`, `isPR` | Primary engagement pulse; feeds double progression. |
-| `exercise_substituted` | Trainee applies swap via Copilot Drawer. | `originalExerciseId`, `substituteExerciseId`, `reason` | Measures equipment substitution friction elimination. |
-| `plate_calculator_opened` | Trainee inspects bar loading breakdown. | `barWeightKg`, `targetWeightKg` | Measures in-gym execution tool utility. |
-| `rest_interval_completed` | Rest timer reaches 00:00. | `configuredDurationSec`, `actualElapsedSec` | Tracks rest discipline and session pacing. |
-| `deload_triggered` | 3 consecutive stalls detected. | `exerciseId`, `stallStreak`, `deloadFactor` | Tracks auto-progression engine interventions. |
-| `structural_balance_viewed` | Trainee inspects `/posture`. | `benchmarkTemplate`, `weakNodeCount` | Measures diagnostic feature retention. |
+| `onboarding_step_viewed` | Day-0 step viewed or calibrated on `/today`. | `step`, `mode`, `unit`, `sleepMode` | Measures Day-0 couch-to-rack calibration completion. |
+| `webview_detected` | Arrived inside Instagram/Reddit/TikTok WebView. | `sourceApp`, `recommendedBrowser` | Tracks ephemeral WebView arrivals needing browser handoff. |
+| `offline_verified` | Service Worker & catalogue precache confirmed. | `swSupported`, `cacheSupported` | Verifies offline readiness before first airplane-mode test. |
+| `install_prompt_shown` | User opens `"Not at the gym yet? Get ready"` sheet. | `trigger` (`not_at_gym_yet`, `webview_banner`) | Measures contextual Home Screen install intent. |
+| `first_set_logged` | Trainee logs very first working set in Session 1. | `programId`, `exerciseId` | North-star activation milestone. |
+| `readiness_answered` | Trainee submits sleep hours on `/today`. | `sleepHours`, `isAdapted` (boolean) | Measures activation and autoregulation adoption rate. |
+| `session_started` | Trainee enters `/session`. | `programId`, `dayZero`, `calibrationMode` | Tracks core session initiation. |
+| `workout_set_logged` | Trainee logs a completed working set. | `exerciseId`, `reps`, `rir`, `isPR` | Primary engagement pulse; feeds double progression. |
 
 ---
 

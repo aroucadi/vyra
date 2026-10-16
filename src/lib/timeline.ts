@@ -1,6 +1,7 @@
 import { appStore } from "./store";
 import { resolveProgramDay } from "./utils";
 import { WorkoutSession } from "./types";
+import { isDayZeroUser, resolveDayOneWorkoutDay } from "./onboarding";
 
 export type PillarId = "train" | "eat" | "sleep" | "style" | "network";
 
@@ -45,15 +46,55 @@ export interface DayTimelineResult {
   readinessStatus: string;
   hasReadinessInput: boolean;
   isRestDay: boolean;
+  isDayZero: boolean;
 }
 
 /**
- * Derives the unified Day Timeline from current user, program, logs, and device clock
+ * Derives the unified Day Timeline from current user, program, logs, and device clock.
+ * On Day 0 (zero logged sessions), isolates `/today` to the Day-1 Workout Hero (`"Day 1 starts today"`),
+ * suppressing default supplements, hydration stacks, rest-day fallbacks, and unverified HRV copy.
  */
-export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHour?: number): DayTimelineResult {
+export function deriveDayTimeline(
+  userId: string,
+  targetDateStr?: string,
+  mockHour?: number,
+  options?: { forceDayZero?: boolean }
+): DayTimelineResult {
   const dateStr = targetDateStr || new Date().toISOString().split("T")[0];
   const program = appStore.getActiveProgramForTrainee(userId);
   const currentHour = mockHour !== undefined ? mockHour : new Date().getHours();
+  const isDayZero = options?.forceDayZero === true;
+
+  if (isDayZero) {
+    const dayOne = resolveDayOneWorkoutDay(userId);
+    const label = dayOne.programDay?.label || "Upper Frame & Symmetry";
+    const exCount = dayOne.exerciseCount || 6;
+    const estMin = dayOne.estimatedMinutes || 38;
+    const dayId = dayOne.programDay?.id || "day_1";
+
+    const dayOneWorkoutMoment: TimelineMoment = {
+      id: "moment_workout_day_one",
+      pillar: "train",
+      time: "Day 1",
+      title: `Day 1 starts today · ${label}`,
+      glance: `${exCount} lifts · ~${estMin} min · No account required`,
+      status: "now",
+      badge: "Day 1",
+      actionLabel: "Start Day 1 Session",
+      actionHref: `/session?day=${dayId}`,
+      learnType: "workout",
+    };
+
+    return {
+      moments: [dayOneWorkoutMoment],
+      heroMoment: dayOneWorkoutMoment,
+      insight: undefined,
+      readinessStatus: "Day 1 Ready",
+      hasReadinessInput: true,
+      isRestDay: false,
+      isDayZero: true,
+    };
+  }
 
   const resolved = program
     ? resolveProgramDay(program.startDate)
@@ -232,5 +273,6 @@ export function deriveDayTimeline(userId: string, targetDateStr?: string, mockHo
     readinessStatus,
     hasReadinessInput,
     isRestDay,
+    isDayZero: false,
   };
 }

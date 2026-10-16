@@ -30,33 +30,33 @@ Directly synchronized with the production entitlement middleware in `src/lib/ent
 +------------------------------------+------------------------------------+------------------------------------+
 | * Sub-5s Set Logging               | * EVERYTHING IN STARTER            | * EVERYTHING IN AUTONOMOUS         |
 | * 6,554 OpenGym Catalogue Browser  | * Automated Progression & Deload   | * Asynchronous Dedicated Coach     |
-| * 40+ Gym Floor Shorthand Search   | * Anatomical Tension Spotlight     | * Custom Curated 16-Week Mesocycle |
-| * Barbell/Smith Plate Calculator   | * Intelligent Substitution Copilot | * Bi-Weekly Video Posture Audits   |
-| * Daily Supplement Checklists      | * Structural Balance Radar UI      | * Priority Direct Concierge Line   |
-| * Offline Floor Mode & Drafts      | * Biometric Sleep Autoregulation   | * Early Access to Future Horizons  |
+| * Anatomical Tension Spotlight     | * Unlimited Substitution Copilot   | * Custom Curated 16-Week Mesocycle |
+| * 1-Anchor Day-0 Weight Calibrator | * Structural Balance Radar UI      | * Bi-Weekly Video Posture Audits   |
+| * Substitution Preview (1/session) | * Biometric Sleep Autoregulation   | * Priority Direct Concierge Line   |
+| * Barbell/Smith Plate Calculator   | * Multi-Week Stall Reset Engine    | * Early Access to Future Horizons  |
 +------------------------------------+------------------------------------+------------------------------------+
 ```
 
 ### Tier Feature Specifications
 
-#### Tier 1: Starter ($0 / Free Forever)
-- **Target**: Novice trainees and lifters evaluating Vyra's in-gym speed.
+#### Tier 1: Starter ($0 / Free Forever — Zero-Gate Onboarding Hook)
+- **Target**: New arrivals from social spotlight clips and lifters evaluating Vyra's in-gym speed. Zero price or trial copy is shown during Day-0 onboarding.
 - **Entitled Features** (mapped to `TIER_CAPABILITIES.FREE` in `src/lib/entitlements.ts`):
-  - `basic_workout_logging`: Ultra-fast sub-5s set logging with smart pre-filled history from previous sessions.
-  - `catalogue_browsing`: Full, unrestricted access to all 6,554 OpenGym exercise definitions with sub-10ms search and 40+ gym floor shorthands (`db`, `bb`, `rdl`, `ohp`, `sm`, `abs`).
+  - `basic_workout_logging`: Ultra-fast sub-5s set logging with 1-Anchor Poliquin Day-0 starting weight calibration and smart pre-filled history.
+  - `catalogue_browsing`: Full, unrestricted access to all 6,554 OpenGym exercise definitions with sub-10ms search, 40+ gym floor shorthands (`db`, `bb`, `rdl`, `ohp`, `sm`, `abs`), and `[ Use in Day 1 Session ]` handoff.
+  - `anatomical_tension_spotlight`: Vector micro-torso `<AnatomicalTensionSpotlight />` highlighting primary (Emerald `#10B981`) and synergist (Cyan `#06B6D4`) tension with dual kinetic anchors (`15px` gym-floor legibility). Unlocked free so the first impression matches the launch clip 100%.
+  - `substitution_copilot_preview`: 1 free biomechanical equipment swap per session via `<SubstitutionCopilotDrawer />`.
   - `plate_calculator`: Interactive `<PlateCalculatorPopover />` supporting Olympic 20kg, Women's 15kg, and Smith machines (0–15kg).
   - `stealth_gym_mode`: Distraction-free Obsidian dark UI (`#0B0F17`), Screen Wake Lock, and write-ahead IndexedDB offline storage.
 
 #### Tier 2: Autonomous ($29/month or $249/year)
-- **Target**: Serious lifters, corporate professionals, and strength athletes seeking automated sports science progression.
+- **Target**: Serious lifters, corporate professionals, and strength athletes seeking longitudinal automated sports science progression.
 - **Entitled Features** (mapped to `TIER_CAPABILITIES.PRO` in `src/lib/entitlements.ts`):
   - **Everything in Starter**, plus:
-  - `progression_engine`: Pure math progression suite (`progression.ts`) executing double progression, Greyskull LP, stall streak accumulation, and automated 10% Epley reset deloads.
+  - `progression_engine`: Pure math progression suite (`progression.ts`) executing double progression, Greyskull LP, stall streak accumulation, and automated 10% Epley reset deloads across multi-week mesocycles.
   - `structural_balance_radar`: Poliquin, Thibaudeau, and ATG benchmark strength ratio radar and joint preservation analysis at `/posture`.
-  - `autoregulation_advanced`: 1-tap sleep and readiness volume down-regulation (`<AdaptiveRecalibrationCard />`), axial compound load buffering, and machine volume shifts.
+  - `autoregulation_advanced`: Unlimited in-session `<SubstitutionCopilotDrawer />` swaps, longitudinal sleep/readiness volume down-regulation (`<AdaptiveRecalibrationCard />`), axial compound load buffering, and machine volume shifts.
   - `gemini_biometric_synthesis`: 4-layer RAG context debrief, Coach Smart Action Cards (`<CoachSmartActionCard />`), and closed-schema program mutations.
-  - **Anatomical Tension Spotlight**: Vector micro-torso SVG highlighting primary (Emerald `#10B981`) and synergist (Cyan `#06B6D4`) tension with dual kinetic anchors (⚡ **Setup Anchor** and 🎯 **Kinetic Drive**).
-  - **Intelligent Substitution Copilot**: `<SubstitutionCopilotDrawer />` matching occupied gym equipment by muscular subdivision and resistance curve with automated load recalculation.
   - **Offline Sync Resilience**: Mutation replay queue with exponential backoff and jitter (`offline-sync.ts`).
 
 #### Tier 3: VIP Coach Concierge ($129/month)

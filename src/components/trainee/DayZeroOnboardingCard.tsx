@@ -10,6 +10,8 @@ import {
   AnchorLiftId,
   CalibrationMode,
   SleepWhatIfMode,
+  TRAINING_GOALS,
+  TrainingGoal,
   WeightUnit,
   applyCalibratedWeightsToDayOne,
   buildHandoffQueryUrl,
@@ -34,6 +36,7 @@ import {
   Smartphone,
   Sparkles,
   Sun,
+  Target,
   WifiOff,
 } from "lucide-react";
 
@@ -52,8 +55,10 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [inputReps, setInputReps] = useState<number>(8);
   const [sleepMode, setSleepMode] = useState<SleepWhatIfMode>("normal");
   const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>("uncalibrated");
+  const [goal, setGoal] = useState<TrainingGoal>("hypertrophy");
 
   // Progressive disclosure sheets & popovers
+  const [isGoalSheetOpen, setIsGoalSheetOpen] = useState(false);
   const [isCalibrationSheetOpen, setIsCalibrationSheetOpen] = useState(false);
   const [isWhyExpanded, setIsWhyExpanded] = useState(false);
   const [isGymReadySheetOpen, setIsGymReadySheetOpen] = useState(false);
@@ -98,6 +103,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       setInputReps(parsed.reps);
       setUnit(parsed.unit);
       if (parsed.sleepMode) setSleepMode(parsed.sleepMode);
+      if (parsed.goal) setGoal(parsed.goal);
       setCalibrationMode(parsed.mode || "calibrated");
     }
   }, [userId, webViewStatus.isInAppWebView, webViewStatus.recommendedBrowser, webViewStatus.sourceApp]);
@@ -136,8 +142,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         unit,
         sleepMode,
         mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
+        goal,
       }),
-    [userId, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode]
+    [userId, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal]
   );
 
   const primaryTarget = calibration.targets[0];
@@ -163,12 +170,13 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       unit,
       sleepMode,
       mode,
+      goal,
     });
     applyCalibratedWeightsToDayOne(userId, applied);
     setIsCalibrationSheetOpen(false);
     telemetry.track(
       "onboarding_step_viewed",
-      { step: "step_3_numbers_calibrated", mode, unit, sleepMode },
+      { step: "step_3_numbers_calibrated", mode, unit, sleepMode, goal },
       userId
     );
     onCalibrated?.();
@@ -178,7 +186,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
     if (calibrationMode !== "uncalibrated") {
       applyCalibratedWeightsToDayOne(userId, calibration);
     }
-    telemetry.track("session_started", { dayZero: true, calibrationMode }, userId);
+    telemetry.track("session_started", { dayZero: true, calibrationMode, goal }, userId);
     router.push(`/session?day=${dayId}`);
   };
 
@@ -191,8 +199,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       unit,
       sleepMode,
       mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
+      goal,
     });
-  }, [anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode]);
+  }, [anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal]);
 
   const handleCopyHandoffLink = async () => {
     try {
@@ -233,25 +242,43 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       {/* Main Day-1 Focus Hero Card (Strictly <= 3 Vertical Groups per AGENTS.md) */}
       <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-xl space-y-5">
         {/* GROUP 1: Eyebrow, Day-1 Title & Honest Trust Line */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            {deepLinkConfig ? (
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
-                From Video · {deepLinkConfig.displayName}
-              </span>
-            ) : (
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                Day 1 Starts Today
-              </span>
-            )}
-            <span className="text-xs font-mono text-slate-400 tabular-nums">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {deepLinkConfig ? (
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                  From Video · {deepLinkConfig.displayName}
+                </span>
+              ) : (
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                  Day 1 Calibration
+                </span>
+              )}
+            </div>
+
+            {/* 1-Tap Optional Goal Selector Chip */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsGoalSheetOpen(true);
+                telemetry.track("onboarding_step_viewed", { step: "open_goal_selector" }, userId);
+              }}
+              className="min-h-[32px] px-2.5 py-1 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 text-[11px] font-mono text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+              aria-label="Select training goal"
+            >
+              <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Goal: <strong className="text-white font-semibold">{TRAINING_GOALS[goal].shortLabel}</strong> ▾</span>
+            </button>
+          </div>
+
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              {deepLinkConfig ? `${deepLinkConfig.displayName} Session` : (dayOne.programDay?.label || "Upper Frame & Symmetry")}
+            </h2>
+            <span className="text-xs font-mono text-slate-400 tabular-nums shrink-0">
               {dayOne.exerciseCount || 6} lifts · ~{dayOne.estimatedMinutes || 38} min
             </span>
           </div>
-
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            {deepLinkConfig ? `${deepLinkConfig.displayName} Session` : (dayOne.programDay?.label || "Upper Frame & Symmetry")}
-          </h2>
 
           <p className="text-xs text-slate-400 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -316,7 +343,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
                 <div>
                   <span className="block text-[10px] font-mono uppercase text-slate-400">
-                    Starting Load
+                    Estimated Starting Load
                   </span>
                   {calibrationMode === "uncalibrated" ? (
                     <span className="text-base font-mono font-bold text-slate-300 tabular-nums">
@@ -330,9 +357,14 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                       Calibrate on Set 1 (2 RIR)
                     </span>
                   ) : (
-                    <span className="text-base font-mono font-bold text-emerald-400 tabular-nums">
-                      {primaryTarget?.displayWeight} {unit}
-                    </span>
+                    <div>
+                      <span className="text-base font-mono font-bold text-emerald-400 tabular-nums">
+                        {primaryTarget?.displayWeight} {unit}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        Estimated from {inputWeight} {unit} anchor · Adjust anytime
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -739,6 +771,79 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             >
               Inspect local storage &amp; JSON export (/your-data)
             </Link>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* SHEET 3 (Spec 024): 1-Tap Training Focus & Goal Selector */}
+      <Sheet open={isGoalSheetOpen} onOpenChange={setIsGoalSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl"
+        >
+          <SheetHeader className="text-left space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                1-Tap Calibration Focus
+              </span>
+              <span className="text-xs font-mono text-slate-400">Optional · No quiz</span>
+            </div>
+            <SheetTitle className="text-lg font-bold text-white">
+              Choose your Day-1 training focus
+            </SheetTitle>
+            <SheetDescription className="text-xs text-slate-400">
+              Selecting a focus recalibrates target rep ranges, target RIR, and load intensity across all lifts in &lt;1ms.
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* 4 Clean Goal Tiles */}
+          <div className="space-y-2.5 pt-1">
+            {Object.values(TRAINING_GOALS).map((g) => {
+              const isSelected = goal === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    setGoal(g.id);
+                    setIsGoalSheetOpen(false);
+                    telemetry.track("goal_selected", { goal: g.id }, userId);
+                  }}
+                  className={`w-full min-h-[58px] p-3.5 rounded-2xl border text-left transition flex items-start justify-between gap-3 cursor-pointer ${
+                    isSelected
+                      ? "bg-slate-800/90 border-emerald-500/60 shadow-lg"
+                      : "bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white leading-tight">
+                        {g.label}
+                      </span>
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${g.badgeClass}`}>
+                        {g.repRange} reps
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-snug">
+                      {g.description}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsGoalSheetOpen(false)}
+              className="w-full min-h-[44px] py-2.5 text-xs font-semibold text-slate-400 hover:text-white border border-slate-800 rounded-xl transition cursor-pointer"
+            >
+              Keep Current Focus ({TRAINING_GOALS[goal].shortLabel})
+            </button>
           </div>
         </SheetContent>
       </Sheet>

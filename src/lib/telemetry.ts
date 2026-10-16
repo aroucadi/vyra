@@ -28,7 +28,8 @@ export type VyraTelemetryEvent =
   | "first_set_logged"
   | "passkey_registered"
   | "deep_link_arrived"
-  | "coach_invite_accepted";
+  | "coach_invite_accepted"
+  | "goal_selected";
 
 export interface TelemetryEventRecord {
   eventName: VyraTelemetryEvent;

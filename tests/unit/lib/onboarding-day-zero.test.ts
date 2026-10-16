@@ -171,4 +171,63 @@ describe("Spec 019: Zero-Gate Day-0 Onboarding & Trust Calibration ('Couch-to-Ra
     assert.equal(roundToGymIncrement(31.2, "kg"), 30);
     assert.equal(isDayZeroUser("brand_new_unseeded_user_id"), true);
   });
+
+  it("9. Spec 024: 1-Tap Goal Selector adjusts rep targets, RIR, loads, and handoff URL serialization", () => {
+    // 1. Hypertrophy (Default)
+    const hyp = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      goal: "hypertrophy",
+    });
+    assert.equal(hyp.goal, "hypertrophy");
+    assert.equal(hyp.targets[0].repRange, "8-12");
+    assert.equal(hyp.targets[0].targetRir, 2);
+
+    // 2. Strength (+8% load intensity, 5-8 reps, 3 RIR)
+    const str = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      goal: "strength",
+    });
+    assert.equal(str.goal, "strength");
+    assert.equal(str.targets[0].repRange, "5-8");
+    assert.equal(str.targets[0].targetRir, 3);
+    assert.ok(str.targets[0].activeWeightKg >= hyp.targets[0].activeWeightKg);
+    assert.ok(str.targets[0].whyFormulaText.includes("[Strength]"));
+
+    // 3. Posture Balance (10-15 reps, 2 RIR)
+    const pos = deriveStartingWeightsFromAnchor("trainee_1", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      goal: "posture",
+    });
+    assert.equal(pos.goal, "posture");
+    assert.equal(pos.targets[0].repRange, "10-15");
+    assert.ok(pos.targets[0].whyFormulaText.includes("[Posture Balance]"));
+
+    // 4. URL Serialization & Deserialization
+    const handoffUrl = buildHandoffQueryUrl("https://app.vyra.fit/today", {
+      anchorLift: "barbell_bench",
+      weight: 80,
+      reps: 8,
+      unit: "kg",
+      goal: "strength",
+    });
+    assert.ok(handoffUrl.includes("goal=strength"));
+    const parsed = parseHandoffQueryUrl(handoffUrl.split("?")[1]);
+    assert.equal(parsed?.goal, "strength");
+
+    // 5. Telemetry event verification
+    telemetry.clear();
+    telemetry.track("goal_selected", { goal: "strength" }, "trainee_1");
+    const goalEvents = telemetry.getEventsByName("goal_selected");
+    assert.equal(goalEvents.length, 1);
+    assert.equal(goalEvents[0].properties.goal, "strength");
+  });
 });

@@ -16,6 +16,61 @@ export type WeightUnit = "kg" | "lb";
 export type AnchorLiftId = "barbell_bench" | "dumbbell_bench";
 export type SleepWhatIfMode = "normal" | "short";
 export type CalibrationMode = "uncalibrated" | "calibrated" | "calibrate_as_i_lift";
+export type TrainingGoal = "hypertrophy" | "strength" | "recomposition" | "posture";
+
+export interface GoalDefinition {
+  id: TrainingGoal;
+  label: string;
+  shortLabel: string;
+  repRange: string;
+  targetRir: number;
+  loadMultiplier: number;
+  description: string;
+  badgeClass: string;
+}
+
+export const TRAINING_GOALS: Record<TrainingGoal, GoalDefinition> = {
+  hypertrophy: {
+    id: "hypertrophy",
+    label: "Hypertrophy (Muscle Mass)",
+    shortLabel: "Hypertrophy",
+    repRange: "8-12",
+    targetRir: 2,
+    loadMultiplier: 1.0,
+    description: "8–12 reps · Progressive volume & mechanical tension for muscle growth.",
+    badgeClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
+  },
+  strength: {
+    id: "strength",
+    label: "Strength (Neural Drive & Power)",
+    shortLabel: "Strength",
+    repRange: "5-8",
+    targetRir: 3,
+    loadMultiplier: 1.08,
+    description: "5–8 reps · Heavy mechanical loading & maximal motor unit recruitment.",
+    badgeClass: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25",
+  },
+  recomposition: {
+    id: "recomposition",
+    label: "Fat Loss & Recomposition",
+    shortLabel: "Fat Loss / Recomp",
+    repRange: "8-10",
+    targetRir: 2,
+    loadMultiplier: 0.96,
+    description: "8–10 reps · Anti-catabolic stimulus preserving lean tissue in a deficit.",
+    badgeClass: "text-amber-400 bg-amber-500/10 border-amber-500/25",
+  },
+  posture: {
+    id: "posture",
+    label: "Posture & Desk-Worker Balance",
+    shortLabel: "Posture Balance",
+    repRange: "10-15",
+    targetRir: 2,
+    loadMultiplier: 0.90,
+    description: "10–15 reps · Kyphosis reversal, upper back emphasis, 2:1 pull-to-push bias.",
+    badgeClass: "text-violet-400 bg-violet-500/10 border-violet-500/25",
+  },
+};
 
 export interface AnchorCalibrationInput {
   anchorLift: AnchorLiftId;
@@ -24,6 +79,7 @@ export interface AnchorCalibrationInput {
   unit: WeightUnit;
   sleepMode?: SleepWhatIfMode;
   mode?: CalibrationMode;
+  goal?: TrainingGoal;
 }
 
 export interface DerivedExerciseTarget {
@@ -53,6 +109,7 @@ export interface DayZeroCalibrationResult {
   estimatedBench1RmKg: number;
   sleepMode: SleepWhatIfMode;
   calibrationMode: CalibrationMode;
+  goal: TrainingGoal;
   targets: DerivedExerciseTarget[];
 }
 
@@ -259,6 +316,8 @@ export function deriveStartingWeightsFromAnchor(
   const unit = input.unit || "kg";
   const sleepMode: SleepWhatIfMode = input.sleepMode || "normal";
   const calibrationMode: CalibrationMode = input.mode || "calibrated";
+  const goal: TrainingGoal = input.goal || "hypertrophy";
+  const goalConfig = TRAINING_GOALS[goal];
   const safeWeight = Math.max(5, Number(input.weight) || 80);
   const safeReps = Math.min(15, Math.max(1, Math.round(Number(input.reps) || 8)));
 
@@ -282,12 +341,13 @@ export function deriveStartingWeightsFromAnchor(
 
   const targets: DerivedExerciseTarget[] = exercises.map((ex) => {
     const { ratio, ratioLabel } = resolvePoliquinWorkingRatio(ex.exerciseName);
-    const normalWeightKg = roundToGymIncrement(estimatedBench1RmKg * ratio, "kg");
+    const goalAdjustedRatio = ratio * goalConfig.loadMultiplier;
+    const normalWeightKg = roundToGymIncrement(estimatedBench1RmKg * goalAdjustedRatio, "kg");
     // Short sleep applies a 10% load buffer and +1 RIR to protect joint/CNS recovery
     const shortSleepWeightKg = roundToGymIncrement(normalWeightKg * 0.9, "kg");
     const activeWeightKg = sleepMode === "short" ? shortSleepWeightKg : normalWeightKg;
     const displayWeight = fromKilograms(activeWeightKg, unit);
-    const baseRir = ex.rirScheme && ex.rirScheme.length > 0 ? ex.rirScheme[0] : 2;
+    const baseRir = goalConfig.targetRir;
     const targetRir = sleepMode === "short" ? baseRir + 1 : baseRir;
 
     const whyHeadline = `Why ${displayWeight} ${unit}? Tap to check.`;
@@ -296,12 +356,9 @@ export function deriveStartingWeightsFromAnchor(
         ? ` → -10% short-sleep buffer (${shortSleepWeightKg} kg @ ${targetRir} RIR)`
         : ` (${normalWeightKg} kg @ ${targetRir} RIR)`;
 
-    const whyFormulaText = `${safeWeight} ${unit} × ${safeReps} reps (${anchorLabel}) = ${estimatedBench1RmKg} kg e1RM (Epley) → × ${ratio} ${ratioLabel}${sleepClause}.`;
+    const whyFormulaText = `${safeWeight} ${unit} × ${safeReps} reps (${anchorLabel}) = ${estimatedBench1RmKg} kg e1RM (Epley) → × ${ratio} ${ratioLabel} [${goalConfig.shortLabel}]${sleepClause}.`;
 
-    const repRange =
-      ex.repRangeLow && ex.repRangeHigh
-        ? `${ex.repRangeLow}-${ex.repRangeHigh}`
-        : "8-10";
+    const repRange = goalConfig.repRange;
 
     return {
       exerciseId: ex.exerciseId,
@@ -331,6 +388,7 @@ export function deriveStartingWeightsFromAnchor(
     estimatedBench1RmKg,
     sleepMode,
     calibrationMode,
+    goal,
     targets,
   };
 }
@@ -343,6 +401,16 @@ export function applyCalibratedWeightsToDayOne(
   userId: string,
   calibration: DayZeroCalibrationResult
 ): { updatedCount: number; dayId: string } {
+  // Persist chosen goal to the trainee profile
+  try {
+    const user = appStore.getUser(userId);
+    if (user) {
+      user.goals = [calibration.goal];
+    }
+  } catch {
+    // Non-blocking in ephemeral test environments
+  }
+
   const program = appStore.getActiveProgramForTrainee(userId);
   if (!program || !program.weeks || program.weeks.length === 0) {
     return { updatedCount: 0, dayId: "day_1" };
@@ -371,7 +439,7 @@ export function applyCalibratedWeightsToDayOne(
       );
       if (target) {
         ex.rirScheme = Array(ex.sets).fill(target.targetRir);
-        ex.loadGuidance = `Target: ${target.displayWeight} ${target.unit} (${target.activeWeightKg} kg) · Derived from ${calibration.inputWeight} ${calibration.unit} × ${calibration.inputReps} (${calibration.estimatedBench1RmKg} kg e1RM)`;
+        ex.loadGuidance = `Target: ${target.displayWeight} ${target.unit} (${target.activeWeightKg} kg) · [${TRAINING_GOALS[calibration.goal].shortLabel}] Derived from ${calibration.inputWeight} ${calibration.unit} × ${calibration.inputReps} (${calibration.estimatedBench1RmKg} kg e1RM)`;
         updatedCount++;
       }
     }
@@ -437,12 +505,15 @@ export function buildHandoffQueryUrl(
   if (input.mode && input.mode !== "calibrated") {
     params.set("mode", input.mode);
   }
+  if (input.goal && input.goal !== "hypertrophy") {
+    params.set("goal", input.goal);
+  }
   const sep = basePath.includes("?") ? "&" : "?";
   return `${basePath}${sep}${params.toString()}`;
 }
 
 /**
- * Parses a handoff URL query string (`?anchor=80x8&unit=kg&lift=barbell_bench`) back into an AnchorCalibrationInput.
+ * Parses a handoff URL query string (`?anchor=80x8&unit=kg&lift=barbell_bench&goal=strength`) back into an AnchorCalibrationInput.
  */
 export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | null {
   const clean = search.startsWith("?") ? search.slice(1) : search;
@@ -473,6 +544,12 @@ export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | n
   const mode: CalibrationMode =
     modeParam === "calibrate_as_i_lift" ? "calibrate_as_i_lift" : "calibrated";
 
+  const goalParam = params.get("goal");
+  const goal: TrainingGoal =
+    goalParam === "strength" || goalParam === "recomposition" || goalParam === "posture"
+      ? goalParam
+      : "hypertrophy";
+
   return {
     anchorLift,
     weight,
@@ -480,5 +557,6 @@ export function parseHandoffQueryUrl(search: string): AnchorCalibrationInput | n
     unit,
     sleepMode,
     mode,
+    goal,
   };
 }

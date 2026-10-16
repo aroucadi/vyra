@@ -117,7 +117,7 @@ export function resolveDayOneWorkoutDay(userId: string): {
   estimatedMinutes: number;
   primaryExercise: ExercisePrescription | null;
 } {
-  const program = appStore.getActiveProgramForTrainee(userId);
+  const program = appStore.getActiveProgramForTrainee(userId) || appStore.getPrograms()[0];
   if (!program || !program.weeks || program.weeks.length === 0) {
     return {
       programDay: null,

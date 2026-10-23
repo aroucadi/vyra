@@ -1,0 +1,306 @@
+import { Exercise } from "@/lib/types";
+import { alaaProgramMuscleWikiExercises } from "./musclewiki-enriched-exercises";
+
+const baseSeedExercises: Exercise[] = [
+  // Chest
+  {
+    id: "ex_bench_press",
+    name: "Barbell Bench Press",
+    primaryMuscle: "Chest",
+    secondaryMuscles: ["Triceps", "Front Deltoids"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=barbell+bench+press+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Bench_press",
+  },
+  {
+    id: "ex_incline_db_press",
+    name: "Incline Dumbbell Press",
+    primaryMuscle: "Upper Chest",
+    secondaryMuscles: ["Front Deltoids", "Triceps"],
+    equipment: "Dumbbells",
+    videoUrl: "https://www.youtube.com/results?search_query=incline+dumbbell+press+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Incline_press",
+  },
+  {
+    id: "ex_cable_fly",
+    name: "Cable Chest Fly",
+    primaryMuscle: "Chest",
+    secondaryMuscles: ["Front Deltoids"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=cable+chest+fly+form",
+  },
+  {
+    id: "ex_dips",
+    name: "Weighted Chest Dips",
+    primaryMuscle: "Lower Chest",
+    secondaryMuscles: ["Triceps", "Front Deltoids"],
+    equipment: "Parallel Bars",
+    videoUrl: "https://www.youtube.com/results?search_query=chest+dips+form",
+  },
+
+  // Back
+  {
+    id: "ex_barbell_row",
+    name: "Barbell Bent-Over Row",
+    primaryMuscle: "Upper Back",
+    secondaryMuscles: ["Lats", "Biceps", "Rear Delts"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=barbell+bent+over+row+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Bent-over_row",
+  },
+  {
+    id: "ex_lat_pulldown",
+    name: "Wide-Grip Lat Pulldown",
+    primaryMuscle: "Lats",
+    secondaryMuscles: ["Biceps", "Upper Back"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=lat+pulldown+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Pulldown_exercise",
+  },
+  {
+    id: "ex_pullup",
+    name: "Pull-Up (Bodyweight / Weighted)",
+    primaryMuscle: "Lats",
+    secondaryMuscles: ["Biceps", "Upper Back"],
+    equipment: "Pull-up Bar",
+    videoUrl: "https://www.youtube.com/results?search_query=pull+up+proper+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Pull-up_(exercise)",
+  },
+  {
+    id: "ex_seated_cable_row",
+    name: "Seated Cable Row",
+    primaryMuscle: "Mid Back",
+    secondaryMuscles: ["Lats", "Biceps"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=seated+cable+row+form",
+  },
+
+  // Shoulders & Rear Delts
+  {
+    id: "ex_overhead_press",
+    name: "Standing Barbell Overhead Press",
+    primaryMuscle: "Front Deltoids",
+    secondaryMuscles: ["Side Delts", "Triceps", "Upper Chest"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=barbell+overhead+press+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Overhead_press",
+  },
+  {
+    id: "ex_lateral_raise",
+    name: "Cable Lateral Raise",
+    primaryMuscle: "Side Deltoids",
+    secondaryMuscles: ["Trapezius"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=cable+lateral+raise+form",
+  },
+  {
+    id: "ex_face_pull",
+    name: "Rope Face Pull",
+    primaryMuscle: "Rear Deltoids",
+    secondaryMuscles: ["Rhomboids", "Rotator Cuff"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=rope+face+pull+proper+form",
+  },
+
+  // Legs (Quads, Glutes, Hamstrings, Calves)
+  {
+    id: "ex_barbell_squat",
+    name: "Barbell Back Squat",
+    primaryMuscle: "Quads",
+    secondaryMuscles: ["Glutes", "Adductors", "Lower Back"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=barbell+back+squat+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Squat_(exercise)",
+  },
+  {
+    id: "ex_rdl",
+    name: "Romanian Deadlift (RDL)",
+    primaryMuscle: "Hamstrings",
+    secondaryMuscles: ["Glutes", "Lower Back", "Lats"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=romanian+deadlift+proper+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Deadlift#Romanian_deadlift",
+  },
+  {
+    id: "ex_deadlift",
+    name: "Conventional Deadlift",
+    primaryMuscle: "Posterior Chain",
+    secondaryMuscles: ["Lats", "Hamstrings", "Glutes", "Forearms"],
+    equipment: "Barbell",
+    videoUrl: "https://www.youtube.com/results?search_query=conventional+deadlift+form",
+    wikiUrl: "https://en.wikipedia.org/wiki/Deadlift",
+  },
+  {
+    id: "ex_leg_press",
+    name: "45° Leg Press",
+    primaryMuscle: "Quads",
+    secondaryMuscles: ["Glutes"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=45+degree+leg+press+form",
+  },
+  {
+    id: "ex_leg_extension",
+    name: "Seated Leg Extension",
+    primaryMuscle: "Quads",
+    secondaryMuscles: [],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=seated+leg+extension+form",
+  },
+  {
+    id: "ex_lying_leg_curl",
+    name: "Lying Hamstring Leg Curl",
+    primaryMuscle: "Hamstrings",
+    secondaryMuscles: ["Calves"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=lying+leg+curl+form",
+  },
+  {
+    id: "ex_standing_calf_raise",
+    name: "Standing Calf Raise",
+    primaryMuscle: "Calves",
+    secondaryMuscles: [],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=standing+calf+raise+form",
+  },
+
+  // Arms (Biceps & Triceps)
+  {
+    id: "ex_cable_triceps_ext",
+    name: "Overhead Cable Triceps Extension",
+    primaryMuscle: "Triceps (Long Head)",
+    secondaryMuscles: [],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=overhead+cable+triceps+extension+form",
+  },
+  {
+    id: "ex_tricep_pushdown",
+    name: "Rope Tricep Pushdown",
+    primaryMuscle: "Triceps (Lateral Head)",
+    secondaryMuscles: [],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=rope+tricep+pushdown+form",
+  },
+  {
+    id: "ex_incline_db_curl",
+    name: "Incline Dumbbell Bicep Curl",
+    primaryMuscle: "Biceps",
+    secondaryMuscles: ["Forearms"],
+    equipment: "Dumbbells",
+    videoUrl: "https://www.youtube.com/results?search_query=incline+dumbbell+curl+form",
+  },
+  {
+    id: "ex_hammer_curl",
+    name: "Cable Rope Hammer Curl",
+    primaryMuscle: "Brachialis & Forearms",
+    secondaryMuscles: ["Biceps"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=cable+rope+hammer+curl+form",
+  },
+
+  // Core
+  {
+    id: "ex_hanging_leg_raise",
+    name: "Hanging Leg Raise",
+    primaryMuscle: "Abs & Core",
+    secondaryMuscles: ["Hip Flexors"],
+    equipment: "Pull-up Bar",
+    videoUrl: "https://www.youtube.com/results?search_query=hanging+leg+raise+proper+form",
+  },
+  {
+    id: "ex_cable_woodchopper",
+    name: "Cable Diagonal Woodchopper",
+    primaryMuscle: "Obliques",
+    secondaryMuscles: ["Core"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=cable+woodchopper+form",
+  },
+
+  // Master Transformation Program Custom Exercises
+  {
+    id: "ex_incline_machine_press",
+    name: "Incline Machine Chest Press",
+    primaryMuscle: "Upper Chest (Clavicular Head)",
+    secondaryMuscles: ["Front Deltoids", "Triceps"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=incline+chest+press+machine+form",
+  },
+  {
+    id: "ex_leg_press_high_wide",
+    name: "45° Leg Press (Feet High & Wide)",
+    primaryMuscle: "Glutes & Hamstrings",
+    secondaryMuscles: ["Adductors"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=high+foot+placement+leg+press+form",
+  },
+  {
+    id: "ex_seated_leg_curl",
+    name: "Seated Leg Curl Machine",
+    primaryMuscle: "Hamstrings",
+    secondaryMuscles: ["Calves"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=seated+leg+curl+machine+form",
+  },
+  {
+    id: "ex_pallof_press",
+    name: "Cable Pallof Press",
+    primaryMuscle: "Anti-Rotation Core & Transverse Abdominis",
+    secondaryMuscles: ["Obliques"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=cable+pallof+press+form",
+  },
+  {
+    id: "ex_neutral_lat_pulldown",
+    name: "Neutral-Grip Lat Pulldown",
+    primaryMuscle: "Lats (V-Taper Width)",
+    secondaryMuscles: ["Biceps", "Brachialis"],
+    equipment: "Cable",
+    videoUrl: "https://www.youtube.com/results?search_query=neutral+grip+lat+pulldown+form",
+  },
+  {
+    id: "ex_machine_shoulder_press",
+    name: "Machine Shoulder Press (Neutral Grip)",
+    primaryMuscle: "Front & Side Deltoids",
+    secondaryMuscles: ["Triceps", "Upper Chest"],
+    equipment: "Machine",
+    videoUrl: "https://www.youtube.com/results?search_query=neutral+grip+machine+shoulder+press+form",
+  },
+  {
+    id: "ex_farmer_carry",
+    name: "Controlled DB Farmer Carry",
+    primaryMuscle: "Forearms & Grip",
+    secondaryMuscles: ["Trapezius", "Core Stabilizers"],
+    equipment: "Dumbbells",
+    videoUrl: "https://www.youtube.com/results?search_query=dumbbell+farmer+walk+form",
+  },
+];
+
+/**
+ * Enriched exercise library merging base library with verified MuscleWiki metadata.
+ */
+export const seedExercises: Exercise[] = (() => {
+  const map = new Map<string, Exercise>();
+
+  // 1. Load base library
+  baseSeedExercises.forEach((ex) => map.set(ex.id, ex));
+
+  // 2. Overlay MuscleWiki enriched metadata for Alaa's Blueprint
+  alaaProgramMuscleWikiExercises.forEach((mwEx) => {
+    const existing = Array.from(map.values()).find(
+      (e) => e.name.toLowerCase().trim() === mwEx.name.toLowerCase().trim() || e.id === mwEx.id
+    );
+    if (existing) {
+      map.set(existing.id, {
+        ...existing,
+        muscleWikiId: mwEx.muscleWikiId,
+        difficulty: mwEx.difficulty,
+        steps: mwEx.steps,
+        mediaUrls: mwEx.mediaUrls,
+        muscleWikiUrl: mwEx.muscleWikiUrl,
+      });
+    } else {
+      map.set(mwEx.id, mwEx);
+    }
+  });
+
+  return Array.from(map.values());
+})();

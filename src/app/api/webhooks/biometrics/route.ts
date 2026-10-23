@@ -1,0 +1,157 @@
+import { NextRequest, NextResponse } from "next/server";
+import { appStore } from "@/lib/store";
+import { calculateReadinessScore } from "@/lib/autoregulation";
+import { telemetry } from "@/lib/telemetry";
+import { InboundBiometricsPayload, WearableDeviceSource } from "@/lib/types";
+
+import crypto from "crypto";
+
+const DEFAULT_WEBHOOK_SECRET = "vyra_biometrics_key_2026";
+
+function safeCompare(a?: string | null, b?: string | null): boolean {
+  if (!a || !b || typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function isAuthorized(req: NextRequest, bodySecret?: string): boolean {
+  const configuredSecret = process.env.BIOMETRICS_WEBHOOK_SECRET || DEFAULT_WEBHOOK_SECRET;
+
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (safeCompare(token, configuredSecret)) return true;
+  }
+
+  const customHeader = req.headers.get("x-webhook-secret");
+  if (customHeader && safeCompare(customHeader, configuredSecret)) return true;
+
+  if (bodySecret && safeCompare(bodySecret, configuredSecret)) return true;
+
+  return false;
+}
+
+export async function GET() {
+  return NextResponse.json(
+    {
+      status: "ready",
+      endpoint: "/api/webhooks/biometrics",
+      supportedSources: ["apple_health", "whoop", "oura", "garmin", "manual"],
+      version: "1.0.0",
+      description: "Vyra Inbound Wearable Biometrics Aggregator Webhook",
+      docs: "/specs/008-apple-health-biometric-webhook/spec.md",
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    }
+  );
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body: InboundBiometricsPayload = await req.json();
+
+    if (!isAuthorized(req, body.secretKey)) {
+      return NextResponse.json(
+        { error: "Unauthorized. Provide valid Bearer token or secretKey." },
+        { status: 401 }
+      );
+    }
+
+    const {
+      traineeId,
+      date,
+      source = "apple_health",
+    } = body;
+
+    const parseNumber = (val: unknown): number | undefined => {
+      if (val === undefined || val === null || val === "") return undefined;
+      const num = typeof val === "number" ? val : parseFloat(String(val));
+      return isNaN(num) ? undefined : num;
+    };
+
+    const parsedSleepHours = parseNumber(body.sleepHours);
+    if (!traineeId || parsedSleepHours === undefined || parsedSleepHours < 0 || parsedSleepHours > 24) {
+      return NextResponse.json(
+        {
+          error: "Invalid payload: 'traineeId' (string) and 'sleepHours' (number between 0 and 24) are required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const deepSleepMinutes = parseNumber(body.deepSleepMinutes);
+    const remSleepMinutes = parseNumber(body.remSleepMinutes);
+    const hrvMs = parseNumber(body.hrvMs);
+    const restingHeartRateBpm = parseNumber(body.restingHeartRateBpm);
+    const activeEnergyBurnedKcal = parseNumber(body.activeEnergyBurnedKcal);
+
+    // Determine target calendar date (YYYY-MM-DD)
+    const targetDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : new Date().toISOString().split("T")[0];
+
+    // Compute deterministic readiness score & CNS fatigue state
+    const readiness = calculateReadinessScore({
+      sleepHours: parsedSleepHours,
+      hrvMs,
+      deepSleepMinutes,
+      restingHeartRateBpm,
+    });
+
+    // Persist snapshot in Vyra memory / persistence store
+    const snapshot = appStore.saveWearableBiometrics({
+      traineeId,
+      date: targetDate,
+      source: (source as WearableDeviceSource) || "apple_health",
+      sleepHours: parsedSleepHours,
+      deepSleepMinutes,
+      remSleepMinutes,
+      hrvMs,
+      restingHeartRateBpm,
+      activeEnergyBurnedKcal,
+      readinessScore: readiness.score,
+      reducedRecovery: readiness.state !== "optimal",
+      cnsFatigueDetected: readiness.state !== "optimal",
+    });
+
+    // Record non-blocking telemetry for autoregulation activation
+    telemetry.track("workout_recalibration_applied", {
+      traineeId,
+      readinessScore: readiness.score,
+      readinessState: readiness.state,
+      sleepHours: parsedSleepHours,
+      hrvMs,
+      deepSleepMinutes,
+      source: snapshot.source,
+      date: targetDate,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Biometrics snapshot ingested and autoregulation computed successfully.",
+        snapshot,
+        autoregulation: {
+          score: readiness.score,
+          state: readiness.state,
+          reducedRecovery: readiness.state !== "optimal",
+          cnsFatigueDetected: readiness.state !== "optimal",
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Malformed JSON or server error processing webhook payload.",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 400 }
+    );
+  }
+}

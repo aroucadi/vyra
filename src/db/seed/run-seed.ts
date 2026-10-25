@@ -35,11 +35,11 @@ export async function runSeed(customDbUrl?: string) {
   console.log(`✓ Protocol Title: "${masterProg.title}"`);
   console.log(`✓ Architecture: ${masterProg.durationWeeks} Weeks • ${masterProg.weeks.length * 7} Days • ${allExercises.length} Workout Slots/Wk • ${totalSets} Working Sets/Wk`);
   console.log(`✓ Equipment Matrix: ${totalVariations} Multi-Modality Variations (${allExercises.length} slots × 4 equipment options)`);
-  console.log(`✓ Biomechanics: Strict 2:1 Pull-to-Push Postural Balance • Zero Quad Isolation on Tuesday`);
-  console.log(`✓ Monday Match Day: ~3,150 kcal / ~155g P (Caloric Compensation for 19:00 Football)`);
-  console.log(`✓ Standard Training Days: ~2,750 kcal / ~125g P (Split Jumbo Gainer & Evening Olive Oil Density)`);
-  console.log(`✓ Morning Alignment: 9-Minute Mobility & Neck Control Routine (${week1.days[0].morningRoutine?.length || 5} Drills)`);
-  console.log(`✓ Supplement Protocol: Phase-Based Creatine Loading (20.7g/day) + Micronutrient Baseline`);
+  console.log(`✓ Biomechanics: 100% Machine/Cable Guided Tracks • Zero Lower-Body Loading on Monday & Tuesday`);
+  console.log(`✓ Monday Match Day: 3,000 kcal / 164g P (Caloric Compensation for 19:15 Football)`);
+  console.log(`✓ Standard Training Days: 2,600 kcal / 139g P (Split Low-Osmolarity Shake & Evening Olive Oil Density)`);
+  console.log(`✓ Morning Alignment: 8-Minute Daily Warm-Up Routine (${week1.days[0].morningRoutine?.length || 5} Drills)`);
+  console.log(`✓ Supplement Protocol: Creatine Monohydrate (5g/day with dinner) + Unified Dinner Stack`);
   console.log(`✓ Hydration Architecture: ${masterHydrationGoal.dailyTargetMl} ml Daily Base + ${masterHydrationGoal.workoutDayBonusMl} ml Workout Bonus`);
   console.log("------------------------------------------------------------");
 

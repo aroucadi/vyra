@@ -91,7 +91,7 @@ describe("Exercise Confidence Card (ECC) & Stealth Gym Mode Engine", () => {
     assert.ok(legFallback.proprioception.primaryMuscle.includes("Leg") || legFallback.proprioception.primaryMuscle.includes("Quad") || legFallback.proprioception.primaryMuscle.includes("Chain"));
   });
 
-  it("verifies 100% complete Confidence Guide coverage for all 13 exercise prescriptions (52 variations) of the Master 16-Week Blueprint", () => {
+  it("verifies 100% complete Confidence Guide coverage for all 13 exercise prescriptions (52 variations) of the Master 12-Week Blueprint", () => {
     const days = createBlueprintDays("week_1", 1);
     let totalSlotsChecked = 0;
     let totalVariationsChecked = 0;
@@ -122,7 +122,7 @@ describe("Exercise Confidence Card (ECC) & Stealth Gym Mode Engine", () => {
       });
     });
 
-    assert.equal(totalSlotsChecked, 21, "Master blueprint must have 21 exercise prescriptions");
-    assert.equal(totalVariationsChecked, 84, "Master blueprint must have 84 variations (21 prescriptions × 4 options)");
+    assert.equal(totalSlotsChecked, 24, "Master blueprint must have 21 exercise prescriptions");
+    assert.equal(totalVariationsChecked, 96, "Master blueprint must have 84 variations (21 prescriptions × 4 options)");
   });
 });

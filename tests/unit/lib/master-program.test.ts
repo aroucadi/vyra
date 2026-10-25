@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { appStore } from "../../../src/lib/store.ts";
 import { resolveProgramDay, toLocalDateString } from "../../../src/lib/utils.ts";
 
-describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", () => {
+describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", () => {
   it("verifies Alaa Pro and Alaa personas exist and are actively linked", () => {
     const trainer = appStore.getUser("trainer_alaa");
     assert.ok(trainer, "Trainer Alaa Pro must exist in store");
@@ -14,33 +14,34 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     assert.ok(trainee, "Trainee Alaa must exist in store");
     assert.equal(trainee?.role, "trainee");
     assert.equal(trainee?.name, "Alaa");
-    assert.ok(trainee?.injuries.some((i) => i.includes("Anterior Pelvic Tilt")));
-    assert.ok(trainee?.injuries.some((i) => i.includes("Shoulder Internal Rotation")));
+    assert.ok(trainee?.injuries.some((i) => i.includes("BMI 17.3") || i.includes("Underweight")));
+    assert.ok(trainee?.injuries.some((i) => i.includes("Left-Arm")));
   });
 
-  it("verifies Master Transformation 16-Week Blueprint structure and 112 days", () => {
+  it("verifies Master Transformation 12-Week Blueprint structure and 84 days", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program, "Master program must be published for trainee_alaa");
-    assert.equal(program?.id, "prog_master_transformation_16w");
-    assert.equal(program?.title, "The Master Hypertrophy & Postural Architecture Protocol");
-    assert.equal(program?.durationWeeks, 16);
-    assert.equal(program?.weeks.length, 16);
+    assert.equal(program?.id, "prog_master_transformation_12w");
+    assert.equal(program?.title, "The Master 12-Week Hypertrophy Transformation Protocol");
+    assert.equal(program?.durationWeeks, 12);
+    assert.equal(program?.weeks.length, 12);
 
     let totalDays = 0;
     program?.weeks.forEach((w) => {
       assert.equal(w.days.length, 7);
       totalDays += w.days.length;
     });
-    assert.equal(totalDays, 112, "16 weeks must contain exactly 112 program days");
+    assert.equal(totalDays, 84, "12 weeks must contain exactly 84 program days");
   });
 
-  it("verifies 4-Option Equipment Matrix is present on every workout exercise slot", () => {
+  it("verifies 4-Option Equipment Matrix is present on every workout exercise slot (24 catalogue movements)", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program);
 
     const week1 = program?.weeks[0];
     assert.ok(week1);
 
+    let exerciseCount = 0;
     // Days 0..3 are training days (Monday through Thursday)
     for (let dayIdx = 0; dayIdx < 4; dayIdx++) {
       const day = week1.days[dayIdx];
@@ -49,6 +50,7 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
 
       day.blocks.forEach((block) => {
         block.exercises.forEach((ex) => {
+          exerciseCount++;
           assert.ok(
             ex.equipmentVariations && ex.equipmentVariations.length === 4,
             `Exercise ${ex.exerciseName} in Day ${dayIdx} must contain exactly 4 equipment options`
@@ -69,66 +71,47 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
         });
       });
     }
+    assert.equal(exerciseCount, 24, "Split must contain exactly 24 exercises (6 per training day)");
   });
 
-  it("verifies 2:1 pull-to-push postural balance and zero leg loading on Tuesday", () => {
+  it("verifies zero leg loading on Monday and Tuesday for football match deconfliction", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program);
 
     const week1 = program.weeks[0];
     const mon = week1.days[0]; // Monday
     const tue = week1.days[1]; // Tuesday
-    const wed = week1.days[2]; // Wednesday
-    const thu = week1.days[3]; // Thursday
 
-    // Pressing volume: Mon Slot 1 (Incline Chest: 3 sets) + Thu Slot 3 (Shoulder Press: 3 sets)
-    const monPressingSets = mon.blocks[0].exercises[0].sets;
-    const thuPressingSets = thu.blocks[0].exercises[2].sets;
-    assert.equal(monPressingSets, 3);
-    assert.equal(thuPressingSets, 3);
+    // Monday: 100% upper body & abs (Push, Rear Delt, Triceps & Abs)
+    mon.blocks.forEach((block) => {
+      block.exercises.forEach((ex) => {
+        assert.ok(
+          !ex.targetMuscleGroups.includes("Glutes") && !ex.targetMuscleGroups.includes("Quads") && !ex.targetMuscleGroups.includes("Hamstrings"),
+          `Monday exercise ${ex.exerciseName} must not load legs before 19:15 match`
+        );
+      });
+    });
 
-    // Dynamic Upper Pulling & Posture sets (9 sets):
-    // Tue Slot 1 (Lat Pulldown: 3 sets) + Tue Slot 2 (Row: 3 sets) + Wed Slot 3A (Face Pull: 3 sets) = 9 sets
-    const dynamicUpperPullingSets =
-      tue.blocks[0].exercises[0].sets +
-      tue.blocks[0].exercises[1].sets +
-      wed.blocks[1].exercises[0].sets;
-    assert.equal(dynamicUpperPullingSets, 9, "Dynamic upper pulling must be 9 sets (1.5:1 dynamic ratio)");
-
-    // Isometric Upper Back Retraction:
-    // Thu Slot 1 (RDL isometric retraction: 3 sets)
-    const thuIsometricScapularSets = thu.blocks[0].exercises[0].sets;
-    assert.equal(thuIsometricScapularSets, 3);
-
-    const totalWeeklyPressing = monPressingSets + thuPressingSets; // 6 sets
-    const totalWeeklyPosturePulling = dynamicUpperPullingSets + thuIsometricScapularSets; // 12 sets
-    assert.equal(
-      totalWeeklyPosturePulling / totalWeeklyPressing,
-      2,
-      "Volume ratio must be exactly 2:1 pull-to-push for internal rotation posture reset"
-    );
-
-    // Tuesday: Zero quad / leg loading post-football (Upper B only)
-    tue.blocks[0].exercises.forEach((ex) => {
-      assert.ok(
-        !ex.targetMuscleGroups.includes("Quadriceps") && !ex.targetMuscleGroups.includes("Hamstrings"),
-        `Exercise ${ex.exerciseName} must not load legs (100% upper body post-football)`
-      );
+    // Tuesday: Zero quad / leg loading post-football (100% seated/supported pulls)
+    tue.blocks.forEach((block) => {
+      block.exercises.forEach((ex) => {
+        assert.ok(
+          !ex.targetMuscleGroups.includes("Quadriceps") && !ex.targetMuscleGroups.includes("Hamstrings") && !ex.targetMuscleGroups.includes("Quads"),
+          `Tuesday exercise ${ex.exerciseName} must not load legs (100% upper body post-football)`
+        );
+      });
     });
   });
 
-  it("verifies phase-based Creatine protocol (Days 1-5 loading 20.7g vs Day 6+ maintenance 5g)", () => {
+  it("verifies Creatine Monohydrate protocol (5g daily with dinner, zero BIA confound loading)", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program);
 
-    // Day 3 (Loading phase)
     const day3Doses = appStore.getActiveSupplementDosesForDay(program.id, 3);
     const day3Creatine = day3Doses.filter((d) => d.protocol.name.includes("Creatine"));
-    assert.equal(day3Creatine.length, 3, "Day 3 must prescribe 3 doses of creatine");
-    const day3Total = day3Creatine.reduce((sum, d) => sum + d.dose.amount, 0);
-    assert.equal(Math.round(day3Total * 10) / 10, 20.7, "Loading total must be 20.7g daily");
+    assert.equal(day3Creatine.length, 1, "Day 3 must prescribe 1 dose of creatine with dinner");
+    assert.equal(day3Creatine[0].dose.amount, 5.0, "Dose must be 5.0g");
 
-    // Day 10 (Maintenance phase)
     const day10Doses = appStore.getActiveSupplementDosesForDay(program.id, 10);
     const day10Creatine = day10Doses.filter((d) => d.protocol.name.includes("Creatine"));
     assert.equal(day10Creatine.length, 1, "Day 10 must prescribe 1 dose of creatine");
@@ -213,7 +196,7 @@ describe("Master Transformation 16-Week Blueprint & 4-Option Equipment Matrix", 
     const wednesdayDay = week1.days.find((d) => d.dayOfWeek === 2 && !d.isRestDay);
     assert.ok(wednesdayDay, "Wednesday training day must exist");
     assert.equal(wednesdayDay.id, "prog_master_w1_d2");
-    assert.ok(wednesdayDay.label.toLowerCase().includes("wednesday") || wednesdayDay.label.toLowerCase().includes("delts"));
+    assert.ok(wednesdayDay.label.toLowerCase().includes("wednesday") || wednesdayDay.label.toLowerCase().includes("legs a"));
 
     // Verify resolving by day ID directly (simulating /session?day=prog_master_w1_d2)
     const dayParam = "prog_master_w1_d2";

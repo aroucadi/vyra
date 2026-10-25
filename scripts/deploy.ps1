@@ -27,11 +27,12 @@ if ($gitStatus) {
 }
 
 # 2. Pre-flight Check: Unpushed Commits
-$unpushed = (git log origin/master..HEAD --oneline 2>$null)
+$currentBranch = (git branch --show-current).Trim()
+$unpushed = (git log "origin/$currentBranch..HEAD" --oneline 2>$null)
 if ($unpushed) {
-    Write-Warning "Unpushed commits detected on master:"
+    Write-Warning "Unpushed commits detected on $currentBranch:"
     $unpushed | Write-Host -ForegroundColor Yellow
-    Write-Error "DEPLOY REFUSED: Local commits must be pushed to origin/master before deploying."
+    Write-Error "DEPLOY REFUSED: Local commits must be pushed to origin/$currentBranch before deploying."
     exit 1
 }
 

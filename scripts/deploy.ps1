@@ -30,9 +30,9 @@ if ($gitStatus) {
 $currentBranch = (git branch --show-current).Trim()
 $unpushed = (git log "origin/$currentBranch..HEAD" --oneline 2>$null)
 if ($unpushed) {
-    Write-Warning "Unpushed commits detected on $currentBranch:"
+    Write-Warning "Unpushed commits detected on $($currentBranch):"
     $unpushed | Write-Host -ForegroundColor Yellow
-    Write-Error "DEPLOY REFUSED: Local commits must be pushed to origin/$currentBranch before deploying."
+    Write-Error "DEPLOY REFUSED: Local commits must be pushed to origin/$($currentBranch) before deploying."
     exit 1
 }
 

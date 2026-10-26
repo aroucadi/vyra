@@ -54,6 +54,8 @@ import {
   ArrowUp,
   ArrowDown,
   SkipForward,
+  Zap,
+  Layers,
 } from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
@@ -88,6 +90,7 @@ interface ActiveExercise {
   feedbackTag?: ExerciseBiofeedbackTag;
   feedbackTags?: ExerciseBiofeedbackTag[];
   skippedRemaining?: boolean;
+  supersetMode?: "superset" | "straight";
 }
 
 
@@ -453,6 +456,35 @@ function SessionFlow() {
   const isSupersetA = Boolean(activeEx?.subMovementOrder && activeEx.subMovementOrder.endsWith("A"));
   const isSupersetB = Boolean(activeEx?.subMovementOrder && activeEx.subMovementOrder.endsWith("B"));
   const supersetPrefix = activeEx?.subMovementOrder ? activeEx.subMovementOrder.slice(0, -1) : "";
+  const isStraightMode = activeEx?.supersetMode === "straight";
+  const partnerExercise = exercises.find((e, idx) =>
+    idx !== currentExIndex &&
+    (
+      (activeEx?.subMovementOrder && e.subMovementOrder && activeEx.subMovementOrder.slice(0, -1) === e.subMovementOrder.slice(0, -1)) ||
+      (activeEx?.supersetTag && e.supersetTag === activeEx.supersetTag && Math.abs(idx - currentExIndex) === 1)
+    )
+  );
+
+  const handleToggleSupersetMode = () => {
+    if (!activeEx) return;
+    const currentMode = activeEx.supersetMode === "straight" ? "straight" : "superset";
+    const nextMode: "straight" | "superset" = currentMode === "straight" ? "superset" : "straight";
+
+    setExercises((prev) => {
+      const copy = prev.map((ex) => {
+        const isInSameGroup =
+          (activeEx.supersetTag && ex.supersetTag === activeEx.supersetTag) ||
+          (activeEx.subMovementOrder && ex.subMovementOrder && activeEx.subMovementOrder.slice(0, -1) === ex.subMovementOrder.slice(0, -1));
+        if (isInSameGroup) {
+          return { ...ex, supersetMode: nextMode };
+        }
+        return ex;
+      });
+
+      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      return copy;
+    });
+  };
 
   // Add bonus set to active exercise
   const handleAddBonusSet = () => {
@@ -675,10 +707,23 @@ function SessionFlow() {
       setTimeout(() => {
         setIsWorkoutCompleteModalOpen(true);
       }, 300);
+    } else if (activeEx.supersetMode === "straight") {
+      // Straight Sets Mode (Machine occupied / uncoupled superset):
+      if (newCompletedLength < activeEx.targetSets) {
+        setRestTimerSec(activeEx.restSeconds || 60);
+      } else {
+        setRestTimerSec(activeEx.restSeconds || 60);
+        setTimeout(() => {
+          setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1));
+        }, 300);
+      }
     } else if (isSupersetA) {
       setRestTimerSec(null);
       const nextBIndex = exercises.findIndex(
-        (e, idx) => idx > currentExIndex && e.subMovementOrder === `${supersetPrefix}B`
+        (e, idx) => idx > currentExIndex && (
+          e.subMovementOrder === `${supersetPrefix}B` ||
+          (e.supersetTag === activeEx.supersetTag && idx === currentExIndex + 1)
+        )
       );
       if (nextBIndex !== -1) {
         setTimeout(() => {
@@ -688,7 +733,10 @@ function SessionFlow() {
     } else if (isSupersetB) {
       setRestTimerSec(activeEx.restSeconds || 60);
       const partnerAIndex = exercises.findIndex(
-        (e) => e.subMovementOrder === `${supersetPrefix}A`
+        (e) => (
+          e.subMovementOrder === `${supersetPrefix}A` ||
+          (e.supersetTag === activeEx.supersetTag && e !== activeEx)
+        )
       );
       const currentBRounds = newCompleted.length;
       if (currentBRounds < activeEx.targetSets && partnerAIndex !== -1) {
@@ -1449,27 +1497,81 @@ function SessionFlow() {
       {/* 2. Main Gym Floor Card (1 Exercise at a Time) */}
       <main className="flex-1 flex flex-col justify-center py-4 space-y-6">
         
-        {/* Station-Locked Superset Banner & Sub-Movement Indicator */}
-        {activeEx.supersetTag && (
-          <div className="p-3 bg-indigo-950/50 border border-indigo-700/60 rounded-xl space-y-1.5 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                Station-Locked Superset
-              </span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200 border border-indigo-700/50">
-                Round {Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of {activeEx.targetSets}
-              </span>
+        {/* Station-Locked Superset Banner & Sub-Movement Indicator with Straight Sets Mode Switch */}
+        {(activeEx.supersetTag || activeEx.subMovementOrder?.match(/[AB]$/)) && (
+          <div className={clsx(
+            "p-3 rounded-xl space-y-2 animate-in fade-in transition-colors",
+            isStraightMode 
+              ? "bg-slate-900/90 border border-slate-700/80" 
+              : "bg-indigo-950/50 border border-indigo-700/60"
+          )}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className={clsx(
+                  "text-[10px] font-mono uppercase tracking-wider font-bold flex items-center gap-1.5",
+                  isStraightMode ? "text-slate-300" : "text-indigo-400"
+                )}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {isStraightMode ? "Straight Sets Mode (One-by-One)" : "Station-Locked Superset"}
+                </span>
+                {activeEx.supersetTag && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Group {activeEx.supersetTag}
+                  </span>
+                )}
+              </div>
+
+              {/* Mode Toggle Pill */}
+              <button
+                type="button"
+                onClick={handleToggleSupersetMode}
+                className={clsx(
+                  "text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95",
+                  isStraightMode
+                    ? "bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/40 text-indigo-300"
+                    : "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300"
+                )}
+                title={isStraightMode ? "Switch back to alternating superset" : "Machine taken? Complete all sets of this exercise first"}
+              >
+                {isStraightMode ? (
+                  <>
+                    <Zap className="w-3 h-3 text-indigo-400" />
+                    <span>⚡ Re-link Superset</span>
+                  </>
+                ) : (
+                  <>
+                    <Layers className="w-3 h-3 text-amber-400" />
+                    <span>📋 Machine Busy? Straight Sets</span>
+                  </>
+                )}
+              </button>
             </div>
+
             <div className="text-[11px] text-slate-200">
-              {activeEx.subMovementOrder === "3A" ? (
-                <span>👉 <strong>3A: Cable Face Pull (Eye-level)</strong> · 0s rest → immediately slide pulley down for 3B</span>
+              {isStraightMode ? (
+                <span>
+                  👉 <strong>Straight sets:</strong> Complete all {activeEx.targetSets} sets of <strong>{activeEx.name}</strong> with standard rest ({activeEx.restSeconds || 60}s) before moving to {partnerExercise ? <strong>{partnerExercise.name}</strong> : "the next station"}.
+                </span>
+              ) : isSupersetA ? (
+                <span>
+                  👉 <strong>{activeEx.subMovementOrder || "Movement A"}</strong>: {activeEx.name} · 0s rest → immediately transition to {partnerExercise ? <strong>{partnerExercise.name}</strong> : "partner exercise"}
+                </span>
               ) : (
-                <span>👉 <strong>3B: Cable Lateral Raise (Knee-level)</strong> · 60s rest triggered after set before next round</span>
+                <span>
+                  👉 <strong>{activeEx.subMovementOrder || "Movement B"}</strong>: {activeEx.name} · {activeEx.restSeconds || 60}s rest triggered after set before next superset round
+                </span>
               )}
             </div>
-            <div className="text-[10px] font-mono text-indigo-300/80">
-              {activeEx.supersetTag}
+
+            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+              <span>
+                {isStraightMode
+                  ? `Set ${Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of ${activeEx.targetSets}`
+                  : `Round ${Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of ${activeEx.targetSets}`}
+              </span>
+              <span className={isStraightMode ? "text-slate-400" : "text-indigo-300/80"}>
+                {isStraightMode ? "No machine switching required" : "Alternate back-and-forth between stations"}
+              </span>
             </div>
           </div>
         )}
@@ -1756,13 +1858,19 @@ function SessionFlow() {
           <div className="space-y-2">
             <Log.Confirm
               label={
-                activeEx.subMovementOrder
+                isStraightMode
+                  ? `Done · Log Set ${Math.min(currentSetNum, activeEx.targetSets)} of ${activeEx.targetSets} ✓`
+                  : activeEx.subMovementOrder
                   ? `Done · Log ${activeEx.subMovementOrder} (Round ${Math.min(currentSetNum, activeEx.targetSets)}) ✓`
                   : `Log Set ${Math.min(currentSetNum, activeEx.targetSets)} ✓`
               }
               subLabel={
-                isSupersetA
-                  ? `0s Rest · Immediate transition to ${supersetPrefix}B`
+                isStraightMode
+                  ? isFinalSetOfExercise
+                    ? "Final target set of this movement · Advances to next exercise"
+                    : `${activeEx.restSeconds || 60}s rest timer auto-starts`
+                  : isSupersetA
+                  ? `0s Rest · Immediate transition to ${partnerExercise?.subMovementOrder || `${supersetPrefix}B`}`
                   : isSupersetB
                   ? `Triggers ${activeEx.restSeconds || 60}s rest countdown before next round`
                   : isFinalSetOfExercise

@@ -65,9 +65,9 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
 
     const activeProg = appStore.getActiveProgramForTrainee('trainee_alaa');
     assert.ok(activeProg, 'Active program must exist for Alaa');
-    assert.strictEqual(activeProg.title, 'The Master 12-Week Hypertrophy Transformation Protocol');
-    assert.strictEqual(activeProg.durationWeeks, 12);
-    assert.strictEqual(activeProg.weeks.length, 12);
+    assert.strictEqual(activeProg.title, 'The Master 16-Week Protocol (Shoulder-Priority, Posture & 480 Daily Stairs Compensated)');
+    assert.strictEqual(activeProg.durationWeeks, 16);
+    assert.strictEqual(activeProg.weeks.length, 16);
     assert.strictEqual(activeProg.status, 'published');
 
     // Verify day 1 through 4 slots
@@ -78,14 +78,14 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     const thu = w1.days[3];
 
     // Verify 6-exercise master architecture across each of the 4 training days (24 catalogue movements total)
-    assert.strictEqual(mon.blocks.flatMap((b) => b.exercises).length, 6, 'Monday must have 6 exercises (Push, Rear Delt, Triceps, Abs)');
-    assert.strictEqual(mon.blocks.length, 3, 'Monday must have 3 blocks (straight + superset A + superset B)');
-    assert.strictEqual(tue.blocks.flatMap((b) => b.exercises).length, 6, 'Tuesday must have 6 exercises (Pull, Biceps, Forearms)');
-    assert.strictEqual(tue.blocks.length, 3, 'Tuesday must have 3 blocks (straight + superset A + superset B)');
-    assert.strictEqual(wed.blocks.flatMap((b) => b.exercises).length, 6, 'Wednesday must have 6 exercises (Legs A, Lat Pullover, Abs)');
-    assert.strictEqual(wed.blocks.length, 3, 'Wednesday must have 3 blocks (straight + superset A + superset B)');
-    assert.strictEqual(thu.blocks.flatMap((b) => b.exercises).length, 6, 'Thursday must have 6 exercises (Legs B, Shoulders, Dip, Upper Back)');
-    assert.strictEqual(thu.blocks.length, 3, 'Thursday must have 3 blocks (straight + superset A + superset B)');
+    assert.strictEqual(mon.blocks.flatMap((b) => b.exercises).length, 7, 'Monday must have 7 exercises');
+    assert.strictEqual(mon.blocks.length, 4, 'Monday must have 4 blocks');
+    assert.strictEqual(tue.blocks.flatMap((b) => b.exercises).length, 7, 'Tuesday must have 7 exercises');
+    assert.strictEqual(tue.blocks.length, 3, 'Tuesday must have 3 blocks');
+    assert.strictEqual(wed.blocks.flatMap((b) => b.exercises).length, 7, 'Wednesday must have 7 exercises');
+    assert.strictEqual(wed.blocks.length, 3, 'Wednesday must have 3 blocks');
+    assert.strictEqual(thu.blocks.flatMap((b) => b.exercises).length, 7, 'Thursday must have 7 exercises');
+    assert.strictEqual(thu.blocks.length, 3, 'Thursday must have 3 blocks');
 
     // Thursday Left-Arm Leader Rule on 0178: cable one arm lateral raise
     const thuLeftArmEx = thu.blocks.flatMap((b) => b.exercises).find((e) => e.exerciseId === 'ex_0178');

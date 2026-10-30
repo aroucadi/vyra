@@ -21,17 +21,17 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
   it("verifies Master Transformation 12-Week Blueprint structure and 84 days", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program, "Master program must be published for trainee_alaa");
-    assert.equal(program?.id, "prog_master_transformation_12w");
-    assert.equal(program?.title, "The Master 12-Week Hypertrophy Transformation Protocol");
-    assert.equal(program?.durationWeeks, 12);
-    assert.equal(program?.weeks.length, 12);
+    assert.equal(program?.id, "prog_master_16w_final");
+    assert.equal(program?.title, "The Master 16-Week Protocol (Shoulder-Priority, Posture & 480 Daily Stairs Compensated)");
+    assert.equal(program?.durationWeeks, 16);
+    assert.equal(program?.weeks.length, 16);
 
     let totalDays = 0;
     program?.weeks.forEach((w) => {
       assert.equal(w.days.length, 7);
       totalDays += w.days.length;
     });
-    assert.equal(totalDays, 84, "12 weeks must contain exactly 84 program days");
+    assert.equal(totalDays, 112, "16 weeks must contain exactly 112 program days");
   });
 
   it("verifies 4-Option Equipment Matrix is present on every workout exercise slot (24 catalogue movements)", () => {
@@ -71,7 +71,7 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
         });
       });
     }
-    assert.equal(exerciseCount, 24, "Split must contain exactly 24 exercises (6 per training day)");
+    assert.equal(exerciseCount, 28, "Split must contain exactly 28 exercises (7 per training day)");
   });
 
   it("verifies zero leg loading on Monday and Tuesday for football match deconfliction", () => {

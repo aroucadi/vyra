@@ -91,6 +91,8 @@ interface ActiveExercise {
   feedbackTags?: ExerciseBiofeedbackTag[];
   skippedRemaining?: boolean;
   supersetMode?: "superset" | "straight";
+  targetWeightKg?: number;
+  warmupSets?: number;
 }
 
 
@@ -136,7 +138,7 @@ function SessionFlow() {
     const exPrescriptions = targetDay.blocks.flatMap((b) => b.exercises);
     return exPrescriptions.map((ex) => {
       const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
-      const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);
+      const defaultWeight = pb ? pb.weightKg : (ex.targetWeightKg !== undefined ? ex.targetWeightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25));
       const defaultReps = pb ? pb.reps : Math.round((ex.repRangeLow + ex.repRangeHigh) / 2);
 
       return {
@@ -164,6 +166,8 @@ function SessionFlow() {
         equipmentVariations: ex.equipmentVariations,
         confidenceGuide: ex.confidenceGuide,
         targetMuscleGroups: ex.targetMuscleGroups,
+        targetWeightKg: ex.targetWeightKg,
+        warmupSets: ex.warmupSets,
       };
     });
   });
@@ -180,7 +184,7 @@ function SessionFlow() {
     setExercises(
       exPrescriptions.map((ex) => {
         const pb = appStore.getPersonalBestForExercise(currentUser.id, ex.exerciseName);
-        const defaultWeight = pb ? pb.weightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25);
+        const defaultWeight = pb ? pb.weightKg : (ex.targetWeightKg !== undefined ? ex.targetWeightKg : (ex.selectedEquipment === "bodyweight" ? 0 : 25));
         const defaultReps = pb ? pb.reps : Math.round((ex.repRangeLow + ex.repRangeHigh) / 2);
 
         return {
@@ -208,6 +212,8 @@ function SessionFlow() {
           equipmentVariations: ex.equipmentVariations,
           confidenceGuide: ex.confidenceGuide,
           targetMuscleGroups: ex.targetMuscleGroups,
+          targetWeightKg: ex.targetWeightKg,
+          warmupSets: ex.warmupSets,
         };
       })
     );
@@ -1244,17 +1250,42 @@ function SessionFlow() {
                             <span className="text-[10px] uppercase font-mono text-cyan-400 mr-2">{v.equipmentType}</span>
                             <span className="text-slate-200 font-medium">{v.exerciseName}</span>
                           </div>
-                          {v.videoUrl && (
-                            <a
-                              href={v.videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExercises((prev) => {
+                                  const copy = [...prev];
+                                  const targetIdx = previewDetailEx ? copy.findIndex(e => e.id === previewDetailEx.id) : currentExIndex;
+                                  if (targetIdx !== -1) {
+                                    copy[targetIdx] = {
+                                      ...copy[targetIdx],
+                                      name: v.exerciseName,
+                                      formCue: v.formCue,
+                                      videoUrl: v.videoUrl,
+                                      equipment: v.equipmentType,
+                                    };
+                                  }
+                                  return copy;
+                                });
+                                setPreviewDetailEx(null);
+                              }}
+                              className="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-semibold border border-cyan-500/40 transition cursor-pointer"
                             >
-                              <Video className="w-3 h-3" />
-                              <span>Demo</span>
-                            </a>
-                          )}
+                              Swap to this
+                            </button>
+                            {v.videoUrl && (
+                              <a
+                                href={v.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
+                              >
+                                <Video className="w-3 h-3" />
+                                <span>Demo</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1591,12 +1622,17 @@ function SessionFlow() {
                 </h2>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps · RIR {activeEx.targetRir}
+                Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps {activeEx.targetWeightKg ? `· ${activeEx.targetWeightKg}kg ` : ""}· RIR {activeEx.targetRir}
               </p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                   Overload Ceiling: {activeEx.repHigh} reps
                 </span>
+                {activeEx.warmupSets !== undefined && activeEx.warmupSets > 0 && activeEx.completedSets.length === 0 && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                    Warm-up: {activeEx.warmupSets} sets
+                  </span>
+                )}
               </div>
             </div>
 
@@ -2087,12 +2123,14 @@ function SessionFlow() {
             prev.map((ex, idx) => {
               const matches = (swapTargetExercise?.id && ex.id === swapTargetExercise.id) || idx === currentExIndex;
               if (!matches) return ex;
+              const newVideoUrl = candidate.videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(candidate.name.replace(/°/g, '') + ' proper form')}`;
               return {
                 ...ex,
                 name: candidate.name,
                 formCue: candidate.instructions?.[0] || ex.formCue,
                 equipment: candidate.equipment,
                 target: candidate.target,
+                videoUrl: newVideoUrl,
                 currentWeight: candidate.equipment.toLowerCase().includes("body") ? 0 : ex.currentWeight,
               };
             })

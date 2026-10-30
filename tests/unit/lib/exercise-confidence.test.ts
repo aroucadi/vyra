@@ -122,7 +122,7 @@ describe("Exercise Confidence Card (ECC) & Stealth Gym Mode Engine", () => {
       });
     });
 
-    assert.equal(totalSlotsChecked, 24, "Master blueprint must have 21 exercise prescriptions");
-    assert.equal(totalVariationsChecked, 96, "Master blueprint must have 84 variations (21 prescriptions × 4 options)");
+    assert.equal(totalSlotsChecked, 28, "Master blueprint must have 28 exercise prescriptions");
+    assert.equal(totalVariationsChecked, 112, "Master blueprint must have 112 variations (28 prescriptions × 4 options)");
   });
 });

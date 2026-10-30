@@ -93,6 +93,8 @@ export interface ExercisePrescription {
   repRangeLow: number;
   repRangeHigh: number;
   rirScheme: number[]; // e.g. [2, 1, 0]
+  targetWeightKg?: number;
+  warmupSets?: number;
   restSeconds: number; // e.g. 90
   loadGuidance?: string; // e.g. "Double progression: add weight when hitting 10 reps on all sets"
   formCueText?: string; // e.g. "Pause on sternum, tuck elbows 45°"

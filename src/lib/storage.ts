@@ -29,6 +29,14 @@ export interface ActiveSessionDraft {
   durationSec?: number;
   startedAt: string;
   updatedAt: string;
+  sessionStartEpochMs?: number;
+  liftingStartEpochMs?: number;
+  totalRestDurationSec?: number;
+  warmupDurationSec?: number;
+  cooldownDurationSec?: number;
+  warmupCompleted?: boolean;
+  cooldownCompleted?: boolean;
+  phase?: "preview" | "warmup" | "active" | "cooldown" | "summary";
 }
 
 export interface QueuedMutation {

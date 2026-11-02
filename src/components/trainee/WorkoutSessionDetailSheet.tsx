@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar } from "lucide-react";
@@ -9,6 +10,16 @@ interface WorkoutSessionDetailSheetProps {
   session: WorkoutSession | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+
+function formatDuration(sec?: number): string {
+  if (!sec || sec <= 0) return "0s";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m === 0) return `${s}s`;
+  if (s === 0) return `${m}m`;
+  return `${m}m ${s}s`;
 }
 
 export function WorkoutSessionDetailSheet({
@@ -128,6 +139,70 @@ export function WorkoutSessionDetailSheet({
             </div>
           </div>
         </div>
+
+
+        {/* 3 Parallel Timing Indicators Architecture */}
+        {(session.liftingDurationSec !== undefined || session.totalRestDurationSec !== undefined || session.warmupCompleted !== undefined || session.durationSec > 0) && (
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Time Architecture</span>
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400">
+                Wall-Clock Validated
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl">
+                <div className="text-xs font-mono font-bold text-white tabular">
+                  {formatDuration(session.durationSec)}
+                </div>
+                <div className="text-[9px] text-slate-400 uppercase mt-0.5 font-medium">Total Gym</div>
+              </div>
+
+              <div className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl">
+                <div className="text-xs font-mono font-bold text-cyan-300 tabular">
+                  {formatDuration(session.liftingDurationSec || Math.max(0, session.durationSec - (session.totalRestDurationSec || 0)))}
+                </div>
+                <div className="text-[9px] text-slate-400 uppercase mt-0.5 font-medium">Active Lifting</div>
+              </div>
+
+              <div className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl">
+                <div className="text-xs font-mono font-bold text-amber-300 tabular">
+                  {formatDuration(session.totalRestDurationSec || 0)}
+                </div>
+                <div className="text-[9px] text-slate-400 uppercase mt-0.5 font-medium">Cumulated Rest</div>
+              </div>
+            </div>
+
+            {/* Warmup & Cooldown Adherence Badges */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              {session.warmupCompleted !== undefined && (
+                <span className={clsx(
+                  "text-[10px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1",
+                  session.warmupCompleted
+                    ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/40"
+                    : "bg-slate-950 text-slate-400 border-slate-800"
+                )}>
+                  <span>{session.warmupCompleted ? `✓ Warmup (${formatDuration(session.warmupDurationSec)})` : "— Warmup Skipped"}</span>
+                </span>
+              )}
+
+              {session.cooldownCompleted !== undefined && (
+                <span className={clsx(
+                  "text-[10px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1",
+                  session.cooldownCompleted
+                    ? "bg-cyan-950/60 text-cyan-300 border-cyan-800/40"
+                    : "bg-slate-950 text-slate-400 border-slate-800"
+                )}>
+                  <span>{session.cooldownCompleted ? `✓ Cooldown (${formatDuration(session.cooldownDurationSec)})` : "— Cooldown Skipped"}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Exercise-by-Exercise Breakdown */}
         <div className="space-y-3">

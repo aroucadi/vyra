@@ -65,7 +65,7 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
 
     const activeProg = appStore.getActiveProgramForTrainee('trainee_alaa');
     assert.ok(activeProg, 'Active program must exist for Alaa');
-    assert.strictEqual(activeProg.title, 'The Master 16-Week Protocol (Shoulder-Priority, Posture & 480 Daily Stairs Compensated)');
+    assert.strictEqual(activeProg.title, 'The Definitive 16-Week Custom 360° Protocol (Gym + Home Bar/Board + 480 Daily Stairs + Sleep/Drive Ergonomics)');
     assert.strictEqual(activeProg.durationWeeks, 16);
     assert.strictEqual(activeProg.weeks.length, 16);
     assert.strictEqual(activeProg.status, 'published');

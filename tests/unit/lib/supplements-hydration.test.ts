@@ -1,10 +1,14 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { appStore } from "../../../src/lib/store.ts";
 
 describe("Vyra Supplement & Hydration Tracking Module", () => {
   const testProgramId = "prog_hypertrophy_1";
   const traineeId = "trainee_1";
+
+  beforeEach(() => {
+    appStore.reset();
+  });
 
   it("resolves phase-based supplement dosing without trainer daily re-authoring", () => {
     // Day 3 is within Loading Phase (Days 1–7)
@@ -115,7 +119,7 @@ describe("Vyra Supplement & Hydration Tracking Module", () => {
   });
 
   it("tracks hydration goal, running-total logging, and quick-add increments", () => {
-    const testDate = "2026-11-02";
+    const testDate = "2026-11-20";
     const goal = appStore.getHydrationGoal(traineeId);
     assert.ok(goal);
     assert.equal(goal.dailyTargetMl, 3500); // 3.5 Liters target

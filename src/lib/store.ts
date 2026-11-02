@@ -897,9 +897,9 @@ class Store {
       sessions: seedSessions,
       metrics: [...seedMetrics, ...seedMetricsAlaa],
       supplementProtocols: [...masterSupplementProtocols, ...seedSupplementProtocols],
-      supplementLogs: seedSupplementLogs,
+      supplementLogs: seedSupplementLogs.map((l) => ({ ...l })),
       hydrationGoals: [masterHydrationGoal, ...seedHydrationGoals],
-      hydrationLogs: seedHydrationLogs,
+      hydrationLogs: seedHydrationLogs.map((l) => ({ ...l })),
       wearableBiometrics: [],
     };
   }

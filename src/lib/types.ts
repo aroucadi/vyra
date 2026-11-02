@@ -13,6 +13,30 @@ export interface User {
   injuries: string[];
   goals: string[];
   hideWeightFromTrainee?: boolean;
+  biometrics?: {
+    age?: number;
+    heightCm?: number;
+    baselineWeightKg?: number;
+    skeletalMuscleMassKg?: number;
+    bodyFatPercent?: number;
+    week12TargetWeightKg?: number;
+    week16TargetWeightKg?: number;
+    longTermAthleteTargetKg?: number;
+    segmentalSymmetry?: {
+      leftArmKg?: number;
+      rightArmKg?: number;
+      leftLegKg?: number;
+      rightLegKg?: number;
+      trunkKg?: number;
+    };
+  };
+  biomechanicalTruths?: {
+    truth1_pelvicMasterSwitch?: string;
+    truth2_midlineVsLongLever?: string;
+    truth3_externalSupport?: string;
+    truth4_widePullStarterMotor?: string;
+    truth5_pronationInternalRotationBias?: string;
+  };
 }
 
 export interface TrainerLink {
@@ -250,6 +274,12 @@ export interface Program {
   hydrationGoal?: HydrationGoal;
   createdAt: string;
   updatedAt: string;
+  daily24HourRhythm?: {
+    wakeUp0730?: string;
+    commuteDriving?: string;
+    officeStairs?: string;
+    preSleep2245?: string;
+  };
 }
 
 export type ExerciseBiofeedbackTag = "optimal" | "heavy" | "light" | "joint_strain" | "balance_issue";

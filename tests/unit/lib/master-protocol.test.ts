@@ -19,7 +19,7 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
   const week7 = program.weeks[6];
 
   it('verifies program metadata and athlete profile', () => {
-    assert.strictEqual(program.title, 'The Master 16-Week Protocol (Shoulder-Priority, Posture & 480 Daily Stairs Compensated)');
+    assert.strictEqual(program.title, 'The Definitive 16-Week Custom 360° Protocol (Gym + Home Bar/Board + 480 Daily Stairs + Sleep/Drive Ergonomics)');
     assert.strictEqual(program.durationWeeks, 16);
     assert.strictEqual(program.weeks.length, 16);
     assert.strictEqual(userAlaa.id, 'trainee_alaa');
@@ -32,8 +32,8 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
     assert.strictEqual(week1.days.length, 7);
     const trainingDays = week1.days.filter((d) => !d.isRestDay);
     const restDays = week1.days.filter((d) => d.isRestDay);
-    assert.strictEqual(trainingDays.length, 4, 'Must have exactly 4 training days');
-    assert.strictEqual(restDays.length, 3, 'Must have exactly 3 rest days');
+    assert.strictEqual(trainingDays.length, 5, 'Must have exactly 5 training days');
+    assert.strictEqual(restDays.length, 2, 'Must have exactly 2 rest days');
 
     assert.strictEqual(week1.days[0].label.includes('Monday'), true);
     assert.strictEqual(week1.days[1].label.includes('Tuesday'), true);
@@ -55,8 +55,10 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
     assert.strictEqual(wednesdayExercises.length, 7, 'Wednesday must have 7 exercises');
     assert.strictEqual(thursdayExercises.length, 7, 'Thursday must have 7 exercises');
 
-    const totalPrescriptions = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length;
-    assert.strictEqual(totalPrescriptions, 28, 'Total exercise prescriptions across the 4-day split is exactly 28');
+        const saturdayExercises = week1.days[5].blocks.flatMap((b) => b.exercises);
+    assert.strictEqual(saturdayExercises.length, 4, 'Saturday must have 4 exercises');
+    const totalPrescriptions = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length + saturdayExercises.length;
+    assert.strictEqual(totalPrescriptions, 32, 'Total exercise prescriptions across the 5-day split is exactly 32');
 
     // Verify key movements requested by the coach
     assert.ok(wednesdayExercises.some(e => e.exerciseId === 'ex_0597'), 'Wednesday must include Seated Hip Abduction Machine (0597)');
@@ -115,7 +117,7 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
 
   it('verifies 4-modality equipment matrix completeness for all 28 exercise slots (112 variations total)', () => {
     const allExercises = week1.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
-    assert.strictEqual(allExercises.length, 28, 'Must have exactly 28 total exercise prescriptions');
+    assert.strictEqual(allExercises.length, 32, 'Must have exactly 32 total exercise prescriptions');
 
     const requiredEquipments: EquipmentType[] = ['machine', 'dumbbell', 'cable', 'bodyweight'];
 
@@ -154,13 +156,13 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
   it('verifies Monday match-day caloric compensation (3,000 kcal / 160g+ P) and standard training days (2,600 kcal / 139g P)', () => {
     // Monday (Match Day)
     const monNutrition = week1.days[0].nutrition;
-    assert.strictEqual(monNutrition.targetKcal, 3000, 'Monday must target 3000 kcal for match day compensation');
-    assert.strictEqual(monNutrition.targetProteinGrams, 160, 'Monday must target 160g protein');
+    assert.strictEqual(monNutrition.targetKcal, 3100, 'Monday must target 3100 kcal for match day compensation');
+    assert.strictEqual(monNutrition.targetProteinGrams, 165, 'Monday must target 165g protein');
 
     // Tuesday (Standard Training Day)
     const tueNutrition = week1.days[1].nutrition;
-    assert.strictEqual(tueNutrition.targetKcal, 2600, 'Tuesday must target 2600 kcal');
-    assert.strictEqual(tueNutrition.targetProteinGrams, 139, 'Tuesday must target 139g protein');
+    assert.strictEqual(tueNutrition.targetKcal, 2700, 'Tuesday must target 2700 kcal');
+    assert.strictEqual(tueNutrition.targetProteinGrams, 140, 'Tuesday must target 140g protein');
   });
 
   it('verifies Creatine Monohydrate & Dinner Stack protocols (5g daily, zero BIA water inflation)', () => {

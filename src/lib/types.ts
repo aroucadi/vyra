@@ -318,6 +318,12 @@ export interface WorkoutSession {
   startedAt: string; // ISO timestamp
   endedAt?: string; // ISO timestamp
   durationSec: number;
+  liftingDurationSec?: number;
+  totalRestDurationSec?: number;
+  warmupDurationSec?: number;
+  cooldownDurationSec?: number;
+  warmupCompleted?: boolean;
+  cooldownCompleted?: boolean;
   setLogs: SetLog[];
   exerciseFeedbacks?: ExerciseFeedbackRecord[];
   notes?: string;

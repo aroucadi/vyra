@@ -104,6 +104,15 @@ const BIOFEEDBACK_OPTIONS: { id: ExerciseBiofeedbackTag; icon: string; label: st
   { id: "light", icon: "🪶", label: "Too Light", activeColor: "border-slate-500/50 bg-slate-500/20 text-slate-200" },
 ];
 
+function formatDuration(sec?: number): string {
+  if (!sec || sec <= 0) return "0s";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m === 0) return `${s}s`;
+  if (s === 0) return `${m}m`;
+  return `${m}m ${s}s`;
+}
+
 function SessionFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,8 +137,8 @@ function SessionFlow() {
     : undefined;
 
   // Flow mode: "preview" | "active" | "summary"
-  const initialMode = (searchParams.get("mode") as "preview" | "active" | "summary") || "preview";
-  const [mode, setMode] = useState<"preview" | "active" | "summary">(initialMode);
+  const initialMode = (searchParams.get("mode") as "preview" | "warmup" | "active" | "cooldown" | "summary") || "preview";
+  const [mode, setMode] = useState<"preview" | "warmup" | "active" | "cooldown" | "summary">(initialMode);
   const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
 
   // Exercises initialization
@@ -235,12 +244,56 @@ function SessionFlow() {
   } | null>(null);
   const [isReorderDrawerOpen, setIsReorderDrawerOpen] = useState(false);
 
-  // Timer states
+  // Wall-Clock Timing Architecture & Epoch References (Zero sleep throttling)
+  const sessionStartEpochRef = React.useRef<number | null>(null);
+  const warmupStartEpochRef = React.useRef<number | null>(null);
+  const liftingStartEpochRef = React.useRef<number | null>(null);
+  const cooldownStartEpochRef = React.useRef<number | null>(null);
+  const restTargetEpochRef = React.useRef<number | null>(null);
+  const restStartEpochRef = React.useRef<number | null>(null);
+
   const [sessionDurationSec, setSessionDurationSec] = useState(0);
+  const [liftingDurationSec, setLiftingDurationSec] = useState(0);
+  const [totalRestDurationSec, setTotalRestDurationSec] = useState(0);
+  const [warmupDurationSec, setWarmupDurationSec] = useState(0);
+  const [cooldownDurationSec, setCooldownDurationSec] = useState(0);
+  const [warmupCompleted, setWarmupCompleted] = useState<boolean | undefined>(undefined);
+  const [cooldownCompleted, setCooldownCompleted] = useState<boolean | undefined>(undefined);
+  const [checkedWarmupDrills, setCheckedWarmupDrills] = useState<Record<number, boolean>>({});
+  const [checkedCooldownDrills, setCheckedCooldownDrills] = useState<Record<number, boolean>>({});
+
   const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => soundService.getIsMuted());
-  const [sessionStartTime] = useState(() => new Date().toISOString());
+  const [sessionStartTime, setSessionStartTime] = useState(() => new Date().toISOString());
   const [lastSetLoggedAt, setLastSetLoggedAt] = useState<number>(() => Date.now());
+
+  // Helper to persist draft with exact epoch timestamps
+  const persistDraft = (
+    list: ActiveExercise[],
+    exIdx: number = currentExIndex,
+    phaseOverride?: "preview" | "warmup" | "active" | "cooldown" | "summary"
+  ) => {
+    saveSessionDraft({
+      traineeId: currentUser.id,
+      programDayId: targetDay?.id,
+      dayLabel: targetDay?.label,
+      exercises: list,
+      currentExIndex: exIdx,
+      currentExerciseIndex: exIdx,
+      sessionDurationSec,
+      durationSec: sessionDurationSec,
+      startedAt: sessionStartTime,
+      updatedAt: new Date().toISOString(),
+      sessionStartEpochMs: sessionStartEpochRef.current || undefined,
+      liftingStartEpochMs: liftingStartEpochRef.current || undefined,
+      totalRestDurationSec,
+      warmupDurationSec,
+      cooldownDurationSec,
+      warmupCompleted,
+      cooldownCompleted,
+      phase: phaseOverride || mode,
+    });
+  };
 
   // SPEC 018: Restore draft if recovering from app switch / browser crash in basement dead zone
   useEffect(() => {
@@ -301,35 +354,75 @@ function SessionFlow() {
     };
   }, []);
 
-  // Overall session clock
-  useEffect(() => {
-    if (mode !== "active") return;
-    const interval = setInterval(() => {
-      setSessionDurationSec((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
+  // True Wall-Clock Synchronization Engine (Immune to Mobile Background Sleep & Pocket Freezing)
+  const syncClocks = React.useCallback(() => {
+    const now = Date.now();
+    if (sessionStartEpochRef.current) {
+      setSessionDurationSec(Math.max(0, Math.round((now - sessionStartEpochRef.current) / 1000)));
+    }
+    if (mode === "warmup" && warmupStartEpochRef.current) {
+      setWarmupDurationSec(Math.max(0, Math.round((now - warmupStartEpochRef.current) / 1000)));
+    }
+    if (mode === "active" && liftingStartEpochRef.current) {
+      setLiftingDurationSec(Math.max(0, Math.round((now - liftingStartEpochRef.current) / 1000)));
+    }
+    if (mode === "cooldown" && cooldownStartEpochRef.current) {
+      setCooldownDurationSec(Math.max(0, Math.round((now - cooldownStartEpochRef.current) / 1000)));
+    }
+    if (restTargetEpochRef.current) {
+      const remaining = Math.max(0, Math.round((restTargetEpochRef.current - now) / 1000));
+      setRestTimerSec(remaining);
+      if (remaining <= 0) {
+        if (restStartEpochRef.current) {
+          const rested = Math.max(0, Math.round((now - restStartEpochRef.current) / 1000));
+          setTotalRestDurationSec((prev) => prev + rested);
+        }
+        restTargetEpochRef.current = null;
+        restStartEpochRef.current = null;
+        setRestTimerSec(null);
+        soundService.playRestChime();
+      } else if (remaining <= 3 && remaining > 0) {
+        soundService.playCountdownPip();
+      }
+    }
   }, [mode]);
 
-  // Rest countdown timer with athletic audio/haptic chime triggers
   useEffect(() => {
-    if (restTimerSec === null || restTimerSec <= 0) return;
-    const timer = setInterval(() => {
-      setRestTimerSec((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          // Play dual-tone rest completion chime (880Hz -> 1760Hz) & haptic double-pulse
-          soundService.playRestChime();
-          return null;
-        }
-        if (prev <= 4 && prev > 1) {
-          // Gentle pip on final 3 seconds (3, 2, 1)
-          soundService.playCountdownPip();
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [restTimerSec]);
+    if (mode === "preview" || mode === "summary") return;
+    const interval = setInterval(syncClocks, 500);
+    const handleSync = () => syncClocks();
+    window.addEventListener("focus", handleSync);
+    window.addEventListener("online", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("online", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+    };
+  }, [mode, syncClocks]);
+
+  const startRestCountdown = (seconds: number) => {
+    const now = Date.now();
+    if (restStartEpochRef.current && restTargetEpochRef.current) {
+      const rested = Math.max(0, Math.round((now - restStartEpochRef.current) / 1000));
+      setTotalRestDurationSec((prev) => prev + rested);
+    }
+    restStartEpochRef.current = now;
+    restTargetEpochRef.current = now + seconds * 1000;
+    setRestTimerSec(seconds);
+  };
+
+  const cancelOrSkipRest = () => {
+    const now = Date.now();
+    if (restStartEpochRef.current) {
+      const rested = Math.max(0, Math.round((now - restStartEpochRef.current) / 1000));
+      setTotalRestDurationSec((prev) => prev + rested);
+    }
+    restStartEpochRef.current = null;
+    restTargetEpochRef.current = null;
+    setRestTimerSec(null);
+  };
 
   // Check latest biometric snapshot from Apple Watch / Wearable
   const latestSnapshot = React.useMemo(() => {
@@ -716,7 +809,7 @@ function SessionFlow() {
     } else if (activeEx.supersetMode === "straight") {
       // Straight Sets Mode (Machine occupied / uncoupled superset):
       if (newCompletedLength < activeEx.targetSets) {
-        setRestTimerSec(activeEx.restSeconds || 60);
+        startRestCountdown(activeEx.restSeconds || 60);
       } else {
         setRestTimerSec(activeEx.restSeconds || 60);
         setTimeout(() => {
@@ -755,7 +848,7 @@ function SessionFlow() {
         }, 400);
       }
     } else {
-      setRestTimerSec(activeEx.restSeconds);
+      startRestCountdown(activeEx.restSeconds || 90);
     }
   };
 
@@ -808,8 +901,38 @@ function SessionFlow() {
     setRestTimerSec(null);
   };
 
-  // Finish session
-  const handleFinishSession = async (snapshot?: ActiveExercise[]) => {
+  // Transition to Post-Workout Cooldown & Stretch Phase
+  const handleTransitionToCooldown = () => {
+    cancelOrSkipRest();
+    const now = Date.now();
+    if (liftingStartEpochRef.current) {
+      setLiftingDurationSec(Math.max(1, Math.round((now - liftingStartEpochRef.current) / 1000)));
+    }
+    cooldownStartEpochRef.current = now;
+    persistDraft(exercises, currentExIndex, "cooldown");
+    setMode("cooldown");
+  };
+
+  // Finish session with full 3-metric wall-clock calculation
+  const handleFinishSession = async (
+    snapshot?: ActiveExercise[],
+    overrideWarmup?: { completed: boolean; durationSec: number },
+    overrideCooldown?: { completed: boolean; durationSec: number }
+  ) => {
+    cancelOrSkipRest();
+    const now = Date.now();
+    const finalSessionTotalSec = sessionStartEpochRef.current
+      ? Math.max(1, Math.round((now - sessionStartEpochRef.current) / 1000))
+      : sessionDurationSec;
+    const finalLiftingSec = liftingStartEpochRef.current
+      ? Math.max(1, Math.round((now - liftingStartEpochRef.current) / 1000))
+      : liftingDurationSec;
+
+    const wCompleted = overrideWarmup ? overrideWarmup.completed : (warmupCompleted ?? false);
+    const wDuration = overrideWarmup ? overrideWarmup.durationSec : warmupDurationSec;
+    const cCompleted = overrideCooldown ? overrideCooldown.completed : (cooldownCompleted ?? false);
+    const cDuration = overrideCooldown ? overrideCooldown.durationSec : cooldownDurationSec;
+
     const listToSave = snapshot || exercises;
     const allSetLogs: SetLog[] = listToSave.flatMap((ex, exIdx) =>
       ex.completedSets.map((s, sIdx) => ({
@@ -836,7 +959,13 @@ function SessionFlow() {
       date: new Date().toISOString().split("T")[0],
       startedAt: sessionStartTime,
       endedAt: new Date().toISOString(),
-      durationSec: sessionDurationSec,
+      durationSec: finalSessionTotalSec,
+      liftingDurationSec: finalLiftingSec,
+      totalRestDurationSec,
+      warmupDurationSec: wDuration,
+      cooldownDurationSec: cDuration,
+      warmupCompleted: wCompleted,
+      cooldownCompleted: cCompleted,
       setLogs: allSetLogs,
       exerciseFeedbacks: listToSave
         .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag)
@@ -1308,7 +1437,308 @@ function SessionFlow() {
   }
 
   // --------------------------------------------------------------------------
+  // STATE: PRE-WORKOUT WARMUP & MOVEMENT PREP (Skippable With 1 Tap)
+  // --------------------------------------------------------------------------
+  if (mode === "warmup") {
+    const rawRoutines = targetDay?.morningRoutine || [
+      "Doorway Pull-Up Bar 30s Hollow-Body Scapular Hang (5 reps x 2s depression pause): Feet slightly forward, squeeze glutes, ribs down, pull shoulder blades down without bending elbows.",
+      "Supine Windshield Wipers (60s): Lie on back, knees bent, feet wide; gently rock knees 5x left and 5x right with shoulders pinned flat to unwind overnight lumbar torsion.",
+      "Standing Glute-Squeeze Hip Extension + Y-Reach (60s): Step back, squeeze both glutes hard for 5s (stretch front hip capsule), reach arms back into a Y with thumbs pointing behind.",
+      "Incline Bench Push-Up Plus (60s): Hands elevated, push torso away at top for 2s to move shoulder blades through full protraction.",
+    ];
+
+    const warmupDrills = rawRoutines.map((drillStr, idx) => {
+      const parts = drillStr.split(":");
+      const title = parts[0]?.trim() || `Warmup Drill #${idx + 1}`;
+      const desc = parts.slice(1).join(":").trim() || "Prime movement mechanics and joint capsule stability.";
+      return { id: idx, title, desc };
+    });
+
+    const handleCompleteWarmup = () => {
+      const now = Date.now();
+      const duration = warmupStartEpochRef.current
+        ? Math.max(1, Math.round((now - warmupStartEpochRef.current) / 1000))
+        : warmupDurationSec;
+      setWarmupDurationSec(duration);
+      setWarmupCompleted(true);
+      liftingStartEpochRef.current = now;
+      persistDraft(exercises, 0, "active");
+      setMode("active");
+    };
+
+    const handleSkipWarmup = () => {
+      const now = Date.now();
+      setWarmupDurationSec(0);
+      setWarmupCompleted(false);
+      liftingStartEpochRef.current = now;
+      persistDraft(exercises, 0, "active");
+      setMode("active");
+    };
+
+    return (
+      <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200">
+        <header className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setMode("preview")}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Session Preview</span>
+          </button>
+          <span className="text-[10px] font-mono text-cyan-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-cyan-800/40">
+            PHASE 1 / 3: WARMUP
+          </span>
+        </header>
+
+        {/* Stopwatch & Header Card */}
+        <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[10px] font-mono text-cyan-400">
+            <Clock className="w-3 h-3" />
+            <span>ELAPSED WARMUP TIME</span>
+          </div>
+          <div className="text-4xl font-mono font-extrabold text-white tracking-tight tabular">
+            {formatDuration(warmupDurationSec)}
+          </div>
+          <p className="text-xs text-slate-400 leading-snug">
+            Counts directly toward total gym session time. Mobilizes pelvis, thoracic spine, and shoulder girdle.
+          </p>
+        </div>
+
+        {/* Dynamic Drill Checklist */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs px-1">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400 font-mono">
+              Movement Alignment Drills ({Object.values(checkedWarmupDrills).filter(Boolean).length}/{warmupDrills.length} done)
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400">
+              5–7 mins recommended
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {warmupDrills.map((drill) => {
+              const isChecked = Boolean(checkedWarmupDrills[drill.id]);
+              return (
+                <div
+                  key={drill.id}
+                  onClick={() =>
+                    setCheckedWarmupDrills((prev) => ({
+                      ...prev,
+                      [drill.id]: !prev[drill.id],
+                    }))
+                  }
+                  className={clsx(
+                    "p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none",
+                    isChecked
+                      ? "bg-slate-950/40 border-emerald-500/40 text-slate-400"
+                      : "bg-slate-900 border-slate-800 hover:border-slate-700 text-white"
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
+                      isChecked
+                        ? "bg-emerald-500 border-emerald-400 text-slate-950"
+                        : "border-slate-700 bg-slate-950 text-transparent"
+                    )}
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div
+                      className={clsx(
+                        "text-xs font-bold leading-tight",
+                        isChecked && "line-through text-slate-500"
+                      )}
+                    >
+                      {drill.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      {drill.desc}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Dual Primary / Skip Actions */}
+        <div className="space-y-2.5 pt-2">
+          <button
+            type="button"
+            onClick={handleCompleteWarmup}
+            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+            <span>Done with Warmup → Start Lifting</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSkipWarmup}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] border border-slate-800 text-slate-400 hover:text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <SkipForward className="w-3.5 h-3.5 text-slate-500" />
+            <span>Skip Warmup (Straight to Exercises)</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // STATE: POST-WORKOUT COOLDOWN & DECOMPRESSION (Skippable With 1 Tap)
+  // --------------------------------------------------------------------------
+  if (mode === "cooldown") {
+    const cooldownDrills = [
+      {
+        id: 0,
+        title: "Doorway / Pull-Up Bar Passive Dead Hang (45s)",
+        desc: "Passive hang; relax hips, feet forward, allow gravity to decompress lumbar spine and lengthen tight lats.",
+      },
+      {
+        id: 1,
+        title: "Half-Kneeling Couch Stretch / Psoas Opener (60s / side)",
+        desc: "Squeeze back glute forward, tall spine. Releases tight hip flexor capsule shortened by 2.5h commute driving.",
+      },
+      {
+        id: 2,
+        title: "Doorway Pectoral & Biceps Release (45s / side)",
+        desc: "Elbow braced at 90°, gently turn torso away with lower ribs down to reverse pressing shortening.",
+      },
+      {
+        id: 3,
+        title: "Diaphragmatic Parasympathetic Box Breathing (60s)",
+        desc: "4s inhale through nose, 4s hold, 8s slow exhale through pursed lips. Downregulates central nervous system.",
+      },
+    ];
+
+    const handleCompleteCooldown = () => {
+      const now = Date.now();
+      const duration = cooldownStartEpochRef.current
+        ? Math.max(1, Math.round((now - cooldownStartEpochRef.current) / 1000))
+        : cooldownDurationSec;
+      handleFinishSession(exercises, undefined, { completed: true, durationSec: duration });
+    };
+
+    const handleSkipCooldown = () => {
+      handleFinishSession(exercises, undefined, { completed: false, durationSec: 0 });
+    };
+
+    return (
+      <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200">
+        <header className="flex items-center justify-between">
+          <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span>Lifting Finished</span>
+          </span>
+          <span className="text-[10px] font-mono text-cyan-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-cyan-800/40">
+            PHASE 3 / 3: COOLDOWN
+          </span>
+        </header>
+
+        {/* Stopwatch & Header Card */}
+        <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[10px] font-mono text-cyan-400">
+            <Clock className="w-3 h-3" />
+            <span>ELAPSED COOLDOWN TIME</span>
+          </div>
+          <div className="text-4xl font-mono font-extrabold text-white tracking-tight tabular">
+            {formatDuration(cooldownDurationSec)}
+          </div>
+          <p className="text-xs text-slate-400 leading-snug">
+            Decompress vertebrae discs, stretch shortened hip flexors, and switch on parasympathetic recovery.
+          </p>
+        </div>
+
+        {/* Dynamic Drill Checklist */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs px-1">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400 font-mono">
+              Post-Workout Stretches ({Object.values(checkedCooldownDrills).filter(Boolean).length}/{cooldownDrills.length} done)
+            </span>
+            <span className="text-[10px] font-mono text-cyan-400">
+              3–5 mins
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {cooldownDrills.map((drill) => {
+              const isChecked = Boolean(checkedCooldownDrills[drill.id]);
+              return (
+                <div
+                  key={drill.id}
+                  onClick={() =>
+                    setCheckedCooldownDrills((prev) => ({
+                      ...prev,
+                      [drill.id]: !prev[drill.id],
+                    }))
+                  }
+                  className={clsx(
+                    "p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none",
+                    isChecked
+                      ? "bg-slate-950/40 border-cyan-500/40 text-slate-400"
+                      : "bg-slate-900 border-slate-800 hover:border-slate-700 text-white"
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
+                      isChecked
+                        ? "bg-cyan-500 border-cyan-400 text-slate-950"
+                        : "border-slate-700 bg-slate-950 text-transparent"
+                    )}
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div
+                      className={clsx(
+                        "text-xs font-bold leading-tight",
+                        isChecked && "line-through text-slate-500"
+                      )}
+                    >
+                      {drill.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      {drill.desc}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Dual Primary / Skip Actions */}
+        <div className="space-y-2.5 pt-2">
+          <button
+            type="button"
+            onClick={handleCompleteCooldown}
+            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+            <span>Finish & Save Workout ✓</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSkipCooldown}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] border border-slate-800 text-slate-400 hover:text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <SkipForward className="w-3.5 h-3.5 text-slate-500" />
+            <span>Skip Cooldown → View Summary</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // STATE 3: SESSION SUMMARY (Celebration View)
+  // --------------------------------------------------------------------------
   // --------------------------------------------------------------------------
   if (mode === "summary") {
     const totalVolume = exercises.reduce(

@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay, checkIsPersonalRecord } from "@/lib/utils";
-import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription, Exercise, EquipmentOption, ExerciseConfidenceGuide, ExerciseBiofeedbackTag, ExerciseFeedbackRecord } from "@/lib/types";
+import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription, Exercise, EquipmentOption, ExerciseConfidenceGuide, ExerciseBiofeedbackTag, ExerciseFeedbackRecord, GymLocation } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 import { uploadEquipmentPhotoAction } from "@/lib/actions/upload";
 import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
+import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { isCloudStorageEnabled } from "@/lib/cloud-storage";
 import { Log } from "@/components/primitives/Log";
@@ -50,6 +51,7 @@ import {
   ArrowRightLeft,
   Plus,
   CheckCircle2,
+  MapPin,
   Search,
   ExternalLink,
   Eye,
@@ -187,6 +189,10 @@ function SessionFlow() {
   const initialMode = (searchParams.get("mode") as "preview" | "warmup" | "active" | "cooldown" | "summary") || "preview";
   const [mode, setMode] = useState<"preview" | "warmup" | "active" | "cooldown" | "summary">(initialMode);
   const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
+  const [isGymDrawerOpen, setIsGymDrawerOpen] = useState(false);
+  const [selectedGym, setSelectedGym] = useState<GymLocation | null>(() => {
+    return appStore.getDefaultGymLocation(currentUser.id) || null;
+  });
 
   // Exercises initialization
   const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
@@ -430,6 +436,9 @@ function SessionFlow() {
       warmupCompleted,
       cooldownCompleted,
       phase: phaseOverride || mode,
+      gymId: selectedGym?.id,
+      gymName: selectedGym?.name,
+      gymAddress: selectedGym?.address,
     });
   };
 
@@ -452,6 +461,13 @@ function SessionFlow() {
             }
             if (typeof draft.durationSec === "number") {
               setSessionDurationSec(draft.durationSec);
+            }
+            if (draft.gymId || draft.gymName) {
+              setSelectedGym({
+                id: draft.gymId || "gym_restored",
+                name: draft.gymName || "Punch by Badr Hari Lissasfa",
+                address: draft.gymAddress,
+              });
             }
             if (mode === "preview") {
               setMode("active");
@@ -1109,6 +1125,9 @@ function SessionFlow() {
       cooldownCompleted: cCompleted,
       audioNoteUrl: sessionAudioUrl,
       sessionNote: sessionNote,
+      gymId: selectedGym?.id,
+      gymName: selectedGym?.name || "Punch by Badr Hari Lissasfa",
+      gymAddress: selectedGym?.address,
       setLogs: allSetLogs,
       exerciseFeedbacks: listToSave
         .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag || !!ex.feedbackNote || !!ex.equipmentPhotoUrl || !!ex.feedbackAudioUrl)
@@ -1208,6 +1227,38 @@ function SessionFlow() {
             </p>
           </div>
         )}
+
+        {/* Salle de Sport / Training Location Selector */}
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Location</span>
+                {selectedGym?.isDefault && (
+                  <span className="text-[9px] font-mono text-amber-300 font-semibold">★ Default</span>
+                )}
+              </div>
+              <p className="font-semibold text-white text-xs truncate">
+                {selectedGym?.name || "Punch by Badr Hari Lissasfa"}
+              </p>
+              {selectedGym?.address && (
+                <p className="text-[10px] text-slate-400 truncate">
+                  {selectedGym.address}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsGymDrawerOpen(true)}
+            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-800/50 hover:bg-cyan-900/50 transition flex-shrink-0 active:scale-95"
+          >
+            Change
+          </button>
+        </div>
 
         {/* Readiness Input & Autoregulation Section */}
         <section className="space-y-3">
@@ -1578,6 +1629,17 @@ function SessionFlow() {
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Gym Selector Drawer (Preview Mode) */}
+        <GymSelectorDrawer
+          isOpen={isGymDrawerOpen}
+          onOpenChange={setIsGymDrawerOpen}
+          selectedGymId={selectedGym?.id}
+          onSelectGym={(gym) => {
+            setSelectedGym(gym);
+            persistDraft(exercises, currentExIndex);
+          }}
+        />
       </div>
     );
   }
@@ -1955,6 +2017,35 @@ function SessionFlow() {
           </div>
         </div>
 
+        {/* Training Facility / Salle de Sport Card */}
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
+                Salle de Sport
+              </span>
+              <p className="font-semibold text-white text-xs truncate">
+                {selectedGym?.name || "Punch by Badr Hari Lissasfa"}
+              </p>
+              {selectedGym?.address && (
+                <p className="text-[11px] text-slate-400 truncate">
+                  {selectedGym.address}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsGymDrawerOpen(true)}
+            className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-xl bg-cyan-950/50 border border-cyan-800/50 hover:bg-cyan-900/50 transition active:scale-95 flex-shrink-0"
+          >
+            Change
+          </button>
+        </div>
+
         {/* Biomechanical Overload & Deload Prescriptions */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
@@ -2044,6 +2135,7 @@ function SessionFlow() {
             label="Workout Voice Debrief"
             traineeId={currentUser.id}
             exerciseName="overall_workout_debrief"
+            gymName={selectedGym?.name}
           />
         </div>
 
@@ -2072,6 +2164,23 @@ function SessionFlow() {
           </button>
         </div>
 
+        {/* Gym Selector Drawer (Summary Mode) */}
+        <GymSelectorDrawer
+          isOpen={isGymDrawerOpen}
+          onOpenChange={setIsGymDrawerOpen}
+          selectedGymId={selectedGym?.id}
+          onSelectGym={(gym) => {
+            setSelectedGym(gym);
+            const sessions = appStore.getSessions(currentUser.id);
+            if (sessions.length > 0) {
+              appStore.updateSessionGym(sessions[0].id, {
+                id: gym.id,
+                name: gym.name,
+                address: gym.address,
+              });
+            }
+          }}
+        />
       </div>
     );
   }
@@ -2096,6 +2205,15 @@ function SessionFlow() {
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsGymDrawerOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-full text-[11px] font-medium text-slate-300 hover:text-cyan-300 transition cursor-pointer max-w-[120px]"
+            title="Change salle de sport"
+          >
+            <MapPin className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+            <span className="truncate">{selectedGym?.name || "Gym"}</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsReorderDrawerOpen(true)}
@@ -2440,6 +2558,7 @@ function SessionFlow() {
                   label={`Voice Note: ${activeEx.name}`}
                   traineeId={currentUser.id}
                   exerciseName={activeEx.name}
+                  gymName={selectedGym?.name}
                 />
               </div>
 
@@ -2480,6 +2599,7 @@ function SessionFlow() {
                         exerciseName: activeEx.name,
                         note: activeEx.feedbackNote,
                         traineeId: currentUser.id,
+                        gymName: selectedGym?.name,
                       })}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-900/80 to-cyan-900/80 border border-indigo-700/70 hover:border-indigo-500 text-white transition text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                       title="Share with Google Gemini for biomechanical analysis"
@@ -3014,6 +3134,7 @@ function SessionFlow() {
                   exerciseName: activeEx.name,
                   note: activeEx.feedbackNote,
                   traineeId: currentUser.id,
+                  gymName: selectedGym?.name,
                 });
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"

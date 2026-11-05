@@ -74,6 +74,23 @@ export const userAlaa: User = {
     truth4_widePullStarterMotor: "0 wide overhand pull-ups caused by dead-hang lower-trap scapular depression deficit. Fixed via daily 30s Hollow-Body Scapular Hangs (5 depressions x 2s), 1s depression pauses on cable pulldowns, and Saturday 5s wide negatives.",
     truth5_pronationInternalRotationBias: "1-2 supinated chin-ups vs 3-4 neutral hammer pull-ups and 20kg press vs 40kg pull. Fixed via Tuesday underhand seated cable rows (25kg) and Saturday closed-chain push-up board work.",
   },
+  defaultGymId: "gym_punch_lissasfa",
+  gymLocations: [
+    {
+      id: "gym_punch_lissasfa",
+      name: "Punch by Badr Hari Lissasfa",
+      address: "Lissasfa, Casablanca",
+      isDefault: true,
+      notes: "Commercial gym with full leverage machines, Smith, 45° leg press, Glute Bridge Machine, and Seated Hip Abductor.",
+    },
+    {
+      id: "gym_home",
+      name: "Home Setup",
+      address: "Home (Casablanca)",
+      isDefault: false,
+      notes: "Doorway pull-up bar + color-coded push-up board.",
+    },
+  ],
 };
 
 export const linkAlaa: TrainerLink = {

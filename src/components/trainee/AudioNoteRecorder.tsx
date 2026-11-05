@@ -13,6 +13,7 @@ interface AudioNoteRecorderProps {
   label?: string;
   traineeId?: string;
   exerciseName?: string;
+  gymName?: string;
   compact?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function AudioNoteRecorder({
   label = "Voice Feedback Note",
   traineeId,
   exerciseName,
+  gymName,
   compact = false,
 }: AudioNoteRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -291,6 +293,7 @@ export function AudioNoteRecorder({
                 audioUrl,
                 exerciseName,
                 traineeId,
+                gymName,
               })}
               className="flex items-center gap-1 px-2 py-1 rounded bg-indigo-950/70 hover:bg-indigo-900/70 border border-indigo-700/60 text-indigo-300 text-[10px] font-semibold transition cursor-pointer active:scale-95"
               title="Share voice note with Google Gemini"

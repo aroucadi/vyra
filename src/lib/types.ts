@@ -1,6 +1,14 @@
 export type WeightUnit = "kg" | "lb";
 export type UserRole = "trainer" | "trainee" | "both";
 
+export interface GymLocation {
+  id: string;
+  name: string;
+  address?: string;
+  isDefault?: boolean;
+  notes?: string;
+}
+
 export interface User {
   id: string;
   role: UserRole;
@@ -37,6 +45,8 @@ export interface User {
     truth4_widePullStarterMotor?: string;
     truth5_pronationInternalRotationBias?: string;
   };
+  defaultGymId?: string;
+  gymLocations?: GymLocation[];
 }
 
 export interface TrainerLink {
@@ -334,6 +344,9 @@ export interface WorkoutSession {
   notes?: string;
   sessionNote?: string;
   audioNoteUrl?: string;
+  gymId?: string;
+  gymName?: string;
+  gymAddress?: string;
 }
 
 export interface BodyMetricEntry {

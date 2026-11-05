@@ -2,9 +2,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 import { appStore } from "@/lib/store";
 import { WorkoutSession } from "@/lib/types";
-import { shareEquipmentPhotoWithGemini, urlToFile } from "@/lib/share-equipment";
+import { shareEquipmentPhotoWithGemini, shareAudioNoteWithGemini, urlToFile } from "@/lib/share-equipment";
 
-describe("Multi-Modal Feedback (Audio Notes) & Gemini Photo Sharing", () => {
+describe("Multi-Modal Feedback (Audio Notes) & Gemini Photo/Audio Sharing", () => {
   test("persists exercise audio feedback and overall session audio debrief in WorkoutSession", () => {
     const sampleAudioUri = "data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH...";
     const samplePhotoUri = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...";
@@ -78,7 +78,6 @@ describe("Multi-Modal Feedback (Audio Notes) & Gemini Photo Sharing", () => {
   test("shareEquipmentPhotoWithGemini falls back gracefully in non-browser/test environments", async () => {
     const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
     
-    // In node test environment where navigator.share is undefined
     const res = await shareEquipmentPhotoWithGemini({
       photoUrl: tinyPng,
       exerciseName: "0597: Lever Seated Hip Abduction",
@@ -86,8 +85,34 @@ describe("Multi-Modal Feedback (Audio Notes) & Gemini Photo Sharing", () => {
       traineeId: "trainee_alaa",
     });
 
-    // Should return result without crashing
     assert.ok(typeof res.shared === "boolean");
     assert.ok(res.method === "native_share" || res.method === "clipboard_gemini" || res.method === "download_gemini");
+  });
+
+  test("shareAudioNoteWithGemini converts voice note to audio File and falls back gracefully", async () => {
+    const sampleAudioUri = "data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH...";
+
+    const res = await shareAudioNoteWithGemini({
+      audioUrl: sampleAudioUri,
+      exerciseName: "lever chest press",
+      note: "Elbow path felt pain free",
+      traineeId: "trainee_alaa",
+    });
+
+    assert.ok(typeof res.shared === "boolean");
+    assert.ok(res.method === "native_share" || res.method === "download_gemini");
+  });
+
+  test("shareAudioNoteWithGemini handles overall workout debrief sharing", async () => {
+    const sampleAudioUri = "data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH...";
+
+    const res = await shareAudioNoteWithGemini({
+      audioUrl: sampleAudioUri,
+      sessionTitle: "Thursday Glute & Hamstring Session",
+      traineeId: "trainee_alaa",
+    });
+
+    assert.ok(typeof res.shared === "boolean");
+    assert.ok(res.method === "native_share" || res.method === "download_gemini");
   });
 });

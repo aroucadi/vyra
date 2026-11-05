@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause } from "lucide-react";
-import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
+import { shareEquipmentPhotoWithGemini, shareAudioNoteWithGemini } from "@/lib/share-equipment";
 
 interface WorkoutSessionDetailSheetProps {
   session: WorkoutSession | null;
@@ -24,7 +24,19 @@ function formatDuration(sec?: number): string {
 }
 
 
-function AudioPlayerPill({ audioUrl, label }: { audioUrl: string; label: string }) {
+function AudioPlayerPill({
+  audioUrl,
+  label,
+  exerciseName,
+  sessionTitle,
+  traineeId,
+}: {
+  audioUrl: string;
+  label: string;
+  exerciseName?: string;
+  sessionTitle?: string;
+  traineeId?: string;
+}) {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
@@ -51,15 +63,33 @@ function AudioPlayerPill({ audioUrl, label }: { audioUrl: string; label: string 
   }, [audioUrl]);
 
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 hover:bg-cyan-900/60 transition cursor-pointer text-xs active:scale-95"
-    >
-      {isPlaying ? <Pause className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> : <Play className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400 ml-0.5" />}
-      <span className="text-[11px] font-semibold">{label}</span>
-      <Volume2 className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
-    </button>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 hover:bg-cyan-900/60 transition cursor-pointer text-xs active:scale-95"
+      >
+        {isPlaying ? <Pause className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> : <Play className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400 ml-0.5" />}
+        <span className="text-[11px] font-semibold">{label}</span>
+        <Volume2 className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => shareAudioNoteWithGemini({
+          audioUrl,
+          exerciseName,
+          sessionTitle,
+          traineeId,
+        })}
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-950/60 border border-indigo-700/60 hover:bg-indigo-900/60 text-indigo-300 transition text-[10px] font-semibold cursor-pointer active:scale-95"
+        title="Share voice note with Google Gemini"
+      >
+        <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300" />
+        <span>Share with Gemini</span>
+        <Share2 className="w-2.5 h-2.5 ml-0.5" />
+      </button>
+    </div>
   );
 }
 
@@ -226,6 +256,8 @@ export function WorkoutSessionDetailSheet({
                 <AudioPlayerPill
                   audioUrl={session.audioNoteUrl}
                   label="Workout Voice Debrief"
+                  sessionTitle={session.dayLabel || session.programTitle}
+                  traineeId={session.traineeId}
                 />
               </div>
             )}
@@ -366,7 +398,12 @@ export function WorkoutSessionDetailSheet({
                   if (!audio) return null;
                   return (
                     <div className="pt-1">
-                      <AudioPlayerPill audioUrl={audio} label={`Voice Note: ${group.name}`} />
+                      <AudioPlayerPill
+                        audioUrl={audio}
+                        label={`Voice Note: ${group.name}`}
+                        exerciseName={group.name}
+                        traineeId={session.traineeId}
+                      />
                     </div>
                   );
                 })()}

@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { Mic, Square, Play, Pause, Trash2, Volume2, Sparkles } from "lucide-react";
+import { Mic, Square, Play, Pause, Trash2, Volume2, Sparkles, Share2 } from "lucide-react";
+import { shareAudioNoteWithGemini } from "@/lib/share-equipment";
 import { telemetry } from "@/lib/telemetry";
 
 interface AudioNoteRecorderProps {
@@ -284,6 +285,20 @@ export function AudioNoteRecorder({
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => shareAudioNoteWithGemini({
+                audioUrl,
+                exerciseName,
+                traineeId,
+              })}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-indigo-950/70 hover:bg-indigo-900/70 border border-indigo-700/60 text-indigo-300 text-[10px] font-semibold transition cursor-pointer active:scale-95"
+              title="Share voice note with Google Gemini"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300" />
+              <span>Gemini</span>
+              <Share2 className="w-2.5 h-2.5 ml-0.5" />
+            </button>
             <button
               type="button"
               onClick={startRecording}

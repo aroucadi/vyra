@@ -4,7 +4,7 @@ import React from "react";
 import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar } from "lucide-react";
+import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X } from "lucide-react";
 
 interface WorkoutSessionDetailSheetProps {
   session: WorkoutSession | null;
@@ -27,6 +27,8 @@ export function WorkoutSessionDetailSheet({
   isOpen,
   onOpenChange,
 }: WorkoutSessionDetailSheetProps) {
+  const [selectedPhoto, setSelectedPhoto] = React.useState<string | null>(null);
+
   if (!session) return null;
 
   // Calculate high-level summary metrics
@@ -305,6 +307,30 @@ export function WorkoutSessionDetailSheet({
             Done
           </button>
         </div>
+        {/* Full Size Photo Preview Modal */}
+        {selectedPhoto && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-2 space-y-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-2 pt-1">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Machine / Equipment Setup</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhoto(null)}
+                  className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <img src={selectedPhoto} alt="Machine setup full" className="w-full h-auto max-h-[70vh] object-contain rounded-xl" />
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

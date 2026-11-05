@@ -56,6 +56,8 @@ import {
   SkipForward,
   Zap,
   Layers,
+  Camera,
+  FileText,
 } from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
@@ -89,6 +91,8 @@ interface ActiveExercise {
   targetMuscleGroups?: string[];
   feedbackTag?: ExerciseBiofeedbackTag;
   feedbackTags?: ExerciseBiofeedbackTag[];
+  feedbackNote?: string;
+  equipmentPhotoUrl?: string;
   skippedRemaining?: boolean;
   supersetMode?: "superset" | "straight";
   targetWeightKg?: number;
@@ -111,6 +115,43 @@ function formatDuration(sec?: number): string {
   if (m === 0) return `${s}s`;
   if (s === 0) return `${m}m`;
   return `${m}m ${s}s`;
+}
+
+
+function compressImage(file: File, maxDim = 800, quality = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new (window as any).Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function SessionFlow() {
@@ -261,6 +302,52 @@ function SessionFlow() {
   const [cooldownCompleted, setCooldownCompleted] = useState<boolean | undefined>(undefined);
   const [checkedWarmupDrills, setCheckedWarmupDrills] = useState<Record<number, boolean>>({});
   const [checkedCooldownDrills, setCheckedCooldownDrills] = useState<Record<number, boolean>>({});
+  const [selectedFullPhoto, setSelectedFullPhoto] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleUpdateFeedbackNote = (note: string) => {
+    if (!activeEx) return;
+    setExercises((prev) => {
+      const copy = [...prev];
+      copy[currentExIndex] = {
+        ...copy[currentExIndex],
+        feedbackNote: note,
+      };
+      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      return copy;
+    });
+  };
+
+  const handleUpdateEquipmentPhoto = (photoDataUrl: string | undefined) => {
+    if (!activeEx) return;
+    setExercises((prev) => {
+      const copy = [...prev];
+      copy[currentExIndex] = {
+        ...copy[currentExIndex],
+        equipmentPhotoUrl: photoDataUrl,
+      };
+      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      return copy;
+    });
+  };
+
+  const handleCaptureEquipmentPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, 800, 0.7);
+      handleUpdateEquipmentPhoto(compressed);
+      telemetry.track("equipment_photo_captured", {
+        exercise_name: activeEx?.name,
+      }, currentUser.id);
+    } catch (err) {
+      console.warn("Failed to capture equipment photo:", err);
+    }
+  };
+
+  const handleRemoveEquipmentPhoto = () => {
+    handleUpdateEquipmentPhoto(undefined);
+  };
 
   const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => soundService.getIsMuted());
@@ -1462,6 +1549,7 @@ function SessionFlow() {
       setWarmupDurationSec(duration);
       setWarmupCompleted(true);
       liftingStartEpochRef.current = now;
+      setCurrentExIndex(0);
       persistDraft(exercises, 0, "active");
       setMode("active");
     };
@@ -2701,6 +2789,40 @@ function SessionFlow() {
         </SheetContent>
       </Sheet>
 
+      {/* Hidden File Input for Machine / Equipment Photo Capture */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCaptureEquipmentPhoto}
+        className="hidden"
+      />
+
+      {/* Full Size Photo Preview Modal */}
+      {selectedFullPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setSelectedFullPhoto(null)}
+        >
+          <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-2 space-y-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-2 pt-1">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Machine / Equipment Setup</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedFullPhoto(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <img src={selectedFullPhoto} alt="Machine setup full" className="w-full h-auto max-h-[70vh] object-contain rounded-xl" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

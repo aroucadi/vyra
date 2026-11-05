@@ -113,3 +113,84 @@ export async function shareEquipmentPhotoWithGemini(
     };
   }
 }
+
+
+export interface ShareAudioNoteOptions {
+  audioUrl: string;
+  exerciseName?: string;
+  sessionTitle?: string;
+  note?: string;
+  traineeId?: string;
+}
+
+/**
+ * Triggers native system share sheet with an audio feedback memo file.
+ * Opens Gemini app with the voice note attached and analysis prompt prefilled.
+ */
+export async function shareAudioNoteWithGemini(
+  options: ShareAudioNoteOptions
+): Promise<ShareResult> {
+  const { audioUrl, exerciseName, sessionTitle, note, traineeId } = options;
+  const label = exerciseName ? `${exerciseName} — Voice Feedback` : `${sessionTitle || "Workout"} — Voice Debrief`;
+  const cleanName = (exerciseName || sessionTitle || "workout_voice_note")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "_");
+
+  let extension = "webm";
+  if (audioUrl.includes("audio/mp4") || audioUrl.includes("audio/m4a")) {
+    extension = "m4a";
+  } else if (audioUrl.includes("audio/ogg")) {
+    extension = "ogg";
+  }
+  const filename = `${cleanName}_feedback.${extension}`;
+
+  const shareTitle = `${label} (Gemini Analysis)`;
+  const shareText = `Here is my voice feedback memo for ${
+    exerciseName ? `exercise: ${exerciseName}` : `session: ${sessionTitle || "Gym Workout"}`
+  } at Punch Lissasfa${note ? ` (Context note: "${note}")` : ""}. Please listen to this audio note and provide feedback on my fatigue levels, technical execution, and any recovery adjustments needed.`;
+
+  telemetry.track("audio_note_shared", {
+    exercise_name: exerciseName || "workout_overall",
+    has_note: Boolean(note),
+  }, traineeId);
+
+  // 1. Attempt Native Web Share API with real audio File
+  try {
+    const file = await urlToFile(audioUrl, filename);
+    if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        files: [file],
+      });
+      return { shared: true, method: "native_share" };
+    }
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      return { shared: false, method: "native_share", message: "Share cancelled" };
+    }
+    console.warn("Native audio share failed, trying download fallback:", err);
+  }
+
+  // 2. Download Fallback + Open Gemini in new tab
+  try {
+    const a = document.createElement("a");
+    a.href = audioUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.open("https://gemini.google.com/app", "_blank");
+    return {
+      shared: true,
+      method: "download_gemini",
+      message: "Audio note downloaded! Upload it to Gemini in your new conversation.",
+    };
+  } catch (dlErr) {
+    return {
+      shared: false,
+      method: "download_gemini",
+      message: "Could not share audio note automatically.",
+    };
+  }
+}

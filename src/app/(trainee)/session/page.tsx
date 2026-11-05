@@ -7,6 +7,8 @@ import { appStore } from "@/lib/store";
 import { resolveProgramDay, checkIsPersonalRecord } from "@/lib/utils";
 import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription, Exercise, EquipmentOption, ExerciseConfidenceGuide, ExerciseBiofeedbackTag, ExerciseFeedbackRecord } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
+import { uploadEquipmentPhotoAction } from "@/lib/actions/upload";
+import { isCloudStorageEnabled } from "@/lib/cloud-storage";
 import { Log } from "@/components/primitives/Log";
 import { Card } from "@/components/primitives/Card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -336,9 +338,30 @@ function SessionFlow() {
     if (!file) return;
     try {
       const compressed = await compressImage(file, 800, 0.7);
+      // 1. Immediately save compressed local photo (100% offline-resilient & instant)
       handleUpdateEquipmentPhoto(compressed);
+
+      // 2. If Cloud Storage feature flag is enabled, perform background upload
+      if (isCloudStorageEnabled() && typeof navigator !== "undefined" && navigator.onLine) {
+        uploadEquipmentPhotoAction({
+          dataUri: compressed,
+          traineeId: currentUser.id,
+          exerciseName: activeEx?.name || "exercise",
+          sessionId: targetDay?.id,
+        })
+          .then((res) => {
+            if (res.isCloud && res.url) {
+              handleUpdateEquipmentPhoto(res.url);
+            }
+          })
+          .catch((err) => {
+            console.warn("Background cloud upload skipped, kept local photo:", err);
+          });
+      }
+
       telemetry.track("equipment_photo_captured", {
         exercise_name: activeEx?.name,
+        cloud_storage_enabled: isCloudStorageEnabled(),
       }, currentUser.id);
     } catch (err) {
       console.warn("Failed to capture equipment photo:", err);

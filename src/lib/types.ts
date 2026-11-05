@@ -290,6 +290,7 @@ export interface ExerciseFeedbackRecord {
   tags?: ExerciseBiofeedbackTag[];
   note?: string;
   photoUrl?: string;
+  audioNoteUrl?: string;
   timestamp?: string;
 }
 
@@ -308,6 +309,7 @@ export interface SetLog {
   feedbackTags?: ExerciseBiofeedbackTag[];
   note?: string;
   photoUrl?: string;
+  audioNoteUrl?: string;
   skipped?: boolean;
 }
 
@@ -330,6 +332,8 @@ export interface WorkoutSession {
   setLogs: SetLog[];
   exerciseFeedbacks?: ExerciseFeedbackRecord[];
   notes?: string;
+  sessionNote?: string;
+  audioNoteUrl?: string;
 }
 
 export interface BodyMetricEntry {

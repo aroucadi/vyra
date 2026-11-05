@@ -8,6 +8,8 @@ import { resolveProgramDay, checkIsPersonalRecord } from "@/lib/utils";
 import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription, Exercise, EquipmentOption, ExerciseConfidenceGuide, ExerciseBiofeedbackTag, ExerciseFeedbackRecord } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 import { uploadEquipmentPhotoAction } from "@/lib/actions/upload";
+import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
+import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { isCloudStorageEnabled } from "@/lib/cloud-storage";
 import { Log } from "@/components/primitives/Log";
 import { Card } from "@/components/primitives/Card";
@@ -60,6 +62,7 @@ import {
   Layers,
   Camera,
   FileText,
+  Share2,
 } from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
@@ -94,6 +97,7 @@ interface ActiveExercise {
   feedbackTag?: ExerciseBiofeedbackTag;
   feedbackTags?: ExerciseBiofeedbackTag[];
   feedbackNote?: string;
+  feedbackAudioUrl?: string;
   equipmentPhotoUrl?: string;
   skippedRemaining?: boolean;
   supersetMode?: "superset" | "straight";
@@ -305,7 +309,31 @@ function SessionFlow() {
   const [checkedWarmupDrills, setCheckedWarmupDrills] = useState<Record<number, boolean>>({});
   const [checkedCooldownDrills, setCheckedCooldownDrills] = useState<Record<number, boolean>>({});
   const [selectedFullPhoto, setSelectedFullPhoto] = useState<string | null>(null);
+  const [sessionAudioUrl, setSessionAudioUrl] = useState<string | undefined>(undefined);
+  const [sessionNote, setSessionNote] = useState<string | undefined>(undefined);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleUpdateExerciseAudio = (audioDataUrl: string | undefined) => {
+    if (!activeEx) return;
+    setExercises((prev) => {
+      const copy = [...prev];
+      copy[currentExIndex] = {
+        ...copy[currentExIndex],
+        feedbackAudioUrl: audioDataUrl,
+      };
+      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      return copy;
+    });
+  };
+
+  const handleUpdateSessionAudio = (audioDataUrl: string | undefined) => {
+    setSessionAudioUrl(audioDataUrl);
+    const completed = appStore.getSessions(currentUser.id).find((s) => s.id.startsWith("session_"));
+    if (completed) {
+      completed.audioNoteUrl = audioDataUrl;
+      appStore.saveSession(completed);
+    }
+  };
 
   const handleUpdateFeedbackNote = (note: string) => {
     if (!activeEx) return;
@@ -1059,6 +1087,7 @@ function SessionFlow() {
         feedbackTags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
         note: ex.feedbackNote,
         photoUrl: ex.equipmentPhotoUrl,
+        audioNoteUrl: ex.feedbackAudioUrl,
       }))
     );
 
@@ -1078,15 +1107,18 @@ function SessionFlow() {
       cooldownDurationSec: cDuration,
       warmupCompleted: wCompleted,
       cooldownCompleted: cCompleted,
+      audioNoteUrl: sessionAudioUrl,
+      sessionNote: sessionNote,
       setLogs: allSetLogs,
       exerciseFeedbacks: listToSave
-        .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag || !!ex.feedbackNote || !!ex.equipmentPhotoUrl)
+        .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag || !!ex.feedbackNote || !!ex.equipmentPhotoUrl || !!ex.feedbackAudioUrl)
         .map((ex) => ({
           exerciseName: ex.name,
           tag: ex.feedbackTag,
           tags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
           note: ex.feedbackNote,
           photoUrl: ex.equipmentPhotoUrl,
+          audioNoteUrl: ex.feedbackAudioUrl,
         })),
     };
 
@@ -1993,6 +2025,28 @@ function SessionFlow() {
           sessionsCount={appStore.getSessions(currentUser.id).length}
         />
 
+        {/* Overall Post-Workout Voice Debrief (Optional) */}
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Volume2 className="w-4 h-4 text-cyan-400" />
+              <span>Post-Workout Voice Debrief (Optional)</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">Voice Memo</span>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Record a quick voice note about overall fatigue, pump, joint sensations, or football recovery.
+          </p>
+          <AudioNoteRecorder
+            audioUrl={sessionAudioUrl}
+            onSave={(url) => handleUpdateSessionAudio(url)}
+            onDelete={() => handleUpdateSessionAudio(undefined)}
+            label="Workout Voice Debrief"
+            traineeId={currentUser.id}
+            exerciseName="overall_workout_debrief"
+          />
+        </div>
+
         {/* Done & Backup Actions */}
         <div className="space-y-2">
           <button
@@ -2216,6 +2270,16 @@ function SessionFlow() {
 
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-cyan-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
+                title="Snap equipment setup photo"
+              >
+                <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{activeEx.equipmentPhotoUrl ? "Photo ✓" : "Photo"}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setIsTipsOpen(true)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
               >
@@ -2350,6 +2414,99 @@ function SessionFlow() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Free-Form Notes Text Input (Optional) */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold">
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Setup & Biofeedback Notes (Optional)</span>
+                </div>
+                <textarea
+                  value={activeEx.feedbackNote || ""}
+                  onChange={(e) => handleUpdateFeedbackNote(e.target.value)}
+                  placeholder="e.g. Pin set to position 4, right elbow felt smooth, micro-plates used..."
+                  rows={2}
+                  className="w-full p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 transition resize-none"
+                />
+              </div>
+
+              {/* Audio Voice Note Feedback (Optional) */}
+              <div className="pt-1">
+                <AudioNoteRecorder
+                  audioUrl={activeEx.feedbackAudioUrl}
+                  onSave={(url) => handleUpdateExerciseAudio(url)}
+                  onDelete={() => handleUpdateExerciseAudio(undefined)}
+                  label={`Voice Note: ${activeEx.name}`}
+                  traineeId={currentUser.id}
+                  exerciseName={activeEx.name}
+                />
+              </div>
+
+              {/* Machine / Equipment Setup Photo & Native Gemini Share */}
+              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Equipment / Barbell Setup Photo</span>
+                  </span>
+                  {activeEx.equipmentPhotoUrl && (
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">Photo Attached ✓</span>
+                  )}
+                </div>
+
+                {activeEx.equipmentPhotoUrl ? (
+                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFullPhoto(activeEx.equipmentPhotoUrl!)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-cyan-950/50 border border-cyan-800/60 hover:bg-cyan-900/50 transition group cursor-pointer text-left active:scale-95"
+                    >
+                      <img
+                        src={activeEx.equipmentPhotoUrl}
+                        alt="Setup preview"
+                        className="w-8 h-8 object-cover rounded-md border border-cyan-700/50 group-hover:scale-105 transition flex-shrink-0"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-semibold text-cyan-300">Inspect Photo</span>
+                        <span className="text-[9px] text-slate-400">Tap to enlarge</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => shareEquipmentPhotoWithGemini({
+                        photoUrl: activeEx.equipmentPhotoUrl!,
+                        exerciseName: activeEx.name,
+                        note: activeEx.feedbackNote,
+                        traineeId: currentUser.id,
+                      })}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-900/80 to-cyan-900/80 border border-indigo-700/70 hover:border-indigo-500 text-white transition text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                      title="Share with Google Gemini for biomechanical analysis"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                      <span>Share with Gemini</span>
+                      <Share2 className="w-3 h-3 ml-0.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-[10px] text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2.5 px-3 rounded-lg border border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-900/50 hover:bg-slate-900 transition flex items-center justify-center gap-2 text-xs text-slate-300 cursor-pointer active:scale-98"
+                  >
+                    <Camera className="w-4 h-4 text-cyan-400" />
+                    <span>Snap Machine / Seat Setting / Barbell Photo</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2826,27 +2983,45 @@ function SessionFlow() {
         className="hidden"
       />
 
-      {/* Full Size Photo Preview Modal */}
+      {/* Full Size Photo Preview Modal with Gemini Sharing */}
       {selectedFullPhoto && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm animate-in fade-in"
           onClick={() => setSelectedFullPhoto(null)}
         >
-          <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-2 space-y-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-2 pt-1">
+          <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Machine / Equipment Setup</span>
+                <span>{activeEx.name} — Setup</span>
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedFullPhoto(null)}
-                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <img src={selectedFullPhoto} alt="Machine setup full" className="w-full h-auto max-h-[70vh] object-contain rounded-xl" />
+
+            <img src={selectedFullPhoto} alt="Machine setup full" className="w-full h-auto max-h-[60vh] object-contain rounded-xl border border-slate-800" />
+
+            <button
+              type="button"
+              onClick={async () => {
+                await shareEquipmentPhotoWithGemini({
+                  photoUrl: selectedFullPhoto,
+                  exerciseName: activeEx.name,
+                  note: activeEx.feedbackNote,
+                  traineeId: currentUser.id,
+                });
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300" />
+              <span>Share with Gemini / Phone Apps</span>
+              <Share2 className="w-3.5 h-3.5 ml-1" />
+            </button>
           </div>
         </div>
       )}

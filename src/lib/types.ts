@@ -289,6 +289,7 @@ export interface ExerciseFeedbackRecord {
   tag?: ExerciseBiofeedbackTag;
   tags?: ExerciseBiofeedbackTag[];
   note?: string;
+  photoUrl?: string;
   timestamp?: string;
 }
 
@@ -305,6 +306,8 @@ export interface SetLog {
   isDropSet?: boolean;
   feedbackTag?: ExerciseBiofeedbackTag;
   feedbackTags?: ExerciseBiofeedbackTag[];
+  note?: string;
+  photoUrl?: string;
   skipped?: boolean;
 }
 

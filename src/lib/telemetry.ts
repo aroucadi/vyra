@@ -32,7 +32,8 @@ export type VyraTelemetryEvent =
   | "goal_selected"
   | "equipment_swapped"
   | "mesocycle_frequency_selected"
-  | "exercise_feedback_logged";
+  | "exercise_feedback_logged"
+  | "equipment_photo_captured";
 
 export interface TelemetryEventRecord {
   eventName: VyraTelemetryEvent;

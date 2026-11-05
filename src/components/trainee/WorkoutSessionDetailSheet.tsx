@@ -4,7 +4,8 @@ import React from "react";
 import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X } from "lucide-react";
+import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause } from "lucide-react";
+import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 
 interface WorkoutSessionDetailSheetProps {
   session: WorkoutSession | null;
@@ -22,12 +23,52 @@ function formatDuration(sec?: number): string {
   return `${m}m ${s}s`;
 }
 
+
+function AudioPlayerPill({ audioUrl, label }: { audioUrl: string; label: string }) {
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const toggle = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => setIsPlaying(false);
+    }
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [audioUrl]);
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 hover:bg-cyan-900/60 transition cursor-pointer text-xs active:scale-95"
+    >
+      {isPlaying ? <Pause className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> : <Play className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400 ml-0.5" />}
+      <span className="text-[11px] font-semibold">{label}</span>
+      <Volume2 className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
+    </button>
+  );
+}
+
 export function WorkoutSessionDetailSheet({
   session,
   isOpen,
   onOpenChange,
 }: WorkoutSessionDetailSheetProps) {
-  const [selectedPhoto, setSelectedPhoto] = React.useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = React.useState<{ url: string; exerciseName: string } | null>(null);
 
   if (!session) return null;
 
@@ -179,6 +220,16 @@ export function WorkoutSessionDetailSheet({
               </div>
             </div>
 
+            {/* Overall Workout Audio Debrief */}
+            {session.audioNoteUrl && (
+              <div className="pt-2">
+                <AudioPlayerPill
+                  audioUrl={session.audioNoteUrl}
+                  label="Workout Voice Debrief"
+                />
+              </div>
+            )}
+
             {/* Warmup & Cooldown Adherence Badges */}
             <div className="flex items-center gap-2 pt-1 flex-wrap">
               {session.warmupCompleted !== undefined && (
@@ -307,6 +358,19 @@ export function WorkoutSessionDetailSheet({
                   );
                 })()}
 
+                {/* Exercise Audio Note */}
+                {(() => {
+                  const audioFromSets = group.sets.find((s) => s.audioNoteUrl)?.audioNoteUrl;
+                  const audioFromFeedback = session.exerciseFeedbacks?.find((f) => f.exerciseName === group.name)?.audioNoteUrl;
+                  const audio = audioFromSets || audioFromFeedback;
+                  if (!audio) return null;
+                  return (
+                    <div className="pt-1">
+                      <AudioPlayerPill audioUrl={audio} label={`Voice Note: ${group.name}`} />
+                    </div>
+                  );
+                })()}
+
                 {/* Machine / Equipment Setup Photo */}
                 {(() => {
                   const photoFromSets = group.sets.find((s) => s.photoUrl)?.photoUrl;
@@ -314,10 +378,10 @@ export function WorkoutSessionDetailSheet({
                   const photo = photoFromSets || photoFromFeedback;
                   if (!photo) return null;
                   return (
-                    <div className="pt-1 flex items-center gap-2">
+                    <div className="pt-1 flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => setSelectedPhoto(photo)}
+                        onClick={() => setSelectedPhoto({ url: photo, exerciseName: group.name })}
                         className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-800/50 hover:bg-cyan-900/40 transition group cursor-pointer text-left"
                       >
                         <img
@@ -329,8 +393,24 @@ export function WorkoutSessionDetailSheet({
                           <span className="text-[10px] font-semibold text-cyan-300 flex items-center gap-1">
                             <Camera className="w-3 h-3" /> Machine / Bar Setup
                           </span>
-                          <span className="text-[9px] text-slate-400">Tap to enlarge equipment setup</span>
+                          <span className="text-[9px] text-slate-400">Tap to enlarge</span>
                         </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => shareEquipmentPhotoWithGemini({
+                          photoUrl: photo,
+                          exerciseName: group.name,
+                          note: group.sets.find((s) => s.note)?.note,
+                          traineeId: session.traineeId,
+                        })}
+                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-indigo-950/60 border border-indigo-700/60 hover:bg-indigo-900/60 text-indigo-300 transition text-[11px] font-semibold cursor-pointer active:scale-95"
+                        title="Share setup photo with Google Gemini"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                        <span>Share with Gemini</span>
+                        <Share2 className="w-3 h-3 ml-0.5" />
                       </button>
                     </div>
                   );
@@ -350,27 +430,45 @@ export function WorkoutSessionDetailSheet({
             Done
           </button>
         </div>
-        {/* Full Size Photo Preview Modal */}
+        {/* Full Size Photo Preview Modal with Gemini Sharing */}
         {selectedPhoto && (
           <div
             className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm animate-in fade-in"
             onClick={() => setSelectedPhoto(null)}
           >
-            <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-2 space-y-2" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-2 pt-1">
+            <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-bold text-white flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Machine / Equipment Setup</span>
+                  <span>{selectedPhoto.exerciseName} — Setup</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setSelectedPhoto(null)}
-                  className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <img src={selectedPhoto} alt="Machine setup full" className="w-full h-auto max-h-[70vh] object-contain rounded-xl" />
+
+              <img src={selectedPhoto.url} alt="Machine setup full" className="w-full h-auto max-h-[60vh] object-contain rounded-xl border border-slate-800" />
+
+              {/* Native Share Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  await shareEquipmentPhotoWithGemini({
+                    photoUrl: selectedPhoto.url,
+                    exerciseName: selectedPhoto.exerciseName,
+                    traineeId: session.traineeId,
+                  });
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300" />
+                <span>Share with Gemini / Phone Apps</span>
+                <Share2 className="w-3.5 h-3.5 ml-1" />
+              </button>
             </div>
           </div>
         )}

@@ -4,8 +4,10 @@ import React from "react";
 import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause } from "lucide-react";
+import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause, MapPin } from "lucide-react";
 import { shareEquipmentPhotoWithGemini, shareAudioNoteWithGemini } from "@/lib/share-equipment";
+import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
+import { appStore } from "@/lib/store";
 
 interface WorkoutSessionDetailSheetProps {
   session: WorkoutSession | null;
@@ -30,12 +32,14 @@ function AudioPlayerPill({
   exerciseName,
   sessionTitle,
   traineeId,
+  gymName,
 }: {
   audioUrl: string;
   label: string;
   exerciseName?: string;
   sessionTitle?: string;
   traineeId?: string;
+  gymName?: string;
 }) {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -81,6 +85,7 @@ function AudioPlayerPill({
           exerciseName,
           sessionTitle,
           traineeId,
+          gymName,
         })}
         className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-950/60 border border-indigo-700/60 hover:bg-indigo-900/60 text-indigo-300 transition text-[10px] font-semibold cursor-pointer active:scale-95"
         title="Share voice note with Google Gemini"
@@ -99,6 +104,12 @@ export function WorkoutSessionDetailSheet({
   onOpenChange,
 }: WorkoutSessionDetailSheetProps) {
   const [selectedPhoto, setSelectedPhoto] = React.useState<{ url: string; exerciseName: string } | null>(null);
+  const [isGymDrawerOpen, setIsGymDrawerOpen] = React.useState(false);
+  const [currentGymName, setCurrentGymName] = React.useState(() => session?.gymName || "Punch by Badr Hari Lissasfa");
+
+  React.useEffect(() => {
+    if (session?.gymName) setCurrentGymName(session.gymName);
+  }, [session?.gymName]);
 
   if (!session) return null;
 
@@ -180,6 +191,32 @@ export function WorkoutSessionDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
+        {/* Salle de Sport / Gym Location */}
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-white text-xs truncate">
+                  {currentGymName}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 truncate">
+                {session.gymAddress || "Training Facility"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsGymDrawerOpen(true)}
+            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-800/50 hover:bg-cyan-900/50 transition flex-shrink-0 active:scale-95"
+          >
+            Change
+          </button>
+        </div>
+
         {/* Overview Metric Matrix (Max 3 numbers per AGENTS.md) */}
         <div className="grid grid-cols-3 gap-2">
           <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center">
@@ -258,6 +295,7 @@ export function WorkoutSessionDetailSheet({
                   label="Workout Voice Debrief"
                   sessionTitle={session.dayLabel || session.programTitle}
                   traineeId={session.traineeId}
+                  gymName={currentGymName}
                 />
               </div>
             )}
@@ -403,6 +441,7 @@ export function WorkoutSessionDetailSheet({
                         label={`Voice Note: ${group.name}`}
                         exerciseName={group.name}
                         traineeId={session.traineeId}
+                        gymName={currentGymName}
                       />
                     </div>
                   );
@@ -441,6 +480,7 @@ export function WorkoutSessionDetailSheet({
                           exerciseName: group.name,
                           note: group.sets.find((s) => s.note)?.note,
                           traineeId: session.traineeId,
+                          gymName: currentGymName,
                         })}
                         className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-indigo-950/60 border border-indigo-700/60 hover:bg-indigo-900/60 text-indigo-300 transition text-[11px] font-semibold cursor-pointer active:scale-95"
                         title="Share setup photo with Google Gemini"
@@ -498,6 +538,7 @@ export function WorkoutSessionDetailSheet({
                     photoUrl: selectedPhoto.url,
                     exerciseName: selectedPhoto.exerciseName,
                     traineeId: session.traineeId,
+                    gymName: currentGymName,
                   });
                 }}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
@@ -509,6 +550,22 @@ export function WorkoutSessionDetailSheet({
             </div>
           </div>
         )}
+        <GymSelectorDrawer
+          isOpen={isGymDrawerOpen}
+          onOpenChange={setIsGymDrawerOpen}
+          selectedGymId={session.gymId}
+          onSelectGym={(gym) => {
+            setCurrentGymName(gym.name);
+            session.gymId = gym.id;
+            session.gymName = gym.name;
+            session.gymAddress = gym.address;
+            appStore.updateSessionGym(session.id, {
+              id: gym.id,
+              name: gym.name,
+              address: gym.address,
+            });
+          }}
+        />
       </SheetContent>
     </Sheet>
   );

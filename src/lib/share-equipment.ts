@@ -16,6 +16,7 @@ export interface ShareEquipmentOptions {
   exerciseName: string;
   note?: string;
   traineeId?: string;
+  gymName?: string;
 }
 
 export interface ShareResult {
@@ -40,12 +41,13 @@ export async function urlToFile(url: string, filename: string): Promise<File> {
 export async function shareEquipmentPhotoWithGemini(
   options: ShareEquipmentOptions
 ): Promise<ShareResult> {
-  const { photoUrl, exerciseName, note, traineeId } = options;
+  const { photoUrl, exerciseName, note, traineeId, gymName } = options;
   const cleanName = exerciseName.toLowerCase().replace(/[^a-z0-9]/g, "_");
   const filename = `${cleanName}_setup.jpg`;
 
   const shareTitle = `${exerciseName} — Setup Check`;
-  const shareText = `Here is my gym equipment setup for ${exerciseName}${
+  const gymSuffix = gymName ? ` at ${gymName}` : "";
+  const shareText = `Here is my gym equipment setup for ${exerciseName}${gymSuffix}${
     note ? ` (Notes: "${note}")` : ""
   }. Please analyze my seat height, pin notch, and joint leverage angles for optimal biomechanics.`;
 
@@ -121,6 +123,7 @@ export interface ShareAudioNoteOptions {
   sessionTitle?: string;
   note?: string;
   traineeId?: string;
+  gymName?: string;
 }
 
 /**
@@ -130,7 +133,7 @@ export interface ShareAudioNoteOptions {
 export async function shareAudioNoteWithGemini(
   options: ShareAudioNoteOptions
 ): Promise<ShareResult> {
-  const { audioUrl, exerciseName, sessionTitle, note, traineeId } = options;
+  const { audioUrl, exerciseName, sessionTitle, note, traineeId, gymName } = options;
   const label = exerciseName ? `${exerciseName} — Voice Feedback` : `${sessionTitle || "Workout"} — Voice Debrief`;
   const cleanName = (exerciseName || sessionTitle || "workout_voice_note")
     .toLowerCase()
@@ -145,9 +148,10 @@ export async function shareAudioNoteWithGemini(
   const filename = `${cleanName}_feedback.${extension}`;
 
   const shareTitle = `${label} (Gemini Analysis)`;
+  const gymSuffix = gymName ? ` at ${gymName}` : "";
   const shareText = `Here is my voice feedback memo for ${
     exerciseName ? `exercise: ${exerciseName}` : `session: ${sessionTitle || "Gym Workout"}`
-  } at Punch Lissasfa${note ? ` (Context note: "${note}")` : ""}. Please listen to this audio note and provide feedback on my fatigue levels, technical execution, and any recovery adjustments needed.`;
+  }${gymSuffix}${note ? ` (Context note: "${note}")` : ""}. Please listen to this audio note and provide feedback on my fatigue levels, technical execution, and any recovery adjustments needed.`;
 
   telemetry.track("audio_note_shared", {
     exercise_name: exerciseName || "workout_overall",

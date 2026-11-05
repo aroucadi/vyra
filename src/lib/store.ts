@@ -1,5 +1,6 @@
 import {
   User,
+  GymLocation,
   Program,
   WorkoutSession,
   BodyMetricEntry,
@@ -966,6 +967,137 @@ class Store {
     return this.db.currentUser;
   }
 
+  persistGymLocations(user: User) {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        "vyra_user_gyms_v1",
+        JSON.stringify({
+          userId: user.id,
+          defaultGymId: user.defaultGymId,
+          gymLocations: user.gymLocations || [],
+        })
+      );
+    } catch {}
+  }
+
+  getUserGymLocations(userId?: string): GymLocation[] {
+    this.hydrateFromClientStorage();
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    if (!targetUser.gymLocations || targetUser.gymLocations.length === 0) {
+      targetUser.gymLocations = [
+        {
+          id: "gym_punch_lissasfa",
+          name: "Punch by Badr Hari Lissasfa",
+          address: "Lissasfa, Casablanca",
+          isDefault: true,
+          notes: "Commercial gym with full leverage machines, Smith, 45° leg press, Glute Bridge Machine, and Seated Hip Abductor.",
+        },
+        {
+          id: "gym_home",
+          name: "Home Setup",
+          address: "Home (Casablanca)",
+          isDefault: false,
+          notes: "Doorway pull-up bar + color-coded push-up board.",
+        },
+      ];
+      targetUser.defaultGymId = "gym_punch_lissasfa";
+    }
+    return targetUser.gymLocations;
+  }
+
+  getDefaultGymLocation(userId?: string): GymLocation | undefined {
+    const list = this.getUserGymLocations(userId);
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    return list.find((g) => g.id === targetUser.defaultGymId) || list.find((g) => g.isDefault) || list[0];
+  }
+
+  addGymLocation(gym: Omit<GymLocation, "id">, userId?: string): GymLocation {
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    const list = this.getUserGymLocations(targetUser.id);
+    const newGym: GymLocation = {
+      id: `gym_${Date.now()}`,
+      name: gym.name.trim(),
+      address: gym.address?.trim(),
+      notes: gym.notes?.trim(),
+      isDefault: Boolean(gym.isDefault || list.length === 0),
+    };
+
+    if (newGym.isDefault) {
+      list.forEach((g) => (g.isDefault = false));
+      targetUser.defaultGymId = newGym.id;
+    }
+
+    list.push(newGym);
+    targetUser.gymLocations = list;
+    this.persistGymLocations(targetUser);
+    return newGym;
+  }
+
+  setDefaultGymLocation(gymId: string, userId?: string): void {
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    const list = this.getUserGymLocations(targetUser.id);
+    const found = list.find((g) => g.id === gymId);
+    if (!found) return;
+
+    list.forEach((g) => {
+      g.isDefault = g.id === gymId;
+    });
+    targetUser.defaultGymId = gymId;
+    targetUser.gymLocations = list;
+    this.persistGymLocations(targetUser);
+  }
+
+  updateGymLocation(gym: GymLocation, userId?: string): GymLocation | undefined {
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    const list = this.getUserGymLocations(targetUser.id);
+    const idx = list.findIndex((g) => g.id === gym.id);
+    if (idx === -1) return undefined;
+
+    list[idx] = { ...list[idx], ...gym };
+    if (gym.isDefault) {
+      list.forEach((g, i) => {
+        if (i !== idx) g.isDefault = false;
+      });
+      targetUser.defaultGymId = gym.id;
+    }
+    targetUser.gymLocations = list;
+    this.persistGymLocations(targetUser);
+    return list[idx];
+  }
+
+  deleteGymLocation(gymId: string, userId?: string): void {
+    const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
+    let list = this.getUserGymLocations(targetUser.id);
+    list = list.filter((g) => g.id !== gymId);
+
+    if (targetUser.defaultGymId === gymId) {
+      if (list.length > 0) {
+        list[0].isDefault = true;
+        targetUser.defaultGymId = list[0].id;
+      } else {
+        targetUser.defaultGymId = undefined;
+      }
+    }
+    targetUser.gymLocations = list;
+    this.persistGymLocations(targetUser);
+  }
+
+  updateSessionGym(
+    sessionId: string,
+    gym: { id?: string; name?: string; address?: string }
+  ): WorkoutSession | undefined {
+    this.hydrateFromClientStorage();
+    const sess = this.db.sessions.find((s) => s.id === sessionId);
+    if (!sess) return undefined;
+
+    sess.gymId = gym.id;
+    sess.gymName = gym.name;
+    sess.gymAddress = gym.address;
+    this.saveSession(sess);
+    return sess;
+  }
+
   setCurrentUser(userOrId: User | string): User {
     if (typeof userOrId === "string") {
       const found = this.db.users.find((u) => u.id === userOrId);
@@ -1248,6 +1380,16 @@ class Store {
             this.db.metrics.push(m);
           }
         });
+      }
+      const gymRaw = localStorage.getItem("vyra_user_gyms_v1");
+      if (gymRaw) {
+        const parsedGyms = JSON.parse(gymRaw);
+        if (Array.isArray(parsedGyms.gymLocations)) {
+          this.db.currentUser.gymLocations = parsedGyms.gymLocations;
+        }
+        if (parsedGyms.defaultGymId) {
+          this.db.currentUser.defaultGymId = parsedGyms.defaultGymId;
+        }
       }
       if (Array.isArray(data.supplementLogs)) {
         data.supplementLogs.forEach((l: any) => {

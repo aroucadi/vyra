@@ -5,13 +5,18 @@ import Link from "next/link";
 import { appStore } from "@/lib/store";
 import { DeveloperMenu } from "@/components/DeveloperMenu";
 import { WorkoutSession, SetLog } from "@/lib/types";
-import { Dumbbell, Trophy, ChevronRight, Moon, Calendar, Clock, CheckCircle2 } from "lucide-react";
+import { Dumbbell, Trophy, ChevronRight, Moon, Calendar, Clock, CheckCircle2, MapPin } from "lucide-react";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
+import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 
 export default function YouPage() {
   const currentUser = appStore.getCurrentUser();
   const sessions = appStore.getSessions(currentUser.id);
   const [selectedSession, setSelectedSession] = React.useState<WorkoutSession | null>(null);
+  const [isGymDrawerOpen, setIsGymDrawerOpen] = React.useState(false);
+  const [gymListVersion, setGymListVersion] = React.useState(0);
+  const defaultGym = appStore.getDefaultGymLocation(currentUser.id);
+  const gymsCount = appStore.getUserGymLocations(currentUser.id).length;
   const totalVolume = sessions.reduce((acc: number, s: WorkoutSession) => {
     const sessVol = s.setLogs ? s.setLogs.reduce((sAcc: number, l: SetLog) => sAcc + (l.weightKg || 0) * (l.reps || 0), 0) : 0;
     return acc + sessVol;
@@ -155,6 +160,23 @@ export default function YouPage() {
             <ChevronRight className="w-4 h-4 text-slate-500" />
           </Link>
 
+          <button
+            type="button"
+            onClick={() => setIsGymDrawerOpen(true)}
+            className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 text-slate-200 min-w-0">
+              <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <span>Salles de Sport & Training Locations</span>
+                <p className="text-[10px] text-slate-400 font-normal truncate">
+                  {defaultGym?.name || "Punch by Badr Hari Lissasfa"} · {gymsCount} registered
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          </button>
+
           <div className="flex items-center justify-between p-4 text-slate-200">
             <div className="flex items-center gap-3">
               <Moon className="w-4 h-4 text-indigo-400" />
@@ -196,6 +218,20 @@ export default function YouPage() {
         </DeveloperMenu>
       </section>
 
+      <GymSelectorDrawer
+        isOpen={isGymDrawerOpen}
+        onOpenChange={(open) => {
+          setIsGymDrawerOpen(open);
+          if (!open) setGymListVersion((v) => v + 1);
+        }}
+        selectedGymId={defaultGym?.id}
+        onSelectGym={(gym) => {
+          appStore.setDefaultGymLocation(gym.id, currentUser.id);
+          setGymListVersion((v) => v + 1);
+        }}
+        title="Salles de Sport & Locations"
+        subtitle="Manage your main and secondary gyms. Set your default gym for automatic workout attribution."
+      />
     </div>
   );
 }

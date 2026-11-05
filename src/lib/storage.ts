@@ -37,6 +37,9 @@ export interface ActiveSessionDraft {
   warmupCompleted?: boolean;
   cooldownCompleted?: boolean;
   phase?: "preview" | "warmup" | "active" | "cooldown" | "summary";
+  gymId?: string;
+  gymName?: string;
+  gymAddress?: string;
 }
 
 export interface QueuedMutation {

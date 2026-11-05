@@ -1034,6 +1034,8 @@ function SessionFlow() {
         isDropSet: s.isDropSet,
         feedbackTag: ex.feedbackTag,
         feedbackTags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
+        note: ex.feedbackNote,
+        photoUrl: ex.equipmentPhotoUrl,
       }))
     );
 
@@ -1055,11 +1057,13 @@ function SessionFlow() {
       cooldownCompleted: cCompleted,
       setLogs: allSetLogs,
       exerciseFeedbacks: listToSave
-        .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag)
+        .filter((ex) => (ex.feedbackTags && ex.feedbackTags.length > 0) || !!ex.feedbackTag || !!ex.feedbackNote || !!ex.equipmentPhotoUrl)
         .map((ex) => ({
           exerciseName: ex.name,
           tag: ex.feedbackTag,
           tags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
+          note: ex.feedbackNote,
+          photoUrl: ex.equipmentPhotoUrl,
         })),
     };
 

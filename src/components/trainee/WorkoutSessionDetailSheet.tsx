@@ -292,6 +292,49 @@ export function WorkoutSessionDetailSheet({
                     </div>
                   ))}
                 </div>
+
+                {/* Free-form notes */}
+                {(() => {
+                  const noteFromSets = group.sets.find((s) => s.note)?.note;
+                  const noteFromFeedback = session.exerciseFeedbacks?.find((f) => f.exerciseName === group.name)?.note;
+                  const note = noteFromSets || noteFromFeedback;
+                  if (!note) return null;
+                  return (
+                    <div className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[11px] text-slate-300">
+                      <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                      <span className="italic">{note}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Machine / Equipment Setup Photo */}
+                {(() => {
+                  const photoFromSets = group.sets.find((s) => s.photoUrl)?.photoUrl;
+                  const photoFromFeedback = session.exerciseFeedbacks?.find((f) => f.exerciseName === group.name)?.photoUrl;
+                  const photo = photoFromSets || photoFromFeedback;
+                  if (!photo) return null;
+                  return (
+                    <div className="pt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhoto(photo)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-800/50 hover:bg-cyan-900/40 transition group cursor-pointer text-left"
+                      >
+                        <img
+                          src={photo}
+                          alt="Machine setup thumbnail"
+                          className="w-8 h-8 object-cover rounded-md border border-cyan-700/50 group-hover:scale-105 transition flex-shrink-0"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-semibold text-cyan-300 flex items-center gap-1">
+                            <Camera className="w-3 h-3" /> Machine / Bar Setup
+                          </span>
+                          <span className="text-[9px] text-slate-400">Tap to enlarge equipment setup</span>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

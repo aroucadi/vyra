@@ -76,20 +76,20 @@ export default function TraineeExerciseLibraryPage() {
   }, [query, selectedMuscle, selectedEquipment]);
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100 pb-24 max-w-md mx-auto flex flex-col font-sans">
+    <div className="min-h-screen bg-[#090C11] text-slate-100 pb-24 max-w-md mx-auto flex flex-col font-body">
       {/* 1. Header (Negative constraint ceiling compliant) */}
-      <header className="sticky top-0 z-30 bg-[#0B0F17]/95 backdrop-blur-md p-4 border-b border-slate-800/80 space-y-3">
+      <header className="sticky top-0 z-30 bg-[#090C11]/95 backdrop-blur-md p-4 border-b border-[#1C2436] space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link
               href="/program"
               aria-label="Back to Program"
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-xl bg-[#111622] border border-[#1C2436] text-slate-400 hover:text-white transition"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="text-base font-bold text-white tracking-tight">Movement Library</h1>
+              <h1 className="text-lg font-editorial font-bold text-white tracking-tight">Movement Library</h1>
               <p className="text-[10px] font-mono text-slate-400">6,554 Biomechanical Movements</p>
             </div>
           </div>
@@ -100,14 +100,14 @@ export default function TraineeExerciseLibraryPage() {
               className={clsx(
                 "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border transition flex items-center gap-1 cursor-pointer",
                 showBodyMap
-                  ? "bg-emerald-500 text-slate-950 border-emerald-500 shadow-sm"
-                  : "bg-slate-900 text-slate-300 border-slate-800 hover:text-white"
+                  ? "bg-amber-400 text-slate-950 border-amber-400 shadow-sm"
+                  : "bg-[#111622] text-slate-300 border-[#1C2436] hover:text-white"
               )}
             >
               <User className="w-2.5 h-2.5" />
               <span>{showBodyMap ? "Hide Map" : "Body Map"}</span>
             </button>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold hidden sm:inline">
               Sub-1ms Engine
             </span>
           </div>
@@ -121,7 +121,7 @@ export default function TraineeExerciseLibraryPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search (e.g., db, rdl, ohp, lat pulldown)..."
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-emerald-500/60 focus:outline-none text-xs font-mono placeholder:text-slate-500 text-slate-100 transition"
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#111622] border border-[#1C2436] focus:border-amber-400/80 focus:outline-none text-xs font-mono placeholder:text-slate-500 text-slate-100 transition"
           />
         </div>
 
@@ -135,10 +135,10 @@ export default function TraineeExerciseLibraryPage() {
                 type="button"
                 onClick={() => setSelectedMuscle(m.id)}
                 className={clsx(
-                  "px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold transition whitespace-nowrap shrink-0 border cursor-pointer",
+                  "px-2.5 py-1 rounded-xl text-[10px] font-mono font-semibold transition whitespace-nowrap shrink-0 border cursor-pointer",
                   isSelected
-                    ? "bg-emerald-500 text-slate-950 border-emerald-500"
-                    : "bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200"
+                    ? "bg-amber-400 text-slate-950 border-amber-400 font-bold"
+                    : "bg-[#111622] text-slate-400 border-[#1C2436] hover:text-slate-200"
                 )}
               >
                 {m.label}
@@ -160,7 +160,7 @@ export default function TraineeExerciseLibraryPage() {
                   "px-2 py-0.5 rounded-md text-[10px] font-mono transition whitespace-nowrap shrink-0 border cursor-pointer",
                   isSelected
                     ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold"
-                    : "bg-slate-950 text-slate-500 border-slate-800/80 hover:text-slate-300"
+                    : "bg-[#090C11] text-slate-500 border-[#1C2436] hover:text-slate-300"
                 )}
               >
                 {eq.label}
@@ -181,11 +181,11 @@ export default function TraineeExerciseLibraryPage() {
         )}
         {loading && exercises.length === 0 ? (
           <div className="py-12 text-center space-y-2">
-            <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-400 font-mono">Indexing catalogue...</p>
           </div>
         ) : exercises.length === 0 ? (
-          <div className="py-12 text-center space-y-2 p-6 bg-slate-900/40 rounded-2xl border border-slate-800/80">
+          <div className="py-12 text-center space-y-2 p-6 bg-[#111622] rounded-2xl border border-[#1C2436]">
             <Dumbbell className="w-8 h-8 text-slate-600 mx-auto" />
             <p className="text-xs font-semibold text-slate-300">No exercises found</p>
             <p className="text-[11px] text-slate-500">
@@ -202,19 +202,19 @@ export default function TraineeExerciseLibraryPage() {
                   setSelectedExercise(ex);
                   setIsDetailOpen(true);
                 }}
-                className="w-full text-left p-3.5 rounded-2xl bg-slate-900/70 hover:bg-slate-850 border border-slate-800/80 hover:border-slate-700 transition flex items-center justify-between gap-3 group cursor-pointer"
+                className="w-full text-left p-3.5 rounded-2xl bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/50 transition flex items-center justify-between gap-3 group cursor-pointer"
               >
                 {/* 3-Element Vertical Ceiling: Category Eyebrow, Hero Name, Target/Equipment */}
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-mono uppercase font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/10">
+                    <span className="text-[9px] font-mono uppercase font-bold text-amber-400 px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/20">
                       {ex.bodyPart}
                     </span>
                     <span className="text-[9px] font-mono text-slate-400">
                       · {ex.equipment}
                     </span>
                   </div>
-                  <h3 className="text-xs font-bold text-white tracking-tight truncate group-hover:text-emerald-300 transition">
+                  <h3 className="text-xs font-bold text-white tracking-tight truncate group-hover:text-amber-300 transition font-editorial">
                     {ex.name}
                   </h3>
                   <p className="text-[11px] text-slate-400 font-mono">
@@ -222,7 +222,7 @@ export default function TraineeExerciseLibraryPage() {
                   </p>
                 </div>
 
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition shrink-0" />
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition shrink-0" />
               </button>
             ))}
           </div>

@@ -66,25 +66,28 @@ export default function ProgressPage() {
   });
 
   return (
-    <div className="px-4 py-5 space-y-5 pb-24">
+    <div className="px-4 py-5 space-y-5 pb-24 font-body">
       <header className="space-y-1">
-        <h1 className="text-xl font-black text-[#F8FAFC]">Progress & Bio-Metrics</h1>
-        <p className="text-xs text-slate-400">
-          Tracking adherence, body composition trend, and strength PRs.
+        <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
+          Telemetry & Adaptation
+        </span>
+        <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">Progress & Bio-Metrics</h1>
+        <p className="text-xs text-slate-400 font-body">
+          Tracking adherence, body composition trend, and verified strength PRs.
         </p>
       </header>
 
-      {/* 1. Bodyweight Trend Card */}
+      {/* 1. Bodyweight Trend & Calibrated Surplus Curve */}
       {!currentUser.hideWeightFromTrainee && (
-        <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-4">
+        <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
                 Current Weight
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-black text-white font-mono">{latestWeight} kg</span>
-                <span className="text-xs font-mono font-semibold text-[#10B981] flex items-center gap-0.5">
+                <span className="text-3xl font-display font-black text-white tabular-nums">{latestWeight} kg</span>
+                <span className="text-xs font-mono font-semibold text-emerald-400 flex items-center gap-0.5">
                   <TrendingDown className="w-3.5 h-3.5" />
                   {diff} kg (14d)
                 </span>
@@ -96,15 +99,15 @@ export default function ProgressPage() {
               <input
                 type="number"
                 step="0.1"
-                placeholder="e.g. 80.5"
+                placeholder="e.g. 52.4"
                 value={weightInput}
                 onChange={(e) => setWeightInput(e.target.value)}
-                className="w-20 px-2 py-1.5 rounded-lg bg-[#0F172A] border border-[#334155] text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-[#10B981]"
+                className="w-20 px-2.5 py-1.5 rounded-xl bg-[#090C11] border border-[#1C2436] text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
               />
               <button
                 type="submit"
                 disabled={isLogging}
-                className="px-2.5 py-1.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-bold text-xs flex items-center gap-1 transition"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider text-xs font-black flex items-center gap-1 transition shadow-sm cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Log
@@ -113,33 +116,61 @@ export default function ProgressPage() {
           </div>
 
           {successMessage && (
-            <p className="text-xs text-[#10B981] font-mono flex items-center gap-1">
+            <p className="text-xs text-emerald-400 font-mono flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> {successMessage}
             </p>
           )}
 
+          {/* 16-Week Surplus Milestone Trajectory (Category B) */}
+          <div className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-mono">
+              <span className="text-slate-400 uppercase tracking-wider">16-Week Surplus Target</span>
+              <span className="text-amber-400 font-bold">51.8 kg → 57.0 kg Goal</span>
+            </div>
+            <div className="w-full bg-[#111622] rounded-full h-2 overflow-hidden border border-[#1C2436]">
+              {(() => {
+                const baseline = 51.8;
+                const target = 57.0;
+                const current = Math.max(baseline, Math.min(target, latestWeight));
+                const progressPct = Math.round(((current - baseline) / (target - baseline)) * 100);
+                return (
+                  <div
+                    style={{ width: `${Math.max(5, progressPct)}%` }}
+                    className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
+                  />
+                );
+              })()}
+            </div>
+            <div className="flex justify-between text-[9px] font-mono text-slate-500">
+              <span>W1: 51.8kg (Baseline)</span>
+              <span>W6: 53.5kg</span>
+              <span>W12: 55.5kg</span>
+              <span className="text-amber-400 font-semibold">W16: 57.0kg</span>
+            </div>
+          </div>
+
           {/* SVG Line Chart for 100% Reliable Render */}
-          <div className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B]">
+          <div className="bg-[#090C11] p-3 rounded-xl border border-[#1C2436]">
             <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-2">
               <span>14-Day Weigh-In Curve</span>
               <span>Range: {minWeight}kg - {maxWeight}kg</span>
             </div>
 
-            <div className="h-32 w-full flex items-end justify-between gap-1 pt-4 px-1">
+            <div className="h-28 w-full flex items-end justify-between gap-1 pt-4 px-1">
               {metrics.map((m, idx) => {
                 const heightPercent = ((m.weightKg - minWeight + 0.5) / (maxWeight - minWeight + 1)) * 100;
                 return (
                   <div key={m.id} className="flex-1 flex flex-col items-center gap-1 group relative">
                     <div
                       style={{ height: `${Math.max(15, heightPercent)}%` }}
-                      className="w-full rounded-t bg-gradient-to-t from-[#10B981]/40 to-[#10B981] hover:to-[#06B6D4] transition"
+                      className="w-full rounded-t bg-gradient-to-t from-amber-500/30 to-amber-400 hover:to-emerald-400 transition"
                     />
                     <span className="text-[8px] font-mono text-slate-500">
                       {idx % 2 === 0 ? m.date.slice(8) : ""}
                     </span>
 
                     {/* Tooltip on hover */}
-                    <div className="absolute -top-7 hidden group-hover:block bg-[#162032] border border-[#334155] px-1.5 py-0.5 rounded text-[9px] font-mono text-white whitespace-nowrap z-10">
+                    <div className="absolute -top-7 hidden group-hover:block bg-[#111622] border border-[#1C2436] px-1.5 py-0.5 rounded text-[9px] font-mono text-white whitespace-nowrap z-10">
                       {m.weightKg} kg
                     </div>
                   </div>
@@ -151,28 +182,28 @@ export default function ProgressPage() {
       )}
 
       {/* 2. Muscle Group Volume Distribution */}
-      <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3">
+      <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#06B6D4]" />
-            <h2 className="text-sm font-bold text-white">Target Muscle Group Volume</h2>
+            <Activity className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm font-bold text-white font-editorial">Target Muscle Group Volume</h2>
           </div>
           <span className="text-[10px] font-mono text-slate-400">Weekly Rollup</span>
         </div>
 
         <div className="space-y-2.5 text-xs">
           {[
-            { muscle: "Chest & Front Delts", sets: 14, percent: 85, color: "bg-[#10B981]" },
-            { muscle: "Upper & Mid Back", sets: 12, percent: 75, color: "bg-[#06B6D4]" },
-            { muscle: "Quads & Hamstrings", sets: 10, percent: 65, color: "bg-[#8B5CF6]" },
-            { muscle: "Side Delts & Triceps", sets: 9, percent: 60, color: "bg-[#F59E0B]" },
+            { muscle: "Chest & Front Delts", sets: 14, percent: 85, color: "bg-amber-400" },
+            { muscle: "Upper & Mid Back", sets: 12, percent: 75, color: "bg-emerald-400" },
+            { muscle: "Quads & Hamstrings", sets: 10, percent: 65, color: "bg-sky-400" },
+            { muscle: "Side Delts & Triceps", sets: 9, percent: 60, color: "bg-amber-500" },
           ].map((item) => (
             <div key={item.muscle} className="space-y-1">
               <div className="flex justify-between text-xs font-mono">
                 <span className="text-slate-300 font-medium">{item.muscle}</span>
                 <span className="text-slate-400">{item.sets} Sets</span>
               </div>
-              <div className="w-full bg-[#0F172A] rounded-full h-1.5 overflow-hidden border border-[#1E293B]">
+              <div className="w-full bg-[#090C11] rounded-full h-1.5 overflow-hidden border border-[#1C2436]">
                 <div style={{ width: `${item.percent}%` }} className={`h-1.5 rounded-full ${item.color}`} />
               </div>
             </div>
@@ -184,35 +215,37 @@ export default function ProgressPage() {
       <WeeklyVolumeDashboard />
 
       {/* 3. Personal Records Trophy Cabinet */}
-      <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3">
+      <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-[#F59E0B]" />
-            <h2 className="text-sm font-bold text-white">Personal Record (PR) Showcase</h2>
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm font-bold text-white font-editorial">Personal Record (PR) Showcase</h2>
           </div>
-          <span className="text-[10px] font-mono text-[#F59E0B] font-bold">{prs.length || 2} Records</span>
+          <span className="text-[10px] font-mono text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
+            {prs.length || 2} Records
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {prs.length > 0 ? (
             prs.map((pr, idx) => (
-              <div key={idx} className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] space-y-1">
+              <div key={idx} className="bg-[#090C11] p-3 rounded-xl border border-[#1C2436] space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-mono text-slate-400 uppercase truncate">{pr.exercise}</span>
                   {pr.equipment && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 shrink-0">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/30 shrink-0">
                       {pr.equipment}
                     </span>
                   )}
                 </div>
-                <p className="text-base font-black text-white font-mono">{pr.weight} kg × {pr.reps}</p>
-                <p className="text-[9px] text-[#10B981] font-mono">
+                <p className="text-lg font-display font-black text-white tabular-nums">{pr.weight} kg × {pr.reps}</p>
+                <p className="text-[9px] text-emerald-400 font-mono">
                   Estimated 1RM: {calculateEstimated1RM(pr.weight, pr.reps)} kg • {pr.date}
                 </p>
               </div>
             ))
           ) : (
-            <div className="col-span-2 bg-[#0F172A] p-4 rounded-lg border border-[#1E293B] text-center space-y-1">
+            <div className="col-span-2 bg-[#090C11] p-4 rounded-xl border border-[#1C2436] text-center space-y-1">
               <p className="text-xs text-slate-300 font-medium">No PRs logged yet.</p>
               <p className="text-[10px] text-slate-500">
                 Log completed workouts in Session to record personal records.
@@ -223,13 +256,13 @@ export default function ProgressPage() {
       </section>
 
       {/* 4. Completed Workout Sessions & Logs */}
-      <section className="bg-[#162032] rounded-xl border border-[#1E293B] p-4 space-y-3">
+      <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-[#10B981]" />
-            <h2 className="text-sm font-bold text-white">Completed Workouts & Session History</h2>
+            <Dumbbell className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm font-bold text-white font-editorial">Completed Workouts & Session History</h2>
           </div>
-          <span className="text-[10px] font-mono text-[#10B981] font-bold">{sessions.length} Logged</span>
+          <span className="text-[10px] font-mono text-emerald-400 font-bold">{sessions.length} Logged</span>
         </div>
 
         {sessions.length > 0 ? (
@@ -252,15 +285,15 @@ export default function ProgressPage() {
                 <div
                   key={sess.id}
                   onClick={() => setSelectedSession(sess)}
-                  className="bg-[#0F172A] p-3 rounded-lg border border-[#1E293B] hover:border-slate-700 hover:bg-slate-900 transition cursor-pointer flex items-center justify-between"
+                  className="bg-[#090C11] p-3 rounded-xl border border-[#1C2436] hover:border-amber-500/50 hover:bg-[#182030] transition cursor-pointer flex items-center justify-between"
                 >
                   <div className="space-y-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white truncate text-xs">
+                      <span className="font-semibold text-white truncate text-xs font-editorial">
                         {sess.dayLabel || sess.programTitle || "Workout Session"}
                       </span>
                       {prs > 0 && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 flex-shrink-0">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 flex-shrink-0">
                           <Trophy className="w-2.5 h-2.5" />
                           <span>+{prs} PR</span>
                         </span>
@@ -286,7 +319,7 @@ export default function ProgressPage() {
             })}
           </div>
         ) : (
-          <div className="bg-[#0F172A] p-4 rounded-lg border border-[#1E293B] text-center space-y-1">
+          <div className="bg-[#090C11] p-4 rounded-xl border border-[#1C2436] text-center space-y-1">
             <p className="text-xs text-slate-300 font-medium">No workout sessions logged yet.</p>
             <p className="text-[10px] text-slate-500">
               When you complete a workout in Session, your full set logs, total volume, and PRs will appear here.

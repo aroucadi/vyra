@@ -32,16 +32,16 @@ export function ReadinessCheckin({ userId, onCheckedIn }: ReadinessCheckinProps)
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3 animate-in fade-in duration-200">
+    <div className="bg-[#111622] border border-[#1C2436] rounded-2xl p-4 shadow-sm space-y-3 animate-in fade-in duration-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Moon className="w-4 h-4 text-indigo-400 stroke-[2]" />
-          <h2 className="text-xs font-semibold text-slate-200">Morning Readiness Check-in</h2>
+          <Moon className="w-4 h-4 text-amber-400 stroke-[2.25]" />
+          <h2 className="text-xs font-bold uppercase tracking-wider font-editorial text-white">Morning Readiness Calibration</h2>
         </div>
-        <span className="text-[10px] text-slate-500">1 tap adapts today</span>
+        <span className="text-[10px] font-mono text-slate-400">1 tap adapts today</span>
       </div>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-slate-300 font-body">
         How many hours did you sleep last night?
       </p>
 
@@ -55,11 +55,11 @@ export function ReadinessCheckin({ userId, onCheckedIn }: ReadinessCheckinProps)
             className={clsx(
               "flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border transition-all cursor-pointer text-center select-none active:scale-[0.98]",
               selected === idx
-                ? "bg-emerald-500/20 border-emerald-500 text-white"
-                : "bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300"
+                ? "bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                : "bg-[#090C11] border-[#1C2436] hover:border-[#2D3A54] text-slate-300 font-medium"
             )}
           >
-            <span className="text-xs font-bold tabular">{opt.label}</span>
+            <span className="text-xs font-mono-tabular font-bold">{opt.label}</span>
             <span className="text-[9px] text-slate-400 mt-0.5">{opt.sub}</span>
           </button>
         ))}

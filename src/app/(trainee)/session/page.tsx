@@ -1174,23 +1174,23 @@ function SessionFlow() {
   // --------------------------------------------------------------------------
   if (mode === "preview") {
     return (
-      <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200">
+      <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200 font-body">
         <header className="flex items-center justify-between">
           <Link
             href="/today"
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition font-editorial font-bold"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Today</span>
           </Link>
-          <span className="text-[10px] font-mono text-emerald-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
-            PREVIEW
+          <span className="text-[10px] font-mono text-amber-400 font-bold px-2.5 py-0.5 rounded-full bg-[#182030] border border-amber-500/30">
+            BLUEPRINT PREVIEW
           </span>
         </header>
 
         {!targetDay ? (
-          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4">
-            <h1 className="text-lg font-bold text-white">Choose today&apos;s session</h1>
+          <div className="p-6 bg-[#111622] border border-[#1C2436] rounded-2xl text-center space-y-4">
+            <h1 className="text-xl font-editorial font-bold text-white">Choose today&apos;s session</h1>
             <p className="text-xs text-slate-400">
               No workout is scheduled for today. Select a session from your active blueprint below.
             </p>
@@ -1200,10 +1200,10 @@ function SessionFlow() {
                   key={d.id}
                   type="button"
                   onClick={() => router.push(`/session?day=${d.id}&mode=preview`)}
-                  className="w-full p-3.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-left transition flex items-center justify-between"
+                  className="w-full p-3.5 bg-[#090C11] border border-[#1C2436] hover:border-amber-500/50 rounded-xl text-left transition flex items-center justify-between cursor-pointer"
                 >
                   <span className="text-xs font-bold text-white">{d.label}</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">Select →</span>
+                  <span className="text-[10px] text-amber-400 font-mono">Select →</span>
                 </button>
               ))}
             </div>
@@ -1211,13 +1211,13 @@ function SessionFlow() {
         ) : (
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">
                 {targetDay.label}
               </h1>
               <button
                 type="button"
                 onClick={() => setIsDayPickerOpen(true)}
-                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg"
+                className="text-[11px] font-medium text-amber-400 hover:text-amber-300 transition px-2.5 py-1 bg-[#111622] border border-[#1C2436] rounded-lg cursor-pointer"
               >
                 Different day
               </button>
@@ -1229,9 +1229,9 @@ function SessionFlow() {
         )}
 
         {/* Salle de Sport / Training Location Selector */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs shadow-sm">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#111622] border border-[#1C2436] text-xs shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
               <MapPin className="w-4 h-4" />
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -1294,8 +1294,8 @@ function SessionFlow() {
                 className={clsx(
                   "py-2.5 px-2 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer",
                   sleepHours === option.hours
-                    ? "bg-slate-800 border-emerald-500/50 text-emerald-400 shadow-sm"
-                    : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                    ? "bg-[#182030] border-amber-500/50 text-amber-300 shadow-sm"
+                    : "bg-[#111622] border-[#1C2436] text-slate-400 hover:text-slate-200 hover:bg-[#182030]"
                 )}
               >
                 {option.label}
@@ -1315,9 +1315,9 @@ function SessionFlow() {
         </section>
 
         {/* Clean Exercise List (with 1-tap video & interactive preview) */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 divide-y divide-slate-800/80">
+        <div className="bg-[#111622] border border-[#1C2436] rounded-2xl p-4 divide-y divide-[#1C2436]">
           <div className="pb-2.5 flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">
               {isRecalibrationApplied ? "Recalibrated Program Blueprint" : "Planned Program Blueprint"}
             </span>
             <span className="text-[10px] text-slate-500 font-medium">
@@ -1328,7 +1328,7 @@ function SessionFlow() {
             <div
               key={ex.id}
               onClick={() => setPreviewDetailEx(ex)}
-              className="py-3 first:pt-2 last:pb-0 flex items-center justify-between text-xs cursor-pointer hover:bg-slate-800/50 rounded-xl px-2 -mx-2 transition"
+              className="py-3 first:pt-2 last:pb-0 flex items-center justify-between text-xs cursor-pointer hover:bg-[#182030]/60 rounded-xl px-2 -mx-2 transition"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <span className="font-mono text-slate-500 text-[10px] w-6 flex-shrink-0">
@@ -1344,7 +1344,7 @@ function SessionFlow() {
                     )}
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">
-                    <span className="text-emerald-400 font-semibold tabular-nums">{ex.currentWeight}kg</span>
+                    <span className="text-amber-400 font-semibold tabular-nums">{ex.currentWeight}kg</span>
                     <span>·</span>
                     <span>{ex.targetSets} × {ex.repLow}-{ex.repHigh} (RIR {ex.targetRir})</span>
                   </div>
@@ -1356,7 +1356,7 @@ function SessionFlow() {
                   type="button"
                   disabled={idx === 0}
                   onClick={() => moveExerciseUp(idx)}
-                  className="p-1 rounded bg-slate-800/80 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition"
+                  className="p-1 rounded bg-[#090C11] hover:bg-[#182030] border border-[#1C2436] disabled:opacity-20 text-slate-300 transition"
                   title="Move up"
                 >
                   <ArrowUp className="w-3.5 h-3.5" />
@@ -1365,7 +1365,7 @@ function SessionFlow() {
                   type="button"
                   disabled={idx === exercises.length - 1}
                   onClick={() => moveExerciseDown(idx)}
-                  className="p-1 rounded bg-slate-800/80 hover:bg-slate-700 disabled:opacity-20 text-slate-300 transition"
+                  className="p-1 rounded bg-[#090C11] hover:bg-[#182030] border border-[#1C2436] disabled:opacity-20 text-slate-300 transition"
                   title="Move down"
                 >
                   <ArrowDown className="w-3.5 h-3.5" />
@@ -1412,7 +1412,7 @@ function SessionFlow() {
                 setIsSwapDrawerOpen(true);
               }
             }}
-            className="text-emerald-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-amber-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>Swap Copilot →</span>
@@ -1438,13 +1438,13 @@ function SessionFlow() {
             setMode("active");
           }}
           className={clsx(
-            "w-full py-4 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2",
+            "w-full py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 font-display uppercase tracking-wider text-base font-black active:scale-[0.98]",
             !targetDay || exercises.length === 0
-              ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-              : "bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 cursor-pointer"
+              ? "bg-[#182030] text-slate-500 cursor-not-allowed border border-[#1C2436]"
+              : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-amber-500/20 cursor-pointer"
           )}
         >
-          <span>Begin Workout</span>
+          <span>Begin Workout →</span>
         </button>
 
         {/* Different Day Picker Sheet */}
@@ -1701,12 +1701,12 @@ function SessionFlow() {
         </header>
 
         {/* Stopwatch & Header Card */}
-        <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl text-center space-y-2">
+        <div className="p-5 bg-[#111622] border border-[#1C2436] rounded-2xl text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[10px] font-mono text-cyan-400">
             <Clock className="w-3 h-3" />
             <span>ELAPSED WARMUP TIME</span>
           </div>
-          <div className="text-4xl font-mono font-extrabold text-white tracking-tight tabular">
+          <div className="text-4xl font-display font-black text-white tracking-wider tabular-nums">
             {formatDuration(warmupDurationSec)}
           </div>
           <p className="text-xs text-slate-400 leading-snug">
@@ -1740,8 +1740,8 @@ function SessionFlow() {
                   className={clsx(
                     "p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none",
                     isChecked
-                      ? "bg-slate-950/40 border-emerald-500/40 text-slate-400"
-                      : "bg-slate-900 border-slate-800 hover:border-slate-700 text-white"
+                      ? "bg-[#090C11] border-emerald-500/40 text-slate-400"
+                      : "bg-[#111622] border-[#1C2436] hover:border-slate-700 text-white"
                   )}
                 >
                   <div
@@ -1749,7 +1749,7 @@ function SessionFlow() {
                       "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
                       isChecked
                         ? "bg-emerald-500 border-emerald-400 text-slate-950"
-                        : "border-slate-700 bg-slate-950 text-transparent"
+                        : "border-[#1C2436] bg-[#090C11] text-transparent"
                     )}
                   >
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -1778,7 +1778,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleCompleteWarmup}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
             <span>Done with Warmup → Start Lifting</span>
@@ -1787,7 +1787,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleSkipWarmup}
-            className="w-full py-3 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] border border-slate-800 text-slate-400 hover:text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full py-3 bg-[#111622] hover:bg-[#182030] active:scale-[0.98] border border-[#1C2436] text-slate-400 hover:text-white font-editorial font-bold text-xs rounded-2xl transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <SkipForward className="w-3.5 h-3.5 text-slate-500" />
             <span>Skip Warmup (Straight to Exercises)</span>
@@ -1849,12 +1849,12 @@ function SessionFlow() {
         </header>
 
         {/* Stopwatch & Header Card */}
-        <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl text-center space-y-2">
+        <div className="p-5 bg-[#111622] border border-[#1C2436] rounded-2xl text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-[10px] font-mono text-cyan-400">
             <Clock className="w-3 h-3" />
             <span>ELAPSED COOLDOWN TIME</span>
           </div>
-          <div className="text-4xl font-mono font-extrabold text-white tracking-tight tabular">
+          <div className="text-4xl font-display font-black text-white tracking-wider tabular-nums">
             {formatDuration(cooldownDurationSec)}
           </div>
           <p className="text-xs text-slate-400 leading-snug">
@@ -1888,8 +1888,8 @@ function SessionFlow() {
                   className={clsx(
                     "p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none",
                     isChecked
-                      ? "bg-slate-950/40 border-cyan-500/40 text-slate-400"
-                      : "bg-slate-900 border-slate-800 hover:border-slate-700 text-white"
+                      ? "bg-[#090C11] border-cyan-500/40 text-slate-400"
+                      : "bg-[#111622] border-[#1C2436] hover:border-slate-700 text-white"
                   )}
                 >
                   <div
@@ -1897,7 +1897,7 @@ function SessionFlow() {
                       "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
                       isChecked
                         ? "bg-cyan-500 border-cyan-400 text-slate-950"
-                        : "border-slate-700 bg-slate-950 text-transparent"
+                        : "border-[#1C2436] bg-[#090C11] text-transparent"
                     )}
                   >
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -1926,7 +1926,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleCompleteCooldown}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
             <span>Finish & Save Workout ✓</span>
@@ -1935,7 +1935,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleSkipCooldown}
-            className="w-full py-3 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] border border-slate-800 text-slate-400 hover:text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full py-3 bg-[#111622] hover:bg-[#182030] active:scale-[0.98] border border-[#1C2436] text-slate-400 hover:text-white font-editorial font-bold text-xs rounded-2xl transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <SkipForward className="w-3.5 h-3.5 text-slate-500" />
             <span>Skip Cooldown → View Summary</span>
@@ -1984,43 +1984,43 @@ function SessionFlow() {
         
         {/* Celebration Header */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto text-2xl shadow-lg">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-2xl shadow-lg shadow-amber-500/10">
             🔥
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">
             {targetDay?.label || "Session"} Complete
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 font-body">
             Outstanding execution. Progressive overload targets achieved.
           </p>
         </div>
 
         {/* Max 3 Numbers Metric Matrix */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-            <div className="text-lg font-bold text-white tabular">
+          <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl text-center">
+            <div className="text-2xl font-display font-black text-white tabular-nums">
               {totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume}
             </div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Vol (kg)</div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-0.5">Vol (kg)</div>
           </div>
 
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-            <div className="text-lg font-bold text-white tabular">{durationMin}m</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Duration</div>
+          <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl text-center">
+            <div className="text-2xl font-display font-black text-white tabular-nums">{durationMin}m</div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-0.5">Duration</div>
           </div>
 
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-            <div className="text-lg font-bold text-emerald-400 tabular">
+          <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl text-center">
+            <div className="text-2xl font-display font-black text-emerald-400 tabular-nums">
               {prCount > 0 ? `+${prCount} PR` : "Solid"}
             </div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Records</div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-0.5">Records</div>
           </div>
         </div>
 
         {/* Training Facility / Salle de Sport Card */}
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-sm">
+        <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
               <MapPin className="w-5 h-5" />
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -2040,7 +2040,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={() => setIsGymDrawerOpen(true)}
-            className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-xl bg-cyan-950/50 border border-cyan-800/50 hover:bg-cyan-900/50 transition active:scale-95 flex-shrink-0"
+            className="text-xs font-semibold text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition active:scale-95 flex-shrink-0 cursor-pointer"
           >
             Change
           </button>
@@ -2075,9 +2075,9 @@ function SessionFlow() {
         </div>
 
         {/* Cross-Pillar Recovery Fuel Insight */}
-        <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex items-start gap-3">
-          <Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-slate-300 leading-relaxed">
+        <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl flex items-start gap-3">
+          <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-300 leading-relaxed font-body">
             <span className="font-bold text-white">Post-Workout Nutrition: </span>
             Tonnage was high (+{totalVolume} kg). Confirm your recovery shake with 40g protein and 6.9 g creatine within the next 45 minutes.
           </div>
@@ -2117,9 +2117,9 @@ function SessionFlow() {
         />
 
         {/* Overall Post-Workout Voice Debrief (Optional) */}
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2">
+        <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5 font-editorial">
               <Volume2 className="w-4 h-4 text-cyan-400" />
               <span>Post-Workout Voice Debrief (Optional)</span>
             </span>
@@ -2144,7 +2144,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={() => router.push("/today")}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition"
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-amber-500/20 transition cursor-pointer"
           >
             Done · Return to Today
           </button>
@@ -2158,7 +2158,7 @@ function SessionFlow() {
               };
               triggerBackupDownload(exportPayload, `vyra-backup-${currentUser.id}-${new Date().toISOString().split("T")[0]}.json`);
             }}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold rounded-xl transition"
+            className="w-full py-2.5 bg-[#111622] hover:bg-[#182030] text-slate-400 hover:text-white border border-[#1C2436] text-xs font-semibold rounded-xl transition cursor-pointer"
           >
             Export Backup
           </button>
@@ -2191,56 +2191,80 @@ function SessionFlow() {
   const currentSetNum = activeEx.completedSets.length + 1;
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none">
+    <div className="min-h-screen bg-[#090C11] flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none font-body">
       
       {/* 1. Header: Exit Action + Exercise Index + Add Exercise + Timer */}
-      <header className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-        <button
-          type="button"
-          onClick={() => setIsExitAlertOpen(true)}
-          className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-          <span>Exit</span>
-        </button>
+      <div className="space-y-3 pb-3 border-b border-[#1C2436]">
+        <header className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setIsExitAlertOpen(true)}
+            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition cursor-pointer font-editorial font-bold"
+          >
+            <X className="w-4 h-4" />
+            <span>Exit</span>
+          </button>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsGymDrawerOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-full text-[11px] font-medium text-slate-300 hover:text-cyan-300 transition cursor-pointer max-w-[120px]"
-            title="Change salle de sport"
-          >
-            <MapPin className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-            <span className="truncate">{selectedGym?.name || "Gym"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsReorderDrawerOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full text-xs font-mono text-slate-300 hover:text-white transition cursor-pointer"
-            title="Reorder exercises or jump to available machine"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{currentExIndex + 1}/{exercises.length}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsAddExerciseSheetOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-full text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
-            title="Log extra exercise on top of program"
-          >
-            <Plus className="w-3 h-3 stroke-[2.5]" />
-            <span>Exercise</span>
-          </button>
-        </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsGymDrawerOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 rounded-full text-[11px] font-medium text-slate-300 hover:text-amber-300 transition cursor-pointer max-w-[120px]"
+              title="Change salle de sport"
+            >
+              <MapPin className="w-3 h-3 text-amber-400 flex-shrink-0" />
+              <span className="truncate">{selectedGym?.name || "Gym"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsReorderDrawerOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 rounded-full text-xs font-mono font-bold text-slate-300 hover:text-white transition cursor-pointer"
+              title="Reorder exercises or jump to available machine"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+              <span>{currentExIndex + 1}/{exercises.length}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAddExerciseSheetOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-full text-[11px] font-bold text-amber-400 hover:text-amber-300 transition cursor-pointer"
+              title="Log extra exercise on top of program"
+            >
+              <Plus className="w-3 h-3 stroke-[2.5]" />
+              <span>Exercise</span>
+            </button>
+          </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
-          <Clock className="w-3.5 h-3.5" />
-          <span className="tabular">
-            {Math.floor(sessionDurationSec / 60)}:{(sessionDurationSec % 60).toString().padStart(2, "0")}
-          </span>
+          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-[#111622] px-2.5 py-1 rounded-full border border-[#1C2436]">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="tabular">
+              {Math.floor(sessionDurationSec / 60)}:{(sessionDurationSec % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+        </header>
+
+        {/* Live 3-Metric Gym Telemetry Strip */}
+        <div className="grid grid-cols-3 gap-1.5 py-2 px-3 bg-[#111622] border border-[#1C2436] rounded-xl text-center">
+          <div>
+            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Total Gym</span>
+            <span className="font-mono-tabular font-extrabold text-amber-400 text-sm">
+              {Math.floor(sessionDurationSec / 60)}:{(sessionDurationSec % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+          <div className="border-x border-[#1C2436]">
+            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Lifting</span>
+            <span className="font-mono-tabular font-extrabold text-emerald-400 text-sm">
+              {Math.floor(liftingDurationSec / 60)}:{(liftingDurationSec % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+          <div>
+            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Rest</span>
+            <span className="font-mono-tabular font-extrabold text-sky-400 text-sm">
+              {Math.floor(totalRestDurationSec / 60)}:{(totalRestDurationSec % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* 2. Main Gym Floor Card (1 Exercise at a Time) */}
       <main className="flex-1 flex flex-col justify-center py-4 space-y-6">
@@ -2334,19 +2358,19 @@ function SessionFlow() {
                     {activeEx.subMovementOrder}
                   </span>
                 )}
-                <h2 className="text-lg font-bold text-white tracking-tight leading-snug">
+                <h2 className="text-2xl sm:text-3xl font-black font-display uppercase text-white tracking-tight leading-tight">
                   {activeEx.name}
                 </h2>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Target: {activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps {activeEx.targetWeightKg ? `· ${activeEx.targetWeightKg}kg ` : ""}· RIR {activeEx.targetRir}
+              <p className="text-xs text-slate-300 font-mono-tabular mt-1">
+                Target: <span className="font-bold text-amber-400">{activeEx.targetSets} sets × {activeEx.repLow}-{activeEx.repHigh} reps</span> {activeEx.targetWeightKg ? `· ${activeEx.targetWeightKg}kg ` : ""}· RIR {activeEx.targetRir}
               </p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
                   Overload Ceiling: {activeEx.repHigh} reps
                 </span>
                 {activeEx.warmupSets !== undefined && activeEx.warmupSets > 0 && activeEx.completedSets.length === 0 && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
                     Warm-up: {activeEx.warmupSets} sets
                   </span>
                 )}
@@ -2360,7 +2384,7 @@ function SessionFlow() {
                   href={activeEx.videoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+                  className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
                   title="Watch quick exercise form demonstration (1 click)"
                 >
                   <Video className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -2379,27 +2403,27 @@ function SessionFlow() {
                   });
                   setIsSwapDrawerOpen(true);
                 }}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
                 aria-label="Swap occupied exercise equipment"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400" />
+                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400" />
                 <span>Swap</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-cyan-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
+                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
                 title="Snap equipment setup photo"
               >
-                <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                <Camera className="w-3.5 h-3.5 text-amber-400" />
                 <span>{activeEx.equipmentPhotoUrl ? "Photo ✓" : "Photo"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsTipsOpen(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer active:scale-95"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span>Tips</span>
@@ -2424,10 +2448,10 @@ function SessionFlow() {
                 <span
                   key={idx}
                   className={clsx(
-                    "w-3 h-3 rounded-full transition-all",
-                    isDone && "bg-emerald-400 scale-100",
-                    isCurrent && "border-2 border-emerald-400 bg-transparent animate-pulse",
-                    !isDone && !isCurrent && "bg-slate-800 border border-slate-700"
+                    "w-3.5 h-3.5 rounded-full transition-all",
+                    isDone && "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)] scale-100",
+                    isCurrent && "border-2 border-amber-400 bg-amber-500/20 animate-pulse scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]",
+                    !isDone && !isCurrent && "bg-[#151B27] border border-[#1C2436]"
                   )}
                 />
               );
@@ -2440,17 +2464,17 @@ function SessionFlow() {
                 <span
                   key={idx}
                   className={clsx(
-                    "px-2 py-0.5 rounded-lg text-[11px] font-mono border flex items-center gap-1",
+                    "px-2.5 py-1 rounded-lg text-[11px] font-mono-tabular border flex items-center gap-1.5 shadow-sm",
                     s.isDropSet
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-semibold"
-                      : "bg-slate-900 border-slate-800 text-slate-300"
+                      ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-bold"
+                      : "bg-[#111622] border-[#1C2436] text-slate-200"
                   )}
                 >
-                  <span className="text-slate-500 text-[10px]">
-                    {s.isDropSet ? "🔥 Drop:" : `S${idx + 1}:`}
+                  <span className="text-slate-400 text-[10px] font-bold">
+                    {s.isDropSet ? "🔥 Drop:" : `Set ${idx + 1}:`}
                   </span>
-                  <span>{s.weight}kg</span>
-                  <span className="text-slate-400">× {s.reps}</span>
+                  <span className="font-extrabold text-white">{s.weight} kg</span>
+                  <span className="text-slate-400 font-medium">× {s.reps}</span>
                 </span>
               ))}
             </div>
@@ -2635,13 +2659,13 @@ function SessionFlow() {
               <button
                 type="button"
                 onClick={() => handleFinishSession()}
-                className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
+                className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
               >
-                <div className="flex items-center gap-2 text-base">
+                <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                   <span>Finish Workout & View Results ✓</span>
                 </div>
-                <span className="text-[11px] font-medium text-slate-900/80">
+                <span className="text-[11px] font-sans font-medium text-slate-900/80 normal-case">
                   All prescribed sets complete · Tap to save & view summary
                 </span>
               </button>
@@ -2649,12 +2673,12 @@ function SessionFlow() {
               <button
                 type="button"
                 onClick={() => setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1))}
-                className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
+                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
               >
-                <div className="flex items-center gap-2 text-base">
+                <div className="flex items-center gap-2">
                   <span>Next: {exercises[currentExIndex + 1]?.name} →</span>
                 </div>
-                <span className="text-[11px] font-medium text-slate-900/80">
+                <span className="text-[11px] font-sans font-medium text-slate-900/80 normal-case">
                   {activeEx.name} complete ({activeEx.completedSets.length}/{activeEx.targetSets} sets)
                 </span>
               </button>
@@ -2662,7 +2686,7 @@ function SessionFlow() {
 
             {/* Station Busy? Jump to any remaining pending exercise */}
             {pendingOtherExercises.length > 0 && (
-              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-1.5">
+              <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1.5">
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
                   Machine busy? Jump to available station:
                 </span>
@@ -2672,9 +2696,9 @@ function SessionFlow() {
                       key={ex.id || idx}
                       type="button"
                       onClick={() => jumpToExercise(idx)}
-                      className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                      className="py-1.5 px-2.5 rounded-xl bg-[#090C11] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/50 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
                     >
-                      <span className="text-emerald-400 font-mono font-bold">#{idx + 1}</span>
+                      <span className="text-amber-400 font-mono font-bold">#{idx + 1}</span>
                       <span className="truncate max-w-[140px] font-semibold">{ex.name}</span>
                       <span className="text-[9px] text-slate-400 uppercase">({ex.equipment || "free"})</span>
                     </button>
@@ -2688,7 +2712,7 @@ function SessionFlow() {
               <button
                 type="button"
                 onClick={handleLogDropSet}
-                className="py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-xs font-semibold text-amber-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-xs font-semibold text-amber-300 transition flex items-center justify-center gap-1.5 cursor-pointer font-editorial"
                 title="Log immediate drop set with reduced load"
               >
                 <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -2697,7 +2721,7 @@ function SessionFlow() {
               <button
                 type="button"
                 onClick={handleAddBonusSet}
-                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer font-editorial"
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400" />
                 <span>+ Bonus Set</span>
@@ -2706,9 +2730,9 @@ function SessionFlow() {
             <button
               type="button"
               onClick={() => setIsAddExerciseSheetOpen(true)}
-              className="w-full py-2 px-3 text-[11px] text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 text-[11px] text-slate-400 hover:text-slate-200 bg-[#111622]/60 hover:bg-[#111622] border border-[#1C2436] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 text-cyan-400" />
+              <Plus className="w-3.5 h-3.5 text-amber-400" />
               <span>+ Add Extra Exercise on top of program</span>
             </button>
           </div>

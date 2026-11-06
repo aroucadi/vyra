@@ -41,24 +41,24 @@ export default function ProgramCalendarPage() {
   const isSelectedToday = resolved.dayOfWeek === selectedDay.dayOfWeek;
 
   return (
-    <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
+    <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300 font-body">
       
       {/* Header */}
       <header className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+          <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
             Week {resolved.weekIndex} of {program.durationWeeks}
           </span>
-          <span className="text-[11px] font-mono text-slate-500">Block 1 Hypertrophy</span>
+          <span className="text-[11px] font-mono text-slate-400">Block 1: Accumulation</span>
         </div>
-        <h1 className="text-xl font-bold text-white tracking-tight">Program Schedule</h1>
+        <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">Program Schedule</h1>
         <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 font-body">
             Periodized progression calibrated to your recovery curve.
           </p>
           <Link
             href="/posture"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition flex-shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#111622] border border-[#1C2436] text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition flex-shrink-0"
           >
             <Activity className="w-3 h-3" />
             <span>Posture Radar</span>
@@ -76,17 +76,17 @@ export default function ProgramCalendarPage() {
 
       {/* Day Details Card */}
       {selectedDay.isRestDay || exercises.length === 0 ? (
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-center">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+        <div className="p-6 rounded-2xl bg-[#111622] border border-[#1C2436] space-y-3 text-center">
+          <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center mx-auto">
             <Moon className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Active Recovery Day</h3>
+            <h3 className="text-sm font-bold text-white font-editorial">Active Recovery Day</h3>
             <p className="text-xs text-slate-400 mt-1">
               No heavy loading scheduled. Focus on 20-minute restorative walk, hydration, and tissue remodeling.
             </p>
           </div>
-          <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl text-left text-xs space-y-1">
+          <div className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl text-left text-xs space-y-1">
             <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">Mobility Cue</span>
             <p className="text-slate-300">Half-kneeling hip flexor stretch & 10 supine chin tucks.</p>
           </div>
@@ -100,17 +100,17 @@ export default function ProgramCalendarPage() {
           />
 
           {/* Compact Exercise List (name + target reps only) */}
-          <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+          <div className="mt-4 pt-3 border-t border-[#1C2436] space-y-2">
             {exercises.map((ex, idx) => (
               <div
                 key={ex.id || idx}
-                className="flex items-center justify-between py-1.5 text-xs text-slate-300 border-b border-slate-800/40 last:border-b-0"
+                className="flex items-center justify-between py-1.5 text-xs text-slate-300 border-b border-[#1C2436]/50 last:border-b-0"
               >
                 <div className="flex items-center gap-2 truncate pr-2">
                   <span className="font-mono text-[10px] text-slate-500 w-4">{idx + 1}.</span>
                   <span className="font-medium text-slate-200 truncate">{ex.exerciseName}</span>
                 </div>
-                <span className="font-mono text-[11px] text-slate-400 flex-shrink-0 tabular">
+                <span className="font-mono text-[11px] text-amber-400/90 flex-shrink-0 tabular-nums">
                   {ex.sets} × {ex.repRangeLow}-{ex.repRangeHigh}
                 </span>
               </div>
@@ -121,22 +121,60 @@ export default function ProgramCalendarPage() {
             <div className="space-y-2 w-full">
               <Link
                 href={`/session?day=${selectedDay.id}`}
-                className="w-full py-3 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{isSelectedToday ? "Start Today's Session" : "Start Session"}</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </Link>
               <Link
                 href={`/session?day=${selectedDay.id}&mode=preview`}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-slate-700 text-slate-300 hover:text-white font-editorial font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                <Eye className="w-3.5 h-3.5 text-amber-400" />
                 <span>Preview Exercises & Videos</span>
               </Link>
             </div>
           </Card.Action>
         </Card>
       )}
+
+      {/* 16-Week Mesocycle Roadmap (Category B) */}
+      <div className="p-4 rounded-2xl bg-[#111622] border border-[#1C2436] space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+            16-Week Mesocycle Roadmap
+          </span>
+          <span className="text-[10px] font-mono text-amber-400 font-semibold">
+            Alaa Periodization
+          </span>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="p-2.5 rounded-xl bg-[#182030] border border-amber-500/40 space-y-1">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-amber-400 block font-bold">
+              Block 1 · Active
+            </span>
+            <div className="font-editorial font-bold text-white text-xs">Accumulation</div>
+            <div className="text-[10px] text-slate-400 font-mono">W1–W6 · RIR 2</div>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-[#090C11] border border-[#1C2436] space-y-1 opacity-70">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
+              Block 2
+            </span>
+            <div className="font-editorial font-bold text-white text-xs">Intensification</div>
+            <div className="text-[10px] text-slate-400 font-mono">W7–W12 · RIR 1</div>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-[#090C11] border border-[#1C2436] space-y-1 opacity-70">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
+              Block 3
+            </span>
+            <div className="font-editorial font-bold text-white text-xs">Realization</div>
+            <div className="text-[10px] text-slate-400 font-mono">W13–W16 · 57kg</div>
+          </div>
+        </div>
+      </div>
 
       {/* Weekly Volume & Postural Allocation Dashboard */}
       <WeeklyVolumeDashboard />

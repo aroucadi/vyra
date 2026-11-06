@@ -49,12 +49,51 @@
   --card-bg: var(--surface);
   --card-border: var(--surface-border);
   --radius-xl: 1rem;
+
+  /* ==========================================================================
+     THE ALAA RELEASE TOKENS (Kinetic Monograph & Precision Biomechanics)
+     ========================================================================== */
+  --alaa-canvas: #090C11;
+  --alaa-surface-base: #111622;
+  --alaa-surface-raised: #182030;
+  --alaa-surface-overlay: #1F293D;
+  --alaa-border-subtle: #1C2436;
+  --alaa-border-interactive: #2D3A54;
+  --alaa-border-focus: #F59E0B;
+  --alaa-text-chalk: #F9FAFB;
+  --alaa-text-secondary: #94A3B8;
+  --alaa-text-tertiary: #64748B;
+  --alaa-signature-amber: #F59E0B;
+  --alaa-signature-amber-glow: rgba(245, 158, 11, 0.15);
+  --alaa-kinetic-lime: #10B981;
+  --alaa-kinetic-lime-subtle: rgba(16, 185, 129, 0.12);
+  --alaa-rest-lunar: #38BDF8;
+  --alaa-rest-lunar-subtle: rgba(56, 189, 248, 0.10);
+  --alaa-warning-ochre: #D97706;
+  --alaa-safety-crimson: #EF4444;
+}
+
+.font-display {
+  font-family: var(--font-display), "Barlow Condensed", Impact, sans-serif;
+}
+
+.font-editorial {
+  font-family: var(--font-editorial), "Syne", "Trebuchet MS", sans-serif;
+}
+
+.font-body {
+  font-family: var(--font-body), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-mono-tabular {
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 body {
-  background-color: var(--canvas);
-  color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--alaa-canvas, var(--canvas));
+  color: var(--alaa-text-chalk, var(--text-primary));
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100dvh;

@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { resolveProgramDay } from "@/lib/utils";
 import { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
+import { VyraLogo } from "@/components/brand/VyraLogo";
 
 export default function TodayPage() {
   const router = useRouter();
@@ -93,15 +94,19 @@ export default function TodayPage() {
   return (
     <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
       
-      {/* 1. Header: Date greeting + quiet readiness / Day-1 calibration chip */}
+      {/* 1. Brand Top Bar + Date greeting */}
+      <div className="flex items-center justify-between border-b border-[#1C2436]/60 pb-3">
+        <VyraLogo size="sm" variant="wordmark" href="/today" showTagline tagline="THE ALAA RELEASE" />
+        <span className="text-[10px] font-mono text-slate-400">
+          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+        </span>
+      </div>
+
       <header className="flex items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
               Week {resolved.weekIndex} of {program?.durationWeeks || 16}
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">
-              {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </span>
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight font-editorial">

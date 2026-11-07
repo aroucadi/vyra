@@ -34,10 +34,10 @@ export function Checkin({
     <div
       onClick={() => !disabled && onToggle(!checked)}
       className={clsx(
-        "group flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none min-h-[52px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+        "group flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none min-h-[52px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 font-body",
         checked
-          ? "bg-slate-900/40 border-slate-800/60 opacity-80"
-          : "bg-slate-900 border-slate-800 hover:border-slate-700 shadow-sm",
+          ? "bg-[#090C11] border-amber-500/30 text-slate-400 opacity-80"
+          : "bg-[#111622] border-[#1C2436] hover:bg-[#182030] hover:border-slate-700 shadow-sm",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}
@@ -60,8 +60,8 @@ export function Checkin({
           className={clsx(
             "w-7 h-7 rounded-lg border flex items-center justify-center transition-all flex-shrink-0 focus:outline-none",
             checked
-              ? "bg-emerald-500 border-emerald-500 text-slate-950 font-bold"
-              : "border-slate-700 bg-slate-950/60 group-hover:border-slate-600 text-transparent"
+              ? "bg-amber-400 border-amber-400 text-slate-950 font-bold shadow-sm"
+              : "border-[#1C2436] bg-[#090C11] group-hover:border-slate-600 text-transparent"
           )}
           aria-hidden="true"
         >
@@ -74,13 +74,13 @@ export function Checkin({
               id={`${id}-title`}
               className={clsx(
                 "text-xs font-semibold tracking-tight truncate",
-                checked ? "line-through text-slate-500" : "text-slate-200"
+                checked ? "line-through text-slate-500" : "text-white"
               )}
             >
               {title}
             </span>
             {badge && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#182030] text-amber-300/90 border border-[#1C2436] font-mono">
                 {badge}
               </span>
             )}
@@ -94,7 +94,7 @@ export function Checkin({
       </div>
 
       {time && (
-        <span className="text-[11px] font-mono text-slate-500 flex-shrink-0">
+        <span className="text-[11px] font-mono text-slate-400 flex-shrink-0">
           {time}
         </span>
       )}

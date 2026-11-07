@@ -86,25 +86,25 @@ export function AnatomicalBodyMap({
   };
 
   return (
-    <div className={clsx("p-3.5 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-2.5", className)}>
+    <div className={clsx("p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-2.5 font-body shadow-sm", className)}>
       {/* 1. Header & Front/Back View Selector */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
             {mode === "visualizer" ? "Biomechanical Target" : "Interactive Anatomy"}
           </span>
-          <h4 className="text-xs font-bold text-white tracking-tight">
+          <h4 className="text-xs font-bold text-white tracking-tight mt-1 font-editorial">
             {mode === "visualizer" ? "Active Muscle Activation" : "Anatomical Body Map"}
           </h4>
         </div>
-        <div className="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+        <div className="flex rounded-lg bg-[#090C11] p-0.5 border border-[#1C2436]">
           <button
             type="button"
             onClick={() => setView("front")}
             className={clsx(
-              "px-2 py-0.5 text-[10px] font-mono font-semibold rounded-md transition",
+              "px-2.5 py-0.5 text-[10px] font-mono font-semibold rounded-md transition cursor-pointer",
               view === "front"
-                ? "bg-emerald-500 text-slate-950 shadow-sm"
+                ? "bg-amber-400 text-slate-950 font-bold shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -114,9 +114,9 @@ export function AnatomicalBodyMap({
             type="button"
             onClick={() => setView("back")}
             className={clsx(
-              "px-2 py-0.5 text-[10px] font-mono font-semibold rounded-md transition",
+              "px-2.5 py-0.5 text-[10px] font-mono font-semibold rounded-md transition cursor-pointer",
               view === "back"
-                ? "bg-emerald-500 text-slate-950 shadow-sm"
+                ? "bg-amber-400 text-slate-950 font-bold shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -129,8 +129,8 @@ export function AnatomicalBodyMap({
       <div className="relative w-full max-w-[220px] mx-auto aspect-[1.15] select-none">
         <svg viewBox="0 0 260 240" className="w-full h-full">
           {/* Head & Neck silhouette */}
-          <circle cx="130" cy="28" r="16" fill="#1e293b" stroke="#334155" strokeWidth="1" />
-          <path d="M124 44 L136 44 L138 52 L122 52 Z" fill="#1e293b" />
+          <circle cx="130" cy="28" r="16" fill="#090C11" stroke="#1C2436" strokeWidth="1" />
+          <path d="M124 44 L136 44 L138 52 L122 52 Z" fill="#090C11" />
 
           {/* Interactive Muscle Regions */}
           {activeRegions.map((m, idx) => {
@@ -152,10 +152,10 @@ export function AnatomicalBodyMap({
                   className={clsx(
                     "transition-all duration-200 stroke-1",
                     activePrimary
-                      ? "fill-emerald-500 stroke-emerald-300 shadow-lg"
+                      ? "fill-amber-400 stroke-amber-300 shadow-lg"
                       : activeSec
-                      ? "fill-cyan-500/60 stroke-cyan-400"
-                      : "fill-slate-800/80 stroke-slate-700/80"
+                      ? "fill-sky-500/60 stroke-sky-400"
+                      : "fill-[#182030] stroke-[#1C2436]"
                   )}
                 />
                 <text
@@ -180,18 +180,18 @@ export function AnatomicalBodyMap({
       </div>
 
       {/* 3. Legend / Status Indicator */}
-      <div className="flex items-center justify-between text-[10px] font-mono px-1 text-slate-400 pt-1 border-t border-slate-800/60">
+      <div className="flex items-center justify-between text-[10px] font-mono px-1 text-slate-400 pt-1.5 border-t border-[#1C2436]">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
             <span className="text-slate-300">Primary</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
             <span className="text-slate-400">Synergist</span>
           </span>
         </div>
-        <span className="text-emerald-400 font-bold uppercase truncate max-w-[100px]">
+        <span className="text-amber-400 font-bold uppercase truncate max-w-[100px]">
           {selectedMuscle || "Neutral"}
         </span>
       </div>

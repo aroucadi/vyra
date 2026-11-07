@@ -257,29 +257,29 @@ export function AudioNoteRecorder({
   // --------------------------------------------------------------------------
   if (audioUrl) {
     return (
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-cyan-800/40 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
+      <div className="space-y-1.5 font-body">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#090C11] border border-[#1C2436] text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={togglePlayback}
-              className="p-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 transition cursor-pointer active:scale-95"
+              className="p-1.5 rounded-lg bg-[#182030] hover:bg-[#222C42] border border-[#1C2436] text-amber-400 transition cursor-pointer active:scale-95"
               title={isPlaying ? "Pause audio note" : "Play audio note"}
             >
               {isPlaying ? (
-                <Pause className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" />
+                <Pause className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               ) : (
-                <Play className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400 ml-0.5" />
+                <Play className="w-3.5 h-3.5 fill-amber-400 text-amber-400 ml-0.5" />
               )}
             </button>
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-semibold text-white flex items-center gap-1">
-                <Volume2 className="w-3 h-3 text-cyan-400" />
+              <span className="text-[11px] font-semibold text-white flex items-center gap-1 font-body">
+                <Volume2 className="w-3 h-3 text-amber-400" />
                 <span className="truncate">{label}</span>
               </span>
-              <div className="w-24 sm:w-32 bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
+              <div className="w-24 sm:w-32 bg-[#182030] h-1 rounded-full overflow-hidden mt-1">
                 <div
-                  className="bg-cyan-400 h-full transition-all duration-200"
+                  className="bg-amber-400 h-full transition-all duration-200"
                   style={{ width: `${playProgress}%` }}
                 />
               </div>
@@ -295,7 +295,7 @@ export function AudioNoteRecorder({
                 traineeId,
                 gymName,
               })}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-indigo-950/70 hover:bg-indigo-900/70 border border-indigo-700/60 text-indigo-300 text-[10px] font-semibold transition cursor-pointer active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/70 border border-indigo-700/60 text-indigo-300 text-[10px] font-semibold transition cursor-pointer active:scale-95 font-body"
               title="Share voice note with Google Gemini"
             >
               <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300" />
@@ -305,7 +305,7 @@ export function AudioNoteRecorder({
             <button
               type="button"
               onClick={startRecording}
-              className="text-[10px] text-slate-400 hover:text-cyan-300 px-2 py-1 rounded hover:bg-slate-800 transition"
+              className="text-[10px] font-mono text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-[#182030] transition cursor-pointer"
               title="Record again"
             >
               Retake
@@ -328,25 +328,25 @@ export function AudioNoteRecorder({
   // STATE 3: IDLE (OFFER OPTIONAL AUDIO RECORDING)
   // --------------------------------------------------------------------------
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 font-body">
       <button
         type="button"
         onClick={startRecording}
         className={clsx(
-          "flex items-center gap-2 rounded-xl transition cursor-pointer active:scale-98 group text-left",
+          "flex items-center gap-2.5 rounded-xl transition cursor-pointer active:scale-98 group text-left",
           compact
-            ? "px-2 py-1 text-[11px] text-slate-400 hover:text-cyan-300 bg-slate-900/60 hover:bg-slate-850 border border-slate-800"
-            : "w-full px-3 py-2 text-xs text-slate-300 bg-slate-900/70 hover:bg-slate-850 border border-slate-800 hover:border-slate-700"
+            ? "px-2.5 py-1.5 text-[11px] text-slate-400 hover:text-white bg-[#090C11] hover:bg-[#182030] border border-[#1C2436]"
+            : "w-full px-3 py-2.5 text-xs text-slate-300 bg-[#090C11] hover:bg-[#182030] border border-[#1C2436] hover:border-slate-700"
         )}
       >
-        <div className="p-1 rounded-lg bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 group-hover:scale-105 transition flex-shrink-0">
+        <div className="p-1.5 rounded-lg bg-[#182030] border border-[#1C2436] text-amber-400 group-hover:scale-105 transition flex-shrink-0">
           <Mic className="w-3.5 h-3.5" />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="font-semibold text-slate-200 text-[11px] group-hover:text-cyan-300 transition">
+          <span className="font-semibold text-slate-200 text-xs group-hover:text-amber-400 transition font-body">
             {label}
           </span>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-slate-500 font-mono">
             Tap to record quick voice notes (optional)
           </span>
         </div>

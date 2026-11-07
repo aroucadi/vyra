@@ -1449,10 +1449,10 @@ function SessionFlow() {
 
         {/* Different Day Picker Sheet */}
         <Sheet open={isDayPickerOpen} onOpenChange={setIsDayPickerOpen}>
-          <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-4">
+          <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 space-y-4 font-body shadow-2xl text-slate-100">
             <SheetHeader className="text-left space-y-1">
-              <SheetTitle className="text-base font-bold text-white">Choose a Different Session</SheetTitle>
-              <SheetDescription className="text-xs text-slate-400">
+              <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight">Choose a Different Session</SheetTitle>
+              <SheetDescription className="text-xs text-slate-400 font-body">
                 Select a scheduled training day from your current blueprint week.
               </SheetDescription>
             </SheetHeader>
@@ -1466,15 +1466,15 @@ function SessionFlow() {
                     router.push(`/session?day=${d.id}&mode=preview`);
                   }}
                   className={clsx(
-                    "w-full p-3.5 rounded-xl text-left transition flex items-center justify-between border cursor-pointer",
+                    "w-full p-3.5 rounded-xl text-left transition flex items-center justify-between border cursor-pointer font-body",
                     d.id === targetDay?.id
-                      ? "bg-slate-900 border-emerald-500/50 text-emerald-400"
-                      : "bg-slate-950 border-slate-800 hover:border-slate-700 text-white"
+                      ? "bg-[#182030] border-amber-500/50 text-amber-300 font-semibold shadow-sm"
+                      : "bg-[#111622] border-[#1C2436] hover:border-slate-700 text-white"
                   )}
                 >
-                  <span className="text-xs font-bold">{d.label}</span>
+                  <span className="text-xs font-semibold">{d.label}</span>
                   {d.id === targetDay?.id && (
-                    <span className="text-[10px] font-mono text-emerald-400">Current</span>
+                    <span className="text-[10px] font-mono text-amber-400 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">Current</span>
                   )}
                 </button>
               ))}
@@ -1483,24 +1483,24 @@ function SessionFlow() {
         </Sheet>
         {/* Exercise Form & Video Preview Bottom Sheet */}
         <Sheet open={!!previewDetailEx} onOpenChange={(open) => !open && setPreviewDetailEx(null)}>
-          <SheetContent side="bottom" className="max-w-md mx-auto max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-4">
+          <SheetContent side="bottom" className="max-w-md mx-auto max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 space-y-4 font-body shadow-2xl text-slate-100">
             {previewDetailEx && (
               <>
                 <SheetHeader className="text-left space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
                       {previewDetailEx.subMovementOrder ? `SLOT ${previewDetailEx.subMovementOrder}` : "EXERCISE PREVIEW"}
                     </span>
                     {previewDetailEx.equipment && (
-                      <span className="text-[10px] font-mono text-slate-400 uppercase">
+                      <span className="text-[10px] font-mono text-slate-300 uppercase px-2 py-0.5 rounded-full bg-[#182030] border border-[#1C2436]">
                         {previewDetailEx.equipment}
                       </span>
                     )}
                   </div>
-                  <SheetTitle className="text-lg font-bold text-white tracking-tight">
+                  <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight pt-1">
                     {previewDetailEx.name}
                   </SheetTitle>
-                  <SheetDescription className="text-xs text-slate-400">
+                  <SheetDescription className="text-xs text-slate-400 font-body">
                     {previewDetailEx.targetSets} sets × {previewDetailEx.repLow}-{previewDetailEx.repHigh} reps · Target RIR {previewDetailEx.targetRir} · {previewDetailEx.restSeconds}s rest
                   </SheetDescription>
                 </SheetHeader>
@@ -1511,26 +1511,26 @@ function SessionFlow() {
                     href={previewDetailEx.videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition"
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
                   >
                     <Video className="w-4 h-4 stroke-[2.5]" />
                     <span>Watch Form Demonstration Video</span>
                     <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                   </a>
                 ) : (
-                  <div className="text-[11px] text-slate-500 bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                  <div className="text-[11px] text-slate-400 bg-[#111622] border border-[#1C2436] rounded-xl p-3 text-center">
                     Video tutorial included in library catalogue
                   </div>
                 )}
 
                 {/* Kinetic Form Cue */}
                 {previewDetailEx.formCue && (
-                  <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5" />
+                  <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                       <span>Form Cue & Kinetic Anchor</span>
                     </div>
-                    <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                    <p className="text-xs text-slate-100 leading-relaxed font-medium">
                       {previewDetailEx.formCue}
                     </p>
                   </div>
@@ -1538,8 +1538,8 @@ function SessionFlow() {
 
                 {/* Coach Progression Guidance */}
                 {previewDetailEx.loadGuidance && (
-                  <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-1.5">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400">
+                  <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400">
                       Coach Progression Strategy
                     </span>
                     <p className="text-xs text-slate-300 leading-relaxed">
@@ -1550,7 +1550,7 @@ function SessionFlow() {
 
                 {/* Setup Checklist if available from Confidence Guide */}
                 {previewDetailEx.confidenceGuide?.hardware?.setupSteps && previewDetailEx.confidenceGuide.hardware.setupSteps.length > 0 && (
-                  <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-2">
+                  <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-2">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
                       Setup Checklist
                     </span>
@@ -1564,16 +1564,16 @@ function SessionFlow() {
 
                 {/* Equipment Variations if gym station is occupied */}
                 {previewDetailEx.equipmentVariations && previewDetailEx.equipmentVariations.length > 0 && (
-                  <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-2">
+                  <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-2">
                     <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
                       <span>Available Equipment Variations</span>
-                      <span className="text-slate-500 font-normal">Swap if station occupied</span>
+                      <span className="text-slate-400 font-normal">Swap if station occupied</span>
                     </div>
                     <div className="space-y-1.5">
                       {previewDetailEx.equipmentVariations.map((v, i) => (
-                        <div key={i} className="p-2 bg-slate-950 border border-slate-800/80 rounded-lg flex items-center justify-between text-xs">
+                        <div key={i} className="p-2.5 bg-[#090C11] border border-[#1C2436] rounded-lg flex items-center justify-between text-xs">
                           <div>
-                            <span className="text-[10px] uppercase font-mono text-cyan-400 mr-2">{v.equipmentType}</span>
+                            <span className="text-[10px] uppercase font-mono text-amber-400 font-semibold mr-2">{v.equipmentType}</span>
                             <span className="text-slate-200 font-medium">{v.exerciseName}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1596,7 +1596,7 @@ function SessionFlow() {
                                 });
                                 setPreviewDetailEx(null);
                               }}
-                              className="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-semibold border border-cyan-500/40 transition cursor-pointer"
+                              className="px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-[10px] font-mono font-semibold border border-amber-500/30 transition cursor-pointer"
                             >
                               Swap to this
                             </button>
@@ -1605,7 +1605,7 @@ function SessionFlow() {
                                 href={v.videoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
+                                className="text-[10px] text-amber-400 hover:underline flex items-center gap-1"
                               >
                                 <Video className="w-3 h-3" />
                                 <span>Demo</span>
@@ -2518,17 +2518,17 @@ function SessionFlow() {
         {isExCompleteOrSkipped ? (
           <div className="space-y-3 animate-in fade-in duration-200">
             {/* Biofeedback Rating Chips (Multi-Select) */}
-            <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-sm">
+            <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-3 shadow-sm font-body">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+                <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
                   <span>How did this lift feel? (Select all that apply)</span>
                 </span>
                 {(activeEx.feedbackTags && activeEx.feedbackTags.length > 0) || activeEx.feedbackTag ? (
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold px-1.5 py-0.2 rounded bg-emerald-500/10">
+                  <span className="text-[10px] font-mono text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
                     {(activeEx.feedbackTags?.length || (activeEx.feedbackTag ? 1 : 0))} selected ✓
                   </span>
                 ) : (
-                  <span className="text-[10px] text-slate-500">Multi-select</span>
+                  <span className="text-[10px] font-mono text-slate-500">Multi-select</span>
                 )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -2542,17 +2542,17 @@ function SessionFlow() {
                       type="button"
                       onClick={() => handleToggleFeedbackTag(tag.id)}
                       className={clsx(
-                        "py-2 px-2.5 rounded-xl border text-left text-xs transition flex items-center justify-between gap-1.5 cursor-pointer",
+                        "py-2 px-2.5 rounded-xl border text-left text-xs transition flex items-center justify-between gap-1.5 cursor-pointer font-body",
                         isSelected
                           ? tag.activeColor
-                          : "bg-slate-950/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                          : "bg-[#090C11] border-[#1C2436] text-slate-300 hover:text-white hover:bg-[#182030]"
                       )}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-sm">{tag.icon}</span>
                         <span className="font-semibold truncate">{tag.label}</span>
                       </div>
-                      {isSelected && <span className="text-xs font-bold text-emerald-400 flex-shrink-0">✓</span>}
+                      {isSelected && <span className="text-xs font-bold text-amber-400 flex-shrink-0">✓</span>}
                     </button>
                   );
                 })}
@@ -2560,8 +2560,8 @@ function SessionFlow() {
 
               {/* Free-Form Notes Text Input (Optional) */}
               <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold">
-                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold font-body">
+                  <FileText className="w-3.5 h-3.5 text-amber-400" />
                   <span>Setup & Biofeedback Notes (Optional)</span>
                 </div>
                 <textarea
@@ -2569,7 +2569,7 @@ function SessionFlow() {
                   onChange={(e) => handleUpdateFeedbackNote(e.target.value)}
                   placeholder="e.g. Pin set to position 4, right elbow felt smooth, micro-plates used..."
                   rows={2}
-                  className="w-full p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 transition resize-none"
+                  className="w-full p-3 rounded-xl bg-[#090C11] border border-[#1C2436] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none font-body"
                 />
               </div>
 
@@ -2587,10 +2587,10 @@ function SessionFlow() {
               </div>
 
               {/* Machine / Equipment Setup Photo & Native Gemini Share */}
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2 pt-2">
+              <div className="p-3.5 rounded-xl bg-[#090C11] border border-[#1C2436] space-y-2 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5 font-body">
+                    <Camera className="w-3.5 h-3.5 text-amber-400" />
                     <span>Equipment / Barbell Setup Photo</span>
                   </span>
                   {activeEx.equipmentPhotoUrl && (
@@ -2603,15 +2603,15 @@ function SessionFlow() {
                     <button
                       type="button"
                       onClick={() => setSelectedFullPhoto(activeEx.equipmentPhotoUrl!)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-cyan-950/50 border border-cyan-800/60 hover:bg-cyan-900/50 transition group cursor-pointer text-left active:scale-95"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 transition group cursor-pointer text-left active:scale-95"
                     >
                       <img
                         src={activeEx.equipmentPhotoUrl}
                         alt="Setup preview"
-                        className="w-8 h-8 object-cover rounded-md border border-cyan-700/50 group-hover:scale-105 transition flex-shrink-0"
+                        className="w-8 h-8 object-cover rounded-lg border border-[#1C2436] group-hover:scale-105 transition flex-shrink-0"
                       />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-semibold text-cyan-300">Inspect Photo</span>
+                        <span className="text-[10px] font-semibold text-amber-300">Inspect Photo</span>
                         <span className="text-[9px] text-slate-400">Tap to enlarge</span>
                       </div>
                     </button>
@@ -2625,7 +2625,7 @@ function SessionFlow() {
                         traineeId: currentUser.id,
                         gymName: selectedGym?.name,
                       })}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-900/80 to-cyan-900/80 border border-indigo-700/70 hover:border-indigo-500 text-white transition text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-900/80 to-cyan-900/80 border border-indigo-700/70 hover:border-indigo-500 text-white transition text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                       title="Share with Google Gemini for biomechanical analysis"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
@@ -2636,7 +2636,7 @@ function SessionFlow() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-[10px] text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                      className="text-[10px] text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-[#182030] transition cursor-pointer"
                     >
                       Retake
                     </button>
@@ -2645,9 +2645,9 @@ function SessionFlow() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-2.5 px-3 rounded-lg border border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-900/50 hover:bg-slate-900 transition flex items-center justify-center gap-2 text-xs text-slate-300 cursor-pointer active:scale-98"
+                    className="w-full py-3 px-3 rounded-xl border border-dashed border-[#1C2436] hover:border-amber-400/60 bg-[#111622] hover:bg-[#182030] transition flex items-center justify-center gap-2 text-xs text-slate-300 cursor-pointer active:scale-98"
                   >
-                    <Camera className="w-4 h-4 text-cyan-400" />
+                    <Camera className="w-4 h-4 text-amber-400" />
                     <span>Snap Machine / Seat Setting / Barbell Photo</span>
                   </button>
                 )}
@@ -2798,13 +2798,13 @@ function SessionFlow() {
 
         {/* Auto Rest Timer Overlay (Subtle, 1-tap Skip + Audio Chime Toggle) */}
         {restTimerSec !== null && (
-          <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-200">
+          <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-200 shadow-sm font-body">
             <div className="flex items-center gap-2 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               <span>Rest:</span>
-              <span className="font-mono font-bold text-white text-sm tabular">{restTimerSec}s</span>
-              <span className="text-[10px] font-mono text-emerald-400/80 px-1.5 py-0.2 rounded bg-emerald-500/10 hidden sm:inline">
-                Chime & Haptic Active
+              <span className="font-display font-black text-amber-400 text-base tabular-nums">{restTimerSec}s</span>
+              <span className="text-[10px] font-mono text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 hidden sm:inline">
+                Chime Active
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -2816,18 +2816,18 @@ function SessionFlow() {
                   soundService.setMuted(next);
                 }}
                 aria-label={isSoundMuted ? "Unmute rest timer audio" : "Mute rest timer audio"}
-                className="p-1 rounded-md text-slate-400 hover:text-white transition"
+                className="p-1 rounded-md text-slate-400 hover:text-white transition cursor-pointer"
               >
                 {isSoundMuted ? (
                   <VolumeX className="w-4 h-4 text-slate-500" />
                 ) : (
-                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                  <Volume2 className="w-4 h-4 text-amber-400" />
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => setRestTimerSec(null)}
-                className="text-[11px] font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+                className="text-[11px] font-mono font-semibold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Skip</span>
                 <FastForward className="w-3 h-3" />
@@ -2839,12 +2839,12 @@ function SessionFlow() {
       </main>
 
       {/* 3. Bottom Exercise Switcher Controls */}
-      <footer className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+      <footer className="pt-3 border-t border-[#1C2436] flex items-center justify-between font-body">
         <button
           type="button"
           disabled={currentExIndex === 0}
           onClick={() => setCurrentExIndex((prev) => Math.max(0, prev - 1))}
-          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs"
+          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs cursor-pointer font-display uppercase tracking-wider font-bold"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Prev</span>
@@ -2854,7 +2854,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={() => handleFinishSession()}
-            className="py-2.5 px-4 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs shadow-md hover:bg-emerald-400 transition"
+            className="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-display uppercase tracking-wider font-black rounded-xl text-xs shadow-md hover:from-amber-400 hover:to-amber-300 transition cursor-pointer"
           >
             Finish Workout →
           </button>
@@ -2862,10 +2862,10 @@ function SessionFlow() {
           <button
             type="button"
             onClick={() => setIsReorderDrawerOpen(true)}
-            className="px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-[11px] font-mono text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-[11px] font-mono text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
             title="Jump station or change order"
           >
-            <ArrowUpDown className="w-3 h-3 text-cyan-400" />
+            <ArrowUpDown className="w-3 h-3 text-amber-400" />
             <span>{activeEx.completedSets.length}/{activeEx.targetSets} done · Jump</span>
           </button>
         )}
@@ -2883,25 +2883,30 @@ function SessionFlow() {
 
       {/* TIPS SHEET (Drawer with Cues, Video, Load Strategy) */}
       <Sheet open={isTipsOpen} onOpenChange={setIsTipsOpen}>
-        <SheetContent side="bottom" className="max-w-md mx-auto">
-          <SheetHeader>
-            <div className="flex items-center gap-2 text-emerald-400">
-              <Sparkles className="w-4 h-4" />
-              <SheetTitle>{activeEx.name}</SheetTitle>
+        <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 space-y-4 font-body shadow-2xl text-slate-100">
+          <SheetHeader className="text-left space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>FORM & CUES</span>
+              </span>
             </div>
-            <SheetDescription>
-              Setup guide and progression cues.
+            <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight pt-1">
+              {activeEx.name}
+            </SheetTitle>
+            <SheetDescription className="text-xs text-slate-400 font-body">
+              Setup guide and biomechanical progression cues.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-4 pt-2 pb-6 text-xs">
+          <div className="space-y-4 pt-1 pb-4 text-xs">
             {/* Direct Video Demonstration Link */}
             {activeEx.videoUrl && (
               <a
                 href={activeEx.videoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
               >
                 <Video className="w-4 h-4 stroke-[2.5]" />
                 <span>Watch Form Demonstration Video</span>
@@ -2911,16 +2916,16 @@ function SessionFlow() {
 
             {/* Quick In-Gym Form & Strategy Cues (Zero walls of text) */}
             {activeEx.formCue && (
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">Form Cue</span>
-                <p className="text-xs text-white font-medium leading-snug">{activeEx.formCue}</p>
+              <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-1.5">
+                <span className="text-[10px] font-mono uppercase text-amber-400 font-bold">Form Cue & Anchor</span>
+                <p className="text-xs text-white font-medium leading-relaxed">{activeEx.formCue}</p>
               </div>
             )}
 
             {activeEx.loadGuidance && (
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold">Overload Strategy</span>
-                <p className="text-xs text-slate-300 leading-snug">{activeEx.loadGuidance}</p>
+              <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl space-y-1.5">
+                <span className="text-[10px] font-mono uppercase text-sky-400 font-bold">Overload Strategy</span>
+                <p className="text-xs text-slate-300 leading-relaxed">{activeEx.loadGuidance}</p>
               </div>
             )}
           </div>
@@ -2929,19 +2934,19 @@ function SessionFlow() {
 
       {/* EXIT CONFIRMATION MODAL */}
       <Sheet open={isExitAlertOpen} onOpenChange={setIsExitAlertOpen}>
-        <SheetContent side="bottom" className="max-w-md mx-auto text-center space-y-4">
+        <SheetContent side="bottom" className="max-w-md mx-auto text-center space-y-4 rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 font-body text-slate-100 shadow-2xl">
           <SheetHeader>
-            <SheetTitle>Exit Active Workout?</SheetTitle>
-            <SheetDescription>
+            <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight">Exit Active Workout?</SheetTitle>
+            <SheetDescription className="text-xs text-slate-400 font-body">
               Your logged sets will be safely preserved in today's training log.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2.5 pt-2">
             <button
               type="button"
               onClick={() => setIsExitAlertOpen(false)}
-              className="flex-1 py-3 bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl"
+              className="flex-1 py-3.5 bg-[#111622] hover:bg-[#182030] text-slate-300 font-display uppercase tracking-wider font-bold text-xs rounded-xl border border-[#1C2436] transition cursor-pointer"
             >
               Keep Training
             </button>
@@ -2951,7 +2956,7 @@ function SessionFlow() {
                 setIsExitAlertOpen(false);
                 router.push("/today");
               }}
-              className="flex-1 py-3 bg-rose-600 text-white font-semibold text-xs rounded-xl"
+              className="flex-1 py-3.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-display uppercase tracking-wider font-bold text-xs rounded-xl border border-rose-500/40 transition cursor-pointer"
             >
               Exit to Today
             </button>
@@ -2987,15 +2992,15 @@ function SessionFlow() {
 
       {/* WORKOUT COMPLETE: "DONE OR WANT TO LOG MORE?" MODAL */}
       <Sheet open={isWorkoutCompleteModalOpen} onOpenChange={setIsWorkoutCompleteModalOpen}>
-        <SheetContent side="bottom" className="max-w-md mx-auto text-center space-y-5 pb-6">
+        <SheetContent side="bottom" className="max-w-md mx-auto text-center space-y-5 pb-6 rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 font-body text-slate-100 shadow-2xl">
           <SheetHeader className="space-y-2">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto text-2xl shadow-lg animate-in zoom-in-50 duration-300">
+            <div className="w-14 h-14 rounded-full bg-amber-500/10 border-2 border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-2xl shadow-lg shadow-amber-500/10 animate-in zoom-in-50 duration-300">
               🔥
             </div>
-            <SheetTitle className="text-xl font-bold text-white tracking-tight">
+            <SheetTitle className="text-2xl font-editorial font-bold text-white tracking-tight">
               Workout Prescribed Target Crushed!
             </SheetTitle>
-            <SheetDescription className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+            <SheetDescription className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed font-body">
               All prescribed sets logged ({exercises.reduce((s, e) => s + e.completedSets.length, 0)} total sets).
               Are you done for today, or do you want to log extra exercises on top of the program?
             </SheetDescription>
@@ -3008,7 +3013,7 @@ function SessionFlow() {
                 setIsWorkoutCompleteModalOpen(false);
                 handleFinishSession();
               }}
-              className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-4 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
               <span>Finish & Save Workout ✓</span>
@@ -3020,9 +3025,9 @@ function SessionFlow() {
                 setIsWorkoutCompleteModalOpen(false);
                 setIsAddExerciseSheetOpen(true);
               }}
-              className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-semibold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 px-4 bg-[#111622] hover:bg-[#182030] active:scale-[0.98] text-white font-display uppercase tracking-wider font-bold text-xs rounded-xl border border-[#1C2436] transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-cyan-400" />
+              <Plus className="w-4 h-4 text-amber-400" />
               <span>+ Log Extra Exercise (On Top of Program)</span>
             </button>
 
@@ -3032,7 +3037,7 @@ function SessionFlow() {
                 setIsWorkoutCompleteModalOpen(false);
                 handleAddBonusSet();
               }}
-              className="w-full py-2.5 px-4 text-xs text-slate-400 hover:text-slate-200 transition cursor-pointer"
+              className="w-full py-2.5 px-4 text-xs font-mono text-slate-400 hover:text-amber-400 transition cursor-pointer"
             >
               + Add 1 More Bonus Set to {activeEx?.name || "Exercise"}
             </button>
@@ -3042,18 +3047,18 @@ function SessionFlow() {
 
       {/* ADD EXTRA EXERCISE DRAWER */}
       <Sheet open={isAddExerciseSheetOpen} onOpenChange={setIsAddExerciseSheetOpen}>
-        <SheetContent side="bottom" className="max-w-md mx-auto max-h-[85vh] flex flex-col p-4">
+        <SheetContent side="bottom" className="max-w-md mx-auto max-h-[85vh] flex flex-col p-5 rounded-t-3xl bg-[#090C11] border-[#1C2436] font-body text-slate-100 shadow-2xl">
           <SheetHeader className="pb-3 text-left">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-400" />
+              <SheetTitle className="text-xl font-editorial font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-amber-400" />
                 <span>Add Extra Exercise</span>
               </SheetTitle>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">
                 Logged on top of program
               </span>
             </div>
-            <SheetDescription className="text-xs text-slate-400">
+            <SheetDescription className="text-xs text-slate-400 font-body">
               Select any movement from the catalogue to add bonus volume to today's workout.
             </SheetDescription>
           </SheetHeader>
@@ -3066,7 +3071,7 @@ function SessionFlow() {
               placeholder="Search exercise or muscle (e.g. chest, lat, curl)..."
               value={exerciseSearchQuery}
               onChange={(e) => setExerciseSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-9 pr-3 py-2.5 bg-[#111622] border border-[#1C2436] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition font-body"
             />
           </div>
 
@@ -3078,10 +3083,10 @@ function SessionFlow() {
                 type="button"
                 onClick={() => setSelectedMuscleFilter(cat)}
                 className={clsx(
-                  "px-3 py-1 rounded-full whitespace-nowrap font-medium transition cursor-pointer",
+                  "px-3 py-1.5 rounded-full whitespace-nowrap transition cursor-pointer font-body",
                   selectedMuscleFilter === cat
-                    ? "bg-emerald-500 text-slate-950 font-bold"
-                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                    ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider text-xs shadow-sm"
+                    : "bg-[#111622] text-slate-400 hover:text-white border border-[#1C2436] text-xs font-medium"
                 )}
               >
                 {cat === "all" ? "All Muscles" : cat}
@@ -3096,19 +3101,19 @@ function SessionFlow() {
                 key={ex.id}
                 type="button"
                 onClick={() => handleAddExtraExercise(ex)}
-                className="w-full p-3 bg-slate-900/60 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-left flex items-center justify-between transition cursor-pointer group"
+                className="w-full p-3.5 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-slate-700 rounded-xl text-left flex items-center justify-between transition cursor-pointer group"
               >
                 <div>
-                  <div className="text-xs font-semibold text-white group-hover:text-emerald-400 transition">
+                  <div className="text-xs font-semibold text-white group-hover:text-amber-400 transition font-body">
                     {ex.name}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2">
-                    <span className="text-emerald-400/90 font-medium">{ex.primaryMuscle}</span>
+                  <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2 font-mono">
+                    <span className="text-amber-400 font-medium">{ex.primaryMuscle}</span>
                     <span>•</span>
                     <span className="capitalize">{ex.equipment}</span>
                   </div>
                 </div>
-                <div className="p-1.5 rounded-lg bg-slate-800 group-hover:bg-emerald-500 group-hover:text-slate-950 text-slate-400 transition">
+                <div className="p-1.5 rounded-lg bg-[#182030] group-hover:bg-amber-400 group-hover:text-slate-950 text-slate-400 border border-[#1C2436] transition">
                   <Plus className="w-3.5 h-3.5" />
                 </div>
               </button>

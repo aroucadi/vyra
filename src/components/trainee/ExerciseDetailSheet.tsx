@@ -145,16 +145,16 @@ export function ExerciseDetailSheet({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-5 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl"
+        className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-5 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl font-body"
       >
         {/* 1. Header (Eyebrow + Capitalized Title + Plate Popover) */}
         <SheetHeader className="text-left space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
                 {exercise.category || "Strength"}
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800">
+              <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#182030] text-slate-300 border border-[#1C2436]">
                 {exercise.equipment}
               </span>
             </div>
@@ -166,23 +166,23 @@ export function ExerciseDetailSheet({
               />
             )}
           </div>
-          <SheetTitle className="text-lg font-bold text-white tracking-tight capitalize pt-0.5">
+          <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight capitalize pt-0.5">
             {exercise.name}
           </SheetTitle>
-          <SheetDescription className="text-xs text-slate-400">
-            Primary Target: <span className="text-emerald-400 font-semibold capitalize">{exercise.target}</span> · Body Part: <span className="text-slate-300 capitalize">{exercise.bodyPart}</span>
+          <SheetDescription className="text-xs text-slate-400 font-body">
+            Primary Target: <span className="text-amber-400 font-semibold capitalize">{exercise.target}</span> · Body Part: <span className="text-slate-300 capitalize">{exercise.bodyPart}</span>
           </SheetDescription>
         </SheetHeader>
 
         {/* 2. Segmented 3-Tab Progressive Navigation */}
-        <div className="grid grid-cols-3 p-1 bg-slate-950 border border-slate-800/90 rounded-xl">
+        <div className="grid grid-cols-3 p-1 bg-[#111622] border border-[#1C2436] rounded-xl">
           <button
             type="button"
             onClick={() => setActiveTab("cues")}
             className={clsx(
               "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
               activeTab === "cues"
-                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
+                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -195,7 +195,7 @@ export function ExerciseDetailSheet({
             className={clsx(
               "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
               activeTab === "steps"
-                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
+                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -208,7 +208,7 @@ export function ExerciseDetailSheet({
             className={clsx(
               "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
               activeTab === "swaps"
-                ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
+                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -234,21 +234,21 @@ export function ExerciseDetailSheet({
               {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
               <div className="flex flex-col justify-between gap-2.5">
                 {/* Anchor 1: Setup */}
-                <div className="p-3 bg-slate-900/80 border border-slate-800/90 rounded-2xl space-y-1 shadow-sm">
+                <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span>1. Setup Anchor</span>
                     </span>
                     <span className="text-[9px] font-mono text-slate-500 uppercase">Foundation</span>
                   </div>
-                  <p className="text-[15px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-[13px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
                     {setupCue}
                   </p>
                 </div>
 
                 {/* Anchor 2: Kinetic Drive */}
-                <div className="p-3 bg-slate-900/80 border border-slate-800/90 rounded-2xl space-y-1 shadow-sm">
+                <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -256,7 +256,7 @@ export function ExerciseDetailSheet({
                     </span>
                     <span className="text-[9px] font-mono text-slate-500 uppercase">Trajectory</span>
                   </div>
-                  <p className="text-[15px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-[13px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
                     {driveCue}
                   </p>
                 </div>
@@ -269,10 +269,10 @@ export function ExerciseDetailSheet({
                 href={exercise.videoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full h-10 px-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 text-xs font-semibold text-slate-200 flex items-center justify-between transition shadow-xs"
+                className="w-full h-11 px-3.5 rounded-xl bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-xs font-semibold text-slate-200 flex items-center justify-between transition shadow-xs cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-emerald-400" />
+                  <Video className="w-4 h-4 text-amber-400" />
                   <span>Watch Biomechanical Form Cue</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
@@ -285,8 +285,8 @@ export function ExerciseDetailSheet({
         {activeTab === "steps" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
                 Step-by-Step Biomechanical Execution
               </span>
               <span className="text-[10px] font-mono text-slate-400">
@@ -294,11 +294,11 @@ export function ExerciseDetailSheet({
               </span>
             </div>
 
-            <div className="space-y-2 p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-300">
+            <div className="space-y-2 p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl text-xs text-slate-300">
               {exercise.instructions && exercise.instructions.length > 0 ? (
                 exercise.instructions.map((step, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-slate-900 last:border-0">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-[#1C2436] last:border-0">
+                    <span className="w-5 h-5 rounded-full bg-[#182030] border border-[#1C2436] text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
                       {idx + 1}
                     </span>
                     <p className="text-xs leading-relaxed text-slate-200">{step}</p>
@@ -317,9 +317,9 @@ export function ExerciseDetailSheet({
         {activeTab === "swaps" && (
           <div className="space-y-4">
             {/* Equipment Context Card */}
-            <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
+            <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-2">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Disc className="w-3.5 h-3.5 text-emerald-400" />
+                <Disc className="w-3.5 h-3.5 text-amber-400" />
                 Equipment & Loading Profile
               </span>
               <div className="flex items-center justify-between text-xs">
@@ -327,16 +327,16 @@ export function ExerciseDetailSheet({
                 <span className="font-semibold text-white capitalize">{exercise.equipment}</span>
               </div>
               {isBarbellOrSmith && (
-                <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#1C2436] flex items-center justify-between">
                   <span className="text-xs text-slate-400">Standard Olympic Bar:</span>
-                  <span className="text-xs font-mono font-bold text-emerald-400">20.0 kg Base Tare</span>
+                  <span className="text-xs font-mono font-bold text-amber-400">20.0 kg Base Tare</span>
                 </div>
               )}
             </div>
 
             {/* Direct Biomechanical Swaps */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 1-Tap Biomechanical Alternatives
               </span>
@@ -351,22 +351,22 @@ export function ExerciseDetailSheet({
                     return (
                       <div
                         key={sub.id}
-                        className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2 text-xs"
+                        className="p-3.5 bg-[#111622] border border-[#1C2436] hover:border-slate-700 rounded-xl space-y-2 text-xs transition"
                       >
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5 min-w-0 pr-3">
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold text-white truncate capitalize">{sub.name}</span>
                               {match && (
-                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
                                   {Math.round(match.similarityScore * 100)}%
                                 </span>
                               )}
                             </div>
                             <div className="text-[10px] font-mono text-slate-400">
-                              {sub.equipment} · <span className="text-emerald-400 capitalize">{sub.target}</span>
+                              {sub.equipment} · <span className="text-amber-400 capitalize">{sub.target}</span>
                               {match && (
-                                <span className="text-cyan-400 ml-1">· {match.resistanceProfile}</span>
+                                <span className="text-sky-400 ml-1">· {match.resistanceProfile}</span>
                               )}
                             </div>
                           </div>
@@ -377,7 +377,7 @@ export function ExerciseDetailSheet({
                                 onSelectAsSubstitute(sub);
                                 onClose();
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs transition shrink-0 cursor-pointer shadow-sm"
+                              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-display uppercase tracking-wider font-bold text-xs transition shrink-0 cursor-pointer shadow-sm"
                             >
                               Swap
                             </button>
@@ -386,8 +386,8 @@ export function ExerciseDetailSheet({
                           )}
                         </div>
                         {match?.biomechanicalRationale && (
-                          <div className="text-[11px] text-slate-300 leading-snug bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
-                            <span className="text-emerald-400 font-semibold font-mono text-[10px]">COACH: </span>
+                          <div className="text-[11px] text-slate-300 leading-snug bg-[#090C11] p-2.5 rounded-lg border border-[#1C2436]">
+                            <span className="text-amber-400 font-semibold font-mono text-[10px]">COACH: </span>
                             {match.biomechanicalRationale}
                           </div>
                         )}
@@ -395,7 +395,7 @@ export function ExerciseDetailSheet({
                     );
                   })
                 ) : (
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/60 text-center text-xs text-slate-400">
+                  <div className="p-4 rounded-xl bg-[#111622] border border-[#1C2436] text-center text-xs text-slate-400">
                     No immediate substitutes found for {exercise.target}.
                   </div>
                 )}
@@ -413,7 +413,7 @@ export function ExerciseDetailSheet({
                 onSelectAsSubstitute(exercise);
                 onClose();
               }}
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Select as Active Exercise</span>
               <ArrowRight className="w-4 h-4" />
@@ -423,7 +423,7 @@ export function ExerciseDetailSheet({
               <button
                 type="button"
                 onClick={handleUseInDayOneSession}
-                className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Use in Day 1 Session</span>
                 <ArrowRight className="w-4 h-4" />
@@ -431,7 +431,7 @@ export function ExerciseDetailSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs rounded-xl transition cursor-pointer"
+                className="w-full py-3 bg-[#111622] hover:bg-[#182030] text-slate-300 border border-[#1C2436] font-display uppercase tracking-wider font-bold text-xs rounded-xl transition cursor-pointer"
               >
                 Close
               </button>

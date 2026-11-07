@@ -166,7 +166,7 @@ export default function YouPage() {
             className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 text-slate-200 min-w-0">
-              <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <div className="min-w-0">
                 <span>Salles de Sport & Training Locations</span>
                 <p className="text-[10px] text-slate-400 font-normal truncate">

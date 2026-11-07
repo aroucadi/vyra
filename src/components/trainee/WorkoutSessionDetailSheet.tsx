@@ -192,14 +192,14 @@ export function WorkoutSessionDetailSheet({
         </SheetHeader>
 
         {/* Salle de Sport / Gym Location */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs shadow-sm">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#111622] border border-[#1C2436] text-xs shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
               <MapPin className="w-4 h-4" />
             </div>
             <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-white text-xs truncate">
+                <span className="font-semibold text-white text-xs truncate font-editorial">
                   {currentGymName}
                 </span>
               </div>
@@ -211,7 +211,7 @@ export function WorkoutSessionDetailSheet({
           <button
             type="button"
             onClick={() => setIsGymDrawerOpen(true)}
-            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-800/50 hover:bg-cyan-900/50 transition flex-shrink-0 active:scale-95"
+            className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition flex-shrink-0 active:scale-95 cursor-pointer font-editorial"
           >
             Change
           </button>

@@ -354,6 +354,7 @@ export interface BodyMetricEntry {
   traineeId: string;
   date: string; // YYYY-MM-DD
   weightKg: number;
+  bodyFatPercent?: number;
   source: "manual" | "synced";
 }
 

@@ -25,6 +25,7 @@ import {
   seedMetricsAlaa,
 } from "@/db/seed/master-transformation-program";
 import { checkIsPersonalRecord, resolveProgramDay, toLocalDateString } from "./utils";
+import { getStorageAdapter } from "./storage/adapter";
 
 // In-memory single-source-of-truth state for realistic local/preview runs
 export interface AppDatabase {
@@ -952,7 +953,7 @@ class Store {
 
     // Manual readiness answers store only: date, sleepHours, answer, source="manual"
     // No invented hrvMs, no invented readinessScore
-    return this.saveWearableBiometrics({
+    const saved = this.saveWearableBiometrics({
       traineeId,
       date,
       source: "manual",
@@ -961,6 +962,10 @@ class Store {
       reducedRecovery: isReduced,
       cnsFatigueDetected: isReduced,
     });
+    try {
+      getStorageAdapter().saveReadiness(saved).catch(() => {});
+    } catch {}
+    return saved;
   }
 
   getCurrentUser(): User {
@@ -1432,6 +1437,9 @@ class Store {
         localStorage.setItem("vyra_offline_backup_v1", JSON.stringify(data));
       } catch {}
     }
+    try {
+      getStorageAdapter().saveSession(session).catch(() => {});
+    } catch {}
     return session;
   }
 
@@ -1476,6 +1484,9 @@ class Store {
       source: "manual",
     };
     this.db.metrics.push(entry);
+    try {
+      getStorageAdapter().saveMetric(entry).catch(() => {});
+    } catch {}
     return entry;
   }
 

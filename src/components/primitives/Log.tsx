@@ -85,17 +85,19 @@ export function LogStepper({
   );
 }
 
-// 2. Big Confirm Action Button
+// 2. Big Confirm Action Button (80px Tactile Touch Area for Zero-Cognition Gym Floor Logging)
 export function LogConfirm({
   label = "Log set",
   subLabel,
   disabled = false,
+  isHitTarget = false,
   onClick,
   className,
 }: {
   label?: string;
   subLabel?: string;
   disabled?: boolean;
+  isHitTarget?: boolean;
   onClick: () => void;
   className?: string;
 }) {
@@ -105,14 +107,22 @@ export function LogConfirm({
       disabled={disabled}
       onClick={onClick}
       className={clsx(
-        "w-full py-4 px-6 rounded-2xl font-black font-editorial text-base tracking-wide shadow-lg transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer",
-        "bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.35)]",
+        "w-full min-h-[80px] py-4 px-6 rounded-2xl font-black font-editorial tracking-wide transition-all flex flex-col items-center justify-center gap-1 select-none cursor-pointer",
+        isHitTarget
+          ? "bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 active:scale-[0.98] text-slate-950 shadow-[0_0_30px_rgba(245,158,11,0.45)] ring-2 ring-amber-300/40"
+          : "bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}
     >
-      <span>{label}</span>
-      {subLabel && <span className="text-[11px] font-mono font-semibold text-slate-950/80">{subLabel}</span>}
+      <span className="text-base sm:text-lg flex items-center justify-center gap-1.5 font-display font-black tracking-tight leading-tight">
+        {label}
+      </span>
+      {subLabel && (
+        <span className="text-[11px] font-mono font-bold text-slate-950/80 tracking-normal">
+          {subLabel}
+        </span>
+      )}
     </button>
   );
 }

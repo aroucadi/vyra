@@ -12,6 +12,7 @@ import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { isCloudStorageEnabled } from "@/lib/cloud-storage";
+import { getStorageAdapter } from "@/lib/storage/adapter";
 import { Log } from "@/components/primitives/Log";
 import { Card } from "@/components/primitives/Card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -910,6 +911,27 @@ function SessionFlow() {
       saveSessionDraft(currentUser.id, updated, currentExIndex, sessionDurationSec, targetDay?.id);
       return updated;
     });
+
+    // Zero-Cognition Gym Feedback: Haptic pulse & athletic registration sound
+    soundService.playTargetHitFeedback(isPR);
+
+    // Flight Recorder: Append immutable SET_LOGGED event
+    try {
+      getStorageAdapter().appendEvent(
+        currentUser.id,
+        targetDay?.id ? `session_${targetDay.id}` : "active_session",
+        "SET_LOGGED",
+        {
+          sessionId: targetDay?.id || "active_session",
+          exerciseName: activeEx.name,
+          setIndex: newCompleted.length,
+          weightKg: activeEx.currentWeight,
+          reps: activeEx.currentReps,
+          isPR,
+          selectedEquipment: activeEx.equipment,
+        }
+      ).catch(() => {});
+    } catch {}
 
     // Track set logging telemetry with seconds_per_set
     const now = Date.now();
@@ -2739,12 +2761,19 @@ function SessionFlow() {
         ) : (
           <div className="space-y-2">
             <Log.Confirm
+              isHitTarget={
+                activeEx.currentWeight === (activeEx.lastBestWeight || activeEx.currentWeight) &&
+                activeEx.currentReps >= (activeEx.repLow || 8)
+              }
               label={
-                isStraightMode
-                  ? `Done · Log Set ${Math.min(currentSetNum, activeEx.targetSets)} of ${activeEx.targetSets} ✓`
+                activeEx.currentWeight === (activeEx.lastBestWeight || activeEx.currentWeight) &&
+                activeEx.currentReps >= (activeEx.repLow || 8)
+                  ? `⚡ HIT TARGET (${activeEx.currentWeight}kg × ${activeEx.currentReps}) · Set ${Math.min(currentSetNum, activeEx.targetSets)}/${activeEx.targetSets} ✓`
+                  : isStraightMode
+                  ? `Done · Log Set ${Math.min(currentSetNum, activeEx.targetSets)} of ${activeEx.targetSets} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
                   : activeEx.subMovementOrder
-                  ? `Done · Log ${activeEx.subMovementOrder} (Round ${Math.min(currentSetNum, activeEx.targetSets)}) ✓`
-                  : `Log Set ${Math.min(currentSetNum, activeEx.targetSets)} ✓`
+                  ? `Done · Log ${activeEx.subMovementOrder} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
+                  : `Log Set ${Math.min(currentSetNum, activeEx.targetSets)} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
               }
               subLabel={
                 isStraightMode

@@ -7,7 +7,7 @@
  */
 
 export const DB_NAME = "vyra_client_db";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export interface ClientStoredPayload {
   version: number;
@@ -160,6 +160,13 @@ export function openClientDatabase(): Promise<IDBDatabase> {
       // Spec 018: Offline replay mutation queue (keyed by UUID id)
       if (!db.objectStoreNames.contains("mutation_queue")) {
         db.createObjectStore("mutation_queue", { keyPath: "id" });
+      }
+      // Flight Recorder: Immutable append-only athletic event stream
+      if (!db.objectStoreNames.contains("athletic_events")) {
+        const eventStore = db.createObjectStore("athletic_events", { keyPath: "id" });
+        eventStore.createIndex("streamId", "streamId", { unique: false });
+        eventStore.createIndex("traineeId", "traineeId", { unique: false });
+        eventStore.createIndex("syncedToCloud", "syncedToCloud", { unique: false });
       }
     };
 

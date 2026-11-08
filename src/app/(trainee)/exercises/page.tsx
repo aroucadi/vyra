@@ -122,29 +122,32 @@ export default function TraineeExerciseLibraryPage() {
   }, [query, selectedMuscle, selectedEquipment]);
 
   return (
-    <div className="min-h-screen bg-[#090C11] text-slate-100 pb-44 max-w-md mx-auto flex flex-col font-body selection:bg-amber-500/20">
+    <div className="min-h-screen bg-[#090C11] text-slate-100 pb-44 w-full max-w-md mx-auto flex flex-col font-body selection:bg-amber-500/20 overflow-x-hidden">
       {/* 1. Spacious, Lightweight Sticky Header */}
-      <header className="sticky top-0 z-30 bg-[#090C11]/95 backdrop-blur-md border-b border-[#1C2436] px-4 pt-3.5 pb-3 space-y-3">
+      <header className="sticky top-0 z-30 bg-[#090C11]/95 backdrop-blur-md border-b border-[#1C2436] px-4 pt-3.5 pb-3 space-y-2.5 w-full overflow-hidden">
         {/* Tier 1: Brand & Top Bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 w-full min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <Link
               href="/program"
               aria-label="Back to Program"
-              className="w-10 h-10 rounded-xl bg-[#111622] border border-[#1C2436] text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shadow-xs"
+              className="w-9 h-9 rounded-xl bg-[#111622] border border-[#1C2436] text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0 shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <VyraLogo size="xs" variant="wordmark" />
-                <span className="w-px h-3 bg-[#1C2436]" />
-                <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">
-                  Movement Index
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <VyraLogo size="xs" variant="mark" />
+                <span className="text-xs font-editorial font-bold text-white tracking-tight uppercase">
+                  Vyra
+                </span>
+                <span className="w-px h-3 bg-[#1C2436] shrink-0" />
+                <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider truncate">
+                  Index
                 </span>
               </div>
-              <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                6,554 Biomechanical Protocols
+              <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
+                6,554 Protocols
               </p>
             </div>
           </div>
@@ -154,7 +157,7 @@ export default function TraineeExerciseLibraryPage() {
             type="button"
             onClick={() => setIsBodyMapSheetOpen(true)}
             className={clsx(
-              "h-9 px-3 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border",
+              "h-9 px-2.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border shrink-0",
               selectedMuscle !== "all"
                 ? "bg-amber-400 text-slate-950 border-amber-400 shadow-sm shadow-amber-500/20"
                 : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
@@ -170,13 +173,13 @@ export default function TraineeExerciseLibraryPage() {
         </div>
 
         {/* Tier 2: Search Input Field */}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search exercises, variations, mechanics..."
+            placeholder="Search exercises, variations..."
             className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[#111622] border border-[#1C2436] focus:border-amber-400/80 focus:bg-[#141B2B] focus:outline-none text-xs text-white placeholder:text-slate-500 font-mono transition-all shadow-inner"
           />
           {query.trim() && (
@@ -192,38 +195,40 @@ export default function TraineeExerciseLibraryPage() {
         </div>
 
         {/* Tier 3: Unified Horizontal Biomechanical Focus Carousel (Single Clean Row) */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-4 px-4">
-          {PRIMARY_CHANNELS.map((ch) => {
-            const isSelected =
-              ch.type === "all"
-                ? selectedMuscle === "all" && selectedEquipment === "all" && !query.trim()
-                : ch.type === "muscle"
-                ? selectedMuscle === ch.value
-                : selectedEquipment === ch.value;
+        <div className="w-full overflow-hidden">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full">
+            {PRIMARY_CHANNELS.map((ch) => {
+              const isSelected =
+                ch.type === "all"
+                  ? selectedMuscle === "all" && selectedEquipment === "all" && !query.trim()
+                  : ch.type === "muscle"
+                  ? selectedMuscle === ch.value
+                  : selectedEquipment === ch.value;
 
-            return (
-              <button
-                key={ch.id}
-                type="button"
-                onClick={() => handleChannelClick(ch)}
-                className={clsx(
-                  "min-h-[36px] px-3.5 rounded-xl text-xs font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer active:scale-95 flex items-center justify-center",
-                  isSelected
-                    ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-xs"
-                    : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
-                )}
-              >
-                {ch.label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => handleChannelClick(ch)}
+                  className={clsx(
+                    "min-h-[34px] px-3 rounded-xl text-xs font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer active:scale-95 flex items-center justify-center",
+                    isSelected
+                      ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-xs"
+                      : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
+                  )}
+                >
+                  {ch.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Active Filter Breadcrumbs & Summary */}
         {hasActiveFilters && (
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1C2436] text-[10px] font-mono animate-in fade-in duration-150">
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1C2436] text-[10px] font-mono animate-in fade-in duration-150 w-full min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="text-slate-400">Filtering:</span>
+              <span className="text-slate-400 shrink-0">Filtering:</span>
               {selectedMuscle !== "all" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
                   <span>{selectedMuscle.toUpperCase()}</span>
@@ -249,12 +254,12 @@ export default function TraineeExerciseLibraryPage() {
                 </span>
               )}
               {query.trim() && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#182030] text-slate-300 border border-[#1C2436]">
-                  <span>&quot;{query}&quot;</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#182030] text-slate-300 border border-[#1C2436] max-w-[130px] truncate">
+                  <span className="truncate">&quot;{query}&quot;</span>
                   <button
                     type="button"
                     onClick={() => setQuery("")}
-                    className="hover:text-white cursor-pointer ml-0.5"
+                    className="hover:text-white cursor-pointer ml-0.5 shrink-0"
                   >
                     ×
                   </button>

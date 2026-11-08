@@ -8,6 +8,7 @@ import { WorkoutSession, SetLog } from "@/lib/types";
 import { Dumbbell, Trophy, ChevronRight, Moon, Calendar, Clock, CheckCircle2, MapPin, Sparkles } from "lucide-react";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
+import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 
 export default function YouPage() {
   const currentUser = appStore.getCurrentUser();
@@ -134,6 +135,15 @@ export default function YouPage() {
             No completed workouts logged yet.
           </div>
         )}
+      </section>
+
+      {/* Sovereign Vault & Cloud Anchor */}
+      <section>
+        <PasskeySyncCard
+          userId={currentUser.id}
+          userName={currentUser.name}
+          sessionsCount={sessions.length}
+        />
       </section>
 
       {/* Navigation List */}

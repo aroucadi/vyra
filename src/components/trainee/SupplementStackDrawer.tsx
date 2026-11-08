@@ -133,7 +133,7 @@ export function SupplementStackDrawer({
           {/* Group 3: Evening Wind-Down Stack */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-display font-bold uppercase tracking-wider text-emerald-400">
+              <span className="text-xs font-display font-bold uppercase tracking-wider text-sky-400">
                 Evening Wind-Down Stack
               </span>
               <span className="text-[11px] font-mono text-slate-400">21:30</span>

@@ -27,7 +27,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       >
         <div
           className={clsx(
-            "h-full w-full flex-1 bg-emerald-500 transition-all duration-300 ease-out",
+            "h-full w-full flex-1 bg-amber-400 transition-all duration-300 ease-out",
             indicatorClassName
           )}
           style={{ transform: `translateX(-${100 - clampedValue}%)` }}

@@ -37,8 +37,8 @@ export function PlanTimeline({
               {renderHero ? (
                 renderHero(m)
               ) : (
-                <div className="p-5 rounded-2xl bg-slate-900 border-2 border-emerald-500/30 space-y-2">
-                  <div className="flex justify-between text-xs text-emerald-400 font-mono">
+                <div className="p-5 rounded-2xl bg-slate-900 border-2 border-amber-500/30 space-y-2">
+                  <div className="flex justify-between text-xs text-amber-400 font-mono">
                     <span>NOW</span>
                     <span>{m.time}</span>
                   </div>
@@ -59,7 +59,7 @@ export function PlanTimeline({
               className="flex items-center justify-between p-3 bg-slate-900/30 border border-slate-800/40 rounded-xl text-xs text-slate-400 cursor-pointer hover:border-slate-800 transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-[10px] text-emerald-400 flex-shrink-0">
+                <span className="w-4 h-4 rounded-full bg-amber-950 border border-amber-700/60 flex items-center justify-center text-[10px] text-amber-400 flex-shrink-0">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </span>
                 <span className="font-medium text-slate-300 truncate">{m.title}</span>

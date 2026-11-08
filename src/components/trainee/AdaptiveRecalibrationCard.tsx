@@ -25,18 +25,18 @@ export function AdaptiveRecalibrationCard({
   // If optimal recovery and no fatigue, show quiet progressive overload badge
   if (!isReduced) {
     return (
-      <div className="bg-[#111622] border border-emerald-500/30 rounded-2xl p-4 transition-all font-body shadow-sm">
+      <div className="bg-[#111622] border border-sky-500/30 rounded-2xl p-4 transition-all font-body shadow-sm">
         {/* Element 1: Eyebrow */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] font-display font-bold uppercase tracking-wider text-emerald-400">
+            <span className="flex h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
+            <span className="text-[11px] font-display font-bold uppercase tracking-wider text-sky-400">
               Full Recovery · You said {plan.sleepHours}h sleep
             </span>
           </div>
           {wearableSnapshot && wearableSnapshot.source !== "manual" && (
-            <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-emerald-300 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">
-              <Watch className="w-3 h-3 text-emerald-400" />
+            <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums text-sky-300 bg-sky-950/60 border border-sky-800/40 px-2 py-0.5 rounded-full">
+              <Watch className="w-3 h-3 text-sky-400" />
               <span>Wearable · {wearableSnapshot.hrvMs ? `${wearableSnapshot.hrvMs}ms` : "Synced"}</span>
             </span>
           )}
@@ -51,7 +51,7 @@ export function AdaptiveRecalibrationCard({
         </div>
 
         {/* Element 3: Supporting Status */}
-        <div className="flex items-center gap-2 text-xs font-mono tabular-nums text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2.5 py-1.5 w-fit">
+        <div className="flex items-center gap-2 text-xs font-mono tabular-nums text-sky-400 bg-sky-500/10 border border-sky-500/30 rounded-lg px-2.5 py-1.5 w-fit">
           <Zap className="w-3.5 h-3.5" />
           <span>Full Progression Active</span>
         </div>

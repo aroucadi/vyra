@@ -80,10 +80,10 @@ export function StructuralBalanceRadar({
     { fill: string; stroke: string; text: string; bg: string }
   > = {
     [BALANCE_STATUSES.BALANCED]: {
-      fill: "#10B981",
-      stroke: "#059669",
-      text: "text-emerald-400",
-      bg: "bg-emerald-500/15 border-emerald-500/30",
+      fill: "#38BDF8",
+      stroke: "#0284C7",
+      text: "text-sky-400",
+      bg: "bg-sky-500/15 border-sky-500/30",
     },
     [BALANCE_STATUSES.BORDERLINE]: {
       fill: "#F59E0B",

@@ -144,7 +144,7 @@ export default function TodayPage() {
                     : readinessStatus.includes("Moderate")
                     ? "bg-amber-300"
                     : readinessStatus.includes("Full")
-                    ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                    ? "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]"
                     : "bg-slate-500"
                 }`}
               />
@@ -201,7 +201,7 @@ export default function TodayPage() {
                         if (todaySess) setSelectedSession(todaySess);
                         else router.push("/progress");
                       }}
-                      className="w-full py-4 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-editorial font-extrabold text-sm rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-4 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-editorial font-extrabold text-sm rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Trophy className="w-4 h-4 text-slate-950" />
                       <span>View Completed Session Stats</span>

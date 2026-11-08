@@ -184,8 +184,8 @@ export function WorkoutSessionDetailSheet({
       >
         <SheetHeader className="text-left space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-amber-400" />
               <span>LOGGED WORKOUT</span>
             </span>
             <span className="text-xs font-mono text-slate-400 flex items-center gap-1">
@@ -270,7 +270,7 @@ export function WorkoutSessionDetailSheet({
                 <Clock className="w-3.5 h-3.5 text-sky-400" />
                 <span>Time Architecture</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-400">
+              <span className="text-[10px] font-mono text-amber-400">
                 Telemetry Validated
               </span>
             </div>
@@ -317,7 +317,7 @@ export function WorkoutSessionDetailSheet({
                 <span className={clsx(
                   "text-[10px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1",
                   session.warmupCompleted
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
                     : "bg-[#090C11] text-slate-400 border-[#1C2436]"
                 )}>
                   <span>{session.warmupCompleted ? `✓ Warmup (${formatDuration(session.warmupDurationSec)})` : "— Warmup Skipped"}</span>
@@ -409,7 +409,7 @@ export function WorkoutSessionDetailSheet({
                         s.isDropSet
                           ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
                           : s.isPR
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                          ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
                           : "bg-[#090C11] border-[#1C2436] text-slate-200"
                       }`}
                     >

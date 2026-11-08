@@ -35,15 +35,15 @@
   --text-muted: var(--slate-400);
   --text-faint: var(--slate-500);
 
-  --accent-train: var(--emerald-500);
-  --accent-train-hover: var(--emerald-600);
+  --accent-train: var(--amber-500);
+  --accent-train-hover: #D97706;
   --accent-fuel: var(--cyan-500);
   --accent-sleep: var(--indigo-500);
   --accent-style: var(--violet-500);
   --accent-network: var(--amber-500);
 
   --danger: var(--rose-500);
-  --focus-ring: var(--emerald-500);
+  --focus-ring: var(--amber-500);
 
   /* Component Tokens */
   --card-bg: var(--surface);
@@ -140,4 +140,14 @@ input[type="number"] {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--slate-600);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

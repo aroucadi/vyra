@@ -57,7 +57,7 @@ export default function CoachInvitePage() {
       <div className="max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
         {/* Header Eyebrow */}
         <div className="text-center space-y-2">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 inline-block">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 inline-block">
             Coach Invitation
           </span>
           <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -71,13 +71,13 @@ export default function CoachInvitePage() {
         {/* Coach Credential Card (<= 3 elements per AGENTS.md) */}
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3.5 shadow-xl">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 font-bold text-lg">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 font-bold text-lg">
               <UserCheck className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">{invite.coachName}</span>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                   Verified Coach
                 </span>
               </div>
@@ -100,7 +100,7 @@ export default function CoachInvitePage() {
             <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">
               Assigned Mesocycle
             </span>
-            <span className="text-[11px] font-mono text-emerald-400 tabular-nums font-semibold">
+            <span className="text-[11px] font-mono text-amber-400 tabular-nums font-semibold">
               {invite.weeks} Weeks Total
             </span>
           </div>
@@ -122,10 +122,10 @@ export default function CoachInvitePage() {
             </div>
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
               <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
+                <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
                 <span>Starting Anchor</span>
               </div>
-              <span className="text-sm font-bold text-emerald-400 block mt-1 tabular-nums">
+              <span className="text-sm font-bold text-amber-400 block mt-1 tabular-nums">
                 {invite.startingBenchKg} {invite.unit} Bench
               </span>
             </div>
@@ -134,7 +134,7 @@ export default function CoachInvitePage() {
 
         {/* Zero Gate Guarantee */}
         <div className="flex items-center justify-center gap-2 text-xs text-slate-400 text-center">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
           <span>No credit card required · Instant access on this device</span>
         </div>
 
@@ -144,7 +144,7 @@ export default function CoachInvitePage() {
             type="button"
             disabled={accepted}
             onClick={handleAccept}
-            className="w-full min-h-[48px] py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-80"
+            className="w-full min-h-[48px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-80"
           >
             {accepted ? (
               <>

@@ -202,7 +202,7 @@ export function ExerciseConfidenceCard({
 
           {/* Section 2: Grip & 3 Micro-Cues */}
           <div className="bg-[#111622] border border-[#1C2436] rounded-xl p-3.5 space-y-2.5">
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
+            <span className="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
               <Sparkles className="w-3.5 h-3.5" />
               2. Grip & Posture Mechanics
             </span>
@@ -224,7 +224,7 @@ export function ExerciseConfidenceCard({
             </div>
 
             {/* Wrist Guidance */}
-            <div className="bg-[#090C11] p-2.5 rounded text-[11px] text-slate-300 border-l-2 border-emerald-400">
+            <div className="bg-[#090C11] p-2.5 rounded text-[11px] text-slate-300 border-l-2 border-amber-400">
               <strong className="text-white">Wrist Cue: </strong>
               {guide.mechanics.wristCue}
             </div>
@@ -236,7 +236,7 @@ export function ExerciseConfidenceCard({
               </p>
               {guide.mechanics.threeCues.map((cue, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-slate-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="text-[11px] font-medium">{cue}</span>
                 </div>
               ))}
@@ -259,8 +259,8 @@ export function ExerciseConfidenceCard({
             {/* Target Burn Heatmap */}
             <div className="bg-[#090C11] p-3 rounded-lg border border-[#1C2436] space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                   Target Burn Zone ({guide.proprioception.primaryMuscle})
                 </span>
               </div>

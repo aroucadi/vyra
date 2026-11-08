@@ -256,7 +256,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       {webViewStatus.isInAppWebView && (
         <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs">
           <div className="flex items-center gap-2 text-slate-300">
-            <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
               In {webViewStatus.sourceApp} browser · Open in {webViewStatus.recommendedBrowser} to keep workouts saved.
             </span>
@@ -267,7 +267,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               setIsGymReadySheetOpen(true);
               telemetry.track("install_prompt_shown", { trigger: "webview_banner" }, userId);
             }}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold shrink-0 cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold shrink-0 cursor-pointer"
           >
             Keep data
           </button>
@@ -285,7 +285,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   From Video · {deepLinkConfig.displayName}
                 </span>
               ) : (
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25">
                   Day 1 Calibration
                 </span>
               )}
@@ -301,7 +301,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               className="min-h-[32px] px-2.5 py-1 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 text-[11px] font-mono text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
               aria-label="Select training goal"
             >
-              <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <Target className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Goal: <strong className="text-white font-semibold">{TRAINING_GOALS[goal].shortLabel}</strong> ▾</span>
             </button>
           </div>
@@ -320,10 +320,10 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
           </p>
 
           <p className="text-xs text-slate-400 flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>
               No account. No card.{" "}
-              <Link href="/your-data" className="text-slate-300 underline decoration-slate-700 hover:text-emerald-400">
+              <Link href="/your-data" className="text-slate-300 underline decoration-slate-700 hover:text-amber-400">
                 Saved on this phone · Export
               </Link>
             </span>
@@ -345,7 +345,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
                       Lift 1 · Primary Driver
                     </span>
                     <button
@@ -394,7 +394,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                     <span className="text-slate-300 leading-tight">{activeCues.setupAnchor}</span>
                   </div>
                   <div className="flex items-start gap-1.5 text-slate-300">
-                    <span className="text-emerald-400 font-semibold font-mono text-[10px] uppercase shrink-0 mt-0.5">Drive:</span>
+                    <span className="text-amber-400 font-semibold font-mono text-[10px] uppercase shrink-0 mt-0.5">Drive:</span>
                     <span className="text-slate-300 leading-tight">{activeCues.kineticDrive}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400 pt-0.5 border-t border-slate-800/60 font-mono">
@@ -418,12 +418,12 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                       </span>
                     </span>
                   ) : calibrationMode === "calibrate_as_i_lift" ? (
-                    <span className="text-xs font-mono font-semibold text-emerald-400">
+                    <span className="text-xs font-mono font-semibold text-amber-400">
                       Calibrate on Set 1 (2 RIR)
                     </span>
                   ) : (
                     <div>
-                      <span className="text-base font-mono font-bold text-emerald-400 tabular-nums">
+                      <span className="text-base font-mono font-bold text-amber-400 tabular-nums">
                         {primaryTarget?.displayWeight} {unit}
                       </span>
                       <span className="text-[10px] text-slate-400 block">
@@ -481,7 +481,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   <button
                     type="button"
                     onClick={() => setIsWhyExpanded((v) => !v)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer text-left"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer text-left"
                   >
                     <HelpCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{primaryTarget.whyHeadline}</span>
@@ -494,7 +494,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                       onClick={() => setSleepMode("normal")}
                       className={`px-2 py-1 rounded-md text-[10px] font-mono font-semibold transition flex items-center gap-1 cursor-pointer ${
                         sleepMode === "normal"
-                          ? "bg-emerald-500 text-slate-950 font-bold"
+                          ? "bg-amber-400 text-slate-950 font-bold"
                           : "text-slate-400 hover:text-white"
                       }`}
                     >
@@ -542,7 +542,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                 setIsCalibrationSheetOpen(true);
                 telemetry.track("onboarding_step_viewed", { step: "step_2_open_calibrator" }, userId);
               }}
-              className="w-full min-h-[48px] py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full min-h-[48px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <SlidersHorizontal className="w-4 h-4 stroke-[2.5]" />
               <span>Set My Starting Weights (1 Lift · 15s)</span>
@@ -551,7 +551,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             <button
               type="button"
               onClick={handleStartSession}
-              className="w-full min-h-[48px] py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full min-h-[48px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Start Day 1 Session</span>
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -563,7 +563,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               href="/session?mode=preview"
               className="flex-1 min-h-[44px] py-2 px-3 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 bg-slate-900/60 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
             >
-              <Eye className="w-3.5 h-3.5 text-emerald-400" />
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
               <span>Preview Workout & Videos</span>
             </Link>
 
@@ -600,7 +600,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         >
           <SheetHeader className="text-left space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25">
                 Step 2 · 1-Anchor Calibration
               </span>
 
@@ -610,7 +610,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   type="button"
                   onClick={() => handleUnitToggle("kg")}
                   className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold transition cursor-pointer ${
-                    unit === "kg" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                    unit === "kg" ? "bg-amber-400 text-slate-950" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   kg
@@ -619,7 +619,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   type="button"
                   onClick={() => handleUnitToggle("lb")}
                   className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold transition cursor-pointer ${
-                    unit === "lb" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                    unit === "lb" ? "bg-amber-400 text-slate-950" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   lb
@@ -641,7 +641,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               onClick={() => setAnchorLift("barbell_bench")}
               className={`min-h-[40px] px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 anchorLift === "barbell_bench"
-                  ? "bg-emerald-500 text-slate-950 font-bold"
+                  ? "bg-amber-400 text-slate-950 font-bold"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -652,7 +652,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               onClick={() => setAnchorLift("dumbbell_bench")}
               className={`min-h-[40px] px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 anchorLift === "dumbbell_bench"
-                  ? "bg-emerald-500 text-slate-950 font-bold"
+                  ? "bg-amber-400 text-slate-950 font-bold"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -727,7 +727,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               <span className="text-slate-400 font-mono uppercase text-[10px]">
                 Live Epley 1RM Estimate
               </span>
-              <span className="font-mono font-bold text-emerald-400 tabular-nums">
+              <span className="font-mono font-bold text-amber-400 tabular-nums">
                 {calibration.estimatedBench1RmKg} kg e1RM
               </span>
             </div>
@@ -748,7 +748,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             <button
               type="button"
               onClick={() => handleApplyCalibration("calibrated")}
-              className="w-full min-h-[48px] py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full min-h-[48px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
               <span>Apply My Starting Loads</span>
@@ -765,7 +765,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             <div className="pt-2 text-center border-t border-slate-900">
               <Link
                 href="/import"
-                className="text-xs text-slate-400 hover:text-emerald-400 inline-flex items-center gap-1.5 transition-colors"
+                className="text-xs text-slate-400 hover:text-amber-400 inline-flex items-center gap-1.5 transition-colors"
               >
                 <History className="w-3.5 h-3.5" />
                 <span>Already have history? Import Hevy / Strong</span>
@@ -782,7 +782,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
           className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 space-y-5 max-h-[88vh] overflow-y-auto shadow-2xl"
         >
           <SheetHeader className="text-left space-y-1">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 w-fit">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25 w-fit">
               Gym-Floor Readiness Check
             </span>
             <SheetTitle className="text-lg font-bold text-white">
@@ -796,7 +796,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
           <div className="space-y-3">
             {/* 1. Verified Offline Precache Badge */}
             <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-white">
                   {offlineVerified ? "● Offline-ready verified" : "Checking local cache..."}
@@ -826,7 +826,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
               <button
                 type="button"
                 onClick={handleCopyHandoffLink}
-                className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-emerald-400 flex items-center justify-between transition cursor-pointer"
+                className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between transition cursor-pointer"
               >
                 <span>
                   {copiedHandoff
@@ -843,7 +843,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
             <Link
               href="/install"
               onClick={() => setIsGymReadySheetOpen(false)}
-              className="w-full min-h-[48px] py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2"
+              className="w-full min-h-[48px] py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2"
             >
               <span>Add to Home Screen (Keep Workouts Saved)</span>
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -868,7 +868,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
         >
           <SheetHeader className="text-left space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25">
                 1-Tap Calibration Focus
               </span>
               <span className="text-xs font-mono text-slate-400">Optional · No quiz</span>
@@ -897,7 +897,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                   }}
                   className={`w-full min-h-[58px] p-3.5 rounded-2xl border text-left transition flex items-start justify-between gap-3 cursor-pointer ${
                     isSelected
-                      ? "bg-slate-800/90 border-emerald-500/60 shadow-lg"
+                      ? "bg-slate-800/90 border-amber-500/60 shadow-lg"
                       : "bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700"
                   }`}
                 >
@@ -915,7 +915,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
                     </p>
                   </div>
                   {isSelected && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   )}
                 </button>
               );

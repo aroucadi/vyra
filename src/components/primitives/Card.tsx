@@ -98,7 +98,7 @@ export function CardLearn({
       type="button"
       onClick={onClick}
       className={clsx(
-        "text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded",
+        "text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded",
         className
       )}
     >

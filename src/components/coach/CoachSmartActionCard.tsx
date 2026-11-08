@@ -90,7 +90,7 @@ export function CoachSmartActionCard({
       className={clsx(
         "rounded-2xl border p-4 shadow-lg transition-all animate-in fade-in duration-300 mt-2",
         isApplied
-          ? "bg-slate-900/90 border-emerald-500/40"
+          ? "bg-slate-900/90 border-amber-500/40"
           : "bg-slate-900/90 border-slate-800 hover:border-slate-700"
       )}
     >
@@ -102,7 +102,7 @@ export function CoachSmartActionCard({
           ) : card.type === "condense" ? (
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
           ) : (
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           )}
           <span
             className={clsx(
@@ -111,7 +111,7 @@ export function CoachSmartActionCard({
                 ? "text-amber-300"
                 : card.type === "condense"
                 ? "text-cyan-300"
-                : "text-emerald-400"
+                : "text-amber-400"
             )}
           >
             {card.eyebrow}
@@ -145,9 +145,9 @@ export function CoachSmartActionCard({
 
         {/* Intelligent UI Interactive Math / Formula Container */}
         {card.interactiveData && (
-          <div className="mt-2.5 p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 space-y-1.5">
+          <div className="mt-2.5 p-2.5 rounded-lg bg-amber-950/20 border border-amber-500/20 space-y-1.5">
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-emerald-400 font-semibold uppercase tracking-wider">Formula in Code</span>
+              <span className="text-amber-400 font-semibold uppercase tracking-wider">Formula in Code</span>
               <span className="text-slate-400 font-mono">Deterministic Math</span>
             </div>
             <code className="block text-[10px] text-slate-300 font-mono bg-slate-900/90 px-2 py-1 rounded border border-slate-800">
@@ -164,7 +164,7 @@ export function CoachSmartActionCard({
       <div>
         {isApplied ? (
           <div className="space-y-2">
-            <div className="w-full py-2.5 px-3 bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-xl flex items-center justify-between gap-2">
+            <div className="w-full py-2.5 px-3 bg-amber-950/40 border border-amber-500/40 text-amber-400 text-xs font-bold rounded-xl flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 truncate">
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span className="truncate">{statusMessage || "Blueprint Updated"}</span>
@@ -193,7 +193,7 @@ export function CoachSmartActionCard({
             {card.type === "load_explanation" ? (
               <Link
                 href="/exercises"
-                className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 min-h-[44px] px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{card.ctaLabel || "View Exercises"}</span>
@@ -202,7 +202,7 @@ export function CoachSmartActionCard({
               <button
                 type="button"
                 onClick={handleApply}
-                className="flex-1 min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 min-h-[44px] px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{card.ctaLabel || "Apply Mutation"}</span>

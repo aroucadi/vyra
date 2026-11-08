@@ -78,7 +78,7 @@ function CoachChat() {
       {/* Header */}
       <header className="flex items-center justify-between pb-4 border-b border-slate-800 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
@@ -86,7 +86,7 @@ function CoachChat() {
             <p className="text-[11px] text-slate-400">Adaptive Performance Concierge</p>
           </div>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400">
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400 font-bold">
           ONLINE
         </span>
       </header>
@@ -105,7 +105,7 @@ function CoachChat() {
               className={clsx(
                 "p-3.5 rounded-2xl text-xs max-w-[85%] leading-relaxed",
                 m.sender === "user"
-                  ? "bg-emerald-500 text-slate-950 font-medium rounded-br-none"
+                  ? "bg-amber-400 text-slate-950 font-semibold rounded-br-none"
                   : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-sm"
               )}
             >
@@ -124,7 +124,7 @@ function CoachChat() {
         {isStreaming && (
           <div className="flex flex-col items-start space-y-2 animate-in fade-in duration-200">
             <div className="p-3.5 rounded-2xl rounded-bl-none bg-slate-900 border border-slate-800 text-xs text-slate-300 max-w-[85%] flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               <span className="text-[11px] text-slate-400">Composing action card...</span>
             </div>
             <div className="w-full max-w-[95%] h-36 rounded-2xl bg-slate-900/40 border border-slate-800/60 p-4 space-y-3 animate-pulse">
@@ -163,12 +163,12 @@ function CoachChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything or request a swap..."
-          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
         />
         <button
           type="submit"
           aria-label="Send message"
-          className="w-11 h-11 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold"
+          className="w-11 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-slate-950 rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold"
         >
           <Send className="w-4 h-4" />
         </button>

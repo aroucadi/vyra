@@ -109,7 +109,7 @@ interface ActiveExercise {
 
 
 const BIOFEEDBACK_OPTIONS: { id: ExerciseBiofeedbackTag; icon: string; label: string; activeColor: string }[] = [
-  { id: "optimal", icon: "🎯", label: "Optimal Form", activeColor: "border-emerald-500/50 bg-emerald-500/20 text-emerald-300" },
+  { id: "optimal", icon: "🎯", label: "Optimal Form", activeColor: "border-amber-500/50 bg-amber-500/20 text-amber-300" },
   { id: "heavy", icon: "🥵", label: "Heavy / Fatigue", activeColor: "border-amber-500/50 bg-amber-500/20 text-amber-300" },
   { id: "balance_issue", icon: "⚖️", label: "Balance / Unstable", activeColor: "border-cyan-500/50 bg-cyan-500/20 text-cyan-300" },
   { id: "joint_strain", icon: "⚡", label: "Joint Discomfort", activeColor: "border-rose-500/50 bg-rose-500/20 text-rose-300" },
@@ -1266,7 +1266,7 @@ function SessionFlow() {
             <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">
               Last Night&apos;s Sleep
             </span>
-            <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 tabular-nums">
+            <span className="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 tabular-nums">
               {latestSnapshot && sleepHours === latestSnapshot.sleepHours ? (
                 <span className="text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 px-1.5 py-0.2 rounded text-[10px] font-sans font-medium">
                   ⌚ Watch Synced
@@ -1376,7 +1376,7 @@ function SessionFlow() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-lg bg-emerald-950/50 border border-emerald-800/50 hover:bg-emerald-900/60 text-emerald-400 flex items-center gap-1 text-[11px] font-semibold transition"
+                    className="p-1.5 rounded-lg bg-[#182030] border border-[#1C2436] hover:bg-[#222D42] text-amber-400 flex items-center gap-1 text-[11px] font-semibold transition"
                     title="Watch exercise video demonstration"
                   >
                     <Video className="w-3.5 h-3.5" />
@@ -1720,7 +1720,7 @@ function SessionFlow() {
             <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400 font-mono">
               Movement Alignment Drills ({Object.values(checkedWarmupDrills).filter(Boolean).length}/{warmupDrills.length} done)
             </span>
-            <span className="text-[10px] font-mono text-emerald-400">
+            <span className="text-[10px] font-mono text-amber-400">
               5–7 mins recommended
             </span>
           </div>
@@ -1740,7 +1740,7 @@ function SessionFlow() {
                   className={clsx(
                     "p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none",
                     isChecked
-                      ? "bg-[#090C11] border-emerald-500/40 text-slate-400"
+                      ? "bg-[#090C11] border-amber-500/40 text-slate-400"
                       : "bg-[#111622] border-[#1C2436] hover:border-slate-700 text-white"
                   )}
                 >
@@ -1748,7 +1748,7 @@ function SessionFlow() {
                     className={clsx(
                       "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
                       isChecked
-                        ? "bg-emerald-500 border-emerald-400 text-slate-950"
+                        ? "bg-amber-400 border-amber-300 text-slate-950"
                         : "border-[#1C2436] bg-[#090C11] text-transparent"
                     )}
                   >
@@ -1778,7 +1778,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleCompleteWarmup}
-            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
             <span>Done with Warmup → Start Lifting</span>
@@ -1926,7 +1926,7 @@ function SessionFlow() {
           <button
             type="button"
             onClick={handleCompleteCooldown}
-            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
             <span>Finish & Save Workout ✓</span>
@@ -2010,7 +2010,7 @@ function SessionFlow() {
           </div>
 
           <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl text-center">
-            <div className="text-2xl font-display font-black text-emerald-400 tabular-nums">
+            <div className="text-2xl font-display font-black text-amber-400 tabular-nums">
               {prCount > 0 ? `+${prCount} PR` : "Solid"}
             </div>
             <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-0.5">Records</div>
@@ -2052,7 +2052,7 @@ function SessionFlow() {
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
               Next Session Prescriptions
             </span>
-            <span className="text-[10px] font-mono text-emerald-400 font-bold">
+            <span className="text-[10px] font-mono text-amber-400 font-bold">
               Biomechanical Overload
             </span>
           </div>
@@ -2253,7 +2253,7 @@ function SessionFlow() {
           </div>
           <div className="border-x border-[#1C2436]">
             <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Lifting</span>
-            <span className="font-mono-tabular font-extrabold text-emerald-400 text-sm">
+            <span className="font-mono-tabular font-extrabold text-white text-sm">
               {Math.floor(liftingDurationSec / 60)}:{(liftingDurationSec % 60).toString().padStart(2, "0")}
             </span>
           </div>
@@ -2449,7 +2449,7 @@ function SessionFlow() {
                   key={idx}
                   className={clsx(
                     "w-3.5 h-3.5 rounded-full transition-all",
-                    isDone && "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)] scale-100",
+                    isDone && "bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.7)] scale-100",
                     isCurrent && "border-2 border-amber-400 bg-amber-500/20 animate-pulse scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]",
                     !isDone && !isCurrent && "bg-[#151B27] border border-[#1C2436]"
                   )}
@@ -2594,7 +2594,7 @@ function SessionFlow() {
                     <span>Equipment / Barbell Setup Photo</span>
                   </span>
                   {activeEx.equipmentPhotoUrl && (
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold">Photo Attached ✓</span>
+                    <span className="text-[10px] font-mono text-amber-400 font-bold">Photo Attached ✓</span>
                   )}
                 </div>
 
@@ -2659,7 +2659,7 @@ function SessionFlow() {
               <button
                 type="button"
                 onClick={() => handleFinishSession()}
-                className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
+                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
               >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
@@ -2723,7 +2723,7 @@ function SessionFlow() {
                 onClick={handleAddBonusSet}
                 className="py-2.5 px-3 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer font-editorial"
               >
-                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <Plus className="w-3.5 h-3.5 text-amber-400" />
                 <span>+ Bonus Set</span>
               </button>
             </div>

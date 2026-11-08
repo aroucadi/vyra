@@ -7,72 +7,67 @@ import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
 import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
 import { TraineeNav } from "@/components/trainee/TraineeNav";
 import { VyraLogo } from "@/components/brand/VyraLogo";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
   Search,
   Dumbbell,
-  Filter,
   ArrowLeft,
   X,
-  Sparkles,
   ChevronRight,
-  SlidersHorizontal,
-  Flame,
   RotateCcw,
-  Layers,
   Zap,
+  SlidersHorizontal,
 } from "lucide-react";
 import { clsx } from "clsx";
 
-// Tactile Gym Muscle Hubs (Mapped to biomechanical kinetic chains)
-const MUSCLE_CHAINS = [
-  { id: "all", label: "All Chains", short: "All" },
-  { id: "chest", label: "Pectorals (Chest)", short: "Chest" },
-  { id: "lats", label: "Back & Lats", short: "Back" },
-  { id: "shoulders", label: "Deltoids (Shoulders)", short: "Delts" },
-  { id: "quads", label: "Quadriceps & Thighs", short: "Quads" },
-  { id: "hamstrings", label: "Hamstrings & Glutes", short: "Hams" },
-  { id: "biceps", label: "Biceps Brachii", short: "Biceps" },
-  { id: "triceps", label: "Triceps Brachii", short: "Triceps" },
-  { id: "waist", label: "Core & Abdominals", short: "Core" },
-  { id: "calves", label: "Calves & Posterior Chain", short: "Calves" },
+interface QuickFilter {
+  id: string;
+  label: string;
+  type: "muscle" | "equipment" | "all";
+  value: string;
+}
+
+const PRIMARY_CHANNELS: QuickFilter[] = [
+  { id: "all", label: "All", type: "all", value: "all" },
+  { id: "chest", label: "Chest", type: "muscle", value: "chest" },
+  { id: "lats", label: "Back & Lats", type: "muscle", value: "lats" },
+  { id: "shoulders", label: "Shoulders", type: "muscle", value: "shoulders" },
+  { id: "quads", label: "Quads", type: "muscle", value: "quads" },
+  { id: "hamstrings", label: "Hamstrings", type: "muscle", value: "hamstrings" },
+  { id: "biceps", label: "Biceps", type: "muscle", value: "biceps" },
+  { id: "triceps", label: "Triceps", type: "muscle", value: "triceps" },
+  { id: "waist", label: "Core & Abs", type: "muscle", value: "waist" },
+  { id: "barbell", label: "Barbell", type: "equipment", value: "barbell" },
+  { id: "dumbbell", label: "Dumbbell", type: "equipment", value: "dumbbell" },
+  { id: "cable", label: "Cable", type: "equipment", value: "cable" },
+  { id: "lever", label: "Machine", type: "equipment", value: "lever" },
+  { id: "body weight", label: "Bodyweight", type: "equipment", value: "body weight" },
 ];
 
-// Gym Floor Equipment Types
-const EQUIPMENT_HUBS = [
-  { id: "all", label: "All Equipment", icon: "⚡" },
-  { id: "barbell", label: "Barbell", icon: "🏋️" },
-  { id: "dumbbell", label: "Dumbbell", icon: "🦾" },
-  { id: "cable", label: "Cable & Pulley", icon: "🔗" },
-  { id: "lever", label: "Plate Loaded Machine", icon: "⚙️" },
-  { id: "body weight", label: "Bodyweight & Calisthenics", icon: "🤸" },
-  { id: "smith", label: "Smith Machine", icon: "📐" },
-];
-
-// Quick Gym Intent Shortcuts (One-tap searches between sets)
-const GYM_SHORTHANDS = [
-  { label: "RDL", query: "rdl" },
-  { label: "Lat Pulldown", query: "lat pulldown" },
-  { label: "Incline Press", query: "incline" },
-  { label: "Lateral Raise", query: "lateral raise" },
-  { label: "Squat", query: "squat" },
-  { label: "Pushdown", query: "pushdown" },
-  { label: "Cable Fly", query: "cable fly" },
-  { label: "Leg Curl", query: "leg curl" },
-];
+function formatExerciseName(name: string): string {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((word) => {
+      if (word.startsWith("(") && word.length > 1) {
+        return "(" + word.charAt(1).toUpperCase() + word.slice(2).toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
 
 export default function TraineeExerciseLibraryPage() {
   const [query, setQuery] = useState("");
   const [selectedMuscle, setSelectedMuscle] = useState("all");
   const [selectedEquipment, setSelectedEquipment] = useState("all");
-  const [showBodyMap, setShowBodyMap] = useState(false);
-  const [activeFilterTab, setActiveFilterTab] = useState<"quick" | "muscle" | "equipment">("quick");
+  const [isBodyMapSheetOpen, setIsBodyMapSheetOpen] = useState(false);
   const [exercises, setExercises] = useState<RagExercise[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<RagExercise | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Active filter counting
   const hasActiveFilters = Boolean(
     query.trim() || selectedMuscle !== "all" || selectedEquipment !== "all"
   );
@@ -81,6 +76,16 @@ export default function TraineeExerciseLibraryPage() {
     setQuery("");
     setSelectedMuscle("all");
     setSelectedEquipment("all");
+  };
+
+  const handleChannelClick = (channel: QuickFilter) => {
+    if (channel.type === "all") {
+      resetAllFilters();
+    } else if (channel.type === "muscle") {
+      setSelectedMuscle((prev) => (prev === channel.value ? "all" : channel.value));
+    } else if (channel.type === "equipment") {
+      setSelectedEquipment((prev) => (prev === channel.value ? "all" : channel.value));
+    }
   };
 
   // Fetch exercises from /api/exercises based on query and filters
@@ -116,20 +121,17 @@ export default function TraineeExerciseLibraryPage() {
     };
   }, [query, selectedMuscle, selectedEquipment]);
 
-  const activeMuscleMeta = MUSCLE_CHAINS.find((m) => m.id === selectedMuscle);
-  const activeEquipMeta = EQUIPMENT_HUBS.find((e) => e.id === selectedEquipment);
-
   return (
-    <div className="min-h-screen bg-[#090C11] text-slate-100 pb-28 max-w-md mx-auto flex flex-col font-body selection:bg-amber-500/20">
-      {/* 1. Tactical Gym Header */}
-      <header className="sticky top-0 z-30 bg-[#090C11]/95 backdrop-blur-md border-b border-[#1C2436] px-4 pt-3 pb-2.5 space-y-2.5">
-        {/* Brand & Top Bar */}
+    <div className="min-h-screen bg-[#090C11] text-slate-100 pb-44 max-w-md mx-auto flex flex-col font-body selection:bg-amber-500/20">
+      {/* 1. Spacious, Lightweight Sticky Header */}
+      <header className="sticky top-0 z-30 bg-[#090C11]/95 backdrop-blur-md border-b border-[#1C2436] px-4 pt-3.5 pb-3 space-y-3">
+        {/* Tier 1: Brand & Top Bar */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <Link
               href="/program"
               aria-label="Back to Program"
-              className="min-w-[40px] min-h-[40px] rounded-xl bg-[#111622] border border-[#1C2436] text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shadow-xs"
+              className="w-10 h-10 rounded-xl bg-[#111622] border border-[#1C2436] text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -147,31 +149,27 @@ export default function TraineeExerciseLibraryPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* 1-Tap Anatomical Body Map Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowBodyMap((prev) => !prev)}
-              className={clsx(
-                "min-h-[36px] px-3 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border",
-                showBodyMap
-                  ? "bg-amber-400 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20"
-                  : selectedMuscle !== "all"
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
-                  : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030]"
-              )}
-              title="Toggle Interactive Anatomical Musculature Map"
-            >
-              <Zap className={clsx("w-3.5 h-3.5", showBodyMap ? "fill-slate-950" : "text-amber-400")} />
-              <span>{showBodyMap ? "Close Map" : "Body Map"}</span>
-              {selectedMuscle !== "all" && !showBodyMap && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              )}
-            </button>
-          </div>
+          {/* 1-Tap Body Map Modal Launcher */}
+          <button
+            type="button"
+            onClick={() => setIsBodyMapSheetOpen(true)}
+            className={clsx(
+              "h-9 px-3 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border",
+              selectedMuscle !== "all"
+                ? "bg-amber-400 text-slate-950 border-amber-400 shadow-sm shadow-amber-500/20"
+                : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
+            )}
+            title="Open Interactive Musculature Map"
+          >
+            <Zap className={clsx("w-3.5 h-3.5", selectedMuscle !== "all" ? "fill-slate-950" : "text-amber-400")} />
+            <span>Body Map</span>
+            {selectedMuscle !== "all" && (
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-950 ml-0.5" />
+            )}
+          </button>
         </div>
 
-        {/* 2. Tactical Search Input Field with Clear Button */}
+        {/* Tier 2: Search Input Field */}
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
           <input
@@ -193,140 +191,46 @@ export default function TraineeExerciseLibraryPage() {
           )}
         </div>
 
-        {/* 3. Tactical Mode Switcher (Quick Staples / Muscle Chains / Equipment) */}
-        <div className="grid grid-cols-3 gap-1 p-0.5 rounded-xl bg-[#090C11] border border-[#1C2436]">
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("quick")}
-            className={clsx(
-              "py-1 text-[11px] font-mono font-semibold rounded-lg transition cursor-pointer text-center",
-              activeFilterTab === "quick"
-                ? "bg-[#182030] text-amber-300 font-bold border border-amber-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            Quick Picks
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("muscle")}
-            className={clsx(
-              "py-1 text-[11px] font-mono font-semibold rounded-lg transition cursor-pointer text-center flex items-center justify-center gap-1",
-              activeFilterTab === "muscle"
-                ? "bg-[#182030] text-amber-300 font-bold border border-amber-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <span>Muscles</span>
-            {selectedMuscle !== "all" && (
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("equipment")}
-            className={clsx(
-              "py-1 text-[11px] font-mono font-semibold rounded-lg transition cursor-pointer text-center flex items-center justify-center gap-1",
-              activeFilterTab === "equipment"
-                ? "bg-[#182030] text-amber-300 font-bold border border-amber-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <span>Equipment</span>
-            {selectedEquipment !== "all" && (
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            )}
-          </button>
+        {/* Tier 3: Unified Horizontal Biomechanical Focus Carousel (Single Clean Row) */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-4 px-4">
+          {PRIMARY_CHANNELS.map((ch) => {
+            const isSelected =
+              ch.type === "all"
+                ? selectedMuscle === "all" && selectedEquipment === "all" && !query.trim()
+                : ch.type === "muscle"
+                ? selectedMuscle === ch.value
+                : selectedEquipment === ch.value;
+
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                onClick={() => handleChannelClick(ch)}
+                className={clsx(
+                  "min-h-[36px] px-3.5 rounded-xl text-xs font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer active:scale-95 flex items-center justify-center",
+                  isSelected
+                    ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-xs"
+                    : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
+                )}
+              >
+                {ch.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* 4. Filter Tray Carousel based on Active Tab */}
-        <div className="pt-0.5">
-          {/* TAB 1: Quick Gym Staples */}
-          {activeFilterTab === "quick" && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {GYM_SHORTHANDS.map((item) => {
-                const isActive = query.toLowerCase() === item.query.toLowerCase();
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => setQuery(isActive ? "" : item.query)}
-                    className={clsx(
-                      "px-3 py-1.5 rounded-xl text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 border transition cursor-pointer active:scale-95",
-                      isActive
-                        ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-xs"
-                        : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* TAB 2: Muscle Groups */}
-          {activeFilterTab === "muscle" && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {MUSCLE_CHAINS.map((m) => {
-                const isSelected = selectedMuscle === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setSelectedMuscle(m.id)}
-                    className={clsx(
-                      "px-3 py-1.5 rounded-xl text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 border transition cursor-pointer active:scale-95",
-                      isSelected
-                        ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-xs"
-                        : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
-                    )}
-                  >
-                    {m.short}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* TAB 3: Equipment Types */}
-          {activeFilterTab === "equipment" && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {EQUIPMENT_HUBS.map((eq) => {
-                const isSelected = selectedEquipment === eq.id;
-                return (
-                  <button
-                    key={eq.id}
-                    type="button"
-                    onClick={() => setSelectedEquipment(eq.id)}
-                    className={clsx(
-                      "px-3 py-1.5 rounded-xl text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 border transition cursor-pointer active:scale-95 flex items-center gap-1.5",
-                      isSelected
-                        ? "bg-sky-500/20 text-sky-300 border-sky-400 font-bold shadow-xs"
-                        : "bg-[#111622] text-slate-300 border-[#1C2436] hover:bg-[#182030] hover:text-white"
-                    )}
-                  >
-                    <span>{eq.icon}</span>
-                    <span>{eq.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* 5. Active Filters Breadcrumb & Count Bar */}
+        {/* Active Filter Breadcrumbs & Summary */}
         {hasActiveFilters && (
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1C2436] text-[10px] font-mono animate-in fade-in duration-150">
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               <span className="text-slate-400">Filtering:</span>
               {selectedMuscle !== "all" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
-                  <span>{activeMuscleMeta?.short || selectedMuscle}</span>
+                  <span>{selectedMuscle.toUpperCase()}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedMuscle("all")}
-                    className="hover:text-white cursor-pointer"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
@@ -334,11 +238,11 @@ export default function TraineeExerciseLibraryPage() {
               )}
               {selectedEquipment !== "all" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/30 font-bold">
-                  <span>{activeEquipMeta?.label || selectedEquipment}</span>
+                  <span>{selectedEquipment.toUpperCase()}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedEquipment("all")}
-                    className="hover:text-white cursor-pointer"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
@@ -350,7 +254,7 @@ export default function TraineeExerciseLibraryPage() {
                   <button
                     type="button"
                     onClick={() => setQuery("")}
-                    className="hover:text-white cursor-pointer"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
@@ -370,22 +274,12 @@ export default function TraineeExerciseLibraryPage() {
         )}
       </header>
 
-      {/* 2. Main Content View */}
-      <main className="p-4 flex-1 space-y-3">
-        {/* Interactive Anatomical Silhouette (Progressive Disclosure) */}
-        {showBodyMap && (
-          <div className="animate-in fade-in zoom-in-95 duration-200">
-            <AnatomicalBodyMap
-              selectedMuscle={selectedMuscle}
-              onSelectMuscle={(mId) => setSelectedMuscle(mId)}
-            />
-          </div>
-        )}
-
-        {/* Results Count & Biomechanical Scope */}
-        <div className="flex items-center justify-between px-1 text-xs">
-          <span className="text-[11px] font-mono text-slate-400">
-            Showing <strong className="text-white">{exercises.length}</strong> movements
+      {/* 2. Main Content Stream */}
+      <main className="p-4 flex-1 space-y-3.5">
+        {/* Results Count Header */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-mono text-slate-400">
+            Showing <strong className="text-white font-bold">{exercises.length}</strong> movements
           </span>
           {loading && (
             <div className="flex items-center gap-1.5 text-[10px] font-mono text-amber-400">
@@ -397,12 +291,12 @@ export default function TraineeExerciseLibraryPage() {
 
         {/* Exercise Card List */}
         {loading && exercises.length === 0 ? (
-          <div className="py-16 text-center space-y-3">
+          <div className="py-20 text-center space-y-3">
             <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-400 font-mono">Calibrating biomechanical index...</p>
           </div>
         ) : exercises.length === 0 ? (
-          <div className="py-16 text-center space-y-3 p-6 bg-[#111622] rounded-3xl border border-[#1C2436] shadow-sm">
+          <div className="py-20 text-center space-y-3 p-8 bg-[#111622] rounded-3xl border border-[#1C2436] shadow-sm">
             <Dumbbell className="w-10 h-10 text-slate-600 mx-auto" />
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-white font-editorial">No movements matched</h3>
@@ -413,13 +307,13 @@ export default function TraineeExerciseLibraryPage() {
             <button
               type="button"
               onClick={resetAllFilters}
-              className="mt-2 px-4 py-2 rounded-xl bg-[#182030] hover:bg-[#222D42] text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
+              className="mt-2 px-5 py-2.5 rounded-xl bg-[#182030] hover:bg-[#222D42] text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
             >
               Reset All Filters
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3.5">
             {exercises.map((ex) => (
               <button
                 key={ex.id}
@@ -428,45 +322,45 @@ export default function TraineeExerciseLibraryPage() {
                   setSelectedExercise(ex);
                   setIsDetailOpen(true);
                 }}
-                className="w-full text-left p-4 rounded-2xl bg-[#111622] hover:bg-[#182030] active:scale-[0.99] border border-[#1C2436] hover:border-amber-500/40 transition-all duration-150 flex items-center justify-between gap-3 group cursor-pointer shadow-sm relative overflow-hidden"
+                className="w-full text-left p-4 sm:p-5 rounded-2xl bg-[#111622] hover:bg-[#161D2E] active:scale-[0.99] border border-[#1C2436] hover:border-amber-500/40 transition-all duration-150 flex items-center justify-between gap-3.5 group cursor-pointer shadow-sm relative overflow-hidden"
               >
                 {/* Active Hover Accent Strip */}
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                <div className="space-y-1.5 min-w-0 flex-1">
+                <div className="space-y-2 min-w-0 flex-1">
                   {/* Category Eyebrow & Equipment Tags */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[9px] font-mono uppercase font-bold text-amber-400 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25">
+                    <span className="text-[10px] font-mono uppercase font-bold text-amber-400 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25">
                       {ex.bodyPart}
                     </span>
-                    <span className="text-[9px] font-mono uppercase text-slate-300 px-2 py-0.5 rounded-md bg-[#182030] border border-[#1C2436]">
+                    <span className="text-[10px] font-mono uppercase text-slate-300 px-2.5 py-0.5 rounded-full bg-[#182030] border border-[#1C2436]">
                       {ex.equipment}
                     </span>
                     {ex.target && (
-                      <span className="text-[9px] font-mono text-slate-400 truncate">
+                      <span className="text-[10px] font-mono text-slate-400 truncate">
                         · {ex.target}
                       </span>
                     )}
                   </div>
 
-                  {/* Movement Name */}
-                  <h3 className="text-sm font-bold text-white tracking-tight truncate group-hover:text-amber-300 transition-colors font-editorial">
-                    {ex.name}
+                  {/* Movement Name (Title Cased & Authoritative) */}
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight truncate group-hover:text-amber-300 transition-colors font-editorial">
+                    {formatExerciseName(ex.name)}
                   </h3>
 
                   {/* Secondary Muscle Involvement */}
                   {ex.secondaryMuscles && ex.secondaryMuscles.length > 0 && (
-                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                    <p className="text-[11px] text-slate-400 font-mono truncate">
                       Synergists:{" "}
                       <span className="text-slate-300">
-                        {ex.secondaryMuscles.slice(0, 2).join(", ")}
+                        {ex.secondaryMuscles.slice(0, 3).map(formatExerciseName).join(", ")}
                       </span>
                     </p>
                   )}
                 </div>
 
                 {/* Right Arrow Action Icon */}
-                <div className="w-8 h-8 rounded-xl bg-[#090C11] border border-[#1C2436] flex items-center justify-center shrink-0 group-hover:border-amber-500/50 group-hover:bg-[#141B2B] transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-[#090C11] border border-[#1C2436] flex items-center justify-center shrink-0 group-hover:border-amber-400 group-hover:bg-[#182030] transition-colors">
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                 </div>
               </button>
@@ -475,14 +369,58 @@ export default function TraineeExerciseLibraryPage() {
         )}
       </main>
 
-      {/* 3. Slide-Up Exercise Detail Sheet */}
+      {/* 3. Interactive Anatomical Body Map (Slide-Up Modal Sheet) */}
+      <Sheet open={isBodyMapSheetOpen} onOpenChange={setIsBodyMapSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="bg-[#090C11] border-t border-[#1C2436] p-5 max-w-md mx-auto rounded-t-3xl text-slate-100 max-h-[88vh] overflow-y-auto no-scrollbar space-y-4"
+        >
+          <SheetHeader className="space-y-1">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-lg font-editorial font-bold text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>Interactive Musculature Map</span>
+              </SheetTitle>
+              <button
+                type="button"
+                onClick={() => setIsBodyMapSheetOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-[#182030] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <SheetDescription className="text-xs text-slate-400 font-body">
+              Tap any muscle group to filter the movement index. View anterior or posterior anatomy.
+            </SheetDescription>
+          </SheetHeader>
+
+          <AnatomicalBodyMap
+            selectedMuscle={selectedMuscle}
+            onSelectMuscle={(mId) => {
+              setSelectedMuscle(mId);
+            }}
+          />
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsBodyMapSheetOpen(false)}
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 transition cursor-pointer active:scale-[0.98]"
+            >
+              Show Movements ({selectedMuscle === "all" ? "All" : selectedMuscle.toUpperCase()})
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 4. Slide-Up Exercise Detail Sheet */}
       <ExerciseDetailSheet
         exercise={selectedExercise}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
       />
 
-      {/* 4. Bottom Trainee Navigation */}
+      {/* 5. Bottom Trainee Navigation */}
       <TraineeNav />
     </div>
   );

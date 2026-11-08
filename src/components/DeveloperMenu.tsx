@@ -46,7 +46,7 @@ export function DeveloperMenu({
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="bottom" className="max-w-md mx-auto">
           <SheetHeader>
-            <div className="flex items-center gap-2 text-emerald-400">
+            <div className="flex items-center gap-2 text-amber-400">
               <Shield className="w-4 h-4" />
               <SheetTitle>Developer & Sandbox Controls</SheetTitle>
             </div>
@@ -60,7 +60,7 @@ export function DeveloperMenu({
               <div className="text-slate-400">Current Session User:</div>
               <div className="font-bold text-white flex items-center justify-between">
                 <span>{currentUser.name} ({currentUser.role})</span>
-                <span className="text-[10px] font-mono text-emerald-400">ACTIVE</span>
+                <span className="text-[10px] font-mono text-amber-400">ACTIVE</span>
               </div>
             </div>
 
@@ -78,7 +78,7 @@ export function DeveloperMenu({
                   <div className="text-[11px] text-slate-400">Block 1 Upper Hypertrophy · 16-Week Blueprint</div>
                 </div>
                 {currentUser.id === "trainee_alaa" && (
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-amber-400" />
                 )}
               </button>
 
@@ -93,7 +93,7 @@ export function DeveloperMenu({
                   <div className="text-[11px] text-slate-400">Trainer Roster · Athlete Management</div>
                 </div>
                 {currentUser.id === "trainer_1" && (
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-amber-400" />
                 )}
               </button>
             </div>

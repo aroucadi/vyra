@@ -70,7 +70,7 @@ export default function PostureArchitecturePage() {
               <p className="text-[10px] font-mono text-slate-400">Biomechanical Symmetry & Symmetry Radar</p>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold flex items-center gap-1">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold flex items-center gap-1">
             <Shield className="w-2.5 h-2.5" />
             <span>Poliquin Standard</span>
           </span>
@@ -93,7 +93,7 @@ export default function PostureArchitecturePage() {
               className={clsx(
                 "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border",
                 activeTemplateKey === t.id
-                  ? "bg-slate-800 border-emerald-500/60 text-emerald-400 shadow-sm"
+                  ? "bg-slate-800 border-amber-500/60 text-amber-400 shadow-sm"
                   : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200"
               )}
             >
@@ -118,14 +118,14 @@ export default function PostureArchitecturePage() {
             </div>
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-md hover:bg-emerald-400 transition"
+              className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-xs shadow-md transition"
             >
               Upgrade to Vyra Pro ($19/mo) →
             </Link>
           </div>
         ) : loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3 text-slate-400 text-xs">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
             <span>Computing Biomechanical Symmetry...</span>
           </div>
         ) : (

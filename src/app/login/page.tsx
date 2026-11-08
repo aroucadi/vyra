@@ -27,7 +27,7 @@ export default function LoginPage() {
     <div className="min-h-[100dvh] bg-[#0B0F17] flex flex-col justify-center items-center p-6 text-slate-100">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-7 space-y-6 shadow-2xl">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
             <Lock className="w-5 h-5 stroke-[2.5]" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-white">VYRA Session Access</h1>
@@ -53,7 +53,7 @@ export default function LoginPage() {
                   setPasscode(e.target.value);
                   setError(false);
                 }}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-white text-base outline-none transition"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl text-white text-base outline-none transition"
               />
               <KeyRound className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5" />
             </div>
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
           >
             <span>Open Protocol</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />

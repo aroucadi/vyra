@@ -20,6 +20,7 @@ interface AnatomicalTensionSpotlightProps {
   secondaryMuscles?: string[];
   className?: string;
   showToggle?: boolean;
+  accentColor?: "amber" | "emerald";
 }
 
 // Normalized mapping from RAG/MuscleWiki targets to vector silhouette regions
@@ -45,7 +46,13 @@ export function AnatomicalTensionSpotlight({
   secondaryMuscles = [],
   className,
   showToggle = true,
+  accentColor = "emerald",
 }: AnatomicalTensionSpotlightProps) {
+  const isAmber = accentColor === "amber";
+  const primaryFill = isAmber ? "#F59E0B" : "#10B981";
+  const primaryStroke = isAmber ? "#FBBF24" : "#34D399";
+  const primaryGlow = isAmber ? "rgba(245, 158, 11, 0.85)" : "rgba(16, 185, 129, 0.85)";
+
   const primaryRegion = mapToRegion(primaryMuscle);
   const secondaryRegions = secondaryMuscles
     .map(mapToRegion)
@@ -71,10 +78,10 @@ export function AnatomicalTensionSpotlight({
   const getPathStyle = (state: "primary" | "secondary" | "inactive") => {
     if (state === "primary") {
       return {
-        fill: "#10B981",
-        stroke: "#34D399",
+        fill: primaryFill,
+        stroke: primaryStroke,
         strokeWidth: "1.5",
-        filter: "drop-shadow(0px 0px 5px rgba(16, 185, 129, 0.85))",
+        filter: `drop-shadow(0px 0px 5px ${primaryGlow})`,
       };
     }
     if (state === "secondary") {
@@ -96,18 +103,19 @@ export function AnatomicalTensionSpotlight({
   return (
     <div
       className={clsx(
-        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-[#090C11] border border-[#1C2436] shadow-inner select-none font-body",
+        "relative flex flex-col items-center justify-between p-2 rounded-2xl bg-[#090C11] border border-[#1C2436] shadow-inner select-none font-body overflow-hidden",
         className
       )}
       role="img"
       aria-label={`Anatomical tension spotlight showing ${primaryMuscle || "target muscle"}`}
     >
-      {/* 1. Anterior / Posterior Micro-Segmented Selector */}
+      {/* 1. Anterior / Posterior Micro-Segmented Selector (Ultra-compact Front / Back) */}
       {showToggle && (
-        <div className="flex items-center rounded-full bg-[#111622] p-0.5 border border-[#1C2436]">
+        <div className="flex items-center rounded-full bg-[#111622] p-0.5 border border-[#1C2436] max-w-full">
           <button
             type="button"
             onClick={() => setView("front")}
+            aria-label="Anterior"
             className={clsx(
               "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
               view === "front"
@@ -116,12 +124,13 @@ export function AnatomicalTensionSpotlight({
             )}
             title="View anterior (front) anatomy"
           >
-            <span className={clsx("w-1 h-1 rounded-full", view === "front" ? "bg-slate-950" : "bg-transparent")} />
-            <span>Anterior</span>
+            <span>Front</span>
+            <span className="sr-only">Anterior</span>
           </button>
           <button
             type="button"
             onClick={() => setView("back")}
+            aria-label="Posterior"
             className={clsx(
               "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
               view === "back"
@@ -130,8 +139,8 @@ export function AnatomicalTensionSpotlight({
             )}
             title="View posterior (back) anatomy"
           >
-            <span className={clsx("w-1 h-1 rounded-full", view === "back" ? "bg-slate-950" : "bg-transparent")} />
-            <span>Posterior</span>
+            <span>Back</span>
+            <span className="sr-only">Posterior</span>
           </button>
         </div>
       )}
@@ -317,14 +326,24 @@ export function AnatomicalTensionSpotlight({
       </svg>
 
       {/* 3. Tension Glow Legend */}
-      <div className="flex items-center justify-center gap-2.5 pt-1.5 border-t border-[#1C2436] w-full text-[9px] font-mono">
-        <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#10B981]" />
+      <div className="flex items-center justify-center gap-2 pt-1 border-t border-[#1C2436] w-full text-[9px] font-mono">
+        <span
+          className={clsx(
+            "flex items-center gap-1 font-semibold",
+            isAmber ? "text-amber-400" : "text-emerald-400"
+          )}
+        >
+          <span
+            className={clsx(
+              "w-1.5 h-1.5 rounded-full",
+              isAmber ? "bg-amber-400 shadow-[0_0_4px_#F59E0B]" : "bg-emerald-400 shadow-[0_0_4px_#10B981]"
+            )}
+          />
           Target
         </span>
         {secondaryRegions.length > 0 && (
-          <span className="flex items-center gap-1 text-cyan-400 font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_3px_#06B6D4]" />
+          <span className="flex items-center gap-1 text-sky-400 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_3px_#38BDF8]" />
             Synergist
           </span>
         )}

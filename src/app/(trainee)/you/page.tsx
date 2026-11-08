@@ -206,7 +206,7 @@ export default function YouPage() {
             className="flex items-center justify-between p-4 hover:bg-[#182030] transition"
           >
             <div className="flex items-center gap-3 text-slate-200">
-              <span className="text-[10px] font-mono font-bold text-emerald-400 px-1 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">PWA</span>
+              <span className="text-[10px] font-mono font-bold text-amber-400 px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">PWA</span>
               <span className="font-medium">Install to Home Screen</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-500" />

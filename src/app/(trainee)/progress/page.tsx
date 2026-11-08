@@ -87,7 +87,7 @@ export default function ProgressPage() {
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-3xl font-display font-black text-white tabular-nums">{latestWeight} kg</span>
-                <span className="text-xs font-mono font-semibold text-emerald-400 flex items-center gap-0.5">
+                <span className="text-xs font-mono font-semibold text-sky-400 flex items-center gap-0.5">
                   <TrendingDown className="w-3.5 h-3.5" />
                   {diff} kg (14d)
                 </span>
@@ -116,7 +116,7 @@ export default function ProgressPage() {
           </div>
 
           {successMessage && (
-            <p className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+            <p className="text-xs text-amber-400 font-mono flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> {successMessage}
             </p>
           )}
@@ -136,7 +136,7 @@ export default function ProgressPage() {
                 return (
                   <div
                     style={{ width: `${Math.max(5, progressPct)}%` }}
-                    className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
+                    className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-500"
                   />
                 );
               })()}
@@ -163,7 +163,7 @@ export default function ProgressPage() {
                   <div key={m.id} className="flex-1 flex flex-col items-center gap-1 group relative">
                     <div
                       style={{ height: `${Math.max(15, heightPercent)}%` }}
-                      className="w-full rounded-t bg-gradient-to-t from-amber-500/30 to-amber-400 hover:to-emerald-400 transition"
+                      className="w-full rounded-t bg-gradient-to-t from-amber-500/30 to-amber-400 hover:to-amber-300 transition"
                     />
                     <span className="text-[8px] font-mono text-slate-500">
                       {idx % 2 === 0 ? m.date.slice(8) : ""}
@@ -194,8 +194,8 @@ export default function ProgressPage() {
         <div className="space-y-2.5 text-xs">
           {[
             { muscle: "Chest & Front Delts", sets: 14, percent: 85, color: "bg-amber-400" },
-            { muscle: "Upper & Mid Back", sets: 12, percent: 75, color: "bg-emerald-400" },
-            { muscle: "Quads & Hamstrings", sets: 10, percent: 65, color: "bg-sky-400" },
+            { muscle: "Upper & Mid Back", sets: 12, percent: 75, color: "bg-sky-400" },
+            { muscle: "Quads & Hamstrings", sets: 10, percent: 65, color: "bg-sky-500" },
             { muscle: "Side Delts & Triceps", sets: 9, percent: 60, color: "bg-amber-500" },
           ].map((item) => (
             <div key={item.muscle} className="space-y-1">
@@ -239,7 +239,7 @@ export default function ProgressPage() {
                   )}
                 </div>
                 <p className="text-lg font-display font-black text-white tabular-nums">{pr.weight} kg × {pr.reps}</p>
-                <p className="text-[9px] text-emerald-400 font-mono">
+                <p className="text-[9px] text-amber-400 font-mono">
                   Estimated 1RM: {calculateEstimated1RM(pr.weight, pr.reps)} kg • {pr.date}
                 </p>
               </div>
@@ -259,10 +259,10 @@ export default function ProgressPage() {
       <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-emerald-400" />
+            <Dumbbell className="w-4 h-4 text-amber-400" />
             <h2 className="text-sm font-bold text-white font-editorial">Completed Workouts & Session History</h2>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 font-bold">{sessions.length} Logged</span>
+          <span className="text-[10px] font-mono text-amber-400 font-bold">{sessions.length} Logged</span>
         </div>
 
         {sessions.length > 0 ? (
@@ -302,7 +302,7 @@ export default function ProgressPage() {
                     <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400">
                       <span>{dateStr}</span>
                       <span>·</span>
-                      <span className="text-emerald-400 font-semibold">{sessVol.toLocaleString()} kg</span>
+                      <span className="text-amber-400 font-semibold">{sessVol.toLocaleString()} kg</span>
                       <span>·</span>
                       <span>{sess.setLogs?.length || 0} sets</span>
                       {durationMin > 0 && (

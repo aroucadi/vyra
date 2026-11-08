@@ -51,9 +51,9 @@ export function PasskeySyncCard({
 
   if (isSaved) {
     return (
-      <div className="p-4 rounded-2xl bg-slate-900/70 border border-emerald-500/30 flex items-center justify-between">
+      <div className="p-4 rounded-2xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
@@ -61,7 +61,7 @@ export function PasskeySyncCard({
             <span className="text-[11px] text-slate-400">Saved to phone & synced seamlessly</span>
           </div>
         </div>
-        <span className="text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+        <span className="text-[10px] font-mono uppercase bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">
           Synced
         </span>
       </div>
@@ -95,9 +95,9 @@ export function PasskeySyncCard({
         className="w-full min-h-[44px] py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-750 text-white text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+          <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
         ) : (
-          <KeyRound className="w-4 h-4 text-emerald-400" />
+          <KeyRound className="w-4 h-4 text-amber-400" />
         )}
         <span>{loading ? "Registering Passkey..." : "Create Passkey with Face ID / Touch ID"}</span>
       </button>

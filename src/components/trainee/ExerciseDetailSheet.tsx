@@ -29,15 +29,28 @@ interface ExerciseDetailSheetProps {
   onSelectAsSubstitute?: (exercise: RagExercise) => void;
 }
 
+function distillCue(raw: string): string {
+  if (!raw) return "";
+  let clean = raw
+    .replace(/^(Lie flat|Stand upright|Sit firmly|Position yourself|Ensure your|Make sure your|Begin by)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const clauses = clean.split(/[,.;]/).map((c) => c.trim()).filter(Boolean);
+  if (clauses.length >= 2) {
+    return clauses.slice(0, 2).join(" · ");
+  }
+  return clean.length > 70 ? clean.slice(0, 68) + "..." : clean;
+}
+
 function extractGoldenCues(instructions?: string[]): { setupCue: string; driveCue: string } {
   if (!instructions || instructions.length === 0) {
     return {
-      setupCue: "Position body with neutral spine and stable biomechanical foundation.",
-      driveCue: "Drive through full active range of motion with controlled eccentrics.",
+      setupCue: "Neutral spine · Stable foundation",
+      driveCue: "Controlled active range of motion",
     };
   }
 
-  const setupCue = instructions[0];
+  const setupCue = distillCue(instructions[0]);
   const executionKeywords = [
     "press",
     "pull",
@@ -62,7 +75,7 @@ function extractGoldenCues(instructions?: string[]): { setupCue: string; driveCu
     }
   }
 
-  return { setupCue, driveCue };
+  return { setupCue, driveCue: distillCue(driveCue) };
 }
 
 export function ExerciseDetailSheet({
@@ -219,44 +232,45 @@ export function ExerciseDetailSheet({
 
         {/* TAB 1: COACH CUES & ANATOMICAL SPOTLIGHT (High-Signal Hero) */}
         {activeTab === "cues" && (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {/* Split Hero: Micro-Spotlight + 2 Kinetic Anchors */}
-            <div className="grid grid-cols-[108px_1fr] gap-3 items-stretch">
+            <div className="grid grid-cols-[124px_1fr] gap-3 items-stretch">
               {/* Left Column: Refined Anatomical Tension Spotlight */}
               <div className="flex flex-col">
                 <AnatomicalTensionSpotlight
                   primaryMuscle={exercise.target}
                   secondaryMuscles={exercise.secondaryMuscles || []}
+                  accentColor="amber"
                   className="h-full justify-between"
                 />
               </div>
 
               {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
-              <div className="flex flex-col justify-between gap-2.5">
+              <div className="flex flex-col justify-between gap-2">
                 {/* Anchor 1: Setup */}
-                <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
+                <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                       <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>1. Setup Anchor</span>
+                      <span>Setup</span>
                     </span>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase">Foundation</span>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">Prep</span>
                   </div>
-                  <p className="text-[13px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
                     {setupCue}
                   </p>
                 </div>
 
                 {/* Anchor 2: Kinetic Drive */}
-                <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
+                <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>2. Kinetic Drive</span>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span>Drive</span>
                     </span>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase">Trajectory</span>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">Action</span>
                   </div>
-                  <p className="text-[13px] text-slate-100 leading-snug line-clamp-3 pt-0.5">
+                  <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
                     {driveCue}
                   </p>
                 </div>
@@ -404,8 +418,8 @@ export function ExerciseDetailSheet({
           </div>
         )}
 
-        {/* Single Dominant CTA + Secondary Close */}
-        <div className="pt-2 space-y-2">
+        {/* Single Dominant CTA */}
+        <div className="pt-2">
           {onSelectAsSubstitute ? (
             <button
               type="button"
@@ -413,29 +427,20 @@ export function ExerciseDetailSheet({
                 onSelectAsSubstitute(exercise);
                 onClose();
               }}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
               <span>Select as Active Exercise</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
-            <>
-              <button
-                type="button"
-                onClick={handleUseInDayOneSession}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Use in Day 1 Session</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full py-3 bg-[#111622] hover:bg-[#182030] text-slate-300 border border-[#1C2436] font-display uppercase tracking-wider font-bold text-xs rounded-xl transition cursor-pointer"
-              >
-                Close
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={handleUseInDayOneSession}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+            >
+              <span>Use in Day 1 Session</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           )}
         </div>
       </SheetContent>

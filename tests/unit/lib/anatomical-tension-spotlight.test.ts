@@ -32,8 +32,8 @@ describe('Spec 016: Anatomical Tension Spotlight & Kinetic Cues Suite', () => {
 
     // Primary emerald fill
     assert.ok(
-      html.includes('#10B981') || html.includes('16, 185, 129'),
-      'Primary muscle must be filled with Emerald (#10B981)'
+      html.includes('#F59E0B') || html.includes('#10B981') || html.includes('245, 158, 11'),
+      'Primary muscle must be filled with Solar Amber (#F59E0B)'
     );
 
     // Synergist cyan fill

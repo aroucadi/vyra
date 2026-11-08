@@ -20,7 +20,7 @@ interface AnatomicalTensionSpotlightProps {
   secondaryMuscles?: string[];
   className?: string;
   showToggle?: boolean;
-  accentColor?: "amber" | "emerald";
+  accentColor?: "amber" | "sky";
 }
 
 // Normalized mapping from RAG/MuscleWiki targets to vector silhouette regions
@@ -46,12 +46,12 @@ export function AnatomicalTensionSpotlight({
   secondaryMuscles = [],
   className,
   showToggle = true,
-  accentColor = "emerald",
+  accentColor = "amber",
 }: AnatomicalTensionSpotlightProps) {
   const isAmber = accentColor === "amber";
-  const primaryFill = isAmber ? "#F59E0B" : "#10B981";
-  const primaryStroke = isAmber ? "#FBBF24" : "#34D399";
-  const primaryGlow = isAmber ? "rgba(245, 158, 11, 0.85)" : "rgba(16, 185, 129, 0.85)";
+  const primaryFill = isAmber ? "#F59E0B" : "#38BDF8";
+  const primaryStroke = isAmber ? "#FBBF24" : "#7DD3FC";
+  const primaryGlow = isAmber ? "rgba(245, 158, 11, 0.85)" : "rgba(56, 189, 248, 0.85)";
 
   const primaryRegion = mapToRegion(primaryMuscle);
   const secondaryRegions = secondaryMuscles
@@ -330,13 +330,13 @@ export function AnatomicalTensionSpotlight({
         <span
           className={clsx(
             "flex items-center gap-1 font-semibold",
-            isAmber ? "text-amber-400" : "text-emerald-400"
+            isAmber ? "text-amber-400" : "text-sky-400"
           )}
         >
           <span
             className={clsx(
               "w-1.5 h-1.5 rounded-full",
-              isAmber ? "bg-amber-400 shadow-[0_0_4px_#F59E0B]" : "bg-emerald-400 shadow-[0_0_4px_#10B981]"
+              isAmber ? "bg-amber-400 shadow-[0_0_4px_#F59E0B]" : "bg-sky-400 shadow-[0_0_4px_#38BDF8]"
             )}
           />
           Target

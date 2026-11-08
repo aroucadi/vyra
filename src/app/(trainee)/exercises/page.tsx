@@ -5,7 +5,6 @@ import Link from "next/link";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
 import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
-import { TraineeNav } from "@/components/trainee/TraineeNav";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
@@ -425,8 +424,6 @@ export default function TraineeExerciseLibraryPage() {
         onClose={() => setIsDetailOpen(false)}
       />
 
-      {/* 5. Bottom Trainee Navigation */}
-      <TraineeNav />
     </div>
   );
 }

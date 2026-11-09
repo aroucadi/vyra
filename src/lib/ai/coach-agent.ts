@@ -16,7 +16,7 @@ import {
   MuscleSubdivision,
   ResistanceProfile,
 } from "../training-math/substitution-copilot";
-import { loadExerciseCatalogue } from "../rag/catalogue-loader";
+import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
 import { RagExercise } from "@/types/exercise-rag";
 import {
   sensoryMemoryStore,
@@ -693,7 +693,7 @@ export function toolSearchBiomechanicalIndex(params: {
   let catalogueCandidatesCount = 1;
 
   try {
-    const catalogue = loadExerciseCatalogue();
+    const catalogue = { exercises: loadSafeExerciseCatalogue() };
     const subs = findBiomechanicalSubstitutes(
       {
         name: params.exerciseName,

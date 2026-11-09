@@ -13,7 +13,7 @@
 import { getActiveGeminiModel, getGeminiAuthContext } from "../gemini";
 import { inferMuscleSubdivision, findBiomechanicalSubstitutes } from "../training-math/substitution-copilot";
 import { inferPrimaryMuscleFromExerciseName } from "./sensory-memory";
-import { loadExerciseCatalogue } from "../rag/catalogue-loader";
+import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
 
 export type RecognizedEquipmentCategory =
   | "dumbbell"
@@ -386,7 +386,7 @@ export class GymVisionInventoryStore {
 
     let catalogueExercises: any[] = [];
     try {
-      catalogueExercises = loadExerciseCatalogue().exercises;
+      catalogueExercises = loadSafeExerciseCatalogue();
     } catch {
       catalogueExercises = [];
     }

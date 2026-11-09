@@ -598,4 +598,37 @@ describe("Self-Evolving Athletic Program — Vector RAG, Multilingual French Ing
       assert.notEqual(ex.equipment, "barbell");
     }
   });
+
+  it("11. autonomously processes arbitrary open-ended athlete feedback (wrist tenderness + extra biceps focus + peak energy PR push) beyond preset examples", async () => {
+    const result = await adaptDailyWorkoutSession({
+      traineeId: "trainee_alaa",
+      voiceOrTextMessage:
+        "My left wrist hurts on barbell grips, and I'm feeling super strong today so let's add extra focus on biceps!",
+      gymId: "gym_punch_lissasfa",
+      exercises: SAMPLE_PLANNED_EXERCISES,
+    });
+
+    assert.equal(result.scope, "TODAY_SESSION_ONLY");
+    assert.equal(result.longTermProgramModified, false);
+    assert.ok(result.detectedPainRegions.includes("wrists"));
+    assert.ok(result.detectedFocusRegions.includes("biceps"));
+    assert.ok(result.detectedConstraints.includes("peak_energy_push"));
+
+    // Verify barbell movements were adapted to cuff/neutral-grip wrist-sparing variations
+    const ohp = result.adaptedExercises.find(
+      (e) => e.originalName === "Standing Barbell Overhead Press"
+    );
+    assert.ok(ohp !== undefined);
+    assert.ok(ohp.wasAdapted);
+    assert.ok(ohp.name.toLowerCase().includes("cuff") || ohp.name.toLowerCase().includes("neutral"));
+
+    // Verify a bonus biceps movement was injected from the 6,554-exercise catalogue
+    const injectedBiceps = result.adaptedExercises.find((e) => e.isInjectedBonus);
+    assert.ok(injectedBiceps !== undefined);
+    assert.equal(injectedBiceps.target, "biceps");
+
+    // Verify primary compound load was boosted for peak energy push
+    const inclinePress = result.adaptedExercises[0];
+    assert.ok(inclinePress.currentWeight > inclinePress.originalWeight);
+  });
 });

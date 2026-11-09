@@ -16,6 +16,7 @@ import { logWeightAction } from "@/lib/actions/metrics";
 import { calculateEstimated1RM } from "@/lib/utils";
 import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
+import { VisualProgressStudio } from "@/components/trainee/VisualProgressStudio";
 
 export default function ProgressPage() {
   const currentUser = appStore.getCurrentUser();
@@ -76,6 +77,9 @@ export default function ProgressPage() {
           Tracking adherence, body composition trend, and verified strength PRs.
         </p>
       </header>
+
+      {/* 0. AI-Powered Visual Progress Tracking & Workout Correlation Studio */}
+      <VisualProgressStudio />
 
       {/* 1. Bodyweight Trend & Calibrated Surplus Curve */}
       {!currentUser.hideWeightFromTrainee && (

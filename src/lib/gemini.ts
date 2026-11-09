@@ -1,22 +1,51 @@
 /**
  * Vyra AI & Gemini Architecture Layer
- * 
+ *
  * Provides unified, configurable access to Google Gemini models across:
  * - Vertex AI via Google Cloud IAM Service Account (vyra-app-sa)
  * - Google AI Studio API key (GEMINI_API_KEY)
- * 
- * Default Model: Gemini 3.8 Flash (configurable via GEMINI_MODEL)
+ *
+ * Default Model: Gemini 4 Argon (`gemini-4-argon`) — Frontier 1M-token multimodal reasoning,
+ * high-resolution body scan & postural analysis, and autonomous coaching synthesis.
  */
 
 export type GeminiModelId =
+  | "gemini-4-argon"
   | "gemini-3.8-flash"
-  | "gemini-3.8-pro"
-  | "gemini-2.5-flash"
-  | "gemini-2.5-pro"
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.1-flash-lite"
   | string;
+
+const DEPRECATED_OR_INVALID_MODEL_PATTERNS = [
+  /^gemini-2\.5/i,
+  /^gemini-2\.0/i,
+  /^gemini-1\.5/i,
+  /^gemini-1\.0/i,
+  /^gemini-3\.8-pro/i,
+];
+
+/**
+ * Ensures deprecated legacy models (e.g. gemini-2.5-*, gemini-2.0-*, gemini-1.5-*)
+ * or non-existent model IDs (e.g. gemini-3.8-pro) are never used, defaulting to `gemini-4-argon`.
+ */
+export function sanitizeGeminiModelId(candidate?: string): string {
+  const trimmed = candidate?.trim();
+  if (!trimmed) {
+    return "gemini-4-argon";
+  }
+  for (const pattern of DEPRECATED_OR_INVALID_MODEL_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return "gemini-4-argon";
+    }
+  }
+  return trimmed;
+}
 
 export interface GeminiConfig {
   defaultModel: GeminiModelId;
+  visionReasoningModel: GeminiModelId;
+  visionMediaResolution: "high" | "medium" | "low";
+  visionThinkingLevel: "high" | "medium" | "low";
   projectId: string;
   location: string;
   temperature: number;
@@ -24,18 +53,42 @@ export interface GeminiConfig {
 }
 
 export const VYRA_AI_CONFIG: GeminiConfig = {
-  defaultModel: (process.env.GEMINI_MODEL as GeminiModelId) || "gemini-3.8-flash",
+  defaultModel: sanitizeGeminiModelId(process.env.GEMINI_MODEL),
+  visionReasoningModel: sanitizeGeminiModelId(process.env.GEMINI_VISION_MODEL),
+  visionMediaResolution: "high",
+  visionThinkingLevel: "high",
   projectId: process.env.GOOGLE_CLOUD_PROJECT || "vyra-509011",
   location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1",
   temperature: 0.3,
-  maxOutputTokens: 2048,
+  maxOutputTokens: 4096,
 };
 
 /**
- * Resolves active Gemini model with optional per-call override
+ * Resolves active Gemini model with optional per-call override.
+ * Defaults to `gemini-4-argon` and blocks deprecated 2.5/2.0/1.5 or invalid 3.8-pro IDs.
  */
 export function getActiveGeminiModel(overrideModel?: string): string {
-  return overrideModel || process.env.GEMINI_MODEL || VYRA_AI_CONFIG.defaultModel;
+  if (overrideModel) {
+    return sanitizeGeminiModelId(overrideModel);
+  }
+  if (process.env.GEMINI_MODEL) {
+    return sanitizeGeminiModelId(process.env.GEMINI_MODEL);
+  }
+  return sanitizeGeminiModelId(VYRA_AI_CONFIG.defaultModel);
+}
+
+/**
+ * Resolves the frontier multimodal spatial reasoning model (defaults to `gemini-4-argon`)
+ * for high-resolution body scans, postural angle detection, and muscle/fat partitioning analysis.
+ */
+export function getActiveVisionReasoningModel(overrideModel?: string): string {
+  if (overrideModel) {
+    return sanitizeGeminiModelId(overrideModel);
+  }
+  if (process.env.GEMINI_VISION_MODEL) {
+    return sanitizeGeminiModelId(process.env.GEMINI_VISION_MODEL);
+  }
+  return sanitizeGeminiModelId(VYRA_AI_CONFIG.visionReasoningModel);
 }
 
 /**
@@ -123,7 +176,7 @@ export async function generateGeminiContent(
 
 /**
  * Biomechanical Coaching & Form Struggle Analyzer
- * Powered by Gemini 3.8 Flash
+ * Powered by Gemini 4 Argon (`gemini-4-argon`)
  */
 export async function generateBiomechanicalFeedback(params: {
   exerciseName: string;
@@ -176,4 +229,3 @@ Provide an immediate, authoritative form adjustment to eliminate discomfort and 
     };
   }
 }
-

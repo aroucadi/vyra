@@ -256,7 +256,7 @@ export class GymVisionInventoryStore {
       }
     }
 
-    // 2. If Gemini API key is configured and photoDataUri is a base64 image, call Gemini 2.5 Flash Vision
+    // 2. If Gemini API key is configured and photoDataUri is a base64 image, call Gemini 4 Argon Vision
     const apiKey = process.env.GEMINI_API_KEY;
     if (
       apiKey &&

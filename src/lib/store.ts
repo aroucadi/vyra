@@ -24,7 +24,7 @@ import {
   masterHydrationGoal,
   seedMetricsAlaa,
 } from "@/db/seed/master-transformation-program";
-import { checkIsPersonalRecord, resolveProgramDay, toLocalDateString } from "./utils";
+import { checkIsPersonalRecord, resolveExerciseVideoUrl, resolveProgramDay, toLocalDateString } from "./utils";
 import { getStorageAdapter } from "./storage/adapter";
 
 // In-memory single-source-of-truth state for realistic local/preview runs
@@ -1232,20 +1232,45 @@ class Store {
     }
 
     let swapped = false;
+    // First pass: look for an explicit name match across all blocks
     for (const block of targetDay.blocks) {
       for (const ex of block.exercises) {
         if (
           ex.exerciseName.toLowerCase().includes(currentExerciseName.toLowerCase()) ||
-          currentExerciseName.toLowerCase().includes(ex.exerciseName.toLowerCase()) ||
-          !swapped
+          currentExerciseName.toLowerCase().includes(ex.exerciseName.toLowerCase())
         ) {
+          const prevName = ex.exerciseName;
           ex.exerciseName = newExerciseName;
           ex.formCueText = `Auto-calibrated: strict execution with ${newExerciseName}. Maintain controlled eccentric tempo.`;
+          ex.videoUrl = resolveExerciseVideoUrl(newExerciseName, {
+            previousExerciseName: prevName,
+            previousVideoUrl: ex.videoUrl,
+            catalogue: this.db.exercises,
+          });
           swapped = true;
           break;
         }
       }
       if (swapped) break;
+    }
+
+    // Second pass fallback if no exact substring matched
+    if (!swapped) {
+      for (const block of targetDay.blocks) {
+        for (const ex of block.exercises) {
+          const prevName = ex.exerciseName;
+          ex.exerciseName = newExerciseName;
+          ex.formCueText = `Auto-calibrated: strict execution with ${newExerciseName}. Maintain controlled eccentric tempo.`;
+          ex.videoUrl = resolveExerciseVideoUrl(newExerciseName, {
+            previousExerciseName: prevName,
+            previousVideoUrl: ex.videoUrl,
+            catalogue: this.db.exercises,
+          });
+          swapped = true;
+          break;
+        }
+        if (swapped) break;
+      }
     }
 
     program.updatedAt = new Date().toISOString();

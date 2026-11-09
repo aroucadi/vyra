@@ -212,30 +212,122 @@ export function extractCanonicalAthleticRepresentation(params: {
 
 /**
  * Infers primary muscle category from exercise name if not explicitly provided.
+ * Ordered so posterior deltoid ("reverse fly", "reverse pec deck") and chest-supported
+ * back movements ("chest-supported row") are never misclassified as chest exercises.
  */
 export function inferPrimaryMuscleFromExerciseName(exerciseName: string): string {
-  const n = exerciseName.toLowerCase();
-  if (n.includes("lateral raise") || n.includes("shoulder") || n.includes("delt") || n.includes("overhead press") || n.includes("military") || n.includes("face pull")) {
+  const n = (exerciseName || "").toLowerCase().replace(/-/g, " ");
+
+  // 1. Shoulders & Posterior/Lateral/Anterior Deltoids (must precede "fly" / "pec" / "row")
+  if (
+    n.includes("reverse fly") ||
+    n.includes("reverse pec") ||
+    n.includes("reverse cable") ||
+    n.includes("reverse machine") ||
+    n.includes("rear delt") ||
+    n.includes("rear fly") ||
+    n.includes("face pull") ||
+    n.includes("band pull apart") ||
+    n.includes("powell") ||
+    n.includes("y t w") ||
+    n.includes("ytw") ||
+    n.includes("lateral raise") ||
+    n.includes("side raise") ||
+    n.includes("front raise") ||
+    n.includes("shoulder") ||
+    n.includes("delt") ||
+    n.includes("overhead press") ||
+    n.includes("military") ||
+    n.includes("arnold") ||
+    n.includes("upright row") ||
+    n.includes("scaption")
+  ) {
     return "shoulders";
   }
-  if (n.includes("bench") || n.includes("chest") || n.includes("pec") || n.includes("fly") || n.includes("incline db press") || n.includes("incline dumbbell press") || n.includes("push-up")) {
-    return "chest";
-  }
-  if (n.includes("row") || n.includes("pulldown") || n.includes("pull-up") || n.includes("lat ")) {
+
+  // 2. Back / Lats / Upper Back (must precede "chest" so "chest-supported row" maps to lats/back)
+  if (
+    n.includes("row") ||
+    n.includes("pulldown") ||
+    n.includes("pull up") ||
+    n.includes("chin up") ||
+    n.includes("lat ") ||
+    n.includes("lats") ||
+    n.includes("rhomboid") ||
+    n.includes("shrug") ||
+    n.includes("back extension")
+  ) {
     return "lats";
   }
-  if (n.includes("squat") || n.includes("leg press") || n.includes("leg extension") || n.includes("lunge")) {
-    return "quads";
-  }
-  if (n.includes("deadlift") || n.includes("rdl") || n.includes("leg curl") || n.includes("hamstring") || n.includes("hip thrust")) {
+
+  // 3. Lower Body (Quads & Hamstrings/Glutes)
+  if (
+    n.includes("deadlift") ||
+    n.includes("rdl") ||
+    n.includes("leg curl") ||
+    n.includes("seated curl") ||
+    n.includes("lying curl") ||
+    n.includes("hamstring") ||
+    n.includes("hip thrust") ||
+    n.includes("glute") ||
+    n.includes("hyperextension") ||
+    n.includes("good morning") ||
+    n.includes("nordic")
+  ) {
     return "hamstrings";
   }
-  if (n.includes("tricep") || n.includes("skull") || n.includes("pushdown")) {
+  if (
+    n.includes("squat") ||
+    n.includes("leg press") ||
+    n.includes("leg extension") ||
+    n.includes("lunge") ||
+    n.includes("step up") ||
+    n.includes("hack") ||
+    n.includes("pendulum") ||
+    n.includes("sissy") ||
+    n.includes("quad")
+  ) {
+    return "quads";
+  }
+
+  // 4. Arms (Triceps & Biceps — must precede generic "bench" / "dip" / "incline")
+  if (
+    n.includes("tricep") ||
+    n.includes("skull") ||
+    n.includes("pushdown") ||
+    n.includes("pressdown") ||
+    n.includes("french press") ||
+    n.includes("jm press") ||
+    n.includes("bench dip") ||
+    n.includes("close grip bench") ||
+    n.includes("kickback")
+  ) {
     return "triceps";
   }
-  if (n.includes("bicep") || n.includes("curl") || n.includes("preacher")) {
+  if (
+    n.includes("bicep") ||
+    n.includes("curl") ||
+    n.includes("preacher") ||
+    n.includes("bayesian")
+  ) {
     return "biceps";
   }
+
+  // 5. Pectorals / Chest
+  if (
+    n.includes("bench") ||
+    n.includes("chest") ||
+    n.includes("pec") ||
+    n.includes("fly") ||
+    n.includes("crossover") ||
+    n.includes("incline db press") ||
+    n.includes("incline dumbbell press") ||
+    n.includes("push up") ||
+    n.includes("dip")
+  ) {
+    return "chest";
+  }
+
   return "general";
 }
 
@@ -335,6 +427,8 @@ export class SensoryMemoryStore {
 
   /**
    * Executes Vector Space Cosine Similarity + Anatomical RAG retrieval.
+   * Enforces strict anatomical subdivision isolation when querying for a specific exercise
+   * so feedback from unrelated movements never cross-contaminates another exercise.
    */
   public queryRAG(query: SensoryRagQuery): SensoryRagMatch[] {
     this.hydrate();
@@ -364,12 +458,37 @@ export class SensoryMemoryStore {
     const matches: SensoryRagMatch[] = [];
 
     for (const entry of traineeEntries) {
+      const entrySub = inferMuscleSubdivision(
+        entry.exerciseName,
+        entry.primaryMuscle || inferPrimaryMuscleFromExerciseName(entry.exerciseName)
+      );
+      const entryPrimary = inferPrimaryMuscleFromExerciseName(entry.exerciseName);
+
+      const isExactExercise = Boolean(
+        query.exerciseName &&
+          entry.exerciseName.trim().toLowerCase() === query.exerciseName.trim().toLowerCase()
+      );
+      const isSameSubdivision = Boolean(
+        targetSub && targetSub !== "general" && entrySub === targetSub
+      );
+      const isSameGeneralPrimary = Boolean(
+        targetPrimary &&
+          targetPrimary !== "general" &&
+          entryPrimary === targetPrimary &&
+          (!targetSub || targetSub === "general" || entrySub === "general")
+      );
+
+      // When querying for a specific exercise, prevent cross-contamination from other muscle subdivisions
+      if (query.exerciseName && !isExactExercise && !isSameSubdivision && !isSameGeneralPrimary) {
+        continue;
+      }
+
       const entryVec =
         entry.embeddingVector && entry.embeddingVector.length > 0
           ? entry.embeddingVector
           : computeBiomechanicalEmbedding({
               text: entry.canonicalEnglishSummary,
-              muscleSubdivision: entry.muscleSubdivision,
+              muscleSubdivision: entrySub,
               symptoms: entry.biomechanicalEntities.symptoms,
               compensations: entry.biomechanicalEntities.compensations,
             });
@@ -383,21 +502,18 @@ export class SensoryMemoryStore {
       }
 
       // Exact exercise match boost
-      if (
-        query.exerciseName &&
-        entry.exerciseName.toLowerCase() === query.exerciseName.toLowerCase()
-      ) {
+      if (isExactExercise) {
         compositeScore += 30;
         reasons.push(`Exact exercise match (${entry.exerciseName})`);
       }
 
       // Anatomical subdivision match
-      if (targetSub && entry.muscleSubdivision === targetSub) {
+      if (isSameSubdivision) {
         compositeScore += 20;
-        reasons.push(`Same muscle subdivision (${entry.muscleSubdivision})`);
-      } else if (targetPrimary && entry.primaryMuscle.toLowerCase() === targetPrimary) {
+        reasons.push(`Same muscle subdivision (${entrySub})`);
+      } else if (targetPrimary && entryPrimary === targetPrimary) {
         compositeScore += 10;
-        reasons.push(`Related primary muscle group (${entry.primaryMuscle})`);
+        reasons.push(`Related primary muscle group (${entryPrimary})`);
       }
 
       // Severity signal boost
@@ -411,7 +527,11 @@ export class SensoryMemoryStore {
 
       if (compositeScore >= 15 || cosSim >= 0.2) {
         matches.push({
-          entry,
+          entry: {
+            ...entry,
+            primaryMuscle: entryPrimary,
+            muscleSubdivision: entrySub,
+          },
           cosineSimilarity: cosSim,
           relevanceScore: Number(compositeScore.toFixed(2)),
           matchReasons: reasons,

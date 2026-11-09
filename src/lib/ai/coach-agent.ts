@@ -24,6 +24,7 @@ import {
   SensoryRagMatch,
 } from "./sensory-memory";
 import { computeBiomechanicalEmbedding, cosineSimilarity } from "./vector-engine";
+import { resolveExerciseVideoUrl } from "../utils";
 
 export type CoachingTier =
   | "tier_1_micro_setup"
@@ -36,6 +37,7 @@ export interface ProgramMutationSpec {
   newExerciseId?: string;
   newExerciseName?: string;
   newEquipment?: string;
+  newVideoUrl?: string;
   newTargetSets?: number;
   newTargetWeightKg?: number;
   newRepLow?: number;
@@ -421,6 +423,7 @@ export interface BiomechanicalSwapRecommendation {
   exerciseId?: string;
   replacementName: string;
   replacementEquipment: string;
+  videoUrl?: string;
   subdivision: MuscleSubdivision;
   previousProfile: ResistanceProfile;
   newProfile: ResistanceProfile;
@@ -684,7 +687,8 @@ export function toolSearchBiomechanicalIndex(params: {
   preferredEquipment?: string[];
   excludedEquipment?: string[];
 }): BiomechanicalSwapRecommendation & { rawCatalogueCandidates: RagExercise[] } {
-  const muscle = params.primaryMuscle || inferPrimaryMuscleFromExerciseName(params.exerciseName);
+  const inferredMuscle = inferPrimaryMuscleFromExerciseName(params.exerciseName);
+  const muscle = inferredMuscle !== "general" ? inferredMuscle : (params.primaryMuscle || "general");
   const subdivision = inferMuscleSubdivision(params.exerciseName, muscle);
   const currentProfile = inferResistanceProfile(params.exerciseName, params.currentEquipment || "dumbbell");
   const curated = CURATED_BIOMECHANICAL_EVOLUTIONS[subdivision] || CURATED_BIOMECHANICAL_EVOLUTIONS.general;
@@ -732,6 +736,9 @@ export function toolSearchBiomechanicalIndex(params: {
 
   return {
     ...curated,
+    videoUrl: resolveExerciseVideoUrl(curated.replacementName, {
+      previousExerciseName: params.exerciseName,
+    }),
     previousProfile: currentProfile,
     vectorSimilarity: Math.max(0.78, vectorSimilarity),
     catalogueCandidatesCount,
@@ -861,6 +868,7 @@ export function toolVerifyEvolutionCandidate(params: {
 export interface EvaluateJitInput {
   traineeId: string;
   exerciseName: string;
+  primaryMuscle?: string;
   currentWeightKg: number;
   targetSets: number;
   repLow: number;
@@ -963,7 +971,8 @@ export function evaluateJustInTimeProposition(
     t4
   );
 
-  const primaryMuscle = inferPrimaryMuscleFromExerciseName(input.exerciseName);
+  const inferredMuscle = inferPrimaryMuscleFromExerciseName(input.exerciseName);
+  const primaryMuscle = inferredMuscle !== "general" ? inferredMuscle : (input.primaryMuscle || "general");
   const subdivision = inferMuscleSubdivision(input.exerciseName, primaryMuscle);
   const currentEq = input.equipment || "dumbbell";
   const currentProfile = inferResistanceProfile(input.exerciseName, currentEq);
@@ -1087,6 +1096,11 @@ export function evaluateJustInTimeProposition(
         ? `${input.exerciseName} has stalled at ${baseWeight}kg × ${history.latestReps || input.repHigh} reps across ${history.stagnantSessionsCount} consecutive sessions (0kg net progression).`
         : `Biomechanical friction & compensation pattern detected on ${input.exerciseName} at ${baseWeight}kg.`;
 
+      const resolvedVideoUrl = resolveExerciseVideoUrl(verifiedSwap.replacementName, {
+        explicitVideoUrl: verifiedSwap.videoUrl,
+        previousExerciseName: input.exerciseName,
+      });
+
       return {
         id: `prop_t2_${Date.now()}`,
         traineeId: input.traineeId,
@@ -1105,6 +1119,7 @@ export function evaluateJustInTimeProposition(
           newExerciseId: verifiedSwap.exerciseId,
           newExerciseName: verifiedSwap.replacementName,
           newEquipment: verifiedSwap.replacementEquipment,
+          newVideoUrl: resolvedVideoUrl,
           newTargetWeightKg: newWeight,
           newRepLow: verifiedSwap.repLow,
           newRepHigh: verifiedSwap.repHigh,

@@ -8,9 +8,11 @@ import {
 import {
   detectFeedbackLanguage,
   extractCanonicalAthleticRepresentation,
+  inferPrimaryMuscleFromExerciseName,
   SensoryMemoryStore,
   sensoryMemoryStore,
 } from "../../../src/lib/ai/sensory-memory";
+import { resolveExerciseVideoUrl } from "../../../src/lib/utils";
 import {
   VERTEX_AGENT_TOOL_DECLARATIONS,
   evaluateJustInTimeProposition,
@@ -630,5 +632,79 @@ describe("Self-Evolving Athletic Program — Vector RAG, Multilingual French Ing
     // Verify primary compound load was boosted for peak energy push
     const inclinePress = result.adaptedExercises[0];
     assert.ok(inclinePress.currentWeight > inclinePress.originalWeight);
+  });
+
+  it("12. classifies Reverse Fly as posterior deltoid (never chest), prevents cross-exercise RAG contamination, and updates videoUrl on swap", () => {
+    // 1. Reverse fly & chest-supported row must never be misclassified as chest
+    assert.equal(inferPrimaryMuscleFromExerciseName("lever seated reverse fly"), "shoulders");
+    assert.equal(inferPrimaryMuscleFromExerciseName("Reverse Pec Deck"), "shoulders");
+    assert.equal(inferPrimaryMuscleFromExerciseName("chest-supported dumbbell reverse fly"), "shoulders");
+    assert.equal(inferPrimaryMuscleFromExerciseName("chest-supported dumbbell row"), "lats");
+
+    // 2. Logging joint strain on a chest press must NOT trigger a proposition on lever seated reverse fly
+    const chestStrainSessions: WorkoutSession[] = [
+      makeSession(
+        "s_chest_1",
+        "2026-11-01",
+        "lever incline chest press",
+        [{ weightKg: 20, reps: 10 }],
+        { tag: "joint_strain", note: "Slight pec tightness" }
+      ),
+    ];
+
+    const noFalsePositiveProp = evaluateJustInTimeProposition({
+      traineeId: "trainee_alaa",
+      exerciseName: "lever seated reverse fly",
+      currentWeightKg: 40,
+      targetSets: 3,
+      repLow: 12,
+      repHigh: 15,
+      targetRir: 2,
+      equipment: "machine",
+      sessions: chestStrainSessions,
+    });
+    assert.equal(noFalsePositiveProp, null);
+
+    // 3. When lever seated reverse fly legitimately plateaus, it proposes a posterior deltoid evolution (never Plate Chest Machine) with an updated videoUrl
+    const reverseFlyPlateauSessions: WorkoutSession[] = [
+      makeSession("rf1", "2026-10-15", "lever seated reverse fly", [{ weightKg: 40, reps: 12 }]),
+      makeSession("rf2", "2026-10-22", "lever seated reverse fly", [{ weightKg: 40, reps: 12 }]),
+      makeSession("rf3", "2026-10-29", "lever seated reverse fly", [{ weightKg: 40, reps: 12 }]),
+    ];
+
+    const rearDeltProp = evaluateJustInTimeProposition({
+      traineeId: "trainee_alaa",
+      exerciseName: "lever seated reverse fly",
+      currentWeightKg: 40,
+      targetSets: 3,
+      repLow: 12,
+      repHigh: 15,
+      targetRir: 2,
+      equipment: "machine",
+      sessions: reverseFlyPlateauSessions,
+    });
+
+    assert.ok(rearDeltProp !== null);
+    assert.equal(rearDeltProp.muscleSubdivision, "deltoid_posterior");
+    assert.ok(
+      !rearDeltProp.mutation.newExerciseName?.toLowerCase().includes("chest press"),
+      `Expected rear delt replacement, got ${rearDeltProp.mutation.newExerciseName}`
+    );
+    assert.ok(rearDeltProp.mutation.newVideoUrl);
+    assert.ok(
+      !rearDeltProp.mutation.newVideoUrl.toLowerCase().includes("lever%20seated%20reverse%20fly"),
+      "Swapped exercise videoUrl must not retain original exercise video query"
+    );
+
+    // 4. resolveExerciseVideoUrl heals stale draft video URLs when exercise name has changed and applies Google/YouTube search magic
+    const healedUrl = resolveExerciseVideoUrl("Reverse Cable Crossover (Chest-Supported)", {
+      previousExerciseName: "lever seated reverse fly",
+      previousVideoUrl:
+        "https://www.youtube.com/results?search_query=lever%20seated%20reverse%20fly%20proper%20form",
+    });
+    assert.ok(healedUrl.toLowerCase().includes("reverse%20cable%20crossover"));
+    assert.ok(healedUrl.includes("sp=EgIYAQ%3D%3D"), "Must include YouTube <4 min short duration filter");
+    assert.ok(decodeURIComponent(healedUrl).includes("rear delt"), "Must disambiguate rear delt target");
+    assert.ok(decodeURIComponent(healedUrl).includes("-vlog"), "Must exclude vlog/podcast noise");
   });
 });

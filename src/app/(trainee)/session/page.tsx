@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
-import { resolveProgramDay, checkIsPersonalRecord } from "@/lib/utils";
+import { resolveProgramDay, checkIsPersonalRecord, resolveExerciseVideoUrl } from "@/lib/utils";
 import { WorkoutSession, SetLog, ProgramDay, EquipmentType, ExercisePrescription, Exercise, EquipmentOption, ExerciseConfidenceGuide, ExerciseBiofeedbackTag, ExerciseFeedbackRecord, GymLocation } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 import { uploadEquipmentPhotoAction } from "@/lib/actions/upload";
@@ -73,7 +73,7 @@ import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositio
 import { DailyAiCoachAdapterCard } from "@/components/trainee/DailyAiCoachAdapterCard";
 import { DailyWorkoutAdaptationResult } from "@/lib/ai/daily-session-adapter";
 import { evaluateJustInTimeProposition, CoachProposition } from "@/lib/ai/coach-agent";
-import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
+import { sensoryMemoryStore, inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { createEventEnvelope } from "@/lib/storage/events";
 import { clsx } from "clsx";
 
@@ -225,12 +225,12 @@ function SessionFlow() {
         lastBestWeight: defaultWeight,
         lastBestReps: defaultReps,
         formCue: ex.formCueText,
-        videoUrl: ex.videoUrl,
+        videoUrl: resolveExerciseVideoUrl(ex.exerciseName, { explicitVideoUrl: ex.videoUrl }),
         loadGuidance: ex.loadGuidance || "Double progression: add 2.5 kg once top rep target is reached.",
         completedSets: [],
         currentWeight: defaultWeight,
         currentReps: defaultReps,
-        target: ex.targetMuscleGroups?.[0] || "chest",
+        target: ex.targetMuscleGroups?.[0] || inferPrimaryMuscleFromExerciseName(ex.exerciseName),
         equipment: ex.selectedEquipment || "barbell",
         equipmentVariations: ex.equipmentVariations,
         confidenceGuide: ex.confidenceGuide,
@@ -271,12 +271,12 @@ function SessionFlow() {
           lastBestWeight: defaultWeight,
           lastBestReps: defaultReps,
           formCue: ex.formCueText,
-          videoUrl: ex.videoUrl,
+          videoUrl: resolveExerciseVideoUrl(ex.exerciseName, { explicitVideoUrl: ex.videoUrl }),
           loadGuidance: ex.loadGuidance || "Double progression: add 2.5 kg once top rep target is reached.",
           completedSets: [],
           currentWeight: defaultWeight,
           currentReps: defaultReps,
-          target: ex.targetMuscleGroups?.[0] || "chest",
+          target: ex.targetMuscleGroups?.[0] || inferPrimaryMuscleFromExerciseName(ex.exerciseName),
           equipment: ex.selectedEquipment || "barbell",
           equipmentVariations: ex.equipmentVariations,
           confidenceGuide: ex.confidenceGuide,
@@ -462,7 +462,18 @@ function SessionFlow() {
           const isStaleDraft = expectedCount > 0 && draft.exercises.length < expectedCount;
 
           if (hasLoggedSets && matchesDay && !isStaleDraft) {
-            setExercises(draft.exercises);
+            setExercises(
+              draft.exercises.map((e: ActiveExercise) => ({
+                ...e,
+                target:
+                  e.target && e.target !== "chest"
+                    ? e.target
+                    : inferPrimaryMuscleFromExerciseName(e.name),
+                videoUrl: resolveExerciseVideoUrl(e.name, {
+                  previousVideoUrl: e.videoUrl,
+                }),
+              }))
+            );
             if (typeof draft.currentExerciseIndex === "number") {
               setCurrentExIndex(Math.min(draft.currentExerciseIndex, draft.exercises.length - 1));
             }
@@ -641,6 +652,12 @@ function SessionFlow() {
             ...ex,
             name: adapted.name,
             equipment: adapted.equipment || ex.equipment,
+            target: adapted.target || inferPrimaryMuscleFromExerciseName(adapted.name),
+            videoUrl: resolveExerciseVideoUrl(adapted.name, {
+              previousExerciseName: ex.name,
+              previousVideoUrl: ex.videoUrl,
+              catalogue,
+            }),
             targetSets: adapted.targetSets,
             restSeconds: adapted.restSeconds,
             targetRir: adapted.targetRir,
@@ -686,6 +703,11 @@ function SessionFlow() {
         return {
           ...ex,
           name: delta.adaptedName,
+          videoUrl: resolveExerciseVideoUrl(delta.adaptedName, {
+            previousExerciseName: ex.name,
+            previousVideoUrl: ex.videoUrl,
+            catalogue,
+          }),
           targetSets: delta.adaptedSets,
           targetRir: delta.adaptedRir,
           currentWeight: delta.adaptedWeightKg,
@@ -761,6 +783,7 @@ function SessionFlow() {
     return evaluateJustInTimeProposition({
       traineeId: currentUser.id,
       exerciseName: activeEx.name,
+      primaryMuscle: activeEx.target || activeEx.targetMuscleGroups?.[0],
       currentWeightKg: activeEx.currentWeight || activeEx.lastBestWeight || 20,
       targetSets: activeEx.targetSets,
       repLow: activeEx.repLow,
@@ -781,10 +804,21 @@ function SessionFlow() {
       const copy = [...prev];
       const target = copy[currentExIndex];
       if (!target) return prev;
+      const nextName = prop.mutation.newExerciseName || target.name;
+      const nextVideoUrl = resolveExerciseVideoUrl(nextName, {
+        explicitVideoUrl: prop.mutation.newVideoUrl,
+        previousExerciseName: target.name,
+        previousVideoUrl: target.videoUrl,
+        catalogue,
+      });
       copy[currentExIndex] = {
         ...target,
-        name: prop.mutation.newExerciseName || target.name,
+        name: nextName,
         equipment: prop.mutation.newEquipment || target.equipment,
+        target: prop.mutation.newExerciseName
+          ? inferPrimaryMuscleFromExerciseName(nextName)
+          : target.target,
+        videoUrl: nextVideoUrl,
         targetSets: prop.mutation.newTargetSets ?? target.targetSets,
         repLow: prop.mutation.newRepLow ?? target.repLow,
         repHigh: prop.mutation.newRepHigh ?? target.repHigh,
@@ -794,7 +828,7 @@ function SessionFlow() {
         formCue: prop.mutation.newFormCue || target.formCue,
         loadGuidance: prop.mutation.newLoadGuidance || prop.proposedFix,
       };
-      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      persistDraft(copy, currentExIndex);
       return copy;
     });
     soundService.playTargetHitFeedback(false);
@@ -1551,7 +1585,10 @@ function SessionFlow() {
                 </button>
                 {ex.videoUrl && (
                   <a
-                    href={ex.videoUrl}
+                    href={resolveExerciseVideoUrl(ex.name, {
+                      previousVideoUrl: ex.videoUrl,
+                      catalogue,
+                    })}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
@@ -1585,7 +1622,7 @@ function SessionFlow() {
                 setSwapTargetExercise({
                   id: exercises[0].id,
                   name: exercises[0].name,
-                  target: exercises[0].target || "chest",
+                  target: exercises[0].target || inferPrimaryMuscleFromExerciseName(exercises[0].name),
                   equipment: exercises[0].equipment || "barbell",
                 });
                 setIsSwapDrawerOpen(true);
@@ -1687,7 +1724,10 @@ function SessionFlow() {
                 {/* 1-Tap Video Demo Button */}
                 {previewDetailEx.videoUrl ? (
                   <a
-                    href={previewDetailEx.videoUrl}
+                    href={resolveExerciseVideoUrl(previewDetailEx.name, {
+                      previousVideoUrl: previewDetailEx.videoUrl,
+                      catalogue,
+                    })}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
@@ -1767,9 +1807,15 @@ function SessionFlow() {
                                       ...copy[targetIdx],
                                       name: v.exerciseName,
                                       formCue: v.formCue,
-                                      videoUrl: v.videoUrl,
+                                      videoUrl: resolveExerciseVideoUrl(v.exerciseName, {
+                                        explicitVideoUrl: v.videoUrl,
+                                        previousExerciseName: copy[targetIdx].name,
+                                        previousVideoUrl: copy[targetIdx].videoUrl,
+                                        catalogue,
+                                      }),
                                       equipment: v.equipmentType,
                                     };
+                                    persistDraft(copy, currentExIndex);
                                   }
                                   return copy;
                                 });
@@ -1817,6 +1863,43 @@ function SessionFlow() {
           onSelectGym={(gym) => {
             setSelectedGym(gym);
             persistDraft(exercises, currentExIndex);
+          }}
+        />
+
+        {/* Intelligent Substitution Copilot Drawer (Preview Mode) */}
+        <SubstitutionCopilotDrawer
+          isOpen={isSwapDrawerOpen}
+          onClose={() => setIsSwapDrawerOpen(false)}
+          currentExercise={swapTargetExercise}
+          onApplySubstitute={(candidate) => {
+            setExercises((prev) => {
+              const nextList = prev.map((ex, idx) => {
+                const matches =
+                  (swapTargetExercise?.id && ex.id === swapTargetExercise.id) ||
+                  idx === currentExIndex;
+                if (!matches) return ex;
+                const newVideoUrl = resolveExerciseVideoUrl(candidate.name, {
+                  explicitVideoUrl: candidate.videoUrl,
+                  previousExerciseName: ex.name,
+                  previousVideoUrl: ex.videoUrl,
+                  catalogue,
+                });
+                return {
+                  ...ex,
+                  name: candidate.name,
+                  formCue: candidate.instructions?.[0] || ex.formCue,
+                  equipment: candidate.equipment,
+                  target: candidate.target || inferPrimaryMuscleFromExerciseName(candidate.name),
+                  videoUrl: newVideoUrl,
+                  currentWeight: candidate.equipment.toLowerCase().includes("body")
+                    ? 0
+                    : ex.currentWeight,
+                };
+              });
+              persistDraft(nextList, currentExIndex);
+              return nextList;
+            });
+            setIsSwapDrawerOpen(false);
           }}
         />
       </div>
@@ -2569,7 +2652,10 @@ function SessionFlow() {
               {/* Direct 1-Click Video Form Demonstration */}
               {activeEx.videoUrl && (
                 <a
-                  href={activeEx.videoUrl}
+                  href={resolveExerciseVideoUrl(activeEx.name, {
+                    previousVideoUrl: activeEx.videoUrl,
+                    catalogue,
+                  })}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
@@ -2586,7 +2672,7 @@ function SessionFlow() {
                   setSwapTargetExercise({
                     id: activeEx.id,
                     name: activeEx.name,
-                    target: activeEx.target || "chest",
+                    target: activeEx.target || inferPrimaryMuscleFromExerciseName(activeEx.name),
                     equipment: activeEx.equipment || "barbell",
                   });
                   setIsSwapDrawerOpen(true);
@@ -3098,7 +3184,10 @@ function SessionFlow() {
             {/* Direct Video Demonstration Link */}
             {activeEx.videoUrl && (
               <a
-                href={activeEx.videoUrl}
+                href={resolveExerciseVideoUrl(activeEx.name, {
+                  previousVideoUrl: activeEx.videoUrl,
+                  catalogue,
+                })}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
@@ -3165,22 +3254,29 @@ function SessionFlow() {
         onClose={() => setIsSwapDrawerOpen(false)}
         currentExercise={swapTargetExercise}
         onApplySubstitute={(candidate) => {
-          setExercises((prev) =>
-            prev.map((ex, idx) => {
+          setExercises((prev) => {
+            const nextList = prev.map((ex, idx) => {
               const matches = (swapTargetExercise?.id && ex.id === swapTargetExercise.id) || idx === currentExIndex;
               if (!matches) return ex;
-              const newVideoUrl = candidate.videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(candidate.name.replace(/°/g, '') + ' proper form')}`;
+              const newVideoUrl = resolveExerciseVideoUrl(candidate.name, {
+                explicitVideoUrl: candidate.videoUrl,
+                previousExerciseName: ex.name,
+                previousVideoUrl: ex.videoUrl,
+                catalogue,
+              });
               return {
                 ...ex,
                 name: candidate.name,
                 formCue: candidate.instructions?.[0] || ex.formCue,
                 equipment: candidate.equipment,
-                target: candidate.target,
+                target: candidate.target || inferPrimaryMuscleFromExerciseName(candidate.name),
                 videoUrl: newVideoUrl,
                 currentWeight: candidate.equipment.toLowerCase().includes("body") ? 0 : ex.currentWeight,
               };
-            })
-          );
+            });
+            persistDraft(nextList, currentExIndex);
+            return nextList;
+          });
           setIsSwapDrawerOpen(false);
         }}
       />

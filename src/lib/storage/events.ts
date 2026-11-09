@@ -28,7 +28,8 @@ export type AthleticEventType =
   | "WORKOUT_ABORTED"
   | "METRIC_RECORDED"
   | "READINESS_SUBMITTED"
-  | "GYM_SELECTED";
+  | "GYM_SELECTED"
+  | "PROGRAM_EVOLVED";
 
 export interface EventEnvelope<T = any> {
   id: string;                    // UUID for idempotency
@@ -115,6 +116,20 @@ export interface ReadinessSubmittedPayload {
   answer: "light" | "moderate" | "full" | string;
   reducedRecovery: boolean;
   date: string;
+}
+
+export interface ProgramEvolvedPayload {
+  propositionId: string;
+  tier: string;
+  decision: "ACCEPTED" | "DISMISSED";
+  targetExerciseName: string;
+  evolvedExerciseName?: string;
+  previousSets?: number;
+  evolvedSets?: number;
+  previousWeightKg?: number;
+  evolvedWeightKg?: number;
+  sensoryRagSummary?: string;
+  agentTurnCount?: number;
 }
 
 /**

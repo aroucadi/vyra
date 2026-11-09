@@ -69,6 +69,12 @@ import {
 } from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
+import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositionCard";
+import { DailyAiCoachAdapterCard } from "@/components/trainee/DailyAiCoachAdapterCard";
+import { DailyWorkoutAdaptationResult } from "@/lib/ai/daily-session-adapter";
+import { evaluateJustInTimeProposition, CoachProposition } from "@/lib/ai/coach-agent";
+import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
+import { createEventEnvelope } from "@/lib/storage/events";
 import { clsx } from "clsx";
 
 interface ActiveExercise {
@@ -615,6 +621,58 @@ function SessionFlow() {
 
   // Keep snapshot of un-adapted exercises for true Undo support
   const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ActiveExercise[] | null>(null);
+  const [activeDailyAdaptation, setActiveDailyAdaptation] = useState<DailyWorkoutAdaptationResult | null>(null);
+
+  const handleApplyDailyAdaptation = (result: DailyWorkoutAdaptationResult) => {
+    if (!originalExercisesSnapshot) {
+      setOriginalExercisesSnapshot(exercises);
+    }
+    setActiveDailyAdaptation(result);
+    setExercises((prev) => {
+      const baseList = originalExercisesSnapshot || prev;
+      const nextList = baseList
+        .map((ex) => {
+          const adapted = result.adaptedExercises.find((a) => a.id === ex.id);
+          if (!adapted) return ex;
+          if (adapted.skippedForToday) {
+            return { ...ex, skippedRemaining: true };
+          }
+          return {
+            ...ex,
+            name: adapted.name,
+            equipment: adapted.equipment || ex.equipment,
+            targetSets: adapted.targetSets,
+            restSeconds: adapted.restSeconds,
+            targetRir: adapted.targetRir,
+            currentWeight: adapted.currentWeight,
+            lastBestWeight: adapted.currentWeight,
+            formCue: adapted.formCue || ex.formCue,
+            loadGuidance: adapted.adaptationNotes.join(" · ") || ex.loadGuidance,
+            skippedRemaining: false,
+          };
+        })
+        .filter((ex) => !ex.skippedRemaining);
+      return nextList.length > 0 ? nextList : baseList;
+    });
+    soundService.playTargetHitFeedback(false);
+    getStorageAdapter()
+      .appendEvent(currentUser.id, `trainee_${currentUser.id}`, "PROGRAM_EVOLVED", {
+        propositionId: result.adaptationId,
+        tier: "DAILY_EPHEMERAL_ADAPTATION",
+        decision: "ACCEPTED",
+        targetExerciseName: targetDay?.label || "Daily Session",
+        sensoryRagSummary: result.coachHeadline,
+        agentTurnCount: result.agentSteps.length,
+      })
+      .catch(() => {});
+  };
+
+  const handleRestoreOriginalDailySession = () => {
+    if (originalExercisesSnapshot) {
+      setExercises(originalExercisesSnapshot);
+    }
+    setActiveDailyAdaptation(null);
+  };
 
   const handleAcceptRecalibration = () => {
     // Preserve snapshot prior to applying
@@ -693,7 +751,82 @@ function SessionFlow() {
   }, [catalogue, exerciseSearchQuery, selectedMuscleFilter]);
 
   const activeEx = exercises[currentExIndex];
-  const isExCompleteOrSkipped = Boolean(
+  const [handledJitPropositions, setHandledJitPropositions] = useState<Record<string, boolean>>({});
+
+  const activeJitProposition = React.useMemo<CoachProposition | null>(() => {
+    if (!activeEx || handledJitPropositions[activeEx.id] || activeEx.completedSets.length > 0) {
+      return null;
+    }
+    const historySessions = appStore.getSessions(currentUser.id);
+    return evaluateJustInTimeProposition({
+      traineeId: currentUser.id,
+      exerciseName: activeEx.name,
+      currentWeightKg: activeEx.currentWeight || activeEx.lastBestWeight || 20,
+      targetSets: activeEx.targetSets,
+      repLow: activeEx.repLow,
+      repHigh: activeEx.repHigh,
+      targetRir: activeEx.targetRir ?? 1,
+      equipment: activeEx.equipment || "dumbbell",
+      gymId: selectedGym?.id,
+      gymName: selectedGym?.name,
+      sessions: historySessions,
+      sleepHours,
+    });
+  }, [activeEx, handledJitPropositions, currentUser.id, selectedGym?.id, selectedGym?.name, sleepHours]);
+
+  const handleAcceptJitProposition = (prop: CoachProposition) => {
+    if (!activeEx) return;
+    setHandledJitPropositions((prev) => ({ ...prev, [activeEx.id]: true }));
+    setExercises((prev) => {
+      const copy = [...prev];
+      const target = copy[currentExIndex];
+      if (!target) return prev;
+      copy[currentExIndex] = {
+        ...target,
+        name: prop.mutation.newExerciseName || target.name,
+        equipment: prop.mutation.newEquipment || target.equipment,
+        targetSets: prop.mutation.newTargetSets ?? target.targetSets,
+        repLow: prop.mutation.newRepLow ?? target.repLow,
+        repHigh: prop.mutation.newRepHigh ?? target.repHigh,
+        targetRir: prop.mutation.newTargetRir ?? target.targetRir,
+        currentWeight: prop.mutation.newTargetWeightKg ?? target.currentWeight,
+        lastBestWeight: prop.mutation.newTargetWeightKg ?? target.lastBestWeight,
+        formCue: prop.mutation.newFormCue || target.formCue,
+        loadGuidance: prop.mutation.newLoadGuidance || prop.proposedFix,
+      };
+      saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
+      return copy;
+    });
+    soundService.playTargetHitFeedback(false);
+    getStorageAdapter()
+      .appendEvent(currentUser.id, `trainee_${currentUser.id}`, "PROGRAM_EVOLVED", {
+        propositionId: prop.id,
+        tier: prop.tier,
+        decision: "ACCEPTED",
+        targetExerciseName: prop.exerciseName,
+        evolvedExerciseName: prop.mutation.newExerciseName || prop.exerciseName,
+        evolvedSets: prop.mutation.newTargetSets,
+        evolvedWeightKg: prop.mutation.newTargetWeightKg,
+        sensoryRagSummary: prop.sensoryRagContext,
+        agentTurnCount: prop.agentTrace?.iterationsExecuted || 0,
+      })
+      .catch(() => {});
+  };
+
+  const handleDismissJitProposition = (prop: CoachProposition) => {
+    if (!activeEx) return;
+    setHandledJitPropositions((prev) => ({ ...prev, [activeEx.id]: true }));
+    getStorageAdapter()
+      .appendEvent(currentUser.id, `trainee_${currentUser.id}`, "PROGRAM_EVOLVED", {
+        propositionId: prop.id,
+        tier: prop.tier,
+        decision: "DISMISSED",
+        targetExerciseName: prop.exerciseName,
+        agentTurnCount: prop.agentTrace?.iterationsExecuted || 0,
+      })
+      .catch(() => {});
+  };
+    const isExCompleteOrSkipped = Boolean(
     activeEx && (activeEx.completedSets.length >= activeEx.targetSets || activeEx.skippedRemaining)
   );
 
@@ -1188,6 +1321,7 @@ function SessionFlow() {
       });
     }
     appStore.saveSession(completedSession);
+    sensoryMemoryStore.ingestFromSessionHistory([completedSession]);
     setMode("summary");
   };
 
@@ -1335,6 +1469,29 @@ function SessionFlow() {
             />
           )}
         </section>
+
+        {/* Real-Time AI Personal Trainer Daily Session Adaptation & Gym Equipment Recognition */}
+        <DailyAiCoachAdapterCard
+          traineeId={currentUser.id}
+          gymId={selectedGym?.id}
+          gymName={selectedGym?.name}
+          exercises={(originalExercisesSnapshot || exercises).map((e) => ({
+            id: e.id,
+            name: e.name,
+            targetSets: e.targetSets,
+            repLow: e.repLow,
+            repHigh: e.repHigh,
+            targetRir: e.targetRir,
+            restSeconds: e.restSeconds,
+            currentWeight: e.currentWeight || e.lastBestWeight || 20,
+            equipment: e.equipment,
+            target: e.target,
+            formCue: e.formCue,
+          }))}
+          onApplyDailyAdaptation={handleApplyDailyAdaptation}
+          onRestoreOriginalSession={handleRestoreOriginalDailySession}
+          activeAdaptation={activeDailyAdaptation}
+        />
 
         {/* Clean Exercise List (with 1-tap video & interactive preview) */}
         <div className="bg-[#111622] border border-[#1C2436] rounded-2xl p-4 divide-y divide-[#1C2436]">
@@ -2368,6 +2525,15 @@ function SessionFlow() {
               </span>
             </div>
           </div>
+        )}
+
+        {/* Self-Evolving Program Just-In-Time (JIT) Coach Proposition Card */}
+        {activeJitProposition && (
+          <JitCoachPropositionCard
+            proposition={activeJitProposition}
+            onAccept={handleAcceptJitProposition}
+            onDismiss={handleDismissJitProposition}
+          />
         )}
 
         {/* Exercise Header + Tips Trigger */}

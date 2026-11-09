@@ -3,58 +3,68 @@
 import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 
-export interface AnatomicalTensionSpotlightProps {
-  primaryMuscle: string;
+export type MuscleRegion =
+  | "chest"
+  | "shoulders"
+  | "lats"
+  | "quads"
+  | "hamstrings"
+  | "biceps"
+  | "triceps"
+  | "calves"
+  | "glutes"
+  | "core";
+
+interface AnatomicalTensionSpotlightProps {
+  primaryMuscle?: string;
   secondaryMuscles?: string[];
   className?: string;
   showToggle?: boolean;
+  accentColor?: "amber" | "sky";
 }
 
-type MuscleRegion =
-  | "chest"
-  | "shoulders"
-  | "biceps"
-  | "triceps"
-  | "core"
-  | "lats"
-  | "glutes"
-  | "quads"
-  | "hamstrings"
-  | "calves";
-
-function normalizeMuscleRegion(rawName: string): MuscleRegion | null {
-  if (!rawName) return null;
-  const s = rawName.toLowerCase();
-  if (s.includes("pec") || s.includes("chest") || s.includes("dip")) return "chest";
-  if (s.includes("delt") || s.includes("shoulder")) return "shoulders";
-  if (s.includes("tricep")) return "triceps";
-  if (s.includes("bicep")) return "biceps";
-  if (s.includes("lat") || s.includes("back") || s.includes("trap") || s.includes("rhomboid")) return "lats";
-  if (s.includes("abs") || s.includes("abdomin") || s.includes("core") || s.includes("waist") || s.includes("oblique")) return "core";
-  if (s.includes("glute") || s.includes("hip")) return "glutes";
-  if (s.includes("quad") || s.includes("leg extension")) return "quads";
-  if (s.includes("hamstring") || s.includes("leg curl")) return "hamstrings";
-  if (s.includes("calf") || s.includes("calves") || s.includes("soleus") || s.includes("gastrocnemius")) return "calves";
+// Normalized mapping from RAG/MuscleWiki targets to vector silhouette regions
+function mapToRegion(muscleName?: string): MuscleRegion | null {
+  if (!muscleName) return null;
+  const m = muscleName.toLowerCase();
+  if (m.includes("chest") || m.includes("pec")) return "chest";
+  if (m.includes("delt") || m.includes("shoulder")) return "shoulders";
+  if (m.includes("lat") || m.includes("back") || m.includes("trap") || m.includes("rhomboid") || m.includes("spine"))
+    return "lats";
+  if (m.includes("quad") || m.includes("thigh")) return "quads";
+  if (m.includes("hamstring")) return "hamstrings";
+  if (m.includes("bicep") || m.includes("brachii")) return "biceps";
+  if (m.includes("tricep")) return "triceps";
+  if (m.includes("calf") || m.includes("gastrocnemius") || m.includes("soleus")) return "calves";
+  if (m.includes("glute") || m.includes("hip")) return "glutes";
+  if (m.includes("abs") || m.includes("abdom") || m.includes("core") || m.includes("oblique")) return "core";
   return null;
 }
-
-const POSTERIOR_REGIONS: MuscleRegion[] = ["lats", "triceps", "glutes", "hamstrings", "calves"];
 
 export function AnatomicalTensionSpotlight({
   primaryMuscle,
   secondaryMuscles = [],
   className,
   showToggle = true,
+  accentColor = "amber",
 }: AnatomicalTensionSpotlightProps) {
-  const primaryRegion = normalizeMuscleRegion(primaryMuscle);
-  const secondaryRegions = secondaryMuscles
-    .map(normalizeMuscleRegion)
-    .filter((r): r is MuscleRegion => r !== null && r !== primaryRegion);
+  const isAmber = accentColor === "amber";
+  const primaryFill = isAmber ? "#F59E0B" : "#38BDF8";
+  const primaryStroke = isAmber ? "#FBBF24" : "#7DD3FC";
+  const primaryGlow = isAmber ? "rgba(245, 158, 11, 0.85)" : "rgba(56, 189, 248, 0.85)";
 
-  const isPosteriorDominant = primaryRegion ? POSTERIOR_REGIONS.includes(primaryRegion) : false;
+  const primaryRegion = mapToRegion(primaryMuscle);
+  const secondaryRegions = secondaryMuscles
+    .map(mapToRegion)
+    .filter((r): r is MuscleRegion => Boolean(r && r !== primaryRegion));
+
+  // Determine intelligent default anatomical view
+  const isPosteriorDominant = Boolean(
+    primaryRegion && ["lats", "hamstrings", "glutes", "triceps"].includes(primaryRegion)
+  );
+
   const [view, setView] = useState<"front" | "back">(isPosteriorDominant ? "back" : "front");
 
-  // Keep view synchronized with active exercise target
   useEffect(() => {
     setView(isPosteriorDominant ? "back" : "front");
   }, [primaryMuscle, isPosteriorDominant]);
@@ -68,10 +78,10 @@ export function AnatomicalTensionSpotlight({
   const getPathStyle = (state: "primary" | "secondary" | "inactive") => {
     if (state === "primary") {
       return {
-        fill: "#10B981",
-        stroke: "#34D399",
+        fill: primaryFill,
+        stroke: primaryStroke,
         strokeWidth: "1.5",
-        filter: "drop-shadow(0px 0px 5px rgba(16, 185, 129, 0.85))",
+        filter: `drop-shadow(0px 0px 5px ${primaryGlow})`,
       };
     }
     if (state === "secondary") {
@@ -83,52 +93,54 @@ export function AnatomicalTensionSpotlight({
       };
     }
     return {
-      fill: "#0F172A",
-      stroke: "#334155",
+      fill: "#182030",
+      stroke: "#1C2436",
       strokeWidth: "1",
-      opacity: 0.65,
+      opacity: 0.7,
     };
   };
 
   return (
     <div
       className={clsx(
-        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 shadow-inner select-none",
+        "relative flex flex-col items-center justify-between p-2 rounded-2xl bg-[#090C11] border border-[#1C2436] shadow-inner select-none font-body overflow-hidden",
         className
       )}
       role="img"
       aria-label={`Anatomical tension spotlight showing ${primaryMuscle || "target muscle"}`}
     >
-      {/* 1. Anterior / Posterior Micro-Segmented Selector */}
+      {/* 1. Anterior / Posterior Micro-Segmented Selector (Ultra-compact Front / Back) */}
       {showToggle && (
-        <div className="flex items-center rounded-full bg-slate-900/90 p-0.5 border border-slate-800/80">
+        <div className="flex items-center rounded-full bg-[#111622] p-0.5 border border-[#1C2436] max-w-full">
           <button
             type="button"
             onClick={() => setView("front")}
+            aria-label="Anterior"
             className={clsx(
               "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
               view === "front"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                ? "bg-amber-400 text-slate-950 font-bold shadow-xs"
                 : "text-slate-400 hover:text-white"
             )}
             title="View anterior (front) anatomy"
           >
-            <span className={clsx("w-1 h-1 rounded-full", view === "front" ? "bg-emerald-400" : "bg-transparent")} />
-            <span>Anterior</span>
+            <span>Front</span>
+            <span className="sr-only">Anterior</span>
           </button>
           <button
             type="button"
             onClick={() => setView("back")}
+            aria-label="Posterior"
             className={clsx(
               "px-2 py-0.5 text-[9px] font-mono font-semibold rounded-full transition cursor-pointer flex items-center gap-1",
               view === "back"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                ? "bg-amber-400 text-slate-950 font-bold shadow-xs"
                 : "text-slate-400 hover:text-white"
             )}
             title="View posterior (back) anatomy"
           >
-            <span className={clsx("w-1 h-1 rounded-full", view === "back" ? "bg-emerald-400" : "bg-transparent")} />
-            <span>Posterior</span>
+            <span>Back</span>
+            <span className="sr-only">Posterior</span>
           </button>
         </div>
       )}
@@ -138,16 +150,9 @@ export function AnatomicalTensionSpotlight({
         viewBox="0 0 100 130"
         className="w-20 h-24 my-1 transition-all duration-300 drop-shadow-sm"
       >
-        <defs>
-          <linearGradient id="meshGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.08" />
-          </linearGradient>
-        </defs>
-
         {/* Head & Neck (Neutral contour) */}
-        <circle cx="50" cy="11" r="7" fill="#0F172A" stroke="#334155" strokeWidth="1" />
-        <rect x="47" y="18" width="6" height="5" rx="1" fill="#0F172A" stroke="#334155" strokeWidth="1" />
+        <circle cx="50" cy="11" r="7" fill="#111622" stroke="#1C2436" strokeWidth="1" />
+        <rect x="47" y="18" width="6" height="5" rx="1" fill="#111622" stroke="#1C2436" strokeWidth="1" />
 
         {/* --- FRONT VIEW (ANTERIOR) --- */}
         {view === "front" && (
@@ -185,14 +190,14 @@ export function AnatomicalTensionSpotlight({
             {/* Forearms (Neutral Anchor) */}
             <path
               d="M 18 57 C 16 64 16 72 19 75 C 21 74 23 66 22 58 Z"
-              fill="#0F172A"
-              stroke="#1E293B"
+              fill="#111622"
+              stroke="#1C2436"
               strokeWidth="1"
             />
             <path
               d="M 82 57 C 84 64 84 72 81 75 C 79 74 77 66 78 58 Z"
-              fill="#0F172A"
-              stroke="#1E293B"
+              fill="#111622"
+              stroke="#1C2436"
               strokeWidth="1"
             />
 
@@ -209,8 +214,8 @@ export function AnatomicalTensionSpotlight({
             {/* Pelvis / Hips (Neutral) */}
             <path
               d="M 39 63 H 61 L 57 73 H 43 Z"
-              fill="#0F172A"
-              stroke="#1E293B"
+              fill="#111622"
+              stroke="#1C2436"
               strokeWidth="1"
             />
 
@@ -276,14 +281,14 @@ export function AnatomicalTensionSpotlight({
             {/* Forearms (Neutral) */}
             <path
               d="M 18 57 C 16 64 16 72 19 75 C 21 74 23 66 22 58 Z"
-              fill="#0F172A"
-              stroke="#1E293B"
+              fill="#111622"
+              stroke="#1C2436"
               strokeWidth="1"
             />
             <path
               d="M 82 57 C 84 64 84 72 81 75 C 79 74 77 66 78 58 Z"
-              fill="#0F172A"
-              stroke="#1E293B"
+              fill="#111622"
+              stroke="#1C2436"
               strokeWidth="1"
             />
 
@@ -321,14 +326,24 @@ export function AnatomicalTensionSpotlight({
       </svg>
 
       {/* 3. Tension Glow Legend */}
-      <div className="flex items-center justify-center gap-2.5 pt-1.5 border-t border-slate-900/90 w-full text-[9px] font-mono">
-        <span className="flex items-center gap-1 text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#10B981]" />
+      <div className="flex items-center justify-center gap-2 pt-1 border-t border-[#1C2436] w-full text-[9px] font-mono">
+        <span
+          className={clsx(
+            "flex items-center gap-1 font-semibold",
+            isAmber ? "text-amber-400" : "text-sky-400"
+          )}
+        >
+          <span
+            className={clsx(
+              "w-1.5 h-1.5 rounded-full",
+              isAmber ? "bg-amber-400 shadow-[0_0_4px_#F59E0B]" : "bg-sky-400 shadow-[0_0_4px_#38BDF8]"
+            )}
+          />
           Target
         </span>
         {secondaryRegions.length > 0 && (
-          <span className="flex items-center gap-1 text-cyan-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_3px_#06B6D4]" />
+          <span className="flex items-center gap-1 text-sky-400 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_3px_#38BDF8]" />
             Synergist
           </span>
         )}

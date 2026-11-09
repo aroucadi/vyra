@@ -1,0 +1,44 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--build-arg', 'COMMIT_SHA=${_COMMIT_SHA}',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:canary',
+      '.'
+    ]
+
+  # Push the images to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:canary']
+
+  # Deploy container image to Cloud Run (me-central1: Doha, Qatar Canary - Alaa Dedicated)
+  # STRICT ENFORCEMENT: us-central1 (Public Production) is completely excluded from this pipeline.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: 
+      - 'run'
+      - 'deploy'
+      - 'vyra-app'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
+      - '--region'
+      - 'me-central1'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'COMMIT_SHA=${_COMMIT_SHA},RELEASE_CHANNEL=alaa_canary,DEPLOY_REGION=me-central1'
+
+substitutions:
+  _COMMIT_SHA: 'latest'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:${_COMMIT_SHA}'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:canary'

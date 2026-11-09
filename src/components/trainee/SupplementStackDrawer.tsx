@@ -46,26 +46,34 @@ export function SupplementStackDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-w-md mx-auto">
-        <SheetHeader>
-          <div className="flex items-center gap-2 text-cyan-400">
-            <Pill className="w-4 h-4" />
-            <SheetTitle>Daily Supplement Protocols</SheetTitle>
+      <SheetContent
+        side="bottom"
+        className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 space-y-5 shadow-2xl font-body max-h-[85vh] overflow-y-auto"
+      >
+        <SheetHeader className="text-left space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              <Pill className="w-3 h-3 text-amber-400" />
+              <span>BIO-NUTRITION</span>
+            </span>
           </div>
-          <SheetDescription>
-            Targeted micronutrient timing for peak performance and recovery.
+          <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight pt-1">
+            Daily Supplement Protocols
+          </SheetTitle>
+          <SheetDescription className="text-xs text-slate-400 font-body">
+            Targeted micronutrient timing for lean mass gain, cellular energy, and deep recovery.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 pt-2 pb-6">
+        <div className="space-y-6 pt-2 pb-4">
           
           {/* Group 1: Morning Micronutrient Stack */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">
-                Morning Stack (With Meal)
+              <span className="text-xs font-display font-bold uppercase tracking-wider text-amber-400">
+                Morning Stack (With Breakfast)
               </span>
-              <span className="text-[11px] font-mono text-slate-500">08:00</span>
+              <span className="text-[11px] font-mono text-slate-400">08:00</span>
             </div>
             
             <div className="space-y-2">
@@ -95,12 +103,12 @@ export function SupplementStackDrawer({
           </div>
 
           {/* Group 2: Workout Nutrition Stack */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">
+              <span className="text-xs font-display font-bold uppercase tracking-wider text-sky-400">
                 Workout Performance Stack
               </span>
-              <span className="text-[11px] font-mono text-slate-500">12:15</span>
+              <span className="text-[11px] font-mono text-slate-400">12:15</span>
             </div>
 
             <div className="space-y-2">
@@ -123,12 +131,12 @@ export function SupplementStackDrawer({
           </div>
 
           {/* Group 3: Evening Wind-Down Stack */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">
+              <span className="text-xs font-display font-bold uppercase tracking-wider text-sky-400">
                 Evening Wind-Down Stack
               </span>
-              <span className="text-[11px] font-mono text-slate-500">21:30</span>
+              <span className="text-[11px] font-mono text-slate-400">21:30</span>
             </div>
 
             <div className="space-y-2">

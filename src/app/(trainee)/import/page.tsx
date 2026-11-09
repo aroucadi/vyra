@@ -71,7 +71,7 @@ export default function ImportWorkoutsPage() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <span className="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-semibold block">
+          <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-semibold block">
             Phase 4B · Data Ownership
           </span>
           <h1 className="text-xl font-bold text-white tracking-tight">Import Workout History</h1>
@@ -79,8 +79,8 @@ export default function ImportWorkoutsPage() {
       </header>
 
       {importStatus === "committed" && commitSummary ? (
-        <section className="bg-slate-900/60 border border-emerald-500/30 rounded-xl p-6 space-y-4 text-center">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+        <section className="bg-slate-900/60 border border-amber-500/30 rounded-xl p-6 space-y-4 text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
@@ -97,14 +97,14 @@ export default function ImportWorkoutsPage() {
             </div>
             <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
               <span className="text-[11px] text-slate-500 block">PRs Detected</span>
-              <span className="text-lg font-bold text-emerald-400 tabular-nums">+{commitSummary.prsDetected}</span>
+              <span className="text-lg font-bold text-amber-400 tabular-nums">+{commitSummary.prsDetected}</span>
             </div>
           </div>
 
           <div className="pt-2">
             <Link
               href="/today"
-              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm transition-all"
             >
               <Dumbbell className="w-4 h-4" />
               View Today&apos;s Protocol
@@ -177,7 +177,7 @@ export default function ImportWorkoutsPage() {
                 value={pasteText}
                 onChange={(e) => handlePasteChange(e.target.value)}
                 placeholder="Bench Press 80kg x 8, 80kg x 8&#10;Incline DB Press 30kg x 10, 32kg x 8&#10;Tricep Pushdown 25kg x 12"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 font-mono resize-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400 font-mono resize-none"
               />
             </div>
           )}
@@ -188,7 +188,7 @@ export default function ImportWorkoutsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-200">Parsed Preview</span>
-                  <span className="text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+                  <span className="text-[10px] font-mono uppercase bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">
                     {parseResult.detectedFormat}
                   </span>
                 </div>
@@ -238,7 +238,7 @@ export default function ImportWorkoutsPage() {
               {/* Single Primary CTA */}
               <button
                 onClick={handleCommit}
-                className="w-full py-3 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm transition-all flex items-center justify-center gap-2"
               >
                 <History className="w-4 h-4" />
                 Commit {parseResult.totalWorkouts} Workouts to History
@@ -248,7 +248,7 @@ export default function ImportWorkoutsPage() {
 
           {/* Privacy & Storage Guarantee */}
           <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-800/50 flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <p className="text-[11px] text-slate-400 leading-relaxed">
               Parsed 100% locally on your phone. No data leaves your device without an explicit cloud sync.
             </p>

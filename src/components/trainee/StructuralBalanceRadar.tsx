@@ -34,7 +34,7 @@ export function StructuralBalanceRadar({
   const N = results.length;
   if (N < 3) {
     return (
-      <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center text-xs text-slate-400">
+      <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl text-center text-xs text-slate-400 font-body">
         At least 3 benchmark roles required for radar visualization.
       </div>
     );
@@ -75,12 +75,15 @@ export function StructuralBalanceRadar({
 
   const actualPoints = actualPointsData.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
-  const statusColors: Record<string, { fill: string; stroke: string; text: string; bg: string }> = {
+  const statusColors: Record<
+    string,
+    { fill: string; stroke: string; text: string; bg: string }
+  > = {
     [BALANCE_STATUSES.BALANCED]: {
-      fill: "#10B981",
-      stroke: "#059669",
-      text: "text-emerald-400",
-      bg: "bg-emerald-500/15 border-emerald-500/30",
+      fill: "#38BDF8",
+      stroke: "#0284C7",
+      text: "text-sky-400",
+      bg: "bg-sky-500/15 border-sky-500/30",
     },
     [BALANCE_STATUSES.BORDERLINE]: {
       fill: "#F59E0B",
@@ -98,28 +101,28 @@ export function StructuralBalanceRadar({
       fill: "#64748B",
       stroke: "#475569",
       text: "text-slate-400",
-      bg: "bg-slate-800 border-slate-700",
+      bg: "bg-[#182030] border-[#1C2436]",
     },
   };
 
   return (
-    <div className={clsx("p-4 bg-slate-900/90 border border-slate-800 rounded-3xl space-y-4", className)}>
+    <div className={clsx("p-4 bg-[#111622] border border-[#1C2436] rounded-3xl space-y-4 font-body shadow-sm", className)}>
       {/* 1. Radar Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
             Biomechanical Symmetry
           </span>
-          <h3 className="text-sm font-bold text-white tracking-tight">Postural Balance Radar</h3>
+          <h3 className="text-base font-editorial font-bold text-white tracking-tight mt-1">Postural Balance Radar</h3>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-mono">
-          <span className="flex items-center gap-1 text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="flex items-center gap-1 text-amber-400 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             Actual
           </span>
           <span className="flex items-center gap-1 text-slate-500">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-            100% Benchmark
+            Benchmark
           </span>
         </div>
       </div>
@@ -135,7 +138,7 @@ export function StructuralBalanceRadar({
               cy={cy}
               r={maxR * factor}
               fill="none"
-              stroke="#1e293b"
+              stroke="#1C2436"
               strokeWidth="1"
               strokeDasharray={factor === 1.0 ? "none" : "2 3"}
             />
@@ -153,18 +156,18 @@ export function StructuralBalanceRadar({
                 y1={cy}
                 x2={x}
                 y2={y}
-                stroke="#1e293b"
+                stroke="#1C2436"
                 strokeWidth="1"
               />
             );
           })}
 
-          {/* Benchmark 100% Target Envelope (dashed slate/cyan) */}
+          {/* Benchmark 100% Target Envelope (dashed slate/sky) */}
           <polygon
             points={targetPoints}
-            fill="#06b6d4"
+            fill="#38BDF8"
             fillOpacity="0.04"
-            stroke="#0891b2"
+            stroke="#0284C7"
             strokeWidth="1.2"
             strokeDasharray="3 3"
           />
@@ -172,9 +175,9 @@ export function StructuralBalanceRadar({
           {/* Actual Lifter Polygon */}
           <polygon
             points={actualPoints}
-            fill="#10b981"
+            fill="#F59E0B"
             fillOpacity="0.22"
-            stroke="#10b981"
+            stroke="#F59E0B"
             strokeWidth="2"
           />
 
@@ -194,7 +197,7 @@ export function StructuralBalanceRadar({
                   cy={p.y}
                   r={isSelected ? 6 : 4}
                   fill={color.fill}
-                  stroke="#0b0f17"
+                  stroke="#090C11"
                   strokeWidth="2"
                   className="transition-all duration-150"
                 />
@@ -207,7 +210,7 @@ export function StructuralBalanceRadar({
                   dominantBaseline="central"
                   className={clsx(
                     "text-[9px] font-mono transition-colors",
-                    isSelected ? "fill-emerald-400 font-bold" : "fill-slate-400"
+                    isSelected ? "fill-amber-400 font-bold" : "fill-slate-400"
                   )}
                 >
                   {labels[p.roleId] || p.roleId}
@@ -218,15 +221,15 @@ export function StructuralBalanceRadar({
         </svg>
       </div>
 
-      {/* 3. Selected Role Detail (Obeying 3-element vertical ceiling) */}
+      {/* 3. Selected Role Detail */}
       {activeResult && (
-        <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between text-xs animate-in fade-in duration-150">
+        <div className="p-3.5 bg-[#090C11] border border-[#1C2436] rounded-2xl flex items-center justify-between text-xs animate-in fade-in duration-150 font-body">
           <div className="space-y-0.5">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">Selected Role</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Selected Role</span>
             <div className="font-bold text-white tracking-tight">
               {labels[activeResult.roleId] || activeResult.roleId}
             </div>
-            <div className="text-[11px] font-mono text-slate-400 tabular">
+            <div className="text-[11px] font-mono text-slate-400 tabular-nums">
               {activeResult.current ? (
                 <span>
                   Current: <strong className="text-white">{activeResult.current.w}kg</strong> ×{" "}
@@ -248,7 +251,7 @@ export function StructuralBalanceRadar({
             >
               {activeResult.status.toUpperCase()}
             </span>
-            <div className="text-[11px] font-mono tabular text-slate-300">
+            <div className="text-[11px] font-mono tabular-nums text-slate-300">
               {activeResult.actualPct != null ? `${Math.round(activeResult.actualPct)}%` : "—"}{" "}
               <span className="text-slate-500">/ {activeResult.targetPct}%</span>
             </div>

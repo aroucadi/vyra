@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { clsx } from "clsx";
@@ -37,8 +37,8 @@ export function PlanTimeline({
               {renderHero ? (
                 renderHero(m)
               ) : (
-                <div className="p-5 rounded-2xl bg-slate-900 border-2 border-emerald-500/30 space-y-2">
-                  <div className="flex justify-between text-xs text-emerald-400 font-mono">
+                <div className="p-5 rounded-2xl bg-slate-900 border-2 border-amber-500/30 space-y-2">
+                  <div className="flex justify-between text-xs text-amber-400 font-mono">
                     <span>NOW</span>
                     <span>{m.time}</span>
                   </div>
@@ -59,7 +59,7 @@ export function PlanTimeline({
               className="flex items-center justify-between p-3 bg-slate-900/30 border border-slate-800/40 rounded-xl text-xs text-slate-400 cursor-pointer hover:border-slate-800 transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-[10px] text-emerald-400 flex-shrink-0">
+                <span className="w-4 h-4 rounded-full bg-amber-950 border border-amber-700/60 flex items-center justify-center text-[10px] text-amber-400 flex-shrink-0">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </span>
                 <span className="font-medium text-slate-300 truncate">{m.title}</span>
@@ -107,7 +107,7 @@ export function PlanWeekStrip({
   className?: string;
 }) {
   return (
-    <div className={clsx("flex items-center justify-between gap-1.5 p-2 bg-slate-900/80 border border-slate-800/80 rounded-2xl", className)}>
+    <div className={clsx("flex items-center justify-between gap-1.5 p-2 bg-[#111622] border border-[#1C2436] rounded-2xl", className)}>
       {days.map((d, idx) => {
         const isSelected = selectedDayIndex === idx;
         const isToday = todayDayIndex === idx;
@@ -118,23 +118,23 @@ export function PlanWeekStrip({
             type="button"
             onClick={() => onSelectDay(idx)}
             className={clsx(
-              "flex-1 py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all focus-visible:ring-1 focus-visible:ring-emerald-400",
+              "flex-1 py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all focus-visible:ring-1 focus-visible:ring-amber-400 cursor-pointer",
               isSelected
-                ? "bg-emerald-500 text-slate-950 font-bold shadow-md"
-                : "hover:bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                ? "bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20"
+                : "hover:bg-[#182030] text-slate-400 hover:text-slate-200"
             )}
           >
-            <span className={clsx("text-[10px] uppercase font-mono tracking-tighter", isSelected ? "text-slate-950" : "text-slate-500")}>
+            <span className={clsx("text-[10px] uppercase font-mono tracking-tighter", isSelected ? "text-slate-950 font-bold" : "text-slate-500")}>
               {d.dayName}
             </span>
-            <span className={clsx("text-xs font-bold tabular", isSelected ? "text-slate-950" : "text-white")}>
+            <span className={clsx("text-xs font-bold tabular-nums font-mono", isSelected ? "text-slate-950" : "text-white")}>
               {d.dayNumber}
             </span>
             {isToday && (
               <span
                 className={clsx(
                   "w-1 h-1 rounded-full",
-                  isSelected ? "bg-slate-950" : "bg-emerald-400"
+                  isSelected ? "bg-slate-950" : "bg-amber-400"
                 )}
               />
             )}

@@ -42,9 +42,9 @@ export function OverloadPrescriptionCard({
   const statusConfig = {
     up: {
       badge: "Overload Advance",
-      badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/30",
       icon: TrendingUp,
-      accentText: "text-emerald-400",
+      accentText: "text-amber-400",
       deltaPrefix: "+",
     },
     deload: {
@@ -56,21 +56,21 @@ export function OverloadPrescriptionCard({
     },
     hold: {
       badge: "Target Hold",
-      badgeClass: "bg-slate-800 text-slate-300 border-slate-700",
+      badgeClass: "bg-[#182030] text-slate-300 border-[#1C2436]",
       icon: Minus,
       accentText: "text-slate-300",
       deltaPrefix: "",
     },
     first: {
       badge: "Baseline Established",
-      badgeClass: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+      badgeClass: "bg-sky-500/15 text-sky-400 border-sky-500/30",
       icon: Zap,
-      accentText: "text-cyan-400",
+      accentText: "text-sky-400",
       deltaPrefix: "",
     },
     off: {
       badge: "Manual Targets",
-      badgeClass: "bg-slate-800 text-slate-400 border-slate-700",
+      badgeClass: "bg-[#182030] text-slate-400 border-[#1C2436]",
       icon: Minus,
       accentText: "text-slate-400",
       deltaPrefix: "",
@@ -81,11 +81,11 @@ export function OverloadPrescriptionCard({
 
   if (!isEntitled) {
     return (
-      <div className="p-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-3 relative overflow-hidden">
+      <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-3 relative overflow-hidden font-body shadow-sm">
         {/* Subtle blur overlay for Free tier */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-300 truncate">{exerciseName}</span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold flex items-center gap-1">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold flex items-center gap-1">
             <Lock className="w-2.5 h-2.5" />
             <span>Vyra Pro</span>
           </span>
@@ -95,7 +95,7 @@ export function OverloadPrescriptionCard({
         </p>
         <Link
           href="/pricing"
-          className="inline-flex items-center justify-center w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition"
+          className="inline-flex items-center justify-center w-full py-2.5 px-3 rounded-xl bg-[#182030] hover:bg-[#222C42] border border-[#1C2436] text-amber-300 text-xs font-display uppercase tracking-wider font-bold transition"
         >
           Unlock Automated Overload ($19/mo) →
         </Link>
@@ -104,7 +104,7 @@ export function OverloadPrescriptionCard({
   }
 
   return (
-    <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
+    <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-3 font-body shadow-sm">
       {/* 1. Element 1: Eyebrow & Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 truncate">
@@ -126,9 +126,9 @@ export function OverloadPrescriptionCard({
       <div className="flex items-baseline justify-between pt-1 pb-0.5">
         <div className="flex items-baseline gap-2">
           {weight != null && (
-            <span className="text-2xl font-black text-white tracking-tight tabular-nums font-mono">
+            <span className="text-2xl font-black text-white tracking-tight tabular-nums font-display">
               {weight}
-              <span className="text-xs font-medium text-slate-400 ml-1">{unit}</span>
+              <span className="text-xs font-medium text-slate-400 ml-1 font-mono">{unit}</span>
             </span>
           )}
           {reps != null && (
@@ -142,7 +142,7 @@ export function OverloadPrescriptionCard({
           <span
             className={clsx(
               "text-xs font-mono font-bold tabular-nums",
-              weightDelta > 0 ? "text-emerald-400" : "text-rose-400"
+              weightDelta > 0 ? "text-amber-400" : "text-rose-400"
             )}
           >
             {statusConfig.deltaPrefix}
@@ -152,7 +152,7 @@ export function OverloadPrescriptionCard({
       </div>
 
       {/* 3. Element 3: Supporting Action / Rationale */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-3 text-xs">
+      <div className="pt-2 border-t border-[#1C2436] flex items-center justify-between gap-3 text-xs">
         <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
           {formattedWhy}
         </p>
@@ -162,10 +162,10 @@ export function OverloadPrescriptionCard({
             onClick={onApply}
             disabled={isApplied}
             className={clsx(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 transition",
+              "px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 transition font-body cursor-pointer",
               isApplied
-                ? "bg-slate-800 text-slate-500 cursor-default"
-                : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 cursor-pointer"
+                ? "bg-[#182030] text-slate-500 cursor-default border border-[#1C2436]"
+                : "bg-amber-400 hover:bg-amber-300 text-slate-950 font-display uppercase tracking-wider font-bold shadow-sm"
             )}
           >
             {isApplied ? "Applied ✓" : "Apply"}

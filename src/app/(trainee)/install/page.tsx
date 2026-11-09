@@ -42,7 +42,7 @@ export default function InstallPage() {
       
       {/* Header */}
       <header className="text-center space-y-2">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 font-bold text-2xl tracking-tighter">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 font-bold text-2xl tracking-tighter">
           VYRA
         </div>
         <h1 className="text-xl font-bold text-white tracking-tight">Install VYRA on iPhone</h1>
@@ -53,8 +53,8 @@ export default function InstallPage() {
 
       {/* State 1: Already installed in standalone mode */}
       {isStandalone ? (
-        <div className="p-6 bg-slate-900 border border-emerald-500/40 rounded-2xl text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+        <div className="p-6 bg-slate-900 border border-amber-500/40 rounded-2xl text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
             <CheckCircle className="w-6 h-6 stroke-[2.5]" />
           </div>
           <div>
@@ -65,7 +65,7 @@ export default function InstallPage() {
           </div>
           <Link
             href="/today"
-            className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2"
           >
             <span>Open Today&apos;s Protocol</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -89,25 +89,25 @@ export default function InstallPage() {
           )}
 
           {/* iOS Safari Recommendation banner */}
-          <div className="p-4 bg-slate-900 border border-emerald-500/30 rounded-2xl text-xs space-y-1 text-slate-300">
+          <div className="p-4 bg-slate-900 border border-amber-500/30 rounded-2xl text-xs space-y-1 text-slate-300">
             <div className="font-bold text-white flex items-center gap-1.5">
               <span>Use Safari for best experience</span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Apple restricts PWA standalone installation on iOS primarily to Safari. If you are in Chrome or another browser, copy this URL and open it in Safari: <span className="font-mono text-emerald-400">vyra.fit</span>
+              Apple restricts PWA standalone installation on iOS primarily to Safari. If you are in Chrome or another browser, copy this URL and open it in Safari: <span className="font-mono text-amber-400">vyra.fit</span>
             </p>
           </div>
 
           {/* 3 Step Cards */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
             <div className="flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+              <div className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
                 1
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-white">Tap the Share Button</h3>
-                  <Share className="w-4 h-4 text-emerald-400" />
+                  <Share className="w-4 h-4 text-amber-400" />
                 </div>
                 <p className="text-xs text-slate-400">
                   In Safari, tap the Share icon (square with arrow pointing up) in the bottom navigation bar.
@@ -116,7 +116,7 @@ export default function InstallPage() {
             </div>
 
             <div className="border-t border-slate-800/80 pt-4 flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+              <div className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
                 2
               </div>
               <div className="space-y-1">
@@ -131,7 +131,7 @@ export default function InstallPage() {
             </div>
 
             <div className="border-t border-slate-800/80 pt-4 flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+              <div className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
                 3
               </div>
               <div className="space-y-1">

@@ -36,13 +36,18 @@ export function SessionAdjustmentSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-6 max-h-[85vh] overflow-y-auto">
+      <SheetContent side="bottom" className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 max-h-[85vh] overflow-y-auto font-body text-slate-100 shadow-2xl">
         <SheetHeader className="text-left space-y-1 mb-4">
           <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
-            <SheetTitle className="text-base font-bold text-white">Adjust Today&apos;s Session</SheetTitle>
+            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              <SlidersHorizontal className="w-3 h-3 text-amber-400" />
+              <span>COACH ADJUSTMENT</span>
+            </span>
           </div>
-          <SheetDescription className="text-xs text-slate-400">
+          <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight pt-1">
+            Adjust Today&apos;s Session
+          </SheetTitle>
+          <SheetDescription className="text-xs text-slate-400 font-body">
             One-tap deterministic adjustments. No freeform typing required.
           </SheetDescription>
         </SheetHeader>
@@ -54,18 +59,18 @@ export function SessionAdjustmentSheet({
               key={c.label}
               type="button"
               onClick={() => handleChipClick(c.query)}
-              className="p-3 bg-slate-900 border border-slate-800 hover:border-slate-700 active:scale-[0.98] rounded-xl text-left transition cursor-pointer"
+              className="p-3.5 bg-[#111622] border border-[#1C2436] hover:border-slate-700 hover:bg-[#182030] active:scale-[0.98] rounded-xl text-left transition cursor-pointer font-body"
             >
               <div className="text-xs font-semibold text-white">{c.label}</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Apply adjustment →</div>
+              <div className="text-[10px] text-amber-400 font-mono mt-0.5">Apply adjustment →</div>
             </button>
           ))}
         </div>
 
         {/* Feedback message and resolved card */}
         {activeMessage && (
-          <div className="space-y-3 pt-2 border-t border-slate-800/80 animate-in fade-in duration-200">
-            <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-300 leading-relaxed">
+          <div className="space-y-3 pt-2 border-t border-[#1C2436] animate-in fade-in duration-200">
+            <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl text-xs text-slate-300 leading-relaxed font-body">
               {activeMessage}
             </div>
 

@@ -39,14 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# AI / agent tooling & specs
-.agents/
-.gemini/
-.specify/
-specs/
-AGENTS.md
-CLAUDE.md
-gstack.md
-Vyra-GStack-Spec.md
-

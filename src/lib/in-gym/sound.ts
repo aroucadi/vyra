@@ -103,6 +103,56 @@ class SoundSynthesizer {
       // Audio playback fails silently if user has not yet interacted with window
     }
   }
+
+  /**
+   * Plays a crisp athletic feedback cue when a set target is hit.
+   * Confirms registration haptically and acoustically under high heart rates.
+   */
+  public playTargetHitFeedback(isPR: boolean = false): void {
+    if (this.isMuted) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      if (isPR) {
+        // PR Fanfare: C5 -> E5 -> G5 ascending triad
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.25);
+        });
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate([50, 40, 80, 40, 120]);
+        }
+      } else {
+        // Solid athletic registration thud (330Hz -> 440Hz)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(330, now);
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate([35, 25, 45]);
+        }
+      }
+    } catch {
+      // Audio fails silently
+    }
+  }
 }
 
 export const soundService = new SoundSynthesizer();

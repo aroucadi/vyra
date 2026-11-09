@@ -6,6 +6,7 @@
  */
 
 import { RagExercise } from '@/types/exercise-rag';
+import { resolveExerciseVideoUrl } from '@/lib/utils';
 
 export type MuscleSubdivision =
   | 'chest_clavicular' // Upper chest
@@ -37,14 +38,120 @@ export interface SubstitutionCandidate {
   setupAdjustmentCue: string;
 }
 
+function getSubdivisionFamily(sub: MuscleSubdivision): string {
+  if (sub.startsWith('chest_')) return 'chest';
+  if (sub === 'lat_iliac' || sub === 'back_rhomboids') return 'back';
+  if (sub.startsWith('deltoid_')) return 'shoulders';
+  if (sub.startsWith('quad_')) return 'quads';
+  if (sub.startsWith('hamstring_')) return 'hamstrings';
+  if (sub.startsWith('tricep_')) return 'triceps';
+  if (sub.startsWith('bicep_')) return 'biceps';
+  return 'general';
+}
+
 /**
  * Infer the specific functional subdivision based on exercise name and target.
+ * Movement-specific patterns in `name` take precedence over generic `target` strings
+ * so "Reverse Fly" / "Reverse Pec Deck" / "Chest-Supported Row" are never misclassified as chest.
  */
 export function inferMuscleSubdivision(name: string, target: string): MuscleSubdivision {
-  const n = name.toLowerCase().replace(/-/g, ' ');
-  const t = target.toLowerCase().replace(/-/g, ' ');
+  const n = (name || '').toLowerCase().replace(/-/g, ' ');
+  const t = (target || '').toLowerCase().replace(/-/g, ' ');
 
-  // Pectorals
+  // 1. Explicit Rear Delt / Posterior Shoulder movement patterns
+  if (
+    n.includes('reverse fly') ||
+    n.includes('reverse pec') ||
+    n.includes('reverse cable') ||
+    n.includes('reverse machine') ||
+    n.includes('rear delt') ||
+    n.includes('rear fly') ||
+    n.includes('face pull') ||
+    n.includes('band pull apart') ||
+    n.includes('powell') ||
+    n.includes('y t w') ||
+    n.includes('ytw') ||
+    t.includes('rear delt') ||
+    t.includes('posterior delt') ||
+    t.includes('infraspinatus')
+  ) {
+    return 'deltoid_posterior';
+  }
+
+  // 2. Explicit Lateral Deltoid movement patterns
+  if (
+    n.includes('lateral raise') ||
+    n.includes('side raise') ||
+    n.includes('lu raise') ||
+    t.includes('side delt') ||
+    t.includes('lateral delt')
+  ) {
+    return 'deltoid_lateral';
+  }
+
+  // 3. Explicit Row / Pulldown / Vertical Pull movement patterns (precedes "chest" so "chest-supported row" is back)
+  if (
+    n.includes('row') ||
+    n.includes('pulldown') ||
+    n.includes('pull up') ||
+    n.includes('chin up') ||
+    n.includes('lat pull')
+  ) {
+    if (n.includes('upright row')) {
+      return 'deltoid_lateral';
+    }
+    if (
+      n.includes('close') ||
+      n.includes('neutral') ||
+      n.includes('pulldown') ||
+      n.includes('single arm') ||
+      n.includes('one arm') ||
+      n.includes('underhand') ||
+      n.includes('supinated') ||
+      n.includes('pull up') ||
+      n.includes('chin up')
+    ) {
+      return 'lat_iliac';
+    }
+    return 'back_rhomboids';
+  }
+
+  // 4. Deltoids (by target or explicit shoulder press/raise name)
+  if (
+    t.includes('shoulder') ||
+    t.includes('delt') ||
+    n.includes('shoulder press') ||
+    n.includes('overhead press') ||
+    n.includes('military press') ||
+    n.includes('arnold press') ||
+    n.includes('front raise')
+  ) {
+    if (n.includes('rear') || n.includes('face pull') || n.includes('reverse') || n.includes('horizontal adduction')) {
+      return 'deltoid_posterior';
+    }
+    if (
+      n.includes('front') ||
+      n.includes('overhead') ||
+      n.includes('military') ||
+      n.includes('press') ||
+      n.includes('arnold') ||
+      t.includes('front delt') ||
+      t.includes('anterior delt')
+    ) {
+      return 'deltoid_anterior';
+    }
+    return 'deltoid_lateral';
+  }
+
+  // 5. Back / Lats (by target)
+  if (t.includes('lat') || t.includes('back') || t.includes('rhomboid') || t.includes('trap')) {
+    if (n.includes('close') || n.includes('neutral') || n.includes('pulldown') || n.includes('single arm') || n.includes('underhand')) {
+      return 'lat_iliac';
+    }
+    return 'back_rhomboids';
+  }
+
+  // 6. Pectorals
   if (t.includes('chest') || t.includes('pec')) {
     if (n.includes('incline') || n.includes('low to high') || n.includes('reverse grip')) {
       return 'chest_clavicular';
@@ -55,51 +162,32 @@ export function inferMuscleSubdivision(name: string, target: string): MuscleSubd
     return 'chest_sternal';
   }
 
-  // Back / Lats
-  if (t.includes('lat') || t.includes('back')) {
-    if (n.includes('close') || n.includes('neutral') || n.includes('pulldown') || n.includes('single arm') || n.includes('underhand')) {
-      return 'lat_iliac';
-    }
-    return 'back_rhomboids';
-  }
-
-  // Deltoids
-  if (t.includes('shoulder') || t.includes('delt')) {
-    if (n.includes('rear') || n.includes('face pull') || n.includes('reverse') || n.includes('horizontal adduction')) {
-      return 'deltoid_posterior';
-    }
-    if (n.includes('front') || n.includes('overhead') || n.includes('military') || n.includes('press')) {
-      return 'deltoid_anterior';
-    }
-    return 'deltoid_lateral';
-  }
-
-  // Quads
-  if (t.includes('quad')) {
-    if (n.includes('extension') || n.includes('terminal')) {
+  // 7. Quads
+  if (t.includes('quad') || n.includes('squat') || n.includes('leg press') || n.includes('leg extension')) {
+    if (n.includes('extension') || n.includes('terminal') || n.includes('sissy')) {
       return 'quad_shortened';
     }
     return 'quad_lengthened';
   }
 
-  // Hamstrings
-  if (t.includes('hamstring') || t.includes('glute')) {
+  // 8. Hamstrings / Glutes
+  if (t.includes('hamstring') || t.includes('glute') || n.includes('rdl') || n.includes('deadlift') || n.includes('leg curl')) {
     if (n.includes('curl')) {
       return 'hamstring_knee';
     }
     return 'hamstring_hip';
   }
 
-  // Triceps
-  if (t.includes('tricep')) {
-    if (n.includes('overhead') || n.includes('french') || n.includes('behind')) {
+  // 9. Triceps
+  if (t.includes('tricep') || n.includes('tricep') || n.includes('pushdown') || n.includes('skull')) {
+    if (n.includes('overhead') || n.includes('french') || n.includes('behind') || n.includes('skull')) {
       return 'tricep_long_head';
     }
     return 'tricep_lateral';
   }
 
-  // Biceps
-  if (t.includes('bicep')) {
+  // 10. Biceps
+  if (t.includes('bicep') || n.includes('bicep') || n.includes('preacher') || n.includes('curl')) {
     if (n.includes('preacher') || n.includes('spider') || n.includes('concentration')) {
       return 'bicep_short_head';
     }
@@ -141,7 +229,6 @@ export function generateBiomechanicalRationale(
   sourceProfile: ResistanceProfile,
   candidateProfile: ResistanceProfile
 ): { rationale: string; setupCue: string } {
-  const cName = candidate.name;
   const cEq = candidate.equipment;
 
   switch (subdivision) {
@@ -253,10 +340,11 @@ export function findBiomechanicalSubstitutes(
 ): SubstitutionCandidate[] {
   const limit = options.limit || 3;
   const currentSubdivision = inferMuscleSubdivision(currentExercise.name, currentExercise.target);
+  const currentFamily = getSubdivisionFamily(currentSubdivision);
   const currentProfile = inferResistanceProfile(currentExercise.name, currentExercise.equipment);
   const currentId = currentExercise.id ? String(currentExercise.id).padStart(4, '0') : null;
-  const currentEqLower = currentExercise.equipment.toLowerCase();
-  const currentTargetLower = currentExercise.target.toLowerCase();
+  const currentEqLower = (currentExercise.equipment || '').toLowerCase();
+  const currentTargetLower = (currentExercise.target || '').toLowerCase();
 
   const candidates: SubstitutionCandidate[] = [];
 
@@ -265,25 +353,45 @@ export function findBiomechanicalSubstitutes(
     if (currentId && String(ex.id).padStart(4, '0') === currentId) continue;
     if (ex.name.toLowerCase() === currentExercise.name.toLowerCase()) continue;
 
-    const candTargetLower = ex.target.toLowerCase();
-    const candEqLower = ex.equipment.toLowerCase();
+    const candTargetLower = (ex.target || '').toLowerCase();
+    const candEqLower = (ex.equipment || '').toLowerCase();
 
     // Check equipment exclusion filter
     if (options.excludedEquipment?.some((eq) => candEqLower.includes(eq.toLowerCase()))) {
       continue;
     }
 
-    // Must share same primary target or overlapping body part
+    const candSubdivision = inferMuscleSubdivision(ex.name, ex.target);
+    const candFamily = getSubdivisionFamily(candSubdivision);
+
+    // Prevent cross-family contamination (e.g. Rear Delt / Back never matches Chest)
+    if (
+      currentFamily !== 'general' &&
+      candFamily !== 'general' &&
+      currentFamily !== candFamily
+    ) {
+      continue;
+    }
+
+    // Specifically for deltoids: rear delt (deltoid_posterior) must not be replaced by front delt presses
+    if (currentSubdivision === 'deltoid_posterior' && candSubdivision === 'deltoid_anterior') {
+      continue;
+    }
+
+    // Must share same primary target, subdivision, or muscle family
     const isTargetMatch =
+      (currentSubdivision !== 'general' && candSubdivision === currentSubdivision) ||
+      (currentFamily !== 'general' && candFamily === currentFamily) ||
       candTargetLower === currentTargetLower ||
       (currentTargetLower.includes('pec') && candTargetLower.includes('chest')) ||
       (currentTargetLower.includes('chest') && candTargetLower.includes('pec')) ||
       (currentTargetLower.includes('lat') && candTargetLower.includes('back')) ||
-      (currentTargetLower.includes('back') && candTargetLower.includes('lat'));
+      (currentTargetLower.includes('back') && candTargetLower.includes('lat')) ||
+      ((currentTargetLower.includes('delt') || currentTargetLower.includes('shoulder')) &&
+        (candTargetLower.includes('delt') || candTargetLower.includes('shoulder')));
 
     if (!isTargetMatch) continue;
 
-    const candSubdivision = inferMuscleSubdivision(ex.name, ex.target);
     const candProfile = inferResistanceProfile(ex.name, ex.equipment);
 
     // Compute deterministic similarity score (0.0 to 1.0)
@@ -323,7 +431,10 @@ export function findBiomechanicalSubstitutes(
     );
 
     candidates.push({
-      exercise: ex,
+      exercise: {
+        ...ex,
+        videoUrl: resolveExerciseVideoUrl(ex.name, { explicitVideoUrl: ex.videoUrl }),
+      },
       similarityScore: Math.round(score * 100) / 100,
       subdivision: candSubdivision,
       resistanceProfile: candProfile,

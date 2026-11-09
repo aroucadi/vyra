@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { resolveProgramDay } from "@/lib/utils";
 import { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
+import { VyraLogo } from "@/components/brand/VyraLogo";
 
 export default function TodayPage() {
   const router = useRouter();
@@ -93,14 +94,23 @@ export default function TodayPage() {
   return (
     <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
       
-      {/* 1. Header: Date greeting + quiet readiness / Day-1 calibration chip */}
+      {/* 1. Brand Top Bar + Date greeting */}
+      <div className="flex items-center justify-between border-b border-[#1C2436]/60 pb-3">
+        <VyraLogo size="sm" variant="wordmark" href="/today" showTagline tagline="THE ALAA RELEASE" />
+        <span className="text-[10px] font-mono text-slate-400">
+          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+        </span>
+      </div>
+
       <header className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-slate-400">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-          </p>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            {isDayZero ? "Day 1 Session" : `Good morning, ${currentUser.name.split(" ")[0]}`}
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              Week {resolved.weekIndex} of {program?.durationWeeks || 16}
+            </span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight font-editorial">
+            {isDayZero ? "Day 1 Session" : `Good morning, ${currentUser.name.split(" ")[0]}.`}
           </h1>
         </div>
 
@@ -116,17 +126,17 @@ export default function TodayPage() {
                 return next;
               });
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-full shadow-sm text-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-full shadow-sm text-xs transition cursor-pointer"
             title="Toggle between Day-1 Setup and Active Program"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="font-medium text-slate-300">
-              {isDayZero ? "View Active Program" : "Calibrate Day 1"}
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-medium text-slate-300 font-editorial text-[11px]">
+              {isDayZero ? "Active Program" : "Day 1 Setup"}
             </span>
           </button>
 
           {!isDayZero && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full shadow-sm text-xs">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111622] border border-[#1C2436] rounded-full shadow-sm text-xs">
               <span
                 className={`w-2 h-2 rounded-full ${
                   readinessStatus.includes("Light")
@@ -134,11 +144,11 @@ export default function TodayPage() {
                     : readinessStatus.includes("Moderate")
                     ? "bg-amber-300"
                     : readinessStatus.includes("Full")
-                    ? "bg-emerald-400"
+                    ? "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]"
                     : "bg-slate-500"
                 }`}
               />
-              <span className="font-medium text-slate-300">{readinessStatus}</span>
+              <span className="font-mono text-[11px] text-slate-300">{readinessStatus}</span>
             </div>
           )}
         </div>
@@ -191,7 +201,7 @@ export default function TodayPage() {
                         if (todaySess) setSelectedSession(todaySess);
                         else router.push("/progress");
                       }}
-                      className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-4 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-editorial font-extrabold text-sm rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Trophy className="w-4 h-4 text-slate-950" />
                       <span>View Completed Session Stats</span>
@@ -200,17 +210,17 @@ export default function TodayPage() {
                     <div className="grid grid-cols-2 gap-2 pt-0.5">
                       <Link
                         href={heroMoment.actionHref || "/session?day=prog_master_w1_d0&mode=preview"}
-                        className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 bg-slate-900/80 hover:bg-slate-900 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                        className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-white border border-[#1C2436] hover:border-[#2D3A54] bg-[#090C11] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
                       >
-                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                        <Eye className="w-3.5 h-3.5 text-amber-400" />
                         <span>Review Lifts</span>
                       </Link>
 
                       <Link
                         href="/progress"
-                        className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-slate-200 border border-slate-800 hover:border-slate-700 bg-slate-900/80 hover:bg-slate-900 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                        className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-slate-200 border border-[#1C2436] hover:border-[#2D3A54] bg-[#090C11] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
                       >
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
                         <span>All Progress →</span>
                       </Link>
                     </div>
@@ -219,7 +229,7 @@ export default function TodayPage() {
                   <div className="space-y-2">
                     <Link
                       href={heroMoment.actionHref}
-                      className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                      className="w-full py-4 px-5 bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-editorial font-extrabold text-sm rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-2"
                     >
                       <span>{heroMoment.actionLabel || "Start Workout"}</span>
                       <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -233,18 +243,18 @@ export default function TodayPage() {
                               ? heroMoment.actionHref.replace(/mode=[^&]+/, "mode=preview")
                               : `${heroMoment.actionHref}${heroMoment.actionHref.includes("?") ? "&" : "?"}mode=preview`
                           }
-                          className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 bg-slate-900/80 hover:bg-slate-900 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                          className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-white border border-[#1C2436] hover:border-[#2D3A54] bg-[#090C11] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
                         >
-                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                          <Eye className="w-3.5 h-3.5 text-amber-400" />
                           <span>Preview & Cues</span>
                         </Link>
 
                         <button
                           type="button"
                           onClick={() => setIsAdjustSheetOpen(true)}
-                          className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-slate-200 border border-slate-800 hover:border-slate-700 bg-slate-900/80 hover:bg-slate-900 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                          className="w-full py-2.5 px-3 text-xs text-slate-300 hover:text-slate-200 border border-[#1C2436] hover:border-[#2D3A54] bg-[#090C11] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
                         >
-                          <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
                           <span>Adjust Session</span>
                         </button>
                       </div>
@@ -255,7 +265,7 @@ export default function TodayPage() {
                     <button
                       type="button"
                       onClick={() => setIsSuppDrawerOpen(true)}
-                      className="w-full py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-4 px-5 bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-editorial font-extrabold text-sm rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>{heroMoment.actionLabel || "Log Protocols"}</span>
                       <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -263,9 +273,9 @@ export default function TodayPage() {
 
                     <Link
                       href="/session?day=prog_master_w1_d0&mode=preview"
-                      className="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 border border-[#1C2436] hover:border-[#2D3A54] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer font-medium"
                     >
-                      <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                       <span>Start Monday Upper A Workout →</span>
                     </Link>
                   </div>
@@ -275,40 +285,40 @@ export default function TodayPage() {
           )}
           {/* Today's Workout Blueprint & Direct Form Video Preview */}
           {todayExercises.length > 0 && !isRestDay && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-md">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+            <div className="bg-[#111622] border border-[#1C2436] rounded-2xl p-4 space-y-3 shadow-md">
+              <div className="flex items-center justify-between pb-2 border-b border-[#1C2436]">
                 <div className="flex items-center gap-2">
-                  <Dumbbell className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-bold text-white tracking-wide">
+                  <Dumbbell className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider font-editorial text-white">
                     {todaySession?.label || "Today's Workout Blueprint"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded font-semibold">
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-semibold">
                   {todayExercises.length} Lifts · Tap to Preview
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-800/60">
+              <div className="divide-y divide-[#1C2436]/60">
                 {todayExercises.map((ex, idx) => (
                   <div
                     key={ex.id || idx}
                     onClick={() => setPreviewPrescription(ex)}
-                    className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between text-xs cursor-pointer hover:bg-slate-800/40 rounded-xl px-2 -mx-2 transition"
+                    className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between text-xs cursor-pointer hover:bg-[#182030] rounded-xl px-2 -mx-2 transition"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="font-mono text-slate-500 text-[10px] w-6 flex-shrink-0">
+                      <span className="font-mono text-amber-400/80 text-[10px] font-bold w-6 flex-shrink-0">
                         {ex.subMovementOrder || `${idx + 1}.`}
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-medium text-slate-200 truncate">{ex.exerciseName}</span>
+                          <span className="font-semibold text-slate-100 truncate font-body">{ex.exerciseName}</span>
                           {ex.subMovementOrder && (
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
                               Superset
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                        <span className="text-[10px] text-slate-400 font-mono-tabular block mt-0.5">
                           {ex.sets} sets × {ex.repRangeLow}-{ex.repRangeHigh} reps · RIR {ex.rirScheme?.[0] ?? 2}
                         </span>
                       </div>
@@ -321,7 +331,7 @@ export default function TodayPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/60 hover:bg-emerald-900/80 text-emerald-400 flex items-center gap-1 text-[11px] font-semibold transition"
+                          className="p-1.5 rounded-lg bg-[#090C11] border border-[#1C2436] hover:border-amber-500/40 text-amber-400 flex items-center gap-1 text-[11px] font-semibold transition"
                           title="Watch form demonstration video"
                         >
                           <Video className="w-3.5 h-3.5" />
@@ -346,7 +356,7 @@ export default function TodayPage() {
               <button
                 type="button"
                 onClick={() => setIsSuppDrawerOpen(true)}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+                className="text-[11px] text-amber-400 hover:text-amber-300 font-editorial font-bold cursor-pointer"
               >
                 All protocols →
               </button>

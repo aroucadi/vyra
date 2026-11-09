@@ -73,7 +73,7 @@ export default function YourDataPage() {
       {/* What is stored */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-white">
-          <Shield className="w-4 h-4 text-emerald-400" />
+          <Shield className="w-4 h-4 text-amber-400" />
           <span>What VYRA Stores</span>
         </div>
         <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
@@ -127,7 +127,7 @@ export default function YourDataPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-white">
-              <History className="w-4 h-4 text-emerald-400" />
+              <History className="w-4 h-4 text-amber-400" />
               <span>Import Workout History</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
@@ -136,7 +136,7 @@ export default function YourDataPage() {
           </div>
           <Link
             href="/import"
-            className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 transition flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-400 transition flex items-center gap-1.5"
           >
             <span>Import</span>
           </Link>
@@ -159,7 +159,7 @@ export default function YourDataPage() {
             onClick={handleExport}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer"
           >
-            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Download className="w-3.5 h-3.5" />}
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> : <Download className="w-3.5 h-3.5" />}
             <span>{copied ? "Exported" : "Export backup"}</span>
           </button>
         </div>

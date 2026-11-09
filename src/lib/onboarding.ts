@@ -39,7 +39,7 @@ export const TRAINING_GOALS: Record<TrainingGoal, GoalDefinition> = {
     targetRir: 2,
     loadMultiplier: 1.0,
     description: "8–12 reps · Progressive volume & clavicular tension for maximum hypertrophy.",
-    badgeClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
+    badgeClass: "text-amber-400 bg-amber-500/10 border-amber-500/25",
   },
   strength: {
     id: "strength",

@@ -373,7 +373,7 @@ export default function TrainerRosterPage() {
                     <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                       Instant 1-Tap Onboarding Link
                     </span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                    <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                       Zero Signup Wall
                     </span>
                   </div>
@@ -387,8 +387,8 @@ export default function TrainerRosterPage() {
                   >
                     {copiedLink ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400 font-bold">Link Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-amber-400 font-bold">Link Copied!</span>
                       </>
                     ) : (
                       <>

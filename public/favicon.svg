@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="favAmber" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stopColor="#D97706"/>
+      <stop offset="100%" stopColor="#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="favBasalt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#475569"/>
+      <stop offset="100%" stopColor="#1E293B"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Squircle -->
+  <rect width="64" height="64" rx="14" fill="#090C11"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="#1C2436"/>
+
+  <!-- Left Stem -->
+  <polygon points="14,16 23,16 31,40 31,48 26,48 14,16" fill="url(#favBasalt)"/>
+
+  <!-- Right Stem (Solar Amber) -->
+  <polygon points="32,48 32,40 45,12 52,12 50,18 38,48" fill="url(#favAmber)"/>
+  
+  <!-- Subtle Amber Tip -->
+  <polygon points="45,12 52,12 50,18" fill="#FFFBEB"/>
+
+  <!-- Base Anchor Dot -->
+  <circle cx="32" cy="51" r="1.5" fill="#F59E0B"/>
+</svg>

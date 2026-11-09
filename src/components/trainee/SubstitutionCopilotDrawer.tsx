@@ -82,23 +82,23 @@ export function SubstitutionCopilotDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="max-w-md mx-auto rounded-t-3xl bg-[#0B0F17] border-slate-800 p-5 space-y-4 max-h-[88vh] overflow-y-auto"
+        className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-6 space-y-4 max-h-[88vh] overflow-y-auto font-body shadow-2xl text-slate-100"
       >
         {/* 1. Header (Eyebrow + Title) */}
         <SheetHeader className="text-left space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-emerald-400" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-400" />
               <span>Biomechanical Copilot</span>
             </span>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800">
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#182030] text-slate-300 border border-[#1C2436]">
               {currentExercise.equipment}
             </span>
           </div>
-          <SheetTitle className="text-base font-bold text-white tracking-tight pt-0.5">
+          <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight pt-1">
             Swap {currentExercise.name}
           </SheetTitle>
-          <SheetDescription className="text-xs text-slate-400">
+          <SheetDescription className="text-xs text-slate-400 font-body">
             Equipment occupied? Select a biomechanically matched alternative without losing target fiber recruitment.
           </SheetDescription>
         </SheetHeader>
@@ -118,10 +118,10 @@ export function SubstitutionCopilotDrawer({
               type="button"
               onClick={() => setEquipmentFilter(f.id as typeof equipmentFilter)}
               className={clsx(
-                "min-h-[38px] px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition border cursor-pointer",
+                "min-h-[38px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border cursor-pointer font-body",
                 equipmentFilter === f.id
-                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-sm"
-                  : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white"
+                  ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm border-amber-400"
+                  : "bg-[#111622] border-[#1C2436] text-slate-400 hover:text-white"
               )}
             >
               {f.label}
@@ -132,22 +132,22 @@ export function SubstitutionCopilotDrawer({
         {/* 3. Ranked Alternatives List (Strictly <= 3 cards) */}
         <div className="space-y-3 pt-1">
           {loading ? (
-            <div className="p-8 text-center text-xs text-slate-400 animate-pulse">
+            <div className="p-8 text-center text-xs font-mono text-slate-400 animate-pulse">
               Computing optimal motor vector matches...
             </div>
           ) : candidates.length > 0 ? (
             candidates.map((cand, idx) => (
               <div
                 key={cand.exercise.id || idx}
-                className="p-3.5 bg-slate-900/70 border border-slate-800/90 rounded-2xl space-y-2.5 shadow-sm hover:border-slate-700 transition"
+                className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-3 shadow-sm hover:border-slate-700 transition"
               >
                 {/* Top Meta Badges: Similarity + Resistance Profile */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30">
                       {Math.round(cand.similarityScore * 100)}% Match
                     </span>
-                    <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#182030] text-sky-400 border border-[#1C2436]">
                       {cand.resistanceProfile} Tension
                     </span>
                   </div>
@@ -158,26 +158,26 @@ export function SubstitutionCopilotDrawer({
 
                 {/* Candidate Name */}
                 <div>
-                  <h4 className="text-sm font-bold text-white tracking-tight">
+                  <h4 className="text-base font-editorial font-bold text-white tracking-tight">
                     {cand.exercise.name}
                   </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Target: <span className="text-slate-300 font-semibold">{cand.exercise.target}</span> · Division: <span className="text-emerald-400">{cand.subdivision.replace('_', ' ')}</span>
+                  <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                    Target: <span className="text-amber-400 font-semibold">{cand.exercise.target}</span> · Division: <span className="text-slate-300">{cand.subdivision.replace('_', ' ')}</span>
                   </p>
                 </div>
 
                 {/* Coach Rationale */}
-                <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/60 space-y-1">
-                  <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <div className="p-3 rounded-xl bg-[#090C11] border border-[#1C2436] space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    <CheckCircle2 className="w-3 h-3 text-amber-400" />
                     <span>Coach Rationale</span>
                   </div>
-                  <p className="text-[11.5px] leading-snug text-slate-300">
+                  <p className="text-[11.5px] leading-snug text-slate-200">
                     {cand.biomechanicalRationale}
                   </p>
                   {cand.setupAdjustmentCue && (
-                    <p className="text-[10.5px] leading-snug text-slate-400 pt-0.5 border-t border-slate-800/50 mt-1">
-                      <span className="text-cyan-400 font-semibold">Setup Tip: </span>
+                    <p className="text-[10.5px] leading-snug text-slate-400 pt-1 border-t border-[#1C2436] mt-1">
+                      <span className="text-sky-400 font-semibold">Setup Tip: </span>
                       {cand.setupAdjustmentCue}
                     </p>
                   )}
@@ -190,15 +190,15 @@ export function SubstitutionCopilotDrawer({
                     onApplySubstitute(cand.exercise);
                     onClose();
                   }}
-                  className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ArrowRightLeft className="w-4 h-4" />
+                  <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
                   <span>Swap into Active Workout</span>
                 </button>
               </div>
             ))
           ) : (
-            <div className="p-6 text-center text-xs text-slate-400 bg-slate-900/40 rounded-2xl border border-slate-800/60">
+            <div className="p-6 text-center text-xs text-slate-400 bg-[#111622] rounded-2xl border border-[#1C2436]">
               No direct substitutes found matching the filter criteria.
             </div>
           )}
@@ -209,7 +209,7 @@ export function SubstitutionCopilotDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-semibold text-xs rounded-xl border border-slate-800 transition cursor-pointer"
+            className="w-full h-11 bg-[#111622] hover:bg-[#182030] text-slate-300 font-display uppercase tracking-wider font-bold text-xs rounded-xl border border-[#1C2436] transition cursor-pointer"
           >
             Cancel & Keep Current Exercise
           </button>

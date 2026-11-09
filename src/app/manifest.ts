@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/today',
     scope: '/',
     display: 'standalone',
-    background_color: '#0B0F17',
-    theme_color: '#0B0F17',
+    background_color: '#090C11',
+    theme_color: '#090C11',
     icons: [
       {
         src: '/apple-touch-icon.png',

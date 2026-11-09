@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   /* ==========================================================================
      1. PRIMITIVE TOKENS
      ========================================================================== */
@@ -60,10 +60,10 @@
   --text-faint: var(--slate-500);
 
   /* Pillar Accents */
-  --accent-train: var(--emerald-500);
-  --accent-train-hover: var(--emerald-600);
-  --accent-train-subtle: rgba(16, 185, 129, 0.12);
-  --accent-train-border: rgba(16, 185, 129, 0.3);
+  --accent-train: var(--amber-400);
+  --accent-train-hover: var(--amber-500);
+  --accent-train-subtle: rgba(245, 158, 11, 0.12);
+  --accent-train-border: rgba(245, 158, 11, 0.3);
 
   --accent-fuel: var(--cyan-500);
   --accent-fuel-hover: var(--cyan-600);
@@ -76,7 +76,7 @@
   --accent-network: var(--amber-500);
 
   --danger: var(--rose-500);
-  --focus-ring: var(--emerald-500);
+  --focus-ring: var(--amber-400);
 
   /* ==========================================================================
      3. COMPONENT TOKENS

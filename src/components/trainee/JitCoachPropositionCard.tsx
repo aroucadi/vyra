@@ -2,6 +2,18 @@
 
 import React, { useState } from "react";
 import { CoachProposition, CoachingTier } from "@/lib/ai/coach-agent";
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+  Flame,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+  X,
+} from "lucide-react";
 
 export interface JitCoachPropositionCardProps {
   proposition: CoachProposition;
@@ -9,39 +21,77 @@ export interface JitCoachPropositionCardProps {
   onDismiss: (proposition: CoachProposition) => void;
 }
 
-const TIER_BADGE_MAP: Record<
-  CoachingTier,
-  { label: string; accent: string; bg: string; border: string }
-> = {
+interface TierVisualTheme {
+  shortBadge: string;
+  ctaLabel: string;
+  accentHex: string;
+  glowGradient: string;
+  borderClass: string;
+  pillBgClass: string;
+  pillTextClass: string;
+  ctaClass: string;
+}
+
+const TIER_THEME_MAP: Record<CoachingTier, TierVisualTheme> = {
   tier_1_micro_setup: {
-    label: "TIER 1 · SETUP & TEMPO TUNING",
-    accent: "#38BDF8",
-    bg: "rgba(56, 189, 248, 0.12)",
-    border: "rgba(56, 189, 248, 0.3)",
+    shortBadge: "SETUP CALIBRATION",
+    ctaLabel: "Lock In Setup Cue",
+    accentHex: "#38BDF8",
+    glowGradient:
+      "radial-gradient(120% 90% at 0% 0%, rgba(56, 189, 248, 0.16) 0%, rgba(11, 15, 23, 0) 70%)",
+    borderClass: "border-sky-500/30",
+    pillBgClass: "bg-sky-500/12 border-sky-400/30",
+    pillTextClass: "text-sky-300",
+    ctaClass:
+      "bg-gradient-to-r from-sky-400 to-cyan-300 hover:from-sky-300 hover:to-cyan-200 text-slate-950 shadow-sky-500/20",
   },
   tier_2_surgical_swap: {
-    label: "TIER 2 · SURGICAL MOVEMENT SWAP",
-    accent: "#F59E0B",
-    bg: "rgba(245, 158, 11, 0.12)",
-    border: "rgba(245, 158, 11, 0.35)",
+    shortBadge: "SMART MOVEMENT UPGRADE",
+    ctaLabel: "Switch to This Move",
+    accentHex: "#F59E0B",
+    glowGradient:
+      "radial-gradient(120% 90% at 0% 0%, rgba(245, 158, 11, 0.18) 0%, rgba(11, 15, 23, 0) 70%)",
+    borderClass: "border-amber-500/35",
+    pillBgClass: "bg-amber-500/12 border-amber-400/35",
+    pillTextClass: "text-amber-300",
+    ctaClass:
+      "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-amber-500/20",
   },
   tier_3_volume_prune: {
-    label: "TIER 3 · JUNK VOLUME PRUNING",
-    accent: "#A855F7",
-    bg: "rgba(168, 85, 247, 0.12)",
-    border: "rgba(168, 85, 247, 0.3)",
+    shortBadge: "VOLUME FOCUS",
+    ctaLabel: "Apply Set Trim",
+    accentHex: "#A855F7",
+    glowGradient:
+      "radial-gradient(120% 90% at 0% 0%, rgba(168, 85, 247, 0.16) 0%, rgba(11, 15, 23, 0) 70%)",
+    borderClass: "border-purple-500/30",
+    pillBgClass: "bg-purple-500/12 border-purple-400/30",
+    pillTextClass: "text-purple-300",
+    ctaClass:
+      "bg-gradient-to-r from-purple-400 to-fuchsia-400 hover:from-purple-300 hover:to-fuchsia-300 text-slate-950 shadow-purple-500/20",
   },
   tier_4_overload_protocol: {
-    label: "TIER 4 · OVERLOAD PROTOCOL SHIFT",
-    accent: "#10B981",
-    bg: "rgba(16, 185, 129, 0.12)",
-    border: "rgba(16, 185, 129, 0.3)",
+    shortBadge: "OVERLOAD BREAKTHROUGH",
+    ctaLabel: "Accept +2.5 kg Jump",
+    accentHex: "#10B981",
+    glowGradient:
+      "radial-gradient(120% 90% at 0% 0%, rgba(16, 185, 129, 0.18) 0%, rgba(11, 15, 23, 0) 70%)",
+    borderClass: "border-emerald-500/35",
+    pillBgClass: "bg-emerald-500/12 border-emerald-400/35",
+    pillTextClass: "text-emerald-300",
+    ctaClass:
+      "bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 text-slate-950 shadow-emerald-500/20",
   },
   tier_5_macro_pivot: {
-    label: "TIER 5 · SYSTEMIC CNS RECOVERY PIVOT",
-    accent: "#EF4444",
-    bg: "rgba(239, 68, 68, 0.12)",
-    border: "rgba(239, 68, 68, 0.35)",
+    shortBadge: "RECOVERY SHIELD",
+    ctaLabel: "Apply Recovery Buffer",
+    accentHex: "#F43F5E",
+    glowGradient:
+      "radial-gradient(120% 90% at 0% 0%, rgba(244, 63, 94, 0.18) 0%, rgba(11, 15, 23, 0) 70%)",
+    borderClass: "border-rose-500/35",
+    pillBgClass: "bg-rose-500/12 border-rose-400/35",
+    pillTextClass: "text-rose-300",
+    ctaClass:
+      "bg-gradient-to-r from-rose-400 to-amber-300 hover:from-rose-300 hover:to-amber-200 text-slate-950 shadow-rose-500/20",
   },
 };
 
@@ -51,277 +101,222 @@ export function JitCoachPropositionCard({
   onDismiss,
 }: JitCoachPropositionCardProps) {
   const [showTrace, setShowTrace] = useState(false);
-  const badge = TIER_BADGE_MAP[proposition.tier] || TIER_BADGE_MAP.tier_2_surgical_swap;
+  const theme =
+    TIER_THEME_MAP[proposition.tier] || TIER_THEME_MAP.tier_2_surgical_swap;
   const trace = proposition.agentTrace;
+  const mut = proposition.mutation;
+  const isSwap = Boolean(
+    mut.newExerciseName &&
+      mut.newExerciseName.toLowerCase() !==
+        proposition.exerciseName.toLowerCase()
+  );
+
+  const renderTierIcon = () => {
+    switch (proposition.tier) {
+      case "tier_4_overload_protocol":
+        return <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />;
+      case "tier_5_macro_pivot":
+        return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
+      case "tier_3_volume_prune":
+        return <Flame className="w-3.5 h-3.5 text-purple-400" />;
+      case "tier_1_micro_setup":
+        return <Compass className="w-3.5 h-3.5 text-sky-400" />;
+      default:
+        return <Sparkles className="w-3.5 h-3.5 text-amber-400" />;
+    }
+  };
 
   return (
-    <div
+    <section
       data-testid="jit-coach-proposition-card"
-      style={{
-        background: "linear-gradient(165deg, #111622 0%, #0D111A 100%)",
-        border: `1px solid ${badge.border}`,
-        borderRadius: 16,
-        padding: "14px 16px",
-        marginBottom: 14,
-        boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
-      }}
+      aria-label="AI Coach Recommendation"
+      className={`relative overflow-hidden rounded-2xl bg-[#0B0F17] border ${theme.borderClass} p-3.5 sm:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.55)] animate-in fade-in slide-in-from-top-2 duration-300 font-body`}
+      style={{ backgroundImage: theme.glowGradient }}
     >
-      {/* Top Header Row: Tier Badge + Expandable Agent Trace Pill */}
+      {/* Top Specular Hairline Accent */}
       <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] opacity-80"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          flexWrap: "wrap",
-          marginBottom: 10,
+          background: `linear-gradient(90deg, transparent 0%, ${theme.accentHex} 35%, transparent 100%)`,
         }}
-      >
+      />
+
+      {/* 1. Compact Header Strip: Coach Whisper Pill + Optional "Why?" Progressive Disclosure */}
+      <div className="flex items-center justify-between gap-2 mb-2.5">
         <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 999,
-            background: badge.bg,
-            border: `1px solid ${badge.border}`,
-          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider ${theme.pillBgClass} ${theme.pillTextClass}`}
         >
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: badge.accent,
-              boxShadow: `0 0 8px ${badge.accent}`,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: "0.08em",
-              color: badge.accent,
-              textTransform: "uppercase",
-            }}
-          >
-            {badge.label}
-          </span>
+          {renderTierIcon()}
+          <span>{theme.shortBadge}</span>
         </div>
 
-        {trace && (
-          <button
-            type="button"
-            onClick={() => setShowTrace((prev) => !prev)}
-            style={{
-              background: "#1C2436",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 999,
-              padding: "3px 10px",
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#94A3B8",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <span>⚡ Agent Trace: {trace.iterationsExecuted} Steps</span>
-            {trace.selfCorrectionRetries > 0 && (
-              <span style={{ color: "#F59E0B" }}>
-                · {trace.selfCorrectionRetries} Self-Correction
+        <button
+          type="button"
+          onClick={() => setShowTrace((prev) => !prev)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#131A29]/90 hover:bg-[#1A2438] border border-white/10 text-[10px] font-mono font-semibold text-slate-300 hover:text-white transition cursor-pointer"
+        >
+          <span>{showTrace ? "Hide why" : "Why this call?"}</span>
+          {showTrace ? (
+            <ChevronUp className="w-3 h-3 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          )}
+        </button>
+      </div>
+
+      {/* 2. Glanceable Visual Transformation Box (Readable in < 2 Seconds) */}
+      <div className="rounded-xl bg-[#070A10]/90 border border-white/[0.07] p-3 mb-2.5">
+        {isSwap ? (
+          <div className="space-y-2">
+            {/* From -> To Movement Strip */}
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+              <span className="line-through text-slate-500 truncate max-w-[160px]">
+                {proposition.exerciseName}
               </span>
-            )}
-            <span>{showTrace ? "▲" : "▼"}</span>
-          </button>
+              <ArrowRight className="w-3 h-3 text-amber-400 flex-shrink-0" />
+              <span className="text-amber-400/90 uppercase font-bold tracking-wider text-[10px]">
+                Better Biomechanical Match
+              </span>
+            </div>
+
+            {/* New Target Exercise Name */}
+            <div className="font-display text-xl sm:text-2xl font-black uppercase tracking-tight text-white leading-none">
+              {mut.newExerciseName}
+            </div>
+
+            {/* Tabular Prescription Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {mut.newTargetWeightKg !== undefined && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-extrabold tabular-nums">
+                  {mut.newTargetWeightKg} kg
+                </span>
+              )}
+              {mut.newRepLow !== undefined && mut.newRepHigh !== undefined && (
+                <span className="px-2 py-0.5 rounded-md bg-[#131A29] border border-white/10 text-slate-200 font-mono text-[11px] font-bold tabular-nums">
+                  {mut.newRepLow}–{mut.newRepHigh} reps
+                </span>
+              )}
+              {mut.newEquipment && (
+                <span className="px-2 py-0.5 rounded-md bg-[#131A29] border border-white/10 text-slate-300 font-mono text-[10px] uppercase tracking-wider">
+                  {mut.newEquipment}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="font-display text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight">
+              {proposition.headline.replace("➔", "→")}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {mut.newTargetWeightKg !== undefined && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] font-extrabold tabular-nums">
+                  Target: {mut.newTargetWeightKg} kg
+                </span>
+              )}
+              {mut.newTargetSets !== undefined && (
+                <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-300 font-mono text-[11px] font-extrabold tabular-nums">
+                  {mut.newTargetSets} Working Sets
+                </span>
+              )}
+              {mut.newTargetRir !== undefined && (
+                <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300 font-mono text-[11px] font-bold tabular-nums">
+                  RIR {mut.newTargetRir}
+                </span>
+              )}
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Headline */}
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 800,
-          color: "#F8FAFC",
-          marginBottom: 8,
-          lineHeight: 1.3,
-        }}
-      >
-        {proposition.headline}
-      </div>
-
-      {/* Observation + Sensory RAG Quote + Root Cause */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-          fontSize: 12,
-          color: "#CBD5E1",
-          lineHeight: 1.45,
-          marginBottom: 10,
-        }}
-      >
-        <div>
-          <strong style={{ color: "#F8FAFC" }}>📊 Observation: </strong>
+        {/* 1-Line Coach Takeaway + Optional Form Cue */}
+        <p className="text-xs text-slate-300 leading-snug mt-2">
           {proposition.observation}
-        </div>
-        {proposition.sensoryRagContext && (
-          <div
-            style={{
-              background: "rgba(28, 36, 54, 0.75)",
-              borderLeft: `3px solid ${badge.accent}`,
-              borderRadius: "4px 8px 8px 4px",
-              padding: "6px 10px",
-              fontSize: 11.5,
-              color: "#E2E8F0",
-            }}
-          >
-            <strong style={{ color: badge.accent }}>🎙️ Sensory Memory RAG: </strong>
-            {proposition.sensoryRagContext}
-          </div>
-        )}
-        <div>
-          <strong style={{ color: "#F8FAFC" }}>🧠 Root Cause: </strong>
-          {proposition.rootCauseDiagnosis}
-        </div>
-      </div>
+        </p>
 
-      {/* Prescription Diff Box */}
-      <div
-        style={{
-          background: "#090C11",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 12,
-          padding: "10px 12px",
-          marginBottom: 12,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: "0.07em",
-            color: "#94A3B8",
-            textTransform: "uppercase",
-            marginBottom: 4,
-          }}
-        >
-          PROPOSED EVOLUTION ({proposition.tierLabel})
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#F59E0B",
-            marginBottom: 4,
-          }}
-        >
-          {proposition.proposedFix}
-        </div>
-        {proposition.mutation.newFormCue && (
-          <div style={{ fontSize: 11.5, color: "#94A3B8" }}>
-            🎯 <em>Cue: {proposition.mutation.newFormCue}</em>
+        {mut.newFormCue && (
+          <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-start gap-1.5 text-[11px] text-slate-300">
+            <span className="font-mono font-bold uppercase text-[10px] text-amber-400 flex-shrink-0 mt-0.5">
+              Cue:
+            </span>
+            <span className="leading-snug text-slate-200">{mut.newFormCue}</span>
           </div>
         )}
       </div>
 
-      {/* Optional Expandable Multi-Turn Agent ReAct Trace */}
-      {showTrace && trace && (
+      {/* 3. Progressive Disclosure Drawer: Deep Biomechanics & Agent Trace (Hidden by Default) */}
+      {showTrace && (
         <div
           data-testid="agent-execution-trace"
-          style={{
-            background: "#090C11",
-            border: "1px solid rgba(56, 189, 248, 0.25)",
-            borderRadius: 10,
-            padding: "10px 12px",
-            marginBottom: 12,
-            fontSize: 11,
-            color: "#94A3B8",
-          }}
+          className="rounded-xl bg-[#070A10] border border-sky-500/20 p-3 mb-3 space-y-2.5 text-xs animate-in fade-in duration-200"
         >
-          <div
-            style={{
-              fontWeight: 800,
-              color: "#38BDF8",
-              marginBottom: 6,
-              fontSize: 10.5,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            AUTONOMOUS REACT TOOL TRACE ({trace.steps.length} TOOL CALLS · COSINE SIM:{" "}
-            {trace.topRagCosineSimilarity.toFixed(3)})
+          {proposition.sensoryRagContext && (
+            <div className="p-2 rounded-lg bg-[#111726] border-l-2 border-amber-400 text-[11px] text-slate-200">
+              <span className="font-mono font-bold uppercase text-[10px] text-amber-400 block mb-0.5">
+                Past Biofeedback Memory
+              </span>
+              {proposition.sensoryRagContext}
+            </div>
+          )}
+
+          <div>
+            <span className="font-mono font-bold uppercase text-[10px] text-sky-400 block mb-0.5">
+              Biomechanical Rationale
+            </span>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              {proposition.rootCauseDiagnosis}
+            </p>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {trace.steps.map((s) => (
-              <div
-                key={`${s.stepIndex}_${s.toolName}`}
-                style={{
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  paddingBottom: 5,
-                }}
-              >
-                <div style={{ color: "#E2E8F0", fontWeight: 700 }}>
-                  Step {s.stepIndex}: <code>{s.toolName}</code>
-                </div>
-                <div style={{ color: "#94A3B8", fontSize: 10.5 }}>
-                  💭 <em>{s.thought}</em>
-                </div>
-                <div style={{ color: "#10B981", fontSize: 10.5 }}>
-                  🔎 {s.observationSummary}
-                </div>
+
+          {trace && trace.steps.length > 0 && (
+            <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span>COACH VERIFICATION ({trace.steps.length} CHECKS)</span>
+                {trace.selfCorrectionRetries > 0 && (
+                  <span className="text-amber-400">
+                    {trace.selfCorrectionRetries} guardrail self-correction
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
+              <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                {trace.steps.map((s) => (
+                  <div
+                    key={`${s.stepIndex}_${s.toolName}`}
+                    className="text-[10px] font-mono text-slate-400 flex items-start gap-1.5 leading-tight"
+                  >
+                    <span className="text-emerald-400">✓</span>
+                    <span className="text-slate-300">{s.observationSummary}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div style={{ display: "flex", gap: 8 }}>
+      {/* 4. Zero-Friction 1-Tap Action Bar */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
           data-testid="accept-evolution-btn"
           onClick={() => onAccept(proposition)}
-          style={{
-            flex: 1.5,
-            background: "#F59E0B",
-            color: "#090C11",
-            border: "none",
-            borderRadius: 10,
-            padding: "10px 12px",
-            fontSize: 12.5,
-            fontWeight: 800,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-          }}
+          className={`flex-1 py-2.5 px-3.5 rounded-xl font-display uppercase tracking-wider text-xs font-black shadow-lg transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer ${theme.ctaClass}`}
         >
-          <span>✅ Accept & Evolve Today</span>
+          <Check className="w-3.5 h-3.5 stroke-[2.75]" />
+          <span>{theme.ctaLabel}</span>
+          <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
         </button>
+
         <button
           type="button"
           data-testid="dismiss-evolution-btn"
           onClick={() => onDismiss(proposition)}
-          style={{
-            flex: 1,
-            background: "#1C2436",
-            color: "#CBD5E1",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10,
-            padding: "10px 12px",
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="py-2.5 px-3 rounded-xl bg-[#131A29] hover:bg-[#1A2438] text-slate-300 hover:text-white border border-white/10 font-display uppercase tracking-wider text-xs font-bold transition active:scale-[0.98] flex items-center justify-center gap-1 cursor-pointer"
         >
-          ✋ Keep Current
+          <X className="w-3.5 h-3.5 text-slate-400" />
+          <span>Keep Original</span>
         </button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -31,6 +31,13 @@ describe('Spec 017: Intelligent Biomechanical Substitution Copilot Suite', () =>
       assert.strictEqual(inferMuscleSubdivision('Seated Leg Curl', 'hamstrings'), 'hamstring_knee');
       assert.strictEqual(inferMuscleSubdivision('Barbell Romanian Deadlift', 'hamstrings'), 'hamstring_hip');
     });
+
+    it('accurately identifies posterior deltoid and chest-supported back movements even when target is generic', () => {
+      assert.strictEqual(inferMuscleSubdivision('lever seated reverse fly', 'Rear Deltoids'), 'deltoid_posterior');
+      assert.strictEqual(inferMuscleSubdivision('Reverse Pec Deck', 'chest'), 'deltoid_posterior');
+      assert.strictEqual(inferMuscleSubdivision('Chest-Supported Dumbbell Reverse Fly', 'chest'), 'deltoid_posterior');
+      assert.strictEqual(inferMuscleSubdivision('chest-supported dumbbell row', 'chest'), 'back_rhomboids');
+    });
   });
 
   describe('inferResistanceProfile', () => {

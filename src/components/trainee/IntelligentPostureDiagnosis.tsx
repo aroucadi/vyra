@@ -80,11 +80,11 @@ export function IntelligentPostureDiagnosis({
       {/* 1. Header: Eyebrow + Intelligent Copilot Icon */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
               Intelligent UI Synthesis
             </span>
             <h4 className="text-sm font-bold text-white tracking-tight leading-tight">
@@ -97,7 +97,7 @@ export function IntelligentPostureDiagnosis({
           className={clsx(
             "text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold flex items-center gap-1",
             riskSeverity === "safe"
-              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+              ? "bg-sky-500/15 text-sky-400 border-sky-500/30"
               : riskSeverity === "moderate"
               ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
               : "bg-rose-500/15 text-rose-400 border-rose-500/30"
@@ -124,9 +124,9 @@ export function IntelligentPostureDiagnosis({
       </div>
 
       {/* 3. Actionable Corrective Protocol (1-Tap Injection) */}
-      <div className="p-3.5 bg-emerald-950/20 border border-emerald-500/30 rounded-2xl space-y-2">
+      <div className="p-3.5 bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
             Prescribed Corrective Accessory
           </span>
           <span className="text-[10px] font-mono text-slate-400">3 Sets × 12–15</span>
@@ -144,12 +144,12 @@ export function IntelligentPostureDiagnosis({
               "w-full mt-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm",
               injectedExercise
                 ? "bg-slate-800 text-slate-400 cursor-default"
-                : "bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 cursor-pointer"
+                : "bg-amber-400 hover:bg-amber-300 active:scale-[0.99] text-slate-950 cursor-pointer"
             )}
           >
             {injectedExercise ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-amber-400" />
                 <span>Injected into Next Workout ✓</span>
               </>
             ) : (

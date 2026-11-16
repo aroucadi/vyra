@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
 
 /**
  * POST /api/auth/passkey
@@ -23,7 +24,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanUserId = userId.replace(/[^a-zA-Z0-9_\-\.]/g, "");
+    const tenant = await resolveRouteTenantContext(req, userId, {
+      allowUnauthenticatedAnon: true,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+
+    const cleanUserId = tenant.effectiveTraineeId.replace(/[^a-zA-Z0-9_\-\.]/g, "");
     const cleanCredentialId = credentialId.replace(/[^a-zA-Z0-9_\-\.\=]/g, "");
     const safeSessionsCount = Math.min(10000, Math.max(0, Number(sessionsCount) || 0));
 

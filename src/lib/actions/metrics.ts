@@ -1,6 +1,8 @@
 "use server";
 
 import { appStore } from "@/lib/store";
+import { getAuthenticatedSession } from "@/lib/auth/server-session";
+import { saveUserSyncBatch } from "@/lib/firebase/firestore-repository";
 import { revalidatePath } from "next/cache";
 
 function safeRevalidate(path: string) {
@@ -12,7 +14,12 @@ function safeRevalidate(path: string) {
 }
 
 export async function logWeightAction(traineeId: string, weightKg: number) {
-  const metric = appStore.addMetric(traineeId, weightKg);
+  const authSession = await getAuthenticatedSession();
+  const effectiveTraineeId = authSession ? authSession.uid : traineeId;
+  const metric = appStore.addMetric(effectiveTraineeId, weightKg);
+  if (authSession) {
+    await saveUserSyncBatch(authSession.uid, { metrics: [metric] }).catch(() => {});
+  }
   safeRevalidate("/(trainee)/progress");
   safeRevalidate("/(trainer)/roster");
   return metric;

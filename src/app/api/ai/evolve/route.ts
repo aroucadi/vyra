@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
+import {
+  ensureFirestoreCoachBridgeRegistered,
+  loadBootstrapForUser,
+} from "@/lib/firebase/firestore-repository";
 import { runVertexAgenticCoachLoop } from "@/lib/ai/vertex-agent-loop";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
 import {
@@ -55,6 +58,23 @@ export async function POST(req: Request) {
     ensureFirestoreCoachBridgeRegistered();
     const effectiveTraineeId = tenant.effectiveTraineeId;
 
+    let resolvedSessions = Array.isArray(body.sessions) ? body.sessions : [];
+    if (tenant.session) {
+      await athleteModelStore.hydrateFromDatabase(effectiveTraineeId);
+      if (resolvedSessions.length === 0) {
+        try {
+          const boot = await loadBootstrapForUser({
+            uid: tenant.session.uid,
+            email: tenant.session.email,
+            displayName: tenant.session.name,
+          });
+          resolvedSessions = boot.sessions;
+        } catch {
+          // Non-fatal fallback
+        }
+      }
+    }
+
     let ingestedSensoryNode: SensoryFeedbackEntry | null = null;
     if (body.feedbackToIngest && body.feedbackToIngest.exerciseName) {
       ingestedSensoryNode = sensoryMemoryStore.ingest({
@@ -74,7 +94,7 @@ export async function POST(req: Request) {
       equipment: String(body.equipment ?? "dumbbell"),
       gymId: body.gymId,
       gymName: body.gymName,
-      sessions: Array.isArray(body.sessions) ? body.sessions : [],
+      sessions: resolvedSessions,
       sleepHours: body.sleepHours,
       readinessFeeling: body.readinessFeeling,
       simulateInitialCandidateCheck: body.simulateInitialCandidateCheck,

@@ -12,7 +12,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged,
+  onIdTokenChanged,
   User as FirebaseUser,
 } from "firebase/auth";
 import { FIREBASE_WEB_CONFIG } from "./config";
@@ -47,9 +47,10 @@ export interface ServerSessionExchangeResult {
 }
 
 export async function exchangeFirebaseIdTokenForSession(
-  user: FirebaseUser
+  user: FirebaseUser,
+  forceRefresh = false
 ): Promise<ServerSessionExchangeResult> {
-  const idToken = await user.getIdToken(true);
+  const idToken = await user.getIdToken(forceRefresh);
   const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -75,7 +76,7 @@ export async function signInWithEmail(
   if (!auth) throw new Error("Firebase client auth is only available in the browser.");
 
   const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-  return await exchangeFirebaseIdTokenForSession(cred.user);
+  return await exchangeFirebaseIdTokenForSession(cred.user, true);
 }
 
 export async function signUpWithEmail(
@@ -99,7 +100,7 @@ export async function signUpWithEmail(
     // Non-fatal if rate limited
   }
 
-  const sessionRes = await exchangeFirebaseIdTokenForSession(cred.user);
+  const sessionRes = await exchangeFirebaseIdTokenForSession(cred.user, true);
   return { ...sessionRes, verificationEmailSent };
 }
 
@@ -110,7 +111,7 @@ export async function signInWithGoogle(): Promise<ServerSessionExchangeResult> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   const cred = await signInWithPopup(auth, provider);
-  return await exchangeFirebaseIdTokenForSession(cred.user);
+  return await exchangeFirebaseIdTokenForSession(cred.user, true);
 }
 
 export async function sendFirebasePasswordReset(email: string): Promise<void> {
@@ -139,5 +140,5 @@ export function subscribeFirebaseAuthState(
 ): () => void {
   const auth = getFirebaseClientAuth();
   if (!auth) return () => {};
-  return onAuthStateChanged(auth, cb);
+  return onIdTokenChanged(auth, cb);
 }

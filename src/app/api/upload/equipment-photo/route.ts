@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
 import {
   uploadEquipmentPhoto,
   isCloudStorageEnabled,
@@ -29,8 +30,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const tenant = await resolveRouteTenantContext(req, traineeId, {
+      allowUnauthenticatedAnon: true,
+      fallbackTraineeId: "anonymous",
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+
     const result = await uploadEquipmentPhoto(imageBase64, {
-      traineeId: traineeId || "anonymous",
+      traineeId: tenant.effectiveTraineeId,
       exerciseName: exerciseName || "machine",
       sessionId,
     });

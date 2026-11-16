@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
 import {
   adaptDailyWorkoutSession,
   AdaptDailyWorkoutInput,
@@ -28,8 +29,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const tenant = await resolveRouteTenantContext(req, body.traineeId, {
+      allowUnauthenticatedAnon: true,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+
     const result = await adaptDailyWorkoutSession({
-      traineeId: body.traineeId,
+      traineeId: tenant.effectiveTraineeId,
       voiceOrTextMessage: body.voiceOrTextMessage || "",
       gymId: body.gymId,
       gymName: body.gymName,

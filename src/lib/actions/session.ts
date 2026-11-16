@@ -2,6 +2,8 @@
 
 import { appStore } from "@/lib/store";
 import { EquipmentType, WorkoutSession } from "@/lib/types";
+import { getAuthenticatedSession } from "@/lib/auth/server-session";
+import { saveUserSyncBatch } from "@/lib/firebase/firestore-repository";
 import { revalidatePath } from "next/cache";
 
 function safeRevalidate(path: string) {
@@ -13,7 +15,15 @@ function safeRevalidate(path: string) {
 }
 
 export async function saveSessionAction(session: WorkoutSession) {
-  const saved = appStore.saveSession(session);
+  const authSession = await getAuthenticatedSession();
+  const scopedSession: WorkoutSession = authSession
+    ? { ...session, traineeId: authSession.uid }
+    : session;
+
+  const saved = appStore.saveSession(scopedSession);
+  if (authSession) {
+    await saveUserSyncBatch(authSession.uid, { sessions: [saved] }).catch(() => {});
+  }
   safeRevalidate("/(trainee)/today");
   safeRevalidate("/(trainee)/progress");
   safeRevalidate("/(trainer)/roster");

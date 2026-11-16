@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appStore } from "@/lib/store";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
+import {
+  ensureFirestoreCoachBridgeRegistered,
+  loadBootstrapForUser,
+} from "@/lib/firebase/firestore-repository";
 import {
   STANDARDIZED_POSE_GUIDES,
   VisualPoseId,
@@ -41,8 +44,24 @@ export async function GET(req: NextRequest) {
       : "front_relaxed";
 
     const snapshots = visualProgressStore.getSnapshots(traineeId, poseId);
-    const sessions = appStore.getSessions(traineeId);
-    const metrics = appStore.getMetrics(traineeId);
+    let sessions = appStore.getSessions(traineeId);
+    let metrics = appStore.getMetrics(traineeId);
+    let traineeGoals = currentUser.goals;
+
+    if (tenant.session && sessions.length === 0 && metrics.length === 0) {
+      try {
+        const boot = await loadBootstrapForUser({
+          uid: tenant.session.uid,
+          email: tenant.session.email,
+          displayName: tenant.session.name,
+        });
+        sessions = boot.sessions;
+        metrics = boot.metrics;
+        traineeGoals = boot.user.goals || traineeGoals;
+      } catch {
+        // Non-fatal fallback
+      }
+    }
 
     let comparisonReport = null;
     if (snapshots.length >= 2) {
@@ -52,7 +71,7 @@ export async function GET(req: NextRequest) {
         snapshotB: snapshots[snapshots.length - 1],
         sessions,
         metrics,
-        traineeGoals: currentUser.goals,
+        traineeGoals,
       });
     }
 
@@ -130,12 +149,34 @@ export async function POST(req: Request) {
       ? poseParam
       : "front_relaxed";
 
-    const sessions = Array.isArray(body.sessions)
+    let sessions = Array.isArray(body.sessions)
       ? body.sessions
       : appStore.getSessions(traineeId);
-    const metrics = Array.isArray(body.metrics)
+    let metrics = Array.isArray(body.metrics)
       ? body.metrics
       : appStore.getMetrics(traineeId);
+    let traineeGoals = currentUser.goals;
+
+    if (
+      tenant.session &&
+      !Array.isArray(body.sessions) &&
+      !Array.isArray(body.metrics) &&
+      sessions.length === 0 &&
+      metrics.length === 0
+    ) {
+      try {
+        const boot = await loadBootstrapForUser({
+          uid: tenant.session.uid,
+          email: tenant.session.email,
+          displayName: tenant.session.name,
+        });
+        sessions = boot.sessions;
+        metrics = boot.metrics;
+        traineeGoals = boot.user.goals || traineeGoals;
+      } catch {
+        // Non-fatal fallback
+      }
+    }
 
     // 0. Handle Photo Metadata Extraction & Historical Context Prefill (Before Anonymization)
     if (body.action === "extract_metadata") {
@@ -192,7 +233,7 @@ export async function POST(req: Request) {
 
     // 1. Handle Photo Capture / Historical Import + Mandatory Fail-Closed Face Detection & Anonymization
     if (body.action === "capture") {
-      const uploadGate = canTraineeUploadProgressPhotos(traineeId);
+      const uploadGate = canTraineeUploadProgressPhotos(tenant.session?.email || traineeId);
       if (!uploadGate.allowed) {
         return NextResponse.json(
           {
@@ -249,7 +290,7 @@ export async function POST(req: Request) {
         snapshotB: capturedSnapshot,
         sessions,
         metrics,
-        traineeGoals: currentUser.goals,
+        traineeGoals,
         cloudVisionConsentGranted: body.cloudVisionConsentGranted,
       });
 

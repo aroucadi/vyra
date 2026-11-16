@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
+import {
+  ensureFirestoreCoachBridgeRegistered,
+  loadBootstrapForUser,
+} from "@/lib/firebase/firestore-repository";
 import {
   runAutonomousCoachingLifecycleCheck,
   evaluateCommittedExperiments,
@@ -54,12 +57,25 @@ export async function POST(req: Request) {
     ensureFirestoreCoachBridgeRegistered();
     const effectiveTraineeId = tenant.effectiveTraineeId;
 
-    const sessions = Array.isArray(body.sessions) ? body.sessions : [];
-    const metricEntries = Array.isArray(body.metricEntries) ? body.metricEntries : [];
+    let sessions = Array.isArray(body.sessions) ? body.sessions : [];
+    let metricEntries = Array.isArray(body.metricEntries) ? body.metricEntries : [];
 
-    // Hydrate athlete model & experiment history from Firestore/PostgreSQL before running
+    // Hydrate athlete model & cloud history from Firestore/PostgreSQL before running
     if (tenant.session) {
       await athleteModelStore.hydrateFromDatabase(effectiveTraineeId);
+      if (sessions.length === 0 && metricEntries.length === 0) {
+        try {
+          const boot = await loadBootstrapForUser({
+            uid: tenant.session.uid,
+            email: tenant.session.email,
+            displayName: tenant.session.name,
+          });
+          sessions = boot.sessions;
+          metricEntries = boot.metrics;
+        } catch {
+          // Non-fatal fallback
+        }
+      }
     }
 
     if (body.action === "evaluate_experiments") {

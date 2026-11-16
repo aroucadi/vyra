@@ -1036,6 +1036,7 @@ export class Store {
     };
 
     // Preserve local offline records authored anonymously during the current browser session
+    let claimedLocalAnonData = false;
     const localSessions = this.db.sessions.filter(
       (s) => s.traineeId.startsWith("anon_") || s.traineeId === uid
     );
@@ -1045,6 +1046,7 @@ export class Store {
     }
     for (const s of localSessions) {
       if (!mergedSessionsMap.has(s.id)) {
+        if (s.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
         mergedSessionsMap.set(s.id, { ...s, traineeId: uid });
       }
     }
@@ -1055,6 +1057,7 @@ export class Store {
     }
     for (const m of this.db.metrics) {
       if ((m.traineeId.startsWith("anon_") || m.traineeId === uid) && !mergedMetricsMap.has(m.id)) {
+        if (m.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
         mergedMetricsMap.set(m.id, { ...m, traineeId: uid });
       }
     }
@@ -1065,6 +1068,7 @@ export class Store {
     }
     for (const p of this.db.programs) {
       if ((p.traineeId.startsWith("anon_") || p.traineeId === uid) && !mergedProgramsMap.has(p.id)) {
+        if (p.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
         mergedProgramsMap.set(p.id, { ...p, traineeId: uid });
       }
     }
@@ -1087,7 +1091,7 @@ export class Store {
 
     this.isCloudAuthenticated = true;
     this.hydratedStorageUid = null;
-    this.notifyChange(false);
+    this.notifyChange(claimedLocalAnonData);
   }
 
   signOutToEmpty() {

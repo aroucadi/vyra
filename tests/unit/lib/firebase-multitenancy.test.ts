@@ -26,6 +26,9 @@ import { GET as getBootstrapRoute } from "../../../src/app/api/me/bootstrap/rout
 import { POST as postSyncRoute } from "../../../src/app/api/me/sync/route";
 import { POST as postSyncEventsRoute } from "../../../src/app/api/sync/events/route";
 import { POST as postVisualProgressRoute } from "../../../src/app/api/ai/visual-progress/route";
+import { POST as postAdaptDayRoute } from "../../../src/app/api/ai/adapt-day/route";
+import { POST as postEquipmentPhotoRoute } from "../../../src/app/api/upload/equipment-photo/route";
+import { POST as postPasskeyRoute } from "../../../src/app/api/auth/passkey/route";
 
 function createInMemoryFirestoreMock() {
   const docs = new Map<string, Record<string, unknown>>();
@@ -408,5 +411,53 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
     const strangerLogs = await adapter.loadShadowLogsFromDb("fb_stranger_99");
     assert.equal(alaaLogs.length, 1);
     assert.equal(strangerLogs.length, 0);
+  });
+
+  it("7. Enforces tenant guards on /api/ai/adapt-day, /api/upload/equipment-photo, /api/auth/passkey and claims local anon data on bootstrap", async () => {
+    const adaptSpoof = await postAdaptDayRoute(
+      new NextRequest("http://localhost:3000/api/ai/adapt-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        body: JSON.stringify({ traineeId: ALAA_CANONICAL_UID, exercises: [] }),
+      })
+    );
+    assert.equal(adaptSpoof.status, 401);
+
+    const equipSpoof = await postEquipmentPhotoRoute(
+      new NextRequest("http://localhost:3000/api/upload/equipment-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        body: JSON.stringify({ traineeId: ALAA_CANONICAL_UID, imageBase64: "data:image/png;base64,iVBORw0KGgo=" }),
+      })
+    );
+    assert.equal(equipSpoof.status, 401);
+
+    const passkeySpoof = await postPasskeyRoute(
+      new NextRequest("http://localhost:3000/api/auth/passkey", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-vyra-enforce-auth": "true",
+          Authorization: "Bearer tok_stranger",
+        },
+        body: JSON.stringify({ userId: ALAA_CANONICAL_UID, credentialId: "cred_123" }),
+      })
+    );
+    assert.equal(passkeySpoof.status, 403);
+
+    // Local anon workout/metric claiming into authenticated tenant on hydrateFromBootstrap
+    const store = new Store({ forceEmpty: true });
+    const anonId = store.getCurrentUser().id;
+    store.addMetric(anonId, 71.4, "2026-11-16");
+
+    const strangerBoot = await loadBootstrapForUser(
+      { uid: "fb_stranger_99", email: "new.athlete@example.com", displayName: "New Athlete" },
+      mockStore.firestore
+    );
+    store.hydrateFromBootstrap(strangerBoot);
+
+    const claimedMetrics = store.getMetrics("fb_stranger_99");
+    assert.equal(claimedMetrics.length, 1);
+    assert.equal(claimedMetrics[0].weightKg, 71.4);
   });
 });

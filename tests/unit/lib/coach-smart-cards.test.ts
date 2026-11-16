@@ -95,4 +95,22 @@ describe("Vyra AI Coach Smart Action Cards & Program Mutation Engine", () => {
     assert.strictEqual(response.card?.interactiveData?.nextIncrementKg, 2.5);
     assert.ok(response.card?.details.some((d) => d.label === "Rep Target" && d.value === "8–10 Reps"));
   });
+
+  it("resolves nutrition and energy balance query into culturally grounded nutrition action card", () => {
+    const response = resolveCoachQuery(alaaId, "Am I eating enough calories to progress on my lifts?");
+    assert.ok(response.card, "Must generate a Smart Action Card for nutrition");
+    assert.strictEqual(response.card?.type, "nutrition");
+    assert.ok(response.text.includes("bottleneck") || response.text.includes("calories") || response.text.includes("kcal"));
+    assert.strictEqual(response.card?.actionPayload.actionType, "nutrition");
+    assert.ok(response.card?.details.some((d) => d.label.includes("Calories") || d.label.includes("Protein")));
+  });
+
+  it("resolves weekly meso review query into differential diagnosis and committed experiment card", () => {
+    const response = resolveCoachQuery(alaaId, "Run my weekly meso review and diagnose my bottlenecks.");
+    assert.ok(response.card, "Must generate a Smart Action Card for weekly meso review");
+    assert.ok(response.text.includes("Weekly Meso Review complete"));
+    assert.ok(response.text.includes("Committed experiment:"));
+    assert.strictEqual(response.card?.actionPayload.actionType, "autoregulate");
+    assert.ok(response.card?.details.some((d) => d.label === "Bottleneck"));
+  });
 });

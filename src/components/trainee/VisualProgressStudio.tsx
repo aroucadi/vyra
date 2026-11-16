@@ -34,10 +34,13 @@ import {
   extractPhotoCaptureDateMetadata,
   resolveHistoricalPhotoPrefill,
   createExifTaggedPhotoDataUri,
+  isVisualProgressDemoModeEnabled,
+  canTraineeUploadProgressPhotos,
 } from "@/lib/ai/visual-progress";
 
 export function VisualProgressStudio() {
   const currentUser = appStore.getCurrentUser();
+  const uploadPermission = canTraineeUploadProgressPhotos(currentUser.id);
   const sessions = appStore.getSessions(currentUser.id);
   const metrics = appStore.getMetrics(currentUser.id);
 
@@ -61,8 +64,10 @@ export function VisualProgressStudio() {
   const [captureDateInput, setCaptureDateInput] = useState(
     () => new Date().toISOString().split("T")[0]
   );
-  const [captureMilestoneLabel, setCaptureMilestoneLabel] = useState("Week 8 Check-In");
-  const [captureWeightInput, setCaptureWeightInput] = useState("54.4");
+  const [captureMilestoneLabel, setCaptureMilestoneLabel] = useState("Check-In");
+  const [captureWeightInput, setCaptureWeightInput] = useState(() =>
+    metrics.length > 0 ? String(metrics[metrics.length - 1].weightKg) : ""
+  );
   const [captureNoteInput, setCaptureNoteInput] = useState("");
   const [uploadedRawUri, setUploadedRawUri] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | undefined>(undefined);
@@ -72,6 +77,8 @@ export function VisualProgressStudio() {
   const [historicalPrefill, setHistoricalPrefill] =
     useState<HistoricalPhotoPrefillContext | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [confirmNoFaceVisible, setConfirmNoFaceVisible] = useState(false);
+  const [cloudVisionConsentGranted, setCloudVisionConsentGranted] = useState(false);
 
   // Program Adjustment 1-Tap Apply & Undo State
   const [appliedAdjustmentIds, setAppliedAdjustmentIds] = useState<Record<string, boolean>>({});
@@ -113,6 +120,7 @@ export function VisualProgressStudio() {
       sessions,
       metrics,
       traineeGoals: currentUser.goals,
+      cloudVisionConsentGranted,
     })
       .then((res) => {
         if (active) setReport(res);
@@ -124,7 +132,7 @@ export function VisualProgressStudio() {
     return () => {
       active = false;
     };
-  }, [snapshotA, snapshotB, currentUser.id, sessions.length, metrics.length]);
+  }, [snapshotA, snapshotB, currentUser.id, sessions.length, metrics.length, cloudVisionConsentGranted]);
 
   const handleCadenceChange = (next: CheckinCadence) => {
     setCadence(next);
@@ -145,7 +153,9 @@ export function VisualProgressStudio() {
     });
     setHistoricalPrefill(prefill);
     setCaptureMilestoneLabel(prefill.suggestedMilestoneLabel);
-    setCaptureWeightInput(String(prefill.closestWeightKg));
+    setCaptureWeightInput(
+      prefill.closestWeightKg !== undefined ? String(prefill.closestWeightKg) : ""
+    );
     if (meta !== undefined) {
       setDetectedMetadata(meta);
     }
@@ -204,15 +214,27 @@ export function VisualProgressStudio() {
 
   const handleSaveAnonymizedPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!uploadPermission.allowed) {
+      setStatusBanner(
+        uploadPermission.reason ||
+          "Photo uploads are currently restricted to the owner account (trainee_alaa)."
+      );
+      return;
+    }
+    if (!uploadedRawUri && !isVisualProgressDemoModeEnabled()) {
+      setStatusBanner("Please select a photo file to upload before saving.");
+      return;
+    }
     setIsCapturing(true);
     try {
-      const weightVal = parseFloat(captureWeightInput) || 53.5;
+      const parsedWeight = parseFloat(captureWeightInput);
+      const weightVal =
+        !isNaN(parsedWeight) && parsedWeight > 0 ? parsedWeight : undefined;
       const inferredWeek =
         historicalPrefill?.inferredWeekIndex ??
         Math.max(1, ...snapshots.map((s) => s.weekIndex + 1));
 
-      // If user uploaded a non-SVG raw image or simulated EXIF, generate a clean standardized silhouette
-      // if the raw URI is a tiny synthetic EXIF header stub so it renders visually in the studio
+      // Only generate synthetic SVG silhouette in explicit demo mode
       const isExifStub =
         uploadedRawUri &&
         uploadedRawUri.startsWith("data:image/jpeg;base64,RXhpZg");
@@ -224,7 +246,7 @@ export function VisualProgressStudio() {
               weekIndex: Math.max(1, inferredWeek),
               milestoneLabel:
                 captureMilestoneLabel || `Week ${inferredWeek} Check-In`,
-              weightKg: weightVal,
+              weightKg: weightVal ?? 0,
               shoulderWidthFactor: 1 + Math.min(0.15, Math.max(0, inferredWeek - 1) * 0.015),
               pelvicTiltDegrees: Math.max(5, 14 - Math.max(0, inferredWeek - 1) * 1.1),
               latSpreadFactor: 1 + Math.min(0.17, Math.max(0, inferredWeek - 1) * 0.018),
@@ -248,6 +270,7 @@ export function VisualProgressStudio() {
           captureNoteInput ||
           historicalPrefill?.contextNoteForAi ||
           "Standardized check-in captured with on-device face anonymization.",
+        confirmNoFaceVisible,
       });
 
       // If we used the synthetic EXIF stub for metadata extraction, ensure the displayable SVG is attached
@@ -269,13 +292,49 @@ export function VisualProgressStudio() {
       setCaptureNoteInput("");
       setStatusBanner(
         created.isHistoricalImport
-          ? `Imported past photo "${created.milestoneLabel}" (${created.date}) via ${created.metadataDateSource === "exif_datetime_original" ? "EXIF Metadata" : "Historical Date"} & Anonymized Face.`
-          : `Saved "${created.milestoneLabel}" (${created.date}) with On-Device Face Anonymization.`
+          ? `Imported past photo "${created.milestoneLabel}" (${created.date}) via ${created.metadataDateSource === "exif_datetime_original" ? "EXIF Metadata" : "Historical Date"} & Redacted Face.`
+          : `Saved "${created.milestoneLabel}" (${created.date}) with Verified Face Redaction & EXIF Scrubbing.`
       );
       setTimeout(() => setStatusBanner(null), 4500);
+    } catch (err: any) {
+      setStatusBanner(
+        err?.message || "Face detection failed closed. Please retake the photo in clear lighting."
+      );
     } finally {
       setIsCapturing(false);
     }
+  };
+
+  const handleDeleteSnapshot = async (snapshotId: string) => {
+    visualProgressStore.deleteSnapshot(snapshotId, currentUser.id);
+    try {
+      await fetch("/api/ai/visual-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          snapshotId,
+          traineeId: currentUser.id,
+        }),
+      });
+    } catch {
+      // ignore offline
+    }
+    const updated = visualProgressStore.getSnapshots(currentUser.id, activePose);
+    setSnapshots(updated);
+    if (updated.length >= 2) {
+      setSelectedIdA(updated[0].id);
+      setSelectedIdB(updated[updated.length - 1].id);
+    } else if (updated.length === 1) {
+      setSelectedIdA(updated[0].id);
+      setSelectedIdB(updated[0].id);
+    } else {
+      setSelectedIdA("");
+      setSelectedIdB("");
+      setReport(null);
+    }
+    setStatusBanner("Deleted photo from store and server.");
+    setTimeout(() => setStatusBanner(null), 3500);
   };
 
   const handleApplyProgramAdjustment = (adj: ProgramAdjustmentSuggestion) => {
@@ -405,13 +464,15 @@ export function VisualProgressStudio() {
               />
             </label>
 
-            <button
-              type="button"
-              onClick={handleSimulatePastExifPhoto}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 text-[11px] font-mono font-semibold cursor-pointer transition"
-            >
-              ⚡ Test Past Photo with EXIF Date (Week 2)
-            </button>
+            {isVisualProgressDemoModeEnabled() && (
+              <button
+                type="button"
+                onClick={handleSimulatePastExifPhoto}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 text-[11px] font-mono font-semibold cursor-pointer transition"
+              >
+                ⚡ Test Past Photo with EXIF Date (Week 2)
+              </button>
+            )}
           </div>
 
           {/* Live Metadata & Historical Context Detection Banner */}
@@ -479,6 +540,32 @@ export function VisualProgressStudio() {
               />
             </div>
           </div>
+
+          {activePose === "back_relaxed" && (
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={confirmNoFaceVisible}
+                onChange={(e) => setConfirmNoFaceVisible(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-900 text-emerald-500"
+              />
+              <span>
+                I confirm no face is visible in this posterior (back_relaxed) photo.
+              </span>
+            </label>
+          )}
+
+          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={cloudVisionConsentGranted}
+              onChange={(e) => setCloudVisionConsentGranted(e.target.checked)}
+              className="rounded border-slate-700 bg-slate-900 text-amber-500"
+            />
+            <span>
+              I explicitly consent to sending my face-redacted, EXIF-stripped photo to the cloud vision model for comparison.
+            </span>
+          </label>
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button
@@ -620,6 +707,16 @@ export function VisualProgressStudio() {
       </div>
 
       {/* 4. Side-by-Side Standardized Visual Comparison Viewport */}
+      {snapshots.length === 0 && (
+        <div className="p-4 rounded-2xl bg-[#090C11] border border-[#1C2436] text-center space-y-1">
+          <p className="text-xs text-slate-200 font-semibold">
+            No progress photos uploaded yet for {poseGuide.shortLabel}.
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Upload a photo above to track visual milestones alongside your logged workouts.
+          </p>
+        </div>
+      )}
       {snapshotA && snapshotB && (
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -656,9 +753,20 @@ export function VisualProgressStudio() {
                 <span className="text-slate-300 font-semibold truncate">
                   {snap.milestoneLabel}
                 </span>
-                <span className="text-emerald-400 shrink-0">
-                  Align: {snap.postureAlignmentScore}%
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-emerald-400">
+                    {typeof snap.postureAlignmentScore === "number"
+                      ? `Align: ${snap.postureAlignmentScore}%`
+                      : "Unscored"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSnapshot(snap.id)}
+                    className="text-[9px] text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -677,9 +785,12 @@ export function VisualProgressStudio() {
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
                 {report.modelUsed} • {report.mediaResolution?.toUpperCase() || "HIGH"}-RES SCAN
               </span>
-              <span className="text-[9px] font-mono text-emerald-400">
-                🔒 Zero Facial PII Shared
-              </span>
+              {report.privacyVerification.verificationBadgeText ===
+                "Face Detected & Redacted (Margin Applied) • EXIF Scrubbed" && (
+                <span className="text-[9px] font-mono text-emerald-400">
+                  🔒 {report.privacyVerification.verificationBadgeText}
+                </span>
+              )}
             </div>
           </div>
           <p className="text-xs font-bold text-white leading-snug">
@@ -724,7 +835,12 @@ export function VisualProgressStudio() {
           {/* TAB 1: Visual Evolution & Micro-Changes */}
           {activeTab === "insights" && (
             <div className="space-y-2.5">
-              {report.visualObservations.map((obs) => (
+              {report.visualObservations.length === 0 ? (
+                <div className="p-3.5 bg-[#090C11] border border-[#1C2436] rounded-xl text-xs text-slate-300">
+                  No photo analysis available — no visual observations, body-composition percentages, or posture alignment scores were generated for these photos.
+                </div>
+              ) : (
+                report.visualObservations.map((obs) => (
                 <div
                   key={obs.id}
                   className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl space-y-1.5"
@@ -759,7 +875,8 @@ export function VisualProgressStudio() {
                     <span>Training Driver: {obs.linkedTrainingDriver}</span>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           )}
 
@@ -881,7 +998,12 @@ export function VisualProgressStudio() {
           {/* TAB 3: Actionable Next-Block Program Adjustments */}
           {activeTab === "actions" && (
             <div className="space-y-2.5">
-              {report.programAdjustments.map((adj) => {
+              {report.programAdjustments.length === 0 ? (
+                <div className="p-3.5 bg-[#090C11] border border-[#1C2436] rounded-xl text-xs text-slate-300">
+                  No photo analysis available — no visual-based program adjustments are proposed without verified photo analysis.
+                </div>
+              ) : (
+                report.programAdjustments.map((adj) => {
                 const isApplied = Boolean(appliedAdjustmentIds[adj.id]);
                 return (
                   <div
@@ -928,7 +1050,8 @@ export function VisualProgressStudio() {
                     </button>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </div>

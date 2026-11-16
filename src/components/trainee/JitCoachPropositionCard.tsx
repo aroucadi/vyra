@@ -266,6 +266,27 @@ export function JitCoachPropositionCard({
             <p className="text-[11px] text-slate-300 leading-relaxed">
               {proposition.rootCauseDiagnosis}
             </p>
+            {proposition.explainability?.plainLanguagePrinciple && (
+              <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px] text-slate-300">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className="font-mono font-bold uppercase text-[10px] text-slate-400">
+                    Coaching Principle
+                  </span>
+                  {proposition.explainability.showEvidenceBadge &&
+                    proposition.explainability.evidenceRating && (
+                      <span
+                        data-testid="principle-evidence-badge"
+                        className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-mono text-emerald-300 uppercase"
+                      >
+                        Evidence: {proposition.explainability.evidenceRating}
+                      </span>
+                    )}
+                </div>
+                <p className="text-[11px] text-slate-300 leading-snug">
+                  {proposition.explainability.plainLanguagePrinciple}
+                </p>
+              </div>
+            )}
           </div>
 
           {trace && trace.steps.length > 0 && (

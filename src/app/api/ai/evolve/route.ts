@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import "@/db/coach-repository";
 import { runVertexAgenticCoachLoop } from "@/lib/ai/vertex-agent-loop";
+import { athleteModelStore } from "@/lib/ai/athlete-model";
 import {
   sensoryMemoryStore,
   IngestFeedbackInput,
@@ -64,15 +66,22 @@ export async function POST(req: Request) {
       jitInput,
       typeof body.maxTurns === "number" ? body.maxTurns : 6
     );
+    await athleteModelStore.syncToDatabase(body.traineeId);
 
     return NextResponse.json(
       {
         ok: true,
         proposition: result.proposition,
+        degradedMode: result.degradedMode ?? false,
+        statusMessage: result.statusMessage,
+        mutationApplied: result.mutationApplied ?? Boolean(result.proposition),
+        stagesCompleted: result.stagesCompleted,
+        shadowModeLogged: result.shadowModeLogged ?? false,
         authMode: result.authMode,
         modelUsed: result.modelUsed,
         turnsExecuted: result.turnsExecuted,
         toolCallsHistory: result.toolCallsHistory,
+        athleteModelContext: result.athleteModelContext,
         ingestedSensoryNode: ingestedSensoryNode
           ? {
               id: ingestedSensoryNode.id,

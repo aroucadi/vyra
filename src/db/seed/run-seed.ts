@@ -33,13 +33,13 @@ export async function runSeed(customDbUrl?: string) {
 
   console.log(`✓ Athlete Profile: ${userAlaa.name} (${userAlaa.heightCm} cm)`);
   console.log(`✓ Protocol Title: "${masterProg.title}"`);
+  console.log(`✓ Launch Date: ${masterProg.launchDate || masterProg.startDate}`);
   console.log(`✓ Architecture: ${masterProg.durationWeeks} Weeks • ${masterProg.weeks.length * 7} Days • ${allExercises.length} Workout Slots/Wk • ${totalSets} Working Sets/Wk`);
   console.log(`✓ Equipment Matrix: ${totalVariations} Multi-Modality Variations (${allExercises.length} slots × 4 equipment options)`);
-  console.log(`✓ Biomechanics: 100% Machine/Cable Guided Tracks • Zero Lower-Body Loading on Monday & Tuesday`);
-  console.log(`✓ Monday Match Day: 3,000 kcal / 164g P (Caloric Compensation for 19:15 Football)`);
-  console.log(`✓ Standard Training Days: 2,600 kcal / 139g P (Split Low-Osmolarity Shake & Evening Olive Oil Density)`);
-  console.log(`✓ Morning Alignment: 8-Minute Daily Warm-Up Routine (${week1.days[0].morningRoutine?.length || 5} Drills)`);
-  console.log(`✓ Supplement Protocol: Creatine Monohydrate (5g/day with dinner) + Unified Dinner Stack`);
+  console.log(`✓ Biomechanics: 5-Day Split (Mon/Tue/Wed/Thu/Sat) • Zero Lower-Body Loading on Monday & Tuesday`);
+  console.log(`✓ Nutrition Floor: 2,710 kcal | 173.6g P / 317.4g C / 72.2g F (4 Scoops Scitec Jumbo = 2.82g Creatine)`);
+  console.log(`✓ Morning Alignment: Waking 5g L-Glutamine + Hollow-Body Scapular Drills (${week1.days[0].morningRoutine?.length || 4} Drills)`);
+  console.log(`✓ Supplement Stack: L-Glutamine (07:30) • Jumbo+Shilajit+Enzymes • Electrolytes • D3+K2/Omega-3 (13:00) • Mag+Ashwagandha (22:30)`);
   console.log(`✓ Hydration Architecture: ${masterHydrationGoal.dailyTargetMl} ml Daily Base + ${masterHydrationGoal.workoutDayBonusMl} ml Workout Bonus`);
   console.log("------------------------------------------------------------");
 

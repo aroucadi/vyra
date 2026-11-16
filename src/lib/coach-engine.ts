@@ -1,5 +1,9 @@
 import { appStore } from "./store";
 import { resolveProgramDay } from "./utils";
+import { diagnoseNutritionAndEnergyBalance } from "./ai/nutrition-coach";
+import { assembleAthleteCaseFile, executeWeeklyMesoReview } from "./ai/coaching-cycle";
+import { athleteModelStore } from "./ai/athlete-model";
+import { calculateSmoothedBodyweightTrend } from "./training-math/trend-analytics";
 
 export type CoachCardActionType = "swap" | "condense" | "autoregulate" | "nutrition" | "load_explanation" | "none";
 
@@ -234,9 +238,139 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     };
   }
 
-  // 5. DEFAULT CONSTRUCTIVE PHYSIOLOGICAL COACHING
+  // 5. NUTRITION & ENERGY BALANCE INTENT
+  if (
+    normalized.includes("nutrition") ||
+    normalized.includes("eat") ||
+    normalized.includes("calorie") ||
+    normalized.includes("surplus") ||
+    normalized.includes("diet") ||
+    normalized.includes("macro") ||
+    normalized.includes("protein") ||
+    normalized.includes("food") ||
+    normalized.includes("meal") ||
+    (normalized.includes("stall") && (normalized.includes("bench") || normalized.includes("press") || normalized.includes("lift") || normalized.includes("weight")))
+  ) {
+    const athlete = athleteModelStore.getAthleteModel(traineeId);
+    const metrics = appStore.getMetrics(traineeId);
+    const weightTrend = calculateSmoothedBodyweightTrend(metrics);
+    const diag = diagnoseNutritionAndEnergyBalance(athlete, weightTrend);
+    const weightKg = weightTrend.smoothedKg || weightTrend.latestRawKg || athlete.dynamic.energyBalanceTrend.value.smoothedWeightKg || 52.0;
+    const weightProvenance = athlete.dynamic.energyBalanceTrend.source ?? "measured";
+
+    if (diag.isCaloricBottleneck) {
+      return {
+        id: responseId,
+        text: `Energy balance is currently your #1 bottleneck. Swapping exercises won't fix an empty fuel tank. Your bodyweight is currently ${weightKg.toFixed(1)} kg (${weightProvenance}, smoothed trend ${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). To build muscle tissue and drive progressive overload, you need a deliberate surplus of +${diag.surplusDeltaKcal} kcal/day (${diag.prescribedDailyKcal} kcal total) with ${diag.prescribedDailyProteinGrams}g protein. Focus on accessible Casablanca whole-food staples: 4–6 whole eggs daily, olive oil drizzled on lentils/harira, fresh sardines, and a whole-milk banana shake with almonds.`,
+        card: {
+          type: "nutrition",
+          eyebrow: "NUTRITION & ENERGY BALANCE · SURPLUS PROTOCOL",
+          headline: `Energy Bottleneck Detected · +${diag.surplusDeltaKcal} kcal Surplus`,
+          subtext: `Current intake matches maintenance (~${diag.currentEstimatedMaintenanceKcal} kcal) for ${weightKg.toFixed(1)} kg. Fuel is the primary limiter on your compound lifts.`,
+          ctaLabel: "Commit Surplus Strategy",
+          targetDayLabel: "Daily Target",
+          details: [
+            { label: "Target Calories", value: `${diag.prescribedDailyKcal} kcal` },
+            { label: "Surplus", value: `+${diag.surplusDeltaKcal} kcal` },
+            { label: "Protein Target", value: `${diag.prescribedDailyProteinGrams}g` },
+          ],
+          actionPayload: {
+            actionType: "nutrition",
+            dayOfWeek: targetDay.dayOfWeek,
+          },
+        },
+      };
+    } else {
+      return {
+        id: responseId,
+        text: `Your current energy balance is supporting your training. Smoothed weight is ${weightKg.toFixed(1)} kg (${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). Recommended target remains ${diag.prescribedDailyKcal} kcal with ${diag.prescribedDailyProteinGrams}g protein to maintain recovery capacity.`,
+        card: {
+          type: "nutrition",
+          eyebrow: "NUTRITION TARGETS",
+          headline: `${diag.prescribedDailyKcal} kcal · ${diag.prescribedDailyProteinGrams}g Protein`,
+          subtext: `Weight trend is ${weightTrend.trajectory}. Maintain consistent whole-food intake with adequate hydration.`,
+          ctaLabel: "Review Meal Strategies",
+          targetDayLabel: "Daily Target",
+          details: [
+            { label: "Calories", value: `${diag.prescribedDailyKcal} kcal` },
+            { label: "Protein", value: `${diag.prescribedDailyProteinGrams}g` },
+            { label: "Trajectory", value: weightTrend.trajectory },
+          ],
+          actionPayload: {
+            actionType: "nutrition",
+            dayOfWeek: targetDay.dayOfWeek,
+          },
+        },
+      };
+    }
+  }
+
+  // 6. WEEKLY MESO REVIEW & BOTTLENECK DIAGNOSIS INTENT
+  if (
+    normalized.includes("weekly review") ||
+    normalized.includes("meso review") ||
+    normalized.includes("review my week") ||
+    normalized.includes("bottleneck") ||
+    normalized.includes("check-in") ||
+    normalized.includes("check in")
+  ) {
+    const metrics = appStore.getMetrics(traineeId);
+    const sessions = appStore.getSessions(traineeId);
+    const caseFile = assembleAthleteCaseFile({
+      traineeId,
+      sessions,
+      metricEntries: metrics,
+    });
+    const review = executeWeeklyMesoReview(caseFile);
+    const topHypothesis = review.differentialDiagnosis[0];
+    const topDomain = topHypothesis ? topHypothesis.domain : "general_maintenance";
+    const experiment = review.committedExperiment;
+
+    const bottleneckLabels: Record<string, string> = {
+      tendon_tolerance: "Safety / Tendon Friction",
+      adherence: "Adherence / Missed Sessions",
+      energy_balance: "Nutrition & Energy Balance",
+      progressive_overload: "Progressive Overload Stagnation",
+      systemic_recovery: "Systemic Recovery / Sleep",
+      volume_landmarks: "Volume Distribution",
+    };
+
+    const friendlyBottleneck = bottleneckLabels[topDomain] || topDomain;
+    const experimentHypothesis = experiment?.hypothesis ?? topHypothesis?.hypothesis ?? "Maintain progressive overload and consistency";
+    const reviewDate = experiment?.targetReviewDate ?? new Date(Date.now() + 21 * 86400000).toISOString().split("T")[0];
+    const experimentAction = experiment?.actionTaken ?? topHypothesis?.recommendedIntervention ?? "Continue current program block";
+    const experimentCategory = experiment?.category ?? "setup_calibration";
+
+    return {
+      id: responseId,
+      text: `Weekly Meso Review complete. Through differential diagnosis (Safety ➔ Adherence ➔ Nutrition ➔ Overload ➔ Recovery ➔ Exercise Selection), your primary rate-limiting bottleneck is **${friendlyBottleneck}**.\n\nCommitted experiment: "${experimentHypothesis}". Review scheduled for ${reviewDate}.`,
+      card: {
+        type: "autoregulate",
+        eyebrow: "WEEKLY MESO REVIEW · DIFFERENTIAL DIAGNOSIS",
+        headline: `Primary Bottleneck: ${friendlyBottleneck}`,
+        subtext: `Experiment: ${experimentAction}. Review scheduled for ${reviewDate}.`,
+        ctaLabel: "Acknowledge Experiment",
+        targetDayLabel: "Meso Review",
+        details: [
+          { label: "Bottleneck", value: friendlyBottleneck.split(" / ")[0] },
+          { label: "Experiment", value: experimentCategory },
+          { label: "Review Date", value: reviewDate },
+        ],
+        actionPayload: {
+          actionType: "autoregulate",
+          dayOfWeek: targetDay.dayOfWeek,
+        },
+      },
+    };
+  }
+
+  // 7. DEFAULT CONSTRUCTIVE PHYSIOLOGICAL COACHING
+  const athlete = athleteModelStore.getAthleteModel(traineeId);
+  const regime = athlete.static.regime.value ?? "hypertrophy";
+  const trainingAgeY = (athlete.static.trainingAgeMonths.value / 12).toFixed(1);
+
   return {
     id: responseId,
-    text: `Maintaining your 16-week periodization blueprint. Current focus is strict scapular retraction and maintaining our 2:1 pull-to-push volume balance to fix anterior shoulder tilt. Let me know if you need to swap an exercise, adjust load, or condense your session.`,
+    text: `Maintaining your ${regime} periodization blueprint (training age: ${trainingAgeY}y). Current focus is progressive overload, strict scapular control, and sound recovery. Let me know if you need to swap an exercise, adjust load, condense your session, or review your nutrition and energy balance.`,
   };
 }

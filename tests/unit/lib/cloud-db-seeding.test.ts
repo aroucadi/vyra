@@ -6,9 +6,6 @@ import {
   userAlaa,
   userAlaaPro,
   linkAlaa,
-  generateMaster12WeekProgram,
-  masterSupplementProtocols,
-  masterHydrationGoal,
   seedMetricsAlaa,
 } from '@/db/seed/master-transformation-program';
 
@@ -31,17 +28,17 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     assert.strictEqual(userAlaa.name, 'Alaa');
     assert.strictEqual(userAlaa.email, 'alaa@vyra.fit');
     assert.strictEqual(userAlaa.role, 'trainee');
-    assert.strictEqual(userAlaa.heightCm, 173);
+    assert.strictEqual(userAlaa.heightCm, 172);
     assert.strictEqual(userAlaa.sex, 'male');
     assert.strictEqual(userAlaa.dob, '1989-03-15');
+    assert.strictEqual(userAlaa.biometrics?.baselineWeightKg, 52.05);
 
-    // Posture, underweight medical gate and left-arm coordination anchors
-    const hasUnderweightGate = userAlaa.injuries.some((inj) => inj.includes('BMI 17.3') || inj.includes('Underweight'));
+    const hasUnderweightGate = userAlaa.injuries.some((inj) => inj.includes('52.05') || inj.includes('Underweight'));
     const hasLeftArmRule = userAlaa.injuries.some((inj) => inj.includes('Left-Arm') || inj.includes('0178'));
     const hasFootballManagement = userAlaa.injuries.some((inj) => inj.includes('Football') || inj.includes('19:15'));
-    assert.strictEqual(hasUnderweightGate && hasLeftArmRule && hasFootballManagement, true, 'Profile must include medical gate and left-arm rule');
+    assert.strictEqual(hasUnderweightGate && hasLeftArmRule && hasFootballManagement, true, 'Profile must include weight floor, left-arm rule, and football deconfliction');
 
-    const hasTargetGain = userAlaa.goals.some((g) => g.includes('+0.20 to +0.40 kg/week') || g.includes('55.0 kg'));
+    const hasTargetGain = userAlaa.goals.some((g) => g.includes('+0.20 to +0.40 kg/week') || g.includes('55.5 kg'));
     assert.strictEqual(hasTargetGain, true, 'Goals must include +0.20 to +0.40 kg/week target');
   });
 
@@ -58,44 +55,55 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     assert.strictEqual(linkAlaa.status, 'active');
   });
 
-  it('verifies appStore defaults to Alaa persona with active 12-week Master Program', () => {
+  it('verifies appStore defaults to Alaa persona with active 5-Day Nov 23 Master Program', () => {
     const currentUser = appStore.getCurrentUser();
     assert.strictEqual(currentUser.id, 'trainee_alaa');
     assert.strictEqual(currentUser.name, 'Alaa');
 
     const activeProg = appStore.getActiveProgramForTrainee('trainee_alaa');
     assert.ok(activeProg, 'Active program must exist for Alaa');
-    assert.strictEqual(activeProg.title, 'The Definitive 16-Week Custom 360° Protocol (Gym + Home Bar/Board + 480 Daily Stairs + Sleep/Drive Ergonomics)');
+    assert.strictEqual(
+      activeProg.title,
+      'The Definitive 5-Day Custom 360° Hypertrophy, Long-Length Stretch & Posture Protocol'
+    );
+    assert.strictEqual(activeProg.id, 'prog_master_5day_v2');
+    assert.strictEqual(activeProg.launchDate, '2026-11-23');
+    assert.strictEqual(activeProg.startDate, '2026-11-23');
     assert.strictEqual(activeProg.durationWeeks, 16);
     assert.strictEqual(activeProg.weeks.length, 16);
     assert.strictEqual(activeProg.status, 'published');
 
-    // Verify day 1 through 4 slots
     const w1 = activeProg.weeks[0];
     const mon = w1.days[0];
     const tue = w1.days[1];
     const wed = w1.days[2];
     const thu = w1.days[3];
+    const fri = w1.days[4];
+    const sat = w1.days[5];
+    const sun = w1.days[6];
 
-    // Verify 6-exercise master architecture across each of the 4 training days (24 catalogue movements total)
-    assert.strictEqual(mon.blocks.flatMap((b) => b.exercises).length, 7, 'Monday must have 7 exercises');
-    assert.strictEqual(mon.blocks.length, 4, 'Monday must have 4 blocks');
-    assert.strictEqual(tue.blocks.flatMap((b) => b.exercises).length, 7, 'Tuesday must have 7 exercises');
+    assert.strictEqual(mon.blocks.flatMap((b) => b.exercises).length, 5, 'Monday must have 5 exercises (15 sets)');
+    assert.strictEqual(mon.blocks.length, 3, 'Monday must have 3 blocks');
+    assert.strictEqual(tue.blocks.flatMap((b) => b.exercises).length, 6, 'Tuesday must have 6 exercises (16 sets)');
     assert.strictEqual(tue.blocks.length, 3, 'Tuesday must have 3 blocks');
-    assert.strictEqual(wed.blocks.flatMap((b) => b.exercises).length, 7, 'Wednesday must have 7 exercises');
-    assert.strictEqual(wed.blocks.length, 3, 'Wednesday must have 3 blocks');
-    assert.strictEqual(thu.blocks.flatMap((b) => b.exercises).length, 7, 'Thursday must have 7 exercises');
-    assert.strictEqual(thu.blocks.length, 3, 'Thursday must have 3 blocks');
+    assert.strictEqual(wed.blocks.flatMap((b) => b.exercises).length, 5, 'Wednesday must have 5 exercises (15 sets)');
+    assert.strictEqual(wed.blocks.length, 2, 'Wednesday must have 2 blocks');
+    assert.strictEqual(thu.blocks.flatMap((b) => b.exercises).length, 6, 'Thursday must have 6 exercises (18 sets)');
+    assert.strictEqual(thu.blocks.length, 2, 'Thursday must have 2 blocks');
+    assert.strictEqual(fri.isRestDay, true, 'Friday must be a Rest Day');
+    assert.strictEqual(sat.blocks.flatMap((b) => b.exercises).length, 6, 'Saturday must have 6 exercises (18 sets)');
+    assert.strictEqual(sat.blocks.length, 2, 'Saturday must have 2 blocks');
+    assert.strictEqual(sun.isRestDay, true, 'Sunday must be a Rest Day');
 
-    // Thursday Left-Arm Leader Rule on 0178: cable one arm lateral raise
-    const thuLeftArmEx = thu.blocks.flatMap((b) => b.exercises).find((e) => e.exerciseId === 'ex_0178');
-    assert.ok(thuLeftArmEx, 'Thursday must contain 0178: cable one arm lateral raise');
-    assert.ok(thuLeftArmEx.loadGuidance && thuLeftArmEx.loadGuidance.includes('LEFT-ARM LEADER RULE'));
+    // Left-Arm Leader Rule on Monday & Saturday 0178: cable one arm lateral raise
+    const monLeftArmEx = mon.blocks.flatMap((b) => b.exercises).find((e) => e.exerciseId === 'ex_0178');
+    assert.ok(monLeftArmEx, 'Monday must contain 0178: cable one arm lateral raise');
+    assert.ok(monLeftArmEx.loadGuidance && monLeftArmEx.loadGuidance.includes('LEFT-ARM LEADER RULE'));
   });
 
-  it('verifies seed metrics track Alaa baseline starting from 51.5 kg to 51.8 kg', () => {
+  it('verifies seed metrics track Alaa baseline climbing from 51.75 kg to 52.05 kg morning floor', () => {
     assert.ok(seedMetricsAlaa.length >= 14, 'Must seed 14 days of bodyweight history');
-    assert.strictEqual(seedMetricsAlaa[0].weightKg, 51.5);
-    assert.strictEqual(seedMetricsAlaa[seedMetricsAlaa.length - 1].weightKg, 51.8);
+    assert.strictEqual(seedMetricsAlaa[0].weightKg, 51.75);
+    assert.strictEqual(seedMetricsAlaa[seedMetricsAlaa.length - 1].weightKg, 52.05);
   });
 });

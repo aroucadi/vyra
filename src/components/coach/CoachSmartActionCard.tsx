@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CoachSmartActionCardData } from "@/lib/coach-engine";
 import { appStore } from "@/lib/store";
 import { telemetry } from "@/lib/telemetry";
-import { Check, ArrowRight, Sparkles, RefreshCw, Clock, ShieldAlert } from "lucide-react";
+import { Check, ArrowRight, Sparkles, RefreshCw, Clock, ShieldAlert, Utensils } from "lucide-react";
 import { clsx } from "clsx";
 
 interface CoachSmartActionCardProps {
@@ -54,6 +54,8 @@ export function CoachSmartActionCard({
         dayOfWeek
       );
       resMessage = res.message;
+    } else if (actionType === "nutrition") {
+      resMessage = "Nutrition and energy surplus target committed to your athlete model.";
     }
 
     setIsApplied(true);
@@ -101,6 +103,8 @@ export function CoachSmartActionCard({
             <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
           ) : card.type === "condense" ? (
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          ) : card.type === "nutrition" ? (
+            <Utensils className="w-3.5 h-3.5 text-emerald-400" />
           ) : (
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           )}
@@ -111,6 +115,8 @@ export function CoachSmartActionCard({
                 ? "text-amber-300"
                 : card.type === "condense"
                 ? "text-cyan-300"
+                : card.type === "nutrition"
+                ? "text-emerald-300"
                 : "text-amber-400"
             )}
           >

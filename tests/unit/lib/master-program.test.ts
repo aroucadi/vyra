@@ -14,15 +14,17 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
     assert.ok(trainee, "Trainee Alaa must exist in store");
     assert.equal(trainee?.role, "trainee");
     assert.equal(trainee?.name, "Alaa");
-    assert.ok(trainee?.injuries.some((i) => i.includes("BMI 17.3") || i.includes("Underweight")));
+    assert.ok(trainee?.injuries.some((i) => i.includes("52.05") || i.includes("Underweight")));
     assert.ok(trainee?.injuries.some((i) => i.includes("Left-Arm")));
   });
 
-  it("verifies Master Transformation 12-Week Blueprint structure and 84 days", () => {
+  it("verifies Master Transformation 16-Week 5-Day Split launching Nov 23, 2026 (112 days)", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program, "Master program must be published for trainee_alaa");
-    assert.equal(program?.id, "prog_master_16w_custom_360_vfinal");
-    assert.equal(program?.title, "The Definitive 16-Week Custom 360° Protocol (Gym + Home Bar/Board + 480 Daily Stairs + Sleep/Drive Ergonomics)");
+    assert.equal(program?.id, "prog_master_5day_v2");
+    assert.equal(program?.title, "The Definitive 5-Day Custom 360° Hypertrophy, Long-Length Stretch & Posture Protocol");
+    assert.equal(program?.startDate, "2026-11-23");
+    assert.equal(program?.launchDate, "2026-11-23");
     assert.equal(program?.durationWeeks, 16);
     assert.equal(program?.weeks.length, 16);
 
@@ -71,7 +73,7 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
         });
       });
     }
-    assert.equal(exerciseCount, 32, "Split must contain exactly 32 exercises (7x4 gym + 4 home)");
+    assert.equal(exerciseCount, 28, "5-day split must contain exactly 28 exercise slots (Mon 5, Tue 6, Wed 5, Thu 6, Sat 6)");
   });
 
   it("verifies zero leg loading on Monday and Tuesday for football match deconfliction", () => {
@@ -103,19 +105,19 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
     });
   });
 
-  it("verifies Creatine Monohydrate protocol (5g daily with dinner, zero BIA confound loading)", () => {
+  it("verifies Creatine protocol (2.82g daily from 4 scoops Scitec Jumbo Hardcore across AM + 19:00)", () => {
     const program = appStore.getActiveProgramForTrainee("trainee_alaa");
     assert.ok(program);
 
     const day3Doses = appStore.getActiveSupplementDosesForDay(program.id, 3);
-    const day3Creatine = day3Doses.filter((d) => d.protocol.name.includes("Creatine"));
-    assert.equal(day3Creatine.length, 1, "Day 3 must prescribe 1 dose of creatine with dinner");
-    assert.equal(day3Creatine[0].dose.amount, 5.0, "Dose must be 5.0g");
+    const day3Creatine = day3Doses.filter((d) => d.dose.notes?.includes("2.82g Creatine"));
+    assert.equal(day3Creatine.length, 1, "Day 3 must prescribe 1 Jumbo afternoon dose completing 2.82g creatine");
+    assert.equal(day3Creatine[0].dose.amount, 2.82, "Creatine dose from 4 scoops Jumbo must be 2.82g");
 
     const day10Doses = appStore.getActiveSupplementDosesForDay(program.id, 10);
-    const day10Creatine = day10Doses.filter((d) => d.protocol.name.includes("Creatine"));
-    assert.equal(day10Creatine.length, 1, "Day 10 must prescribe 1 dose of creatine");
-    assert.equal(day10Creatine[0].dose.amount, 5.0, "Maintenance dose must be 5.0g");
+    const day10Creatine = day10Doses.filter((d) => d.dose.notes?.includes("2.82g Creatine"));
+    assert.equal(day10Creatine.length, 1, "Day 10 must prescribe 1 Jumbo dose completing 2.82g creatine");
+    assert.equal(day10Creatine[0].dose.amount, 2.82, "Maintenance dose from 4 scoops Jumbo must be 2.82g");
   });
 
   it("verifies hydration architecture (3500ml base + 500ml workout bonus)", () => {

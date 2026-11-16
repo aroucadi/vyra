@@ -18,6 +18,7 @@ import { resolveProgramDay } from "@/lib/utils";
 import { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VyraLogo } from "@/components/brand/VyraLogo";
+import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 
 export default function TodayPage() {
   const router = useRouter();
@@ -29,12 +30,22 @@ export default function TodayPage() {
   const [previewPrescription, setPreviewPrescription] = useState<ExercisePrescription | null>(null);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
   const sessions = appStore.getSessions(currentUser.id);
+  const metricEntries = appStore.getMetrics(currentUser.id);
 
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
   const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
   const todaySession = currentWeek?.days ? currentWeek.days.find((d) => d.dayOfWeek === resolved.dayOfWeek) : undefined;
   const todayExercises = todaySession?.blocks ? todaySession.blocks.flatMap((b) => b.exercises) : [];
+
+  React.useEffect(() => {
+    // Automatically run due experiment evaluations, weekly meso reviews, and 4-8 week macro block reviews
+    runAutonomousCoachingLifecycleCheck({
+      traineeId: currentUser.id,
+      sessions,
+      metricEntries,
+    });
+  }, [currentUser.id, sessions.length, metricEntries.length]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;

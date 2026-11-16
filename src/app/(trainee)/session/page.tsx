@@ -72,7 +72,13 @@ import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopi
 import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositionCard";
 import { DailyAiCoachAdapterCard } from "@/components/trainee/DailyAiCoachAdapterCard";
 import { DailyWorkoutAdaptationResult } from "@/lib/ai/daily-session-adapter";
-import { evaluateJustInTimeProposition, CoachProposition } from "@/lib/ai/coach-agent";
+import {
+  evaluateJustInTimeProposition,
+  recordPropositionAcceptance,
+  recordPropositionRejection,
+  CoachProposition,
+} from "@/lib/ai/coach-agent";
+import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
 import { sensoryMemoryStore, inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { createEventEnvelope } from "@/lib/storage/events";
 import { clsx } from "clsx";
@@ -107,6 +113,7 @@ interface ActiveExercise {
   feedbackTags?: ExerciseBiofeedbackTag[];
   feedbackNote?: string;
   feedbackAudioUrl?: string;
+  feedbackAudioTranscript?: string;
   equipmentPhotoUrl?: string;
   skippedRemaining?: boolean;
   supersetMode?: "superset" | "straight";
@@ -323,27 +330,51 @@ function SessionFlow() {
   const [checkedCooldownDrills, setCheckedCooldownDrills] = useState<Record<number, boolean>>({});
   const [selectedFullPhoto, setSelectedFullPhoto] = useState<string | null>(null);
   const [sessionAudioUrl, setSessionAudioUrl] = useState<string | undefined>(undefined);
+  const [sessionAudioTranscript, setSessionAudioTranscript] = useState<string | undefined>(undefined);
   const [sessionNote, setSessionNote] = useState<string | undefined>(undefined);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const handleUpdateExerciseAudio = (audioDataUrl: string | undefined) => {
+  const handleUpdateExerciseAudio = (audioDataUrl: string | undefined, transcript?: string) => {
     if (!activeEx) return;
     setExercises((prev) => {
       const copy = [...prev];
       copy[currentExIndex] = {
         ...copy[currentExIndex],
         feedbackAudioUrl: audioDataUrl,
+        feedbackAudioTranscript: transcript,
       };
       saveSessionDraft(currentUser.id, copy, currentExIndex, sessionDurationSec, targetDay?.id);
       return copy;
     });
+
+    // Ingest into SensoryMemoryStore asynchronously so Coach Agent RAG immediately reflects voice feedback
+    if (audioDataUrl && targetDay?.id) {
+      sensoryMemoryStore
+        .transcribeAndIngestAudio({
+          traineeId: currentUser.id,
+          sessionId: targetDay.id,
+          exerciseName: activeEx.name,
+          audioNoteUrl: audioDataUrl,
+          audioTranscriptHint: transcript,
+          tags: activeEx.feedbackTags || (activeEx.feedbackTag ? [activeEx.feedbackTag] : []),
+          freeTextNote: activeEx.feedbackNote,
+          equipmentPhotoUrl: activeEx.equipmentPhotoUrl,
+          gymId: selectedGym?.id,
+          gymName: selectedGym?.name,
+        })
+        .catch((err) => {
+          console.warn("Sensory memory audio ingestion error:", err);
+        });
+    }
   };
 
-  const handleUpdateSessionAudio = (audioDataUrl: string | undefined) => {
+  const handleUpdateSessionAudio = (audioDataUrl: string | undefined, transcript?: string) => {
     setSessionAudioUrl(audioDataUrl);
+    setSessionAudioTranscript(transcript);
     const completed = appStore.getSessions(currentUser.id).find((s) => s.id.startsWith("session_"));
     if (completed) {
       completed.audioNoteUrl = audioDataUrl;
+      completed.audioTranscript = transcript;
       appStore.saveSession(completed);
     }
   };
@@ -382,7 +413,23 @@ function SessionFlow() {
       // 1. Immediately save compressed local photo (100% offline-resilient & instant)
       handleUpdateEquipmentPhoto(compressed);
 
-      // 2. If Cloud Storage feature flag is enabled, perform background upload
+      // 2. Automatically connect to Gemini Vision Inventory Engine and update active gym inventory
+      if (selectedGym?.id) {
+        gymVisionInventoryStore
+          .analyzeGymPhotoAndUpdateInventory({
+            gymId: selectedGym.id,
+            gymName: selectedGym.name,
+            traineeId: currentUser.id,
+            exerciseName: activeEx?.name,
+            photoDataUri: compressed,
+            userCaptionOrHint: activeEx?.feedbackNote,
+          })
+          .catch((err) => {
+            console.warn("Gym equipment photo vision analysis error:", err);
+          });
+      }
+
+      // 3. If Cloud Storage feature flag is enabled, perform background upload
       if (isCloudStorageEnabled() && typeof navigator !== "undefined" && navigator.onLine) {
         uploadEquipmentPhotoAction({
           dataUri: compressed,
@@ -603,7 +650,7 @@ function SessionFlow() {
 
   // Autoregulation & Readiness State
   const [sleepHours, setSleepHours] = useState<number>(() => {
-    return latestSnapshot ? latestSnapshot.sleepHours : 5.5;
+    return latestSnapshot ? latestSnapshot.sleepHours : 7.5;
   });
   const [isRecalibrationApplied, setIsRecalibrationApplied] = useState<boolean>(false);
   const [isRecalibrationDismissed, setIsRecalibrationDismissed] = useState<boolean>(false);
@@ -782,6 +829,7 @@ function SessionFlow() {
     const historySessions = appStore.getSessions(currentUser.id);
     return evaluateJustInTimeProposition({
       traineeId: currentUser.id,
+      sessionId: targetDay?.id,
       exerciseName: activeEx.name,
       primaryMuscle: activeEx.target || activeEx.targetMuscleGroups?.[0],
       currentWeightKg: activeEx.currentWeight || activeEx.lastBestWeight || 20,
@@ -793,13 +841,35 @@ function SessionFlow() {
       gymId: selectedGym?.id,
       gymName: selectedGym?.name,
       sessions: historySessions,
-      sleepHours,
+      // Rule 5: Pass sleepHours only when confirmed from wearable or manual check-in; missing biometrics is undefined
+      sleepHours: latestSnapshot ? sleepHours : undefined,
+      injuries: currentUser.injuries,
+      sessionDeloadAlreadyApplied: isRecalibrationApplied,
+      equipmentPhotoDataUri: activeEx.equipmentPhotoUrl,
     });
-  }, [activeEx, handledJitPropositions, currentUser.id, selectedGym?.id, selectedGym?.name, sleepHours]);
+  }, [
+    activeEx,
+    handledJitPropositions,
+    currentUser.id,
+    currentUser.injuries,
+    targetDay?.id,
+    selectedGym?.id,
+    selectedGym?.name,
+    sleepHours,
+    latestSnapshot,
+    isRecalibrationApplied,
+  ]);
 
   const handleAcceptJitProposition = (prop: CoachProposition) => {
     if (!activeEx) return;
     setHandledJitPropositions((prev) => ({ ...prev, [activeEx.id]: true }));
+    recordPropositionAcceptance({
+      traineeId: currentUser.id,
+      sessionId: targetDay?.id,
+      originalExerciseName: prop.exerciseName,
+      newExerciseName: prop.mutation.newExerciseName,
+      tier: prop.tier,
+    });
     setExercises((prev) => {
       const copy = [...prev];
       const target = copy[currentExIndex];
@@ -850,6 +920,12 @@ function SessionFlow() {
   const handleDismissJitProposition = (prop: CoachProposition) => {
     if (!activeEx) return;
     setHandledJitPropositions((prev) => ({ ...prev, [activeEx.id]: true }));
+    recordPropositionRejection({
+      traineeId: currentUser.id,
+      sessionId: targetDay?.id,
+      exerciseName: prop.exerciseName,
+      tier: prop.tier,
+    });
     getStorageAdapter()
       .appendEvent(currentUser.id, `trainee_${currentUser.id}`, "PROGRAM_EVOLVED", {
         propositionId: prop.id,
@@ -1292,7 +1368,10 @@ function SessionFlow() {
         feedbackTags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
         note: ex.feedbackNote,
         photoUrl: ex.equipmentPhotoUrl,
+        equipmentPhotoUrl: ex.equipmentPhotoUrl,
+        equipmentPhotoBase64: ex.equipmentPhotoUrl?.startsWith("data:image/") ? ex.equipmentPhotoUrl : undefined,
         audioNoteUrl: ex.feedbackAudioUrl,
+        audioTranscript: ex.feedbackAudioTranscript,
       }))
     );
 
@@ -1313,6 +1392,7 @@ function SessionFlow() {
       warmupCompleted: wCompleted,
       cooldownCompleted: cCompleted,
       audioNoteUrl: sessionAudioUrl,
+      audioTranscript: sessionAudioTranscript,
       sessionNote: sessionNote,
       gymId: selectedGym?.id,
       gymName: selectedGym?.name || "Punch by Badr Hari Lissasfa",
@@ -1326,7 +1406,10 @@ function SessionFlow() {
           tags: ex.feedbackTags || (ex.feedbackTag ? [ex.feedbackTag] : []),
           note: ex.feedbackNote,
           photoUrl: ex.equipmentPhotoUrl,
+          equipmentPhotoUrl: ex.equipmentPhotoUrl,
+          equipmentPhotoBase64: ex.equipmentPhotoUrl?.startsWith("data:image/") ? ex.equipmentPhotoUrl : undefined,
           audioNoteUrl: ex.feedbackAudioUrl,
+          audioTranscript: ex.feedbackAudioTranscript,
         })),
     };
 
@@ -2392,8 +2475,9 @@ function SessionFlow() {
           </p>
           <AudioNoteRecorder
             audioUrl={sessionAudioUrl}
-            onSave={(url) => handleUpdateSessionAudio(url)}
-            onDelete={() => handleUpdateSessionAudio(undefined)}
+            transcript={sessionAudioTranscript}
+            onSave={(url, transcript) => handleUpdateSessionAudio(url, transcript)}
+            onDelete={() => handleUpdateSessionAudio(undefined, undefined)}
             label="Workout Voice Debrief"
             traineeId={currentUser.id}
             exerciseName="overall_workout_debrief"
@@ -2412,17 +2496,14 @@ function SessionFlow() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              const exportPayload = {
-                user: { id: currentUser.id, name: currentUser.name },
-                sessions: appStore.getSessions(currentUser.id),
-                readinessLogs: appStore.getWearableBiometricsHistory(currentUser.id),
-              };
+            onClick={async () => {
+              const { buildFullTraineeExportPayloadAsync } = await import("@/lib/export-backup");
+              const exportPayload = await buildFullTraineeExportPayloadAsync(currentUser.id);
               triggerBackupDownload(exportPayload, `vyra-backup-${currentUser.id}-${new Date().toISOString().split("T")[0]}.json`);
             }}
             className="w-full py-2.5 bg-[#111622] hover:bg-[#182030] text-slate-400 hover:text-white border border-[#1C2436] text-xs font-semibold rounded-xl transition cursor-pointer"
           >
-            Export Backup
+            Export Full Backup (With Photos & All Data)
           </button>
         </div>
 
@@ -2851,8 +2932,9 @@ function SessionFlow() {
               <div className="pt-1">
                 <AudioNoteRecorder
                   audioUrl={activeEx.feedbackAudioUrl}
-                  onSave={(url) => handleUpdateExerciseAudio(url)}
-                  onDelete={() => handleUpdateExerciseAudio(undefined)}
+                  transcript={activeEx.feedbackAudioTranscript}
+                  onSave={(url, transcript) => handleUpdateExerciseAudio(url, transcript)}
+                  onDelete={() => handleUpdateExerciseAudio(undefined, undefined)}
                   label={`Voice Note: ${activeEx.name}`}
                   traineeId={currentUser.id}
                   exerciseName={activeEx.name}

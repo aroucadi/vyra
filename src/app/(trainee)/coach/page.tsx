@@ -4,8 +4,9 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { appStore } from "@/lib/store";
 import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine";
+import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
-import { MessageSquare, Send, Sparkles } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 
 interface Message {
@@ -29,12 +30,6 @@ function CoachChat() {
       text: `Ready when you are, ${currentUser.name.split(" ")[0]}. Ask about your load, request exercise swaps, or adjust for time.`,
     },
   ]);
-
-  useEffect(() => {
-    if (initialPrompt) {
-      handleSend(initialPrompt);
-    }
-  }, [initialPrompt]);
 
   const handleSend = (textToSend?: string) => {
     const query = textToSend || input;
@@ -65,9 +60,27 @@ function CoachChat() {
     }, 280);
   };
 
+  useEffect(() => {
+    const sessions = appStore.getSessions(currentUser.id);
+    const metricEntries = appStore.getMetrics(currentUser.id);
+    runAutonomousCoachingLifecycleCheck({
+      traineeId: currentUser.id,
+      sessions,
+      metricEntries,
+    });
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    if (initialPrompt) {
+      handleSend(initialPrompt);
+    }
+  }, [initialPrompt]);
+
   const quickChips = [
     { label: "Why this weight?", prompt: "Why was this specific weight prescribed for my sets?" },
     { label: "Swap exercise", prompt: "I need an alternative exercise for the machine press." },
+    { label: "Nutrition & Surplus", prompt: "Am I eating enough calories to progress on my lifts?" },
+    { label: "Weekly Review", prompt: "Run my weekly meso review and diagnose my bottlenecks." },
     { label: "Short on time (30m)", prompt: "I am short on time today, condense my workout to 30 min." },
     { label: "Explain my sleep score", prompt: "How does my sleep score impact my workout today?" },
   ];

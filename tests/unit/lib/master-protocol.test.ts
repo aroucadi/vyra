@@ -2,82 +2,104 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   generateMaster16WeekProgram,
-  generateMaster12WeekProgram,
   mondayNutrition,
   workoutDayNutrition,
   masterSupplementProtocols,
-  masterHydrationGoal,
+  dailyNutritionAndSupplementProtocol,
   userAlaa,
   workdayErgonomicsRoutines,
 } from '@/db/seed/master-transformation-program';
 import { EquipmentType } from '@/lib/types';
 
-describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', () => {
+describe('The Definitive 5-Day Custom 360° Hypertrophy Protocol Test Suite (Launch: 2026-11-23)', () => {
   const program = generateMaster16WeekProgram();
   const week1 = program.weeks[0];
   const week3 = program.weeks[2];
   const week7 = program.weeks[6];
 
-  it('verifies program metadata and athlete profile', () => {
-    assert.strictEqual(program.title, 'The Definitive 16-Week Custom 360° Protocol (Gym + Home Bar/Board + 480 Daily Stairs + Sleep/Drive Ergonomics)');
+  it('verifies program metadata, Nov 23 launch date, and athlete profile', () => {
+    assert.strictEqual(
+      program.title,
+      'The Definitive 5-Day Custom 360° Hypertrophy, Long-Length Stretch & Posture Protocol'
+    );
+    assert.strictEqual(program.id, 'prog_master_5day_v2');
+    assert.strictEqual(program.launchDate, '2026-11-23');
+    assert.strictEqual(program.startDate, '2026-11-23');
     assert.strictEqual(program.durationWeeks, 16);
     assert.strictEqual(program.weeks.length, 16);
     assert.strictEqual(userAlaa.id, 'trainee_alaa');
-    assert.strictEqual(userAlaa.heightCm, 173);
+    assert.strictEqual(userAlaa.heightCm, 172);
     assert.strictEqual(userAlaa.sex, 'male');
-    assert.ok(userAlaa.injuries.some((i) => i.includes('BMI 17.3') || i.includes('Underweight')));
+    assert.strictEqual(userAlaa.biometrics?.baselineWeightKg, 52.05);
+    assert.ok(userAlaa.injuries.some((i) => i.includes('52.05') || i.includes('Underweight')));
   });
 
-  it('verifies 7-day schedule distribution (4 training days, 3 rest days)', () => {
+  it('verifies 7-day schedule distribution (5 training days Mon-Thu + Sat, 2 rest days Fri + Sun)', () => {
     assert.strictEqual(week1.days.length, 7);
     const trainingDays = week1.days.filter((d) => !d.isRestDay);
     const restDays = week1.days.filter((d) => d.isRestDay);
     assert.strictEqual(trainingDays.length, 5, 'Must have exactly 5 training days');
-    assert.strictEqual(restDays.length, 2, 'Must have exactly 2 rest days');
+    assert.strictEqual(restDays.length, 2, 'Must have exactly 2 rest days (Friday and Sunday)');
 
     assert.strictEqual(week1.days[0].label.includes('Monday'), true);
     assert.strictEqual(week1.days[1].label.includes('Tuesday'), true);
     assert.strictEqual(week1.days[2].label.includes('Wednesday'), true);
     assert.strictEqual(week1.days[3].label.includes('Thursday'), true);
     assert.strictEqual(week1.days[4].label.includes('Friday'), true);
+    assert.strictEqual(week1.days[4].isRestDay, true);
     assert.strictEqual(week1.days[5].label.includes('Saturday'), true);
     assert.strictEqual(week1.days[6].label.includes('Sunday'), true);
+    assert.strictEqual(week1.days[6].isRestDay, true);
   });
 
-  it('verifies 28-Exercise openGym Catalogue Architecture (7 exercises/day across 4 training days)', () => {
+  it('verifies 28-Slot 5-Day Split & 82 Working Sets per Week', () => {
     const mondayExercises = week1.days[0].blocks.flatMap((b) => b.exercises);
     const tuesdayExercises = week1.days[1].blocks.flatMap((b) => b.exercises);
     const wednesdayExercises = week1.days[2].blocks.flatMap((b) => b.exercises);
     const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
+    const saturdayExercises = week1.days[5].blocks.flatMap((b) => b.exercises);
 
-    assert.strictEqual(mondayExercises.length, 7, 'Monday must have 7 exercises');
-    assert.strictEqual(tuesdayExercises.length, 7, 'Tuesday must have 7 exercises');
-    assert.strictEqual(wednesdayExercises.length, 7, 'Wednesday must have 7 exercises');
-    assert.strictEqual(thursdayExercises.length, 7, 'Thursday must have 7 exercises');
+    assert.strictEqual(mondayExercises.length, 5, 'Monday must have 5 exercises (15 sets)');
+    assert.strictEqual(tuesdayExercises.length, 6, 'Tuesday must have 6 exercises (16 sets)');
+    assert.strictEqual(wednesdayExercises.length, 5, 'Wednesday must have 5 exercises (15 sets)');
+    assert.strictEqual(thursdayExercises.length, 6, 'Thursday must have 6 exercises (18 sets)');
+    assert.strictEqual(saturdayExercises.length, 6, 'Saturday must have 6 exercises (18 sets)');
 
-        const saturdayExercises = week1.days[5].blocks.flatMap((b) => b.exercises);
-    assert.strictEqual(saturdayExercises.length, 4, 'Saturday must have 4 exercises');
-    const totalPrescriptions = mondayExercises.length + tuesdayExercises.length + wednesdayExercises.length + thursdayExercises.length + saturdayExercises.length;
-    assert.strictEqual(totalPrescriptions, 32, 'Total exercise prescriptions across the 5-day split is exactly 32');
+    const allWeek1 = [
+      ...mondayExercises,
+      ...tuesdayExercises,
+      ...wednesdayExercises,
+      ...thursdayExercises,
+      ...saturdayExercises,
+    ];
+    assert.strictEqual(allWeek1.length, 28, 'Total exercise prescriptions across the 5-day split is exactly 28');
+    const totalWeeklySets = allWeek1.reduce((acc, ex) => acc + ex.sets, 0);
+    assert.strictEqual(totalWeeklySets, 82, 'Total weekly working sets in standard week is 82 (15+16+15+18+18)');
 
-    // Verify key movements requested by the coach
-    assert.ok(wednesdayExercises.some(e => e.exerciseId === 'ex_0597'), 'Wednesday must include Seated Hip Abduction Machine (0597)');
-    assert.ok(thursdayExercises.some(e => e.exerciseId === 'ex_1409'), 'Thursday must include Glute Bridge Machine (1409)');
-    assert.ok(thursdayExercises.some(e => e.exerciseId === 'ex_0596'), 'Thursday must include Lever Seated Fly (0596)');
-    assert.ok(thursdayExercises.some(e => e.exerciseId === 'ex_0155'), 'Thursday must include Cable Curl (0155)');
-    assert.ok(wednesdayExercises.some(e => e.exerciseId === 'ex_0595'), 'Wednesday must include Lever Seated Crunch (0595)');
+    // Verify clinical/biomechanical swaps and permanent removals
+    assert.ok(!allWeek1.some((e) => e.exerciseId === 'ex_0584'), 'lever lateral raise (ex_0584) must be permanently removed');
+    assert.ok(!allWeek1.some((e) => e.exerciseId === 'ex_0595'), 'lever seated crunch (ex_0595) must be replaced on Saturday');
+    assert.ok(wednesdayExercises.some((e) => e.exerciseId === 'ex_0597'), 'Wednesday must include Seated Hip Abduction (0597)');
+    assert.ok(thursdayExercises.some((e) => e.exerciseId === 'ex_1409'), 'Thursday must include Glute Bridge Machine (1409)');
+    assert.ok(thursdayExercises.some((e) => e.exerciseId === 'ex_0596'), 'Thursday must include Lever Seated Fly (0596)');
+    assert.ok(thursdayExercises.some((e) => e.exerciseId === 'ex_0155'), 'Thursday must include Cable Curl (0155)');
+    assert.ok(thursdayExercises.some((e) => e.exerciseId === 'ex_0194'), 'Thursday must include Cable Overhead Triceps Extension (0194)');
+    assert.ok(saturdayExercises.some((e) => e.exerciseId === 'ex_0175'), 'Saturday must include Cable Kneeling Crunch (0175)');
+    assert.ok(saturdayExercises.some((e) => e.exerciseId === 'ex_0605'), 'Saturday must include fresh Lever Shoulder Press (0605)');
   });
 
-  it('enforces 16-Week Periodization (Weeks 1-2 Ramp: 2 sets | Weeks 3-6: 3 sets | Week 7 Deload: 2 sets & 3-4 RIR)', () => {
-    // Week 1 (Ramp): 2 sets per exercise
+  it('enforces 3-Set Baseline Launch (82 sets/wk) and Week 7/12/16 Deload (2 sets & 3-4 RIR)', () => {
     const w1MonEx1 = week1.days[0].blocks[0].exercises[0];
-    assert.strictEqual(w1MonEx1.sets, 2, 'Week 1 must prescribe 2 working sets (Acclimation Ramp)');
+    assert.strictEqual(w1MonEx1.sets, 3, 'Week 1 launches straight into 3 working sets on main lifts');
+    assert.strictEqual(w1MonEx1.targetWeightKg, 40, 'Monday lever chest press targets 40 kg');
 
-    // Week 3 (Accumulation): 3 sets per exercise
+    const w1MonIncline = week1.days[0].blocks[0].exercises[1];
+    assert.strictEqual(w1MonIncline.exerciseId, 'ex_0579');
+    assert.strictEqual(w1MonIncline.targetWeightKg, 20, 'Monday lever incline chest press stays flat at 20 kg');
+
     const w3MonEx1 = week3.days[0].blocks[0].exercises[0];
-    assert.strictEqual(w3MonEx1.sets, 3, 'Week 3 must prescribe 3 working sets (Accumulation Block 1)');
+    assert.strictEqual(w3MonEx1.sets, 3, 'Week 3 maintains 3 working sets');
 
-    // Week 7 (Deload): 2 sets per exercise with higher RIR buffer (3-4 RIR)
     const w7MonEx1 = week7.days[0].blocks[0].exercises[0];
     assert.strictEqual(w7MonEx1.sets, 2, 'Week 7 must drop to 2 working sets for deload');
     assert.ok(w7MonEx1.rirScheme.includes(3) || w7MonEx1.rirScheme.includes(4), 'Week 7 deload must program 3-4 RIR');
@@ -93,31 +115,37 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
       const hasLower = ex.targetMuscleGroups.some((m) =>
         lowerMuscles.some((l) => m.toLowerCase().includes(l.toLowerCase()))
       );
-      assert.strictEqual(hasLower, false, `Monday exercise ${ex.exerciseName} must not load lower body (match day)`);
+      assert.strictEqual(hasLower, false, `Monday exercise ${ex.exerciseName} must not load lower body (19:15 match day)`);
     });
 
     tuesdayExercises.forEach((ex) => {
       const hasLower = ex.targetMuscleGroups.some((m) =>
         lowerMuscles.some((l) => m.toLowerCase().includes(l.toLowerCase()))
       );
-      assert.strictEqual(hasLower, false, `Tuesday exercise ${ex.exerciseName} must not load lower body (100% rest post-match)`);
+      assert.strictEqual(hasLower, false, `Tuesday exercise ${ex.exerciseName} must not load lower body (post-match seated pulls)`);
     });
 
     assert.strictEqual(tuesdayExercises[0].exerciseName.includes('cable pulldown'), true);
     assert.strictEqual(tuesdayExercises[1].exerciseName.includes('lever seated row'), true);
   });
 
-  it('enforces Left-Arm Leader Rule on Thursday cable one arm lateral raise (0178)', () => {
-    const thursdayExercises = week1.days[3].blocks.flatMap((b) => b.exercises);
-    const latRaise = thursdayExercises.find((e) => e.exerciseId === 'ex_0178');
-    assert.ok(latRaise, 'Thursday must include 0178: cable one arm lateral raise');
-    assert.ok(latRaise.loadGuidance && latRaise.loadGuidance.includes('LEFT-ARM LEADER RULE'));
-    assert.ok(latRaise.formCueText && (latRaise.formCueText.includes('Left Arm First') || latRaise.formCueText.includes('LEFT ARM FIRST')));
+  it('enforces Left-Arm Leader Rule on Monday & Saturday cable one arm lateral raise (0178) @ 5kg', () => {
+    const monLatRaise = week1.days[0].blocks.flatMap((b) => b.exercises).find((e) => e.exerciseId === 'ex_0178');
+    const satLatRaise = week1.days[5].blocks.flatMap((b) => b.exercises).find((e) => e.exerciseId === 'ex_0178');
+
+    assert.ok(monLatRaise, 'Monday must include 0178: cable one arm lateral raise');
+    assert.strictEqual(monLatRaise.targetWeightKg, 5);
+    assert.ok(monLatRaise.loadGuidance?.includes('LEFT-ARM LEADER RULE'));
+    assert.ok(monLatRaise.formCueText?.includes('Left Arm First'));
+
+    assert.ok(satLatRaise, 'Saturday must include 0178: cable one arm lateral raise');
+    assert.strictEqual(satLatRaise.targetWeightKg, 5);
+    assert.ok(satLatRaise.formCueText?.includes('Left Arm First'));
   });
 
   it('verifies 4-modality equipment matrix completeness for all 28 exercise slots (112 variations total)', () => {
     const allExercises = week1.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
-    assert.strictEqual(allExercises.length, 32, 'Must have exactly 32 total exercise prescriptions');
+    assert.strictEqual(allExercises.length, 28, 'Must have exactly 28 total exercise prescriptions');
 
     const requiredEquipments: EquipmentType[] = ['machine', 'dumbbell', 'cable', 'bodyweight'];
 
@@ -138,13 +166,11 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
     });
   });
 
-  it('verifies Embedded Gym Warm-Up Routine is assigned to all training days', () => {
+  it('verifies Morning Alignment Drills & Workday Ergonomics Anchors', () => {
     week1.days.forEach((d) => {
-      assert.ok(d.morningRoutine && d.morningRoutine.length >= 2, `Day ${d.label} must have warm-up or weekend anchors`);
+      assert.ok(d.morningRoutine && d.morningRoutine.length >= 2, `Day ${d.label} must have morning alignment routine`);
     });
-  });
 
-  it('verifies Workday Ergonomics & Biofeedback Anchors', () => {
     assert.strictEqual(workdayErgonomicsRoutines.length, 4, 'Must have 4 workday ergonomics protocols');
     const ergoStr = workdayErgonomicsRoutines.join(' ');
     assert.ok(ergoStr.includes('Car Mirror'), 'Must include Car Mirror biofeedback anchor');
@@ -153,34 +179,32 @@ describe('The Master 16-Week Hypertrophy Transformation Protocol Test Suite', ()
     assert.ok(ergoStr.includes('Desk-Drawer Fuel'), 'Must include Desk-Drawer Fuel Protocol');
   });
 
-  it('verifies Monday match-day caloric compensation (3,000 kcal / 160g+ P) and standard training days (2,600 kcal / 139g P)', () => {
-    // Monday (Match Day)
-    const monNutrition = week1.days[0].nutrition;
-    assert.strictEqual(monNutrition.targetKcal, 3100, 'Monday must target 3100 kcal for match day compensation');
-    assert.strictEqual(monNutrition.targetProteinGrams, 165, 'Monday must target 165g protein');
+  it('verifies 2,710 kcal Mass Floor & Daily Nutrition/Supplement Timing (07:30-22:30)', () => {
+    assert.strictEqual(dailyNutritionAndSupplementProtocol.targetCalories, 2710);
+    assert.strictEqual(dailyNutritionAndSupplementProtocol.macros.proteinG, 173.6);
+    assert.strictEqual(dailyNutritionAndSupplementProtocol.macros.carbsG, 317.4);
+    assert.strictEqual(dailyNutritionAndSupplementProtocol.macros.fatsG, 72.2);
+    assert.strictEqual(dailyNutritionAndSupplementProtocol.creatineDailyFromGainerG, 2.82);
 
-    // Tuesday (Standard Training Day)
-    const tueNutrition = week1.days[1].nutrition;
-    assert.strictEqual(tueNutrition.targetKcal, 2700, 'Tuesday must target 2700 kcal');
-    assert.strictEqual(tueNutrition.targetProteinGrams, 140, 'Tuesday must target 140g protein');
-  });
+    assert.strictEqual(mondayNutrition.targetKcal, 2710);
+    assert.strictEqual(workoutDayNutrition.targetKcal, 2710);
+    assert.strictEqual(mondayNutrition.targetProteinGrams, 174);
 
-  it('verifies Creatine Monohydrate & Dinner Stack protocols (5g daily, zero BIA water inflation)', () => {
-    const creatineProtocol = masterSupplementProtocols.find((p) => p.name.includes('Creatine'));
-    assert.ok(creatineProtocol, 'Creatine protocol must exist');
+    const glutProtocol = masterSupplementProtocols.find((p) => p.name.includes('L-Glutamine'));
+    assert.ok(glutProtocol);
+    assert.strictEqual(glutProtocol.phases[0].doses[0].amount, 5.0);
+    assert.strictEqual(glutProtocol.phases[0].doses[0].targetTime, '07:30');
 
-    const maintenancePhase = creatineProtocol.phases[0];
-    assert.ok(maintenancePhase, 'Maintenance phase must exist');
-    assert.strictEqual(maintenancePhase.startDay, 1);
-    assert.strictEqual(maintenancePhase.endDay, 112);
-    assert.strictEqual(maintenancePhase.doses[0].amount, 5.0);
+    const jumboCreatine = masterSupplementProtocols.find((p) => p.name.includes('Jumbo'));
+    assert.ok(jumboCreatine);
+    assert.strictEqual(jumboCreatine.phases[0].doses[1].amount, 2.82);
 
-    const dinnerProtocol = masterSupplementProtocols.find((p) => p.name.includes('Dinner'));
-    assert.ok(dinnerProtocol, 'Unified Dinner Stack must exist');
-    const doses = dinnerProtocol.phases[0].doses;
-    assert.strictEqual(doses.length, 3, 'Dinner stack must contain 3 doses (D3, Omega-3, Magnesium)');
-    assert.strictEqual(doses[0].amount, 2000, 'D3 must be 2,000 IU');
-    assert.strictEqual(doses[1].amount, 1250, 'Omega-3 must be 1,250 mg');
-    assert.strictEqual(doses[2].amount, 300, 'Magnesium Bisglycinate must be 300 mg');
+    const lunchStack = masterSupplementProtocols.find((p) => p.name.includes('13:00'));
+    assert.ok(lunchStack);
+    assert.strictEqual(lunchStack.phases[0].doses.length, 3);
+
+    const sleepStack = masterSupplementProtocols.find((p) => p.name.includes('22:30'));
+    assert.ok(sleepStack);
+    assert.strictEqual(sleepStack.phases[0].doses[0].targetTime, '22:30');
   });
 });

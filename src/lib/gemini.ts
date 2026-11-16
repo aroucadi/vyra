@@ -133,12 +133,15 @@ export async function generateGeminiContent(
   const model = getActiveGeminiModel(options?.model);
   const auth = getGeminiAuthContext();
 
-  // If GEMINI_API_KEY is available, call Google Generative Language API
+  // If GEMINI_API_KEY is available, call Google Generative Language API using header auth (never put API key in URL)
   if (process.env.GEMINI_API_KEY) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
+      },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         systemInstruction: options?.systemInstruction

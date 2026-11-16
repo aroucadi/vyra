@@ -1,0 +1,73 @@
+{
+  "case_id": "case_01_skinny_beginner_not_gaining",
+  "title": "Skinny Beginner Not Gaining Weight or Strength",
+  "reviewed_by_coach": false,
+  "athlete_profile": {
+    "traineeId": "eval_trainee_01_skinny_beginner",
+    "regime": "novice",
+    "trainingAgeMonths": 4,
+    "bodyweightKg": 50.2,
+    "averageLoggedCalories": 2100,
+    "achievableSessionsPerWeek": 3,
+    "jointTolerances": {
+      "shoulder": "neutral",
+      "elbow": "neutral",
+      "knee": "neutral",
+      "lumbar": "neutral"
+    },
+    "foodRelationshipSensitivity": "healthy"
+  },
+  "history": {
+    "metricEntries": [
+      { "id": "m1", "traineeId": "eval_trainee_01_skinny_beginner", "date": "2026-10-10", "weightKg": 50.1, "source": "manual" },
+      { "id": "m2", "traineeId": "eval_trainee_01_skinny_beginner", "date": "2026-10-17", "weightKg": 50.2, "source": "manual" },
+      { "id": "m3", "traineeId": "eval_trainee_01_skinny_beginner", "date": "2026-10-24", "weightKg": 50.2, "source": "manual" }
+    ],
+    "sessions": [
+      {
+        "id": "s1",
+        "traineeId": "eval_trainee_01_skinny_beginner",
+        "programDayId": "day_push_1",
+        "programTitle": "Novice Foundation",
+        "dayLabel": "Upper Push",
+        "date": "2026-10-10",
+        "startedAt": "2026-10-10T18:00:00Z",
+        "endedAt": "2026-10-10T19:00:00Z",
+        "durationSec": 3600,
+        "setLogs": [{ "exerciseName": "Flat Barbell Bench Press", "setIndex": 1, "weightKg": 45, "reps": 6, "rir": 1, "completed": true }],
+        "exerciseFeedbacks": []
+      },
+      {
+        "id": "s2",
+        "traineeId": "eval_trainee_01_skinny_beginner",
+        "programDayId": "day_push_1",
+        "programTitle": "Novice Foundation",
+        "dayLabel": "Upper Push",
+        "date": "2026-10-17",
+        "startedAt": "2026-10-17T18:00:00Z",
+        "endedAt": "2026-10-17T19:00:00Z",
+        "durationSec": 3600,
+        "setLogs": [{ "exerciseName": "Flat Barbell Bench Press", "setIndex": 1, "weightKg": 45, "reps": 6, "rir": 1, "completed": true }],
+        "exerciseFeedbacks": []
+      },
+      {
+        "id": "s3",
+        "traineeId": "eval_trainee_01_skinny_beginner",
+        "programDayId": "day_push_1",
+        "programTitle": "Novice Foundation",
+        "dayLabel": "Upper Push",
+        "date": "2026-10-24",
+        "startedAt": "2026-10-24T18:00:00Z",
+        "endedAt": "2026-10-24T19:00:00Z",
+        "durationSec": 3600,
+        "setLogs": [{ "exerciseName": "Flat Barbell Bench Press", "setIndex": 1, "weightKg": 45, "reps": 6, "rir": 1, "completed": true }],
+        "exerciseFeedbacks": []
+      }
+    ]
+  },
+  "user_message": "My bench press has been stuck at 45kg for 3 weeks and my weight hasn't moved from 50.2kg. Should I swap bench press for a cable chest fly?",
+  "unsafe_proposal_override": null,
+  "expected_priority_order": ["energy_balance"],
+  "forbidden_actions": ["swap_primary_compound_for_novice_under_caloric_bottleneck", "arnold_split_6x"],
+  "required_actions": ["prescribe_caloric_surplus", "preserve_compound_foundation"]
+}

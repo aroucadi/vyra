@@ -82,7 +82,7 @@ export function migrateLegacyStoredData(raw: any): ClientStoredPayload {
   const migratedReadiness = rawReadiness.map((entry: any) => {
     const migrated: any = {
       id: entry.id || `readiness_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      traineeId: entry.traineeId || "trainee_alaa",
+      traineeId: entry.traineeId || "unassigned_trainee",
       date: entry.date || new Date().toISOString().split("T")[0],
       source: entry.source || "manual",
       sleepHours: typeof entry.sleepHours === "number" ? entry.sleepHours : 7.0,
@@ -567,6 +567,67 @@ export function getClientStoredData(): ClientStoredPayload {
 }
 
 /**
+ * Loads and merges all client-stored workout sessions across IndexedDB and localStorage
+ * so offline-only sessions never vanish from full backups.
+ */
+export async function loadAllClientSessions(traineeId?: string): Promise<any[]> {
+  const merged = new Map<string, any>();
+
+  const local = getClientStoredData().sessions || [];
+  for (const s of local) {
+    if (s && s.id && (!traineeId || s.traineeId === traineeId)) {
+      merged.set(s.id, s);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const db = await openClientDatabase();
+      const idbSessions: any[] = await new Promise((resolve) => {
+        try {
+          const tx = db.transaction("sessions", "readonly");
+          const req = tx.objectStore("sessions").getAll();
+          req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+          req.onerror = () => resolve([]);
+        } catch {
+          resolve([]);
+        }
+      });
+
+      for (const s of idbSessions) {
+        if (s && s.id && (!traineeId || s.traineeId === traineeId)) {
+          merged.set(s.id, s);
+        }
+      }
+    } catch {
+      // IndexedDB unavailable — localStorage fallback already included
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
+/**
+ * Serializes backup data without truncation, automatically switching to compact JSON
+ * when embedded Base64 photos or large payloads are present to prevent buffer bloat.
+ */
+export function serializeBackupJson(
+  data: any,
+  options?: { compact?: boolean }
+): string {
+  const compactJson = JSON.stringify(data);
+  if (options?.compact === true) return compactJson;
+  if (options?.compact === false) return JSON.stringify(data, null, 2);
+
+  // Automatically avoid 2-space pretty-printing inflation when photos or >256KB payloads are present
+  const hasEmbeddedMedia = compactJson.includes("data:image/") || compactJson.includes("data:audio/");
+  if (hasEmbeddedMedia || compactJson.length > 262_144) {
+    return compactJson;
+  }
+  return JSON.stringify(data, null, 2);
+}
+
+/**
  * Clears client storage across IndexedDB and localStorage.
  */
 export async function clearClientStorage(): Promise<void> {
@@ -591,7 +652,11 @@ export async function clearClientStorage(): Promise<void> {
 /**
  * Downloads a complete JSON backup file and updates lastBackupAt.
  */
-export function triggerBackupDownload(data: any, fileName: string): string {
+export function triggerBackupDownload(
+  data: any,
+  fileName: string,
+  options?: { compact?: boolean }
+): string {
   const timestamp = new Date().toISOString();
   const backupData = {
     ...data,
@@ -606,14 +671,51 @@ export function triggerBackupDownload(data: any, fileName: string): string {
       localStorage.setItem("vyra_last_backup_at", timestamp);
     } catch {}
 
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+    const jsonString = serializeBackupJson(backupData, options);
+    const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = fileName;
+    a.style.display = "none";
+    document.body?.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body?.removeChild(a);
+    // Delay URL revocation so large Blob downloads never abort on Safari/iOS WebKit
+    setTimeout(() => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }, 1000);
   }
 
   return timestamp;
+}
+
+/**
+ * Anonymized Snapshot Object Bucket Registry (`storage.ts`):
+ * Ensures that only redacted image payloads are stored and that `deleteStoredSnapshotBlob`
+ * permanently purges the object from storage when a snapshot is deleted.
+ */
+const storedSnapshotBlobs = new Map<string, string>();
+
+export function storeSnapshotBlob(snapshotId: string, anonymizedDataUri: string): void {
+  if (!snapshotId || !anonymizedDataUri) return;
+  storedSnapshotBlobs.set(snapshotId, anonymizedDataUri);
+}
+
+export function getStoredSnapshotBlob(snapshotId: string): string | undefined {
+  return storedSnapshotBlobs.get(snapshotId);
+}
+
+export function deleteStoredSnapshotBlob(snapshotId: string): boolean {
+  const existed = storedSnapshotBlobs.delete(snapshotId);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(`vyra_snapshot_blob_${snapshotId}`);
+    } catch {
+      // ignore storage errors
+    }
+  }
+  return existed;
 }

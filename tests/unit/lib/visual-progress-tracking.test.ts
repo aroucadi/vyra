@@ -9,16 +9,23 @@ import {
   aggregateWorkoutHistoryBetweenSnapshots,
   analyzeVisualProgressEvolution,
   visualProgressStore,
+  VisualProgressStore,
   VisualProgressSnapshot,
   extractPhotoCaptureDateMetadata,
   resolveHistoricalPhotoPrefill,
   createExifTaggedPhotoDataUri,
   extractMultimodalSnapshotPart,
   VISUAL_EVOLUTION_RESPONSE_SCHEMA,
+  stripBinaryExifAndMetadata,
+  containsExifOrGpsMetadata,
+  expandFaceBoundingBoxWithMargin,
+  registerCrossBrowserWasmFaceDetector,
 } from "../../../src/lib/ai/visual-progress";
+import { getStoredSnapshotBlob } from "../../../src/lib/storage";
 import {
   GET as getVisualProgressRoute,
   POST as postVisualProgressRoute,
+  DELETE as deleteVisualProgressRoute,
 } from "../../../src/app/api/ai/visual-progress/route";
 import { WorkoutSession, BodyMetricEntry } from "../../../src/lib/types";
 
@@ -389,7 +396,7 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
     assert.deepEqual(dates, sortedDates, "Historical photos must be inserted in strict chronological order");
   });
 
-  it("8. uses gemini-4-argon at high media resolution by default and parses autonomous multimodal JSON observations & coaching decisions", async () => {
+  it("8. [Plumbing Test — Mock Vision Analyzer, Vision Quality Untested] builds gemini-4-argon high-resolution request payload and parses structured multimodal JSON schema", async () => {
     const snapshots = visualProgressStore.getSnapshots("trainee_alaa", "front_relaxed");
     const snapA = snapshots[0];
     const snapB = snapshots[snapshots.length - 1];
@@ -484,5 +491,325 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
       report.programAdjustments[0].recommendedExerciseName,
       "Single-Arm Cross-Body Cable Rear Delt Fly"
     );
+  });
+
+  it("9. Task 1 Honesty Audit: starts VisualProgressStore empty for real users, blocks non-owner uploads until MediaPipe is verified, never fabricates 51.8kg when unlogged, and outputs 'No photo analysis available' for real photos offline", async () => {
+    const freshStore = new VisualProgressStore();
+    assert.equal(freshStore.getSnapshots("real_user_123").length, 0, "Real user store must start empty");
+    assert.equal(freshStore.getSnapshots("trainee_alaa").length, 0, "Fresh store with demo mode off starts empty");
+
+    // Non-owner (`real_user_123`) must be blocked from uploading photos until MediaPipe is benchmarked on 10-20 real photos
+    await assert.rejects(
+      async () => {
+        await freshStore.addAnonymizedSnapshot({
+          traineeId: "real_user_123",
+          poseId: "front_relaxed",
+          rawImageDataUri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          date: "2026-10-01",
+          milestoneLabel: "Blocked Non-Owner Upload",
+        });
+      },
+      /PhotoUploadRestrictedError/
+    );
+
+    // Unlogged metrics must not fabricate 51.8kg
+    const unloggedPrefill = resolveHistoricalPhotoPrefill({
+      captureDate: "2026-10-18",
+      programStartDate: "2026-10-12",
+      metrics: [],
+      sessions: [],
+    });
+    assert.equal(unloggedPrefill.closestWeightKg, undefined);
+    assert.equal(unloggedPrefill.weightMatchSource, "unlogged");
+
+    // Real uploaded photos (by owner `trainee_alaa`) without vision analysis must return honest 'No photo analysis available'
+    const realPhotoA = await freshStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      date: "2026-10-01",
+      milestoneLabel: "Baseline Upload",
+    });
+    const realPhotoB = await freshStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      date: "2026-10-29",
+      milestoneLabel: "Check-In Upload",
+    });
+
+    assert.equal(realPhotoA.lightingScore, undefined, "Must not fabricate lightingScore");
+    assert.equal(realPhotoA.postureAlignmentScore, undefined, "Must not fabricate postureAlignmentScore");
+
+    const offlineRealPhotoReport = await analyzeVisualProgressEvolution({
+      traineeId: "trainee_alaa",
+      snapshotA: realPhotoA,
+      snapshotB: realPhotoB,
+      sessions: [],
+    });
+
+    assert.equal(offlineRealPhotoReport.analysisEngine, "no_vision_analysis_available");
+    assert.equal(offlineRealPhotoReport.empatheticHeadline, "No photo analysis available");
+    assert.equal(offlineRealPhotoReport.visualObservations.length, 0);
+    assert.equal(offlineRealPhotoReport.causalLinks.length, 0);
+    assert.equal(offlineRealPhotoReport.programAdjustments.length, 0);
+    assert.equal(offlineRealPhotoReport.posturalEvolutionSummary.alignmentScoreDelta, 0);
+  });
+
+  it("10. Task 2 Privacy & Fail-Closed Face Handling: rejects 0 faces, >1 faces, low confidence, unconfirmed back_relaxed, strips binary EXIF/GPS for real, and deletes snapshots", async () => {
+    const sampleUri = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/";
+
+    // 1. Fail closed when 0 faces detected
+    await assert.rejects(
+      async () => {
+        await anonymizeProgressPhoto({
+          rawImageDataUri: sampleUri,
+          poseId: "front_relaxed",
+          customFaceDetector: () => [],
+        });
+      },
+      /No face detected/
+    );
+
+    // 2. Fail closed when >1 faces detected
+    await assert.rejects(
+      async () => {
+        await anonymizeProgressPhoto({
+          rawImageDataUri: sampleUri,
+          poseId: "front_relaxed",
+          customFaceDetector: () => [
+            { boundingBox: { x: 0.2, y: 0.05, width: 0.15, height: 0.15 }, confidence: 0.95 },
+            { boundingBox: { x: 0.6, y: 0.05, width: 0.15, height: 0.15 }, confidence: 0.91 },
+          ],
+        });
+      },
+      /Multiple faces detected/
+    );
+
+    // 3. Fail closed when confidence < 0.75
+    await assert.rejects(
+      async () => {
+        await anonymizeProgressPhoto({
+          rawImageDataUri: sampleUri,
+          poseId: "front_relaxed",
+          customFaceDetector: () => [
+            { boundingBox: { x: 0.38, y: 0.04, width: 0.2, height: 0.14 }, confidence: 0.52 },
+          ],
+        });
+      },
+      /below the 0\.75 threshold/
+    );
+
+    // 4. Fail closed on back_relaxed unless confirmNoFaceVisible === true
+    await assert.rejects(
+      async () => {
+        await anonymizeProgressPhoto({
+          rawImageDataUri: sampleUri,
+          poseId: "back_relaxed",
+        });
+      },
+      /No face detected/
+    );
+
+    const confirmedBack = await anonymizeProgressPhoto({
+      rawImageDataUri: sampleUri,
+      poseId: "back_relaxed",
+      confirmNoFaceVisible: true,
+    });
+    assert.equal(confirmedBack.proof.isAnonymized, true);
+    assert.equal(confirmedBack.proof.confirmedNoFaceVisible, true);
+    assert.equal(confirmedBack.proof.pixelsModifiedVerified, true);
+
+    // 5. Verify margin expansion covers hair, ears, and neck
+    const rawBox = { x: 0.39, y: 0.04, width: 0.22, height: 0.14 };
+    const expanded = expandFaceBoundingBoxWithMargin(rawBox);
+    assert.ok(expanded.width > rawBox.width, "Margin must expand width for ears/hair");
+    assert.ok(expanded.height > rawBox.height, "Margin must expand height for crown/neck");
+
+    // 6. Prove binary EXIF/APP1 and GPS tags are stripped for real from the output
+    const exifAndGpsPayload =
+      "Exif\x00\x00II*\x00\x08\x00\x00\x00DateTimeOriginal\x002026:10:18 09:42:15\x00GPSLatitude\x0033.5731N\x00GPSLongitude\x007.5898W\x00IMAGE_BODY_PIXELS_1234567890";
+    const exifGpsUri = `data:image/jpeg;base64,${Buffer.from(exifAndGpsPayload, "binary").toString("base64")}`;
+    assert.equal(containsExifOrGpsMetadata(exifGpsUri), true, "Input fixture must contain EXIF & GPS tags");
+
+    const { scrubbedDataUri, strippedSegmentsCount } = stripBinaryExifAndMetadata(exifGpsUri);
+    assert.ok(strippedSegmentsCount >= 1);
+    assert.equal(containsExifOrGpsMetadata(scrubbedDataUri), false, "Scrubbed URI must contain zero EXIF or GPS tags");
+
+    const anonFromExif = await anonymizeProgressPhoto({
+      rawImageDataUri: exifGpsUri,
+      poseId: "front_relaxed",
+    });
+    assert.equal(
+      containsExifOrGpsMetadata(anonFromExif.anonymizedImageUrl),
+      false,
+      "Anonymized output must contain zero EXIF or GPS metadata bytes"
+    );
+    assert.equal(anonFromExif.proof.scrubbedExif, true);
+    assert.equal(anonFromExif.proof.pixelsModifiedVerified, true);
+
+    // 7. Verify deleteSnapshot removes from store and via API route
+    visualProgressStore.clearForRealUser();
+    const snapToDelete = await visualProgressStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: sampleUri,
+    });
+    assert.equal(visualProgressStore.getSnapshots("trainee_alaa").length, 1);
+
+    const delReq = new Request("http://localhost:3000/api/ai/visual-progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "delete",
+        traineeId: "trainee_alaa",
+        snapshotId: snapToDelete.id,
+      }),
+    });
+    const delRes = await postVisualProgressRoute(delReq);
+    assert.equal(delRes.status, 200);
+    const delJson = await delRes.json();
+    assert.equal(delJson.ok, true);
+    assert.equal(delJson.deleted, true);
+    assert.equal(visualProgressStore.getSnapshots("trainee_alaa").length, 0);
+  });
+
+  it("11. Review Hardening: blocks non-owner uploads (HTTP 403), blocks mixed demo+real photo pairs, prevents manual box from bypassing 0-face detection, and verifies complete multi-layer deletion receipt", async () => {
+    const sampleUri = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/";
+
+    // 0. Non-owner photo uploads via POST /api/ai/visual-progress must be blocked with HTTP 403 until MediaPipe is verified on 10-20 real photos
+    const friendUploadReq = new Request("http://localhost:3000/api/ai/visual-progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "capture",
+        traineeId: "trainee_friend_omar",
+        poseId: "front_relaxed",
+        rawImageDataUri: sampleUri,
+      }),
+    });
+    const friendUploadRes = await postVisualProgressRoute(friendUploadReq);
+    assert.equal(friendUploadRes.status, 403, "Non-owner photo upload must be rejected with HTTP 403");
+    const friendUploadJson = await friendUploadRes.json();
+    assert.equal(friendUploadJson.ok, false);
+    assert.ok(friendUploadJson.error.includes("PhotoUploadRestrictedError"));
+
+    // 1. Mixed demo (`isSyntheticDemo: true`) + real photo (`isSyntheticDemo: false`) must NEVER output synthetic observations
+    visualProgressStore.resetForTesting("trainee_alaa");
+    const demoSnaps = visualProgressStore.getSnapshots("trainee_alaa", "front_relaxed");
+    const demoSnap = demoSnaps[0];
+    assert.equal(demoSnap.isSyntheticDemo, true);
+
+    const realSnap = await visualProgressStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: sampleUri,
+      date: "2026-11-12",
+      milestoneLabel: "Real User Upload",
+    });
+    assert.equal(realSnap.isSyntheticDemo, false);
+
+    const mixedReport = await analyzeVisualProgressEvolution({
+      traineeId: "trainee_alaa",
+      snapshotA: demoSnap,
+      snapshotB: realSnap,
+      sessions: [],
+    });
+    assert.equal(
+      mixedReport.analysisEngine,
+      "no_vision_analysis_available",
+      "Mixed demo + real snapshot pair must never run synthetic demo fallback"
+    );
+    assert.equal(mixedReport.visualObservations.length, 0);
+    assert.ok(mixedReport.executiveSummary.includes("synthetic demo silhouettes cannot be compared against real user photos"));
+
+    // 2. Mirror selfie / background poster (`multiFacePolicy: "redact_all_detected_faces"`): redacts ALL detected faces
+    const mirrorRedacted = await anonymizeProgressPhoto({
+      rawImageDataUri: sampleUri,
+      poseId: "front_relaxed",
+      multiFacePolicy: "redact_all_detected_faces",
+      customFaceDetector: () => [
+        { boundingBox: { x: 0.22, y: 0.05, width: 0.16, height: 0.14 }, confidence: 0.94 },
+        { boundingBox: { x: 0.62, y: 0.06, width: 0.14, height: 0.12 }, confidence: 0.88 },
+      ],
+    });
+    assert.equal(mirrorRedacted.proof.isAnonymized, true);
+    assert.equal(mirrorRedacted.proof.facesDetectedCount, 2);
+    assert.equal(mirrorRedacted.proof.allRedactedFaceRegions?.length, 2);
+    assert.ok(mirrorRedacted.proof.multiFaceNotice?.includes("Redacted all 2"));
+
+    // 3. Manual redaction box MUST NOT bypass automated face detection when 0 faces are detected
+    await assert.rejects(
+      async () => {
+        await anonymizeProgressPhoto({
+          rawImageDataUri: sampleUri,
+          poseId: "front_relaxed",
+          manualFaceRedactionBox: { x: 0.35, y: 0.02, width: 0.3, height: 0.22 },
+          customFaceDetector: () => [],
+        });
+      },
+      /No face detected/,
+      "Manual redaction box is a supplemental fallback, never a bypass when automated face detection fails"
+    );
+
+    // When automated face detection succeeds, manualFaceRedactionBox adds a supplemental redaction region
+    const supplementalManualRedacted = await anonymizeProgressPhoto({
+      rawImageDataUri: sampleUri,
+      poseId: "front_relaxed",
+      manualFaceRedactionBox: { x: 0.35, y: 0.02, width: 0.3, height: 0.22 },
+    });
+    assert.equal(supplementalManualRedacted.proof.isAnonymized, true);
+    assert.equal(supplementalManualRedacted.proof.allRedactedFaceRegions?.length, 2);
+
+    registerCrossBrowserWasmFaceDetector(() => [
+      { boundingBox: { x: 0.38, y: 0.04, width: 0.22, height: 0.15 }, confidence: 0.96 },
+    ]);
+    try {
+      const wasmRedacted = await anonymizeProgressPhoto({
+        rawImageDataUri: sampleUri,
+        poseId: "front_relaxed",
+      });
+      assert.equal(wasmRedacted.proof.detectorUsed, "mediapipe_wasm_face_detector");
+    } finally {
+      registerCrossBrowserWasmFaceDetector(null);
+    }
+
+    // 4. Complete deletion across store, storage.ts bucket, and cached comparison reports via DELETE route
+    visualProgressStore.clearForRealUser();
+    const snapA = await visualProgressStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: sampleUri,
+      date: "2026-10-01",
+    });
+    const snapB = await visualProgressStore.addAnonymizedSnapshot({
+      traineeId: "trainee_alaa",
+      poseId: "front_relaxed",
+      rawImageDataUri: sampleUri,
+      date: "2026-10-29",
+    });
+    assert.ok(getStoredSnapshotBlob(snapA.id), "Blob must be registered in storage.ts before deletion");
+
+    await analyzeVisualProgressEvolution({
+      traineeId: "trainee_alaa",
+      snapshotA: snapA,
+      snapshotB: snapB,
+      sessions: [],
+    });
+    assert.equal(visualProgressStore.getCachedComparisonReports("trainee_alaa").length, 1);
+
+    const deleteHttpReq = new NextRequest(
+      `http://localhost:3000/api/ai/visual-progress?traineeId=trainee_alaa&snapshotId=${snapA.id}`,
+      { method: "DELETE" }
+    );
+    const deleteHttpRes = await deleteVisualProgressRoute(deleteHttpReq);
+    assert.equal(deleteHttpRes.status, 200);
+    const deleteHttpJson = await deleteHttpRes.json();
+    assert.equal(deleteHttpJson.ok, true);
+    assert.equal(deleteHttpJson.receipt.purgedFromMemoryStore, true);
+    assert.equal(deleteHttpJson.receipt.purgedFromStorageBucket, true);
+    assert.equal(deleteHttpJson.receipt.purgedCachedReportsCount, 1);
+    assert.equal(getStoredSnapshotBlob(snapA.id), undefined, "Blob must be purged from storage.ts");
+    assert.equal(visualProgressStore.getCachedComparisonReports("trainee_alaa").length, 0);
   });
 });

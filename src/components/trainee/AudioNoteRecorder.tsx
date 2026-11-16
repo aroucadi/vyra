@@ -4,11 +4,17 @@ import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
 import { Mic, Square, Play, Pause, Trash2, Volume2, Sparkles, Share2 } from "lucide-react";
 import { shareAudioNoteWithGemini } from "@/lib/share-equipment";
+import {
+  embedTranscriptInAudioDataUri,
+  extractTranscriptFromAudioDataUri,
+  transcribeAudioFeedbackWithGemini,
+} from "@/lib/ai/sensory-memory";
 import { telemetry } from "@/lib/telemetry";
 
 interface AudioNoteRecorderProps {
   audioUrl?: string;
-  onSave: (audioDataUrl: string) => void;
+  transcript?: string;
+  onSave: (audioDataUrl: string, transcript?: string) => void;
   onDelete: () => void;
   label?: string;
   traineeId?: string;
@@ -19,6 +25,7 @@ interface AudioNoteRecorderProps {
 
 export function AudioNoteRecorder({
   audioUrl,
+  transcript,
   onSave,
   onDelete,
   label = "Voice Feedback Note",
@@ -29,19 +36,30 @@ export function AudioNoteRecorder({
 }: AudioNoteRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordDurationSec, setRecordDurationSec] = useState(0);
+  const [liveTranscript, setLiveTranscript] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const speechRecRef = useRef<any>(null);
+  const liveTranscriptRef = useRef<string>("");
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
-  // Clean up audio element and timer on unmount
+  const resolvedTranscript =
+    transcript?.trim() || extractTranscriptFromAudioDataUri(audioUrl) || "";
+
+  // Clean up audio element, speech recognition, and timer on unmount
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (speechRecRef.current) {
+        try {
+          speechRecRef.current.stop();
+        } catch {}
+      }
       if (audioElementRef.current) {
         audioElementRef.current.pause();
         audioElementRef.current = null;
@@ -61,12 +79,50 @@ export function AudioNoteRecorder({
 
   const startRecording = async () => {
     setErrorMessage(null);
+    setLiveTranscript("");
+    liveTranscriptRef.current = "";
+
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("Audio recording is not supported in this browser.");
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Start browser SpeechRecognition in parallel to capture verbatim voice transcript
+      try {
+        const SpeechRecognitionCtor =
+          (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRecognitionCtor) {
+          const recognition = new SpeechRecognitionCtor();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = navigator.language || "fr-FR";
+
+          let accumulatedFinal = "";
+          recognition.onresult = (event: any) => {
+            let interim = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const seg = event.results[i][0]?.transcript || "";
+              if (event.results[i].isFinal) {
+                accumulatedFinal += `${seg} `;
+              } else {
+                interim += seg;
+              }
+            }
+            const combined = `${accumulatedFinal}${interim}`.trim();
+            if (combined) {
+              liveTranscriptRef.current = combined;
+              setLiveTranscript(combined);
+            }
+          };
+          recognition.onerror = () => {};
+          recognition.start();
+          speechRecRef.current = recognition;
+        }
+      } catch {
+        // Browser speech recognition optional; server-side Gemini audio transcription backs it up
+      }
 
       // Determine supported mime type
       const mimeTypes = [
@@ -96,20 +152,58 @@ export function AudioNoteRecorder({
       recorder.onstop = async () => {
         // Stop all audio tracks to release microphone hardware immediately
         stream.getTracks().forEach((track) => track.stop());
+        if (speechRecRef.current) {
+          try {
+            speechRecRef.current.stop();
+          } catch {}
+          speechRecRef.current = null;
+        }
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: selectedMime || "audio/webm",
         });
 
+        if (audioBlob.size === 0) {
+          setErrorMessage("Empty audio recording detected. Please speak into the microphone and try again.");
+          return;
+        }
+
         // Convert blob to Base64 Data URL for durable local & server storage
         const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64Audio = reader.result as string;
-          onSave(base64Audio);
-          telemetry.track("audio_feedback_recorded", {
-            exercise_name: exerciseName || "workout_overall",
-            duration_sec: recordDurationSec,
-          }, traineeId);
+        reader.onloadend = async () => {
+          const rawBase64Audio = reader.result as string;
+          const capturedText = liveTranscriptRef.current.trim() || undefined;
+          const enrichedAudioUri = embedTranscriptInAudioDataUri(rawBase64Audio, capturedText);
+          onSave(enrichedAudioUri, capturedText);
+
+          // If browser SpeechRecognition was unavailable or produced no text, run async Gemini transcription pipeline
+          if (!capturedText) {
+            try {
+              const asyncTranscript = await transcribeAudioFeedbackWithGemini(
+                rawBase64Audio,
+                exerciseName
+              );
+              if (asyncTranscript && asyncTranscript.trim()) {
+                const cleanAsync = asyncTranscript.trim();
+                liveTranscriptRef.current = cleanAsync;
+                setLiveTranscript(cleanAsync);
+                const reEnrichedUri = embedTranscriptInAudioDataUri(rawBase64Audio, cleanAsync);
+                onSave(reEnrichedUri, cleanAsync);
+              }
+            } catch {
+              // Preserve original audio recording even if async transcription fails
+            }
+          }
+
+          telemetry.track(
+            "audio_feedback_recorded",
+            {
+              exercise_name: exerciseName || "workout_overall",
+              duration_sec: recordDurationSec,
+              has_transcript: Boolean(liveTranscriptRef.current.trim()),
+            },
+            traineeId
+          );
         };
         reader.readAsDataURL(audioBlob);
       };
@@ -144,6 +238,12 @@ export function AudioNoteRecorder({
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (speechRecRef.current) {
+      try {
+        speechRecRef.current.stop();
+      } catch {}
+      speechRecRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
@@ -155,6 +255,14 @@ export function AudioNoteRecorder({
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (speechRecRef.current) {
+      try {
+        speechRecRef.current.stop();
+      } catch {}
+      speechRecRef.current = null;
+    }
+    liveTranscriptRef.current = "";
+    setLiveTranscript("");
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       // Discard recorded chunks
       audioChunksRef.current = [];
@@ -193,12 +301,15 @@ export function AudioNoteRecorder({
       audioElementRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioElementRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn("Playback error:", err);
-        setIsPlaying(false);
-      });
+      audioElementRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.warn("Playback error:", err);
+          setIsPlaying(false);
+        });
     }
   };
 
@@ -209,6 +320,8 @@ export function AudioNoteRecorder({
     }
     setIsPlaying(false);
     setPlayProgress(0);
+    setLiveTranscript("");
+    liveTranscriptRef.current = "";
     onDelete();
   };
 
@@ -223,31 +336,38 @@ export function AudioNoteRecorder({
   // --------------------------------------------------------------------------
   if (isRecording) {
     return (
-      <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/60 animate-pulse text-xs">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-          <span className="font-mono text-rose-300 font-bold">
-            Recording Voice Note: {formatTimer(recordDurationSec)}
-          </span>
-          <span className="text-[10px] text-rose-400/80">(max 60s)</span>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/60 animate-pulse text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+            <span className="font-mono text-rose-300 font-bold">
+              Recording Voice Note: {formatTimer(recordDurationSec)}
+            </span>
+            <span className="text-[10px] text-rose-400/80">(max 60s)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={cancelRecording}
+              className="px-2 py-1 text-[10px] text-slate-400 hover:text-white transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={stopRecording}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] shadow transition active:scale-95 cursor-pointer"
+            >
+              <Square className="w-3 h-3 fill-white" />
+              <span>Done</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={cancelRecording}
-            className="px-2 py-1 text-[10px] text-slate-400 hover:text-white transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={stopRecording}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] shadow transition active:scale-95 cursor-pointer"
-          >
-            <Square className="w-3 h-3 fill-white" />
-            <span>Done</span>
-          </button>
-        </div>
+        {liveTranscript && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-[#090C11]/90 border border-[#1C2436] text-[11px] text-slate-300 italic">
+            “{liveTranscript}”
+          </div>
+        )}
       </div>
     );
   }
@@ -289,12 +409,14 @@ export function AudioNoteRecorder({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => shareAudioNoteWithGemini({
-                audioUrl,
-                exerciseName,
-                traineeId,
-                gymName,
-              })}
+              onClick={() =>
+                shareAudioNoteWithGemini({
+                  audioUrl,
+                  exerciseName,
+                  traineeId,
+                  gymName,
+                })
+              }
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/70 border border-indigo-700/60 text-indigo-300 text-[10px] font-semibold transition cursor-pointer active:scale-95 font-body"
               title="Share voice note with Google Gemini"
             >
@@ -320,6 +442,12 @@ export function AudioNoteRecorder({
             </button>
           </div>
         </div>
+        {resolvedTranscript && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-[#090C11]/80 border border-[#1C2436] text-[11px] text-slate-300 flex items-start gap-1.5">
+            <Sparkles className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+            <span className="italic leading-snug">“{resolvedTranscript}”</span>
+          </div>
+        )}
       </div>
     );
   }

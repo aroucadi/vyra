@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VYRA Coaching Evaluation Case",
+  "type": "object",
+  "required": [
+    "case_id",
+    "title",
+    "athlete_profile",
+    "history",
+    "user_message",
+    "expected_priority_order",
+    "forbidden_actions",
+    "required_actions",
+    "reviewed_by_coach"
+  ],
+  "properties": {
+    "case_id": { "type": "string" },
+    "title": { "type": "string" },
+    "reviewed_by_coach": { "type": "boolean" },
+    "athlete_profile": {
+      "type": "object",
+      "required": ["traineeId", "regime", "trainingAgeMonths"],
+      "properties": {
+        "traineeId": { "type": "string" },
+        "regime": { "type": "string", "enum": ["novice", "intermediate", "advanced"] },
+        "trainingAgeMonths": { "type": "number" },
+        "bodyweightKg": { "type": ["number", "null"] },
+        "averageLoggedCalories": { "type": ["number", "null"] },
+        "achievableSessionsPerWeek": { "type": "number" },
+        "jointTolerances": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "foodRelationshipSensitivity": {
+          "type": "string",
+          "enum": ["healthy", "MacroTrackingAnxiety", "high_risk_obsessive"]
+        }
+      }
+    },
+    "history": {
+      "type": "object",
+      "required": ["sessions", "metricEntries"],
+      "properties": {
+        "sessions": { "type": "array" },
+        "metricEntries": { "type": "array" }
+      }
+    },
+    "user_message": { "type": "string" },
+    "unsafe_proposal_override": {
+      "type": ["object", "null"]
+    },
+    "expected_priority_order": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -17,9 +17,11 @@ import { calculateEstimated1RM } from "@/lib/utils";
 import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VisualProgressStudio } from "@/components/trainee/VisualProgressStudio";
+import { athleteModelStore } from "@/lib/ai/athlete-model";
 
 export default function ProgressPage() {
   const currentUser = appStore.getCurrentUser();
+  const athleteModel = athleteModelStore.getAthleteModel(currentUser.id);
   const [metrics, setMetrics] = useState(() => appStore.getMetrics(currentUser.id));
   const sessions = appStore.getSessions(currentUser.id);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
@@ -42,13 +44,43 @@ export default function ProgressPage() {
     setTimeout(() => setSuccessMessage(""), 3000);
   };
 
-  // Calculate high and low weight
+  // Derive weight telemetry strictly from actual logged metrics or measured AthleteModel (never silent hardcoded numbers)
+  const modelEnergyField = athleteModel.dynamic.energyBalanceTrend;
+  const fallbackModelWeight =
+    modelEnergyField.confidence > 0 && modelEnergyField.value.smoothedWeightKg > 0
+      ? modelEnergyField.value.smoothedWeightKg
+      : undefined;
   const weights = metrics.map((m) => m.weightKg);
-  const minWeight = weights.length ? Math.min(...weights) : 75;
-  const maxWeight = weights.length ? Math.max(...weights) : 85;
-  const latestWeight = weights.length ? weights[weights.length - 1] : 80;
-  const startWeight = weights.length ? weights[0] : 82;
-  const diff = Math.round((latestWeight - startWeight) * 10) / 10;
+  const hasLoggedMetrics = weights.length > 0;
+  const startWeight = hasLoggedMetrics ? weights[0] : fallbackModelWeight;
+  const latestWeight = hasLoggedMetrics ? weights[weights.length - 1] : fallbackModelWeight;
+  const minWeight =
+    hasLoggedMetrics && weights.length > 0
+      ? Math.min(...weights)
+      : startWeight
+      ? Math.max(40, startWeight - 1)
+      : 0;
+  const maxWeight =
+    hasLoggedMetrics && weights.length > 0
+      ? Math.max(...weights)
+      : startWeight
+      ? startWeight + 5
+      : 0;
+  const diff =
+    latestWeight !== undefined && startWeight !== undefined
+      ? Math.round((latestWeight - startWeight) * 10) / 10
+      : 0;
+  const targetSurplusWeight =
+    startWeight !== undefined ? Number((startWeight + 5.2).toFixed(1)) : undefined;
+  const w6MilestoneWeight =
+    startWeight !== undefined ? Number((startWeight + 1.7).toFixed(1)) : undefined;
+  const w12MilestoneWeight =
+    startWeight !== undefined ? Number((startWeight + 3.7).toFixed(1)) : undefined;
+  const weightProvenanceBadge = hasLoggedMetrics
+    ? `Measured (${weights.length} weigh-ins)`
+    : startWeight !== undefined
+    ? `Model (${modelEnergyField.source}, conf ${Math.round(modelEnergyField.confidence * 100)}%)`
+    : "No weigh-ins logged";
 
   // Extract PRs
   const prs: { exercise: string; weight: number; reps: number; date: string; equipment?: string }[] = [];
@@ -90,11 +122,17 @@ export default function ProgressPage() {
                 Current Weight
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-3xl font-display font-black text-white tabular-nums">{latestWeight} kg</span>
-                <span className="text-xs font-mono font-semibold text-sky-400 flex items-center gap-0.5">
-                  <TrendingDown className="w-3.5 h-3.5" />
-                  {diff} kg (14d)
-                </span>
+                {latestWeight !== undefined ? (
+                  <>
+                    <span className="text-3xl font-display font-black text-white tabular-nums">{latestWeight} kg</span>
+                    <span className="text-xs font-mono font-semibold text-sky-400 flex items-center gap-0.5">
+                      <TrendingDown className="w-3.5 h-3.5" />
+                      {diff} kg (14d)
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm font-mono text-slate-400">No weight logged yet</span>
+                )}
               </div>
             </div>
 
@@ -125,95 +163,78 @@ export default function ProgressPage() {
             </p>
           )}
 
-          {/* 16-Week Surplus Milestone Trajectory (Category B) */}
-          <div className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-mono">
-              <span className="text-slate-400 uppercase tracking-wider">16-Week Surplus Target</span>
-              <span className="text-amber-400 font-bold">51.8 kg → 57.0 kg Goal</span>
+          {/* 16-Week Surplus Milestone Trajectory (Dynamically Derived from Athlete Model & Weigh-Ins) */}
+          {startWeight !== undefined && targetSurplusWeight !== undefined && latestWeight !== undefined ? (
+            <div className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-slate-400 uppercase tracking-wider">
+                  16-Week Surplus Target ({weightProvenanceBadge})
+                </span>
+                <span className="text-amber-400 font-bold">
+                  {startWeight} kg → {targetSurplusWeight} kg Goal
+                </span>
+              </div>
+              <div className="w-full bg-[#111622] rounded-full h-2 overflow-hidden border border-[#1C2436]">
+                {(() => {
+                  const baseline = startWeight;
+                  const target = targetSurplusWeight;
+                  const current = Math.max(baseline, Math.min(target, latestWeight));
+                  const span = Math.max(0.1, target - baseline);
+                  const progressPct = Math.round(((current - baseline) / span) * 100);
+                  return (
+                    <div
+                      style={{ width: `${Math.max(5, progressPct)}%` }}
+                      className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-500"
+                    />
+                  );
+                })()}
+              </div>
+              <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                <span>W1: {startWeight}kg (Baseline)</span>
+                <span>W6: {w6MilestoneWeight}kg</span>
+                <span>W12: {w12MilestoneWeight}kg</span>
+                <span className="text-amber-400 font-semibold">W16: {targetSurplusWeight}kg</span>
+              </div>
             </div>
-            <div className="w-full bg-[#111622] rounded-full h-2 overflow-hidden border border-[#1C2436]">
-              {(() => {
-                const baseline = 51.8;
-                const target = 57.0;
-                const current = Math.max(baseline, Math.min(target, latestWeight));
-                const progressPct = Math.round(((current - baseline) / (target - baseline)) * 100);
-                return (
-                  <div
-                    style={{ width: `${Math.max(5, progressPct)}%` }}
-                    className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-500"
-                  />
-                );
-              })()}
+          ) : (
+            <div className="p-3 bg-[#090C11] border border-[#1C2436] rounded-xl text-xs text-slate-400">
+              No bodyweight entries logged yet. Log your first weigh-in above to track your weight trend.
             </div>
-            <div className="flex justify-between text-[9px] font-mono text-slate-500">
-              <span>W1: 51.8kg (Baseline)</span>
-              <span>W6: 53.5kg</span>
-              <span>W12: 55.5kg</span>
-              <span className="text-amber-400 font-semibold">W16: 57.0kg</span>
-            </div>
-          </div>
+          )}
 
           {/* SVG Line Chart for 100% Reliable Render */}
-          <div className="bg-[#090C11] p-3 rounded-xl border border-[#1C2436]">
-            <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-2">
-              <span>14-Day Weigh-In Curve</span>
-              <span>Range: {minWeight}kg - {maxWeight}kg</span>
-            </div>
+          {hasLoggedMetrics && (
+            <div className="bg-[#090C11] p-3 rounded-xl border border-[#1C2436]">
+              <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-2">
+                <span>14-Day Weigh-In Curve</span>
+                <span>Range: {minWeight}kg - {maxWeight}kg</span>
+              </div>
 
-            <div className="h-28 w-full flex items-end justify-between gap-1 pt-4 px-1">
-              {metrics.map((m, idx) => {
-                const heightPercent = ((m.weightKg - minWeight + 0.5) / (maxWeight - minWeight + 1)) * 100;
-                return (
-                  <div key={m.id} className="flex-1 flex flex-col items-center gap-1 group relative">
-                    <div
-                      style={{ height: `${Math.max(15, heightPercent)}%` }}
-                      className="w-full rounded-t bg-gradient-to-t from-amber-500/30 to-amber-400 hover:to-amber-300 transition"
-                    />
-                    <span className="text-[8px] font-mono text-slate-500">
-                      {idx % 2 === 0 ? m.date.slice(8) : ""}
-                    </span>
+              <div className="h-28 w-full flex items-end justify-between gap-1 pt-4 px-1">
+                {metrics.map((m, idx) => {
+                  const heightPercent = ((m.weightKg - minWeight + 0.5) / (maxWeight - minWeight + 1)) * 100;
+                  return (
+                    <div key={m.id} className="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div
+                        style={{ height: `${Math.max(15, heightPercent)}%` }}
+                        className="w-full rounded-t bg-gradient-to-t from-amber-500/30 to-amber-400 hover:to-amber-300 transition"
+                      />
+                      <span className="text-[8px] font-mono text-slate-500">
+                        {idx % 2 === 0 ? m.date.slice(8) : ""}
+                      </span>
 
-                    {/* Tooltip on hover */}
-                    <div className="absolute -top-7 hidden group-hover:block bg-[#111622] border border-[#1C2436] px-1.5 py-0.5 rounded text-[9px] font-mono text-white whitespace-nowrap z-10">
-                      {m.weightKg} kg
+                      {/* Tooltip on hover */}
+                      <div className="absolute -top-7 hidden group-hover:block bg-[#111622] border border-[#1C2436] px-1.5 py-0.5 rounded text-[9px] font-mono text-white whitespace-nowrap z-10">
+                        {m.weightKg} kg
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </section>
       )}
-
-      {/* 2. Muscle Group Volume Distribution */}
-      <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-bold text-white font-editorial">Target Muscle Group Volume</h2>
-          </div>
-          <span className="text-[10px] font-mono text-slate-400">Weekly Rollup</span>
-        </div>
-
-        <div className="space-y-2.5 text-xs">
-          {[
-            { muscle: "Chest & Front Delts", sets: 14, percent: 85, color: "bg-amber-400" },
-            { muscle: "Upper & Mid Back", sets: 12, percent: 75, color: "bg-sky-400" },
-            { muscle: "Quads & Hamstrings", sets: 10, percent: 65, color: "bg-sky-500" },
-            { muscle: "Side Delts & Triceps", sets: 9, percent: 60, color: "bg-amber-500" },
-          ].map((item) => (
-            <div key={item.muscle} className="space-y-1">
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-300 font-medium">{item.muscle}</span>
-                <span className="text-slate-400">{item.sets} Sets</span>
-              </div>
-              <div className="w-full bg-[#090C11] rounded-full h-1.5 overflow-hidden border border-[#1C2436]">
-                <div style={{ width: `${item.percent}%` }} className={`h-1.5 rounded-full ${item.color}`} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* 2. Weekly Volume Dashboard & Biomechanical Architecture */}
       <WeeklyVolumeDashboard />
@@ -226,7 +247,7 @@ export default function ProgressPage() {
             <h2 className="text-sm font-bold text-white font-editorial">Personal Record (PR) Showcase</h2>
           </div>
           <span className="text-[10px] font-mono text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
-            {prs.length || 2} Records
+            {prs.length} Records
           </span>
         </div>
 

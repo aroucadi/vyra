@@ -1165,6 +1165,10 @@ class Store {
     return this.db.programs;
   }
 
+  getAllProgramsForTrainee(traineeId: string): Program[] {
+    return this.db.programs.filter((p) => p.traineeId === traineeId);
+  }
+
   saveProgram(program: Program): Program {
     const idx = this.db.programs.findIndex((p) => p.id === program.id);
     if (idx >= 0) {
@@ -1560,6 +1564,10 @@ class Store {
     );
   }
 
+  getAllSupplementLogs(traineeId: string): SupplementLog[] {
+    return this.db.supplementLogs.filter((l) => l.traineeId === traineeId);
+  }
+
   toggleSupplementDose(
     traineeId: string,
     programId: string,
@@ -1609,6 +1617,10 @@ class Store {
     return this.db.hydrationLogs.filter(
       (h) => h.traineeId === traineeId && h.date === date
     );
+  }
+
+  getAllHydrationLogs(traineeId: string): HydrationLog[] {
+    return this.db.hydrationLogs.filter((h) => h.traineeId === traineeId);
   }
 
   getTodayHydrationTotal(traineeId: string, date: string): number {

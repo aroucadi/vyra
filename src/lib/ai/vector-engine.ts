@@ -204,10 +204,13 @@ export async function computeVertexOrLocalEmbedding(
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && input.text) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
         body: JSON.stringify({
           model: "models/text-embedding-004",
           content: { parts: [{ text: input.text }] },

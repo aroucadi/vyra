@@ -19,6 +19,7 @@ export * from "./programs";
 export * from "./exercises";
 export * from "./sessions";
 export * from "./metrics";
+export * from "./coach";
 
 export const usersRelations = relations(users, ({ many }) => ({
   trainedPrograms: many(programs, { relationName: "trainerPrograms" }),

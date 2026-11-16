@@ -5,11 +5,13 @@ import Link from "next/link";
 import { appStore } from "@/lib/store";
 import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle, HardDrive, RefreshCw, History } from "lucide-react";
 import { isStoragePersisted, requestPersistentStorage, clearClientStorage, triggerBackupDownload } from "@/lib/storage";
+import { buildFullTraineeExportPayloadAsync } from "@/lib/export-backup";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 
 export default function YourDataPage() {
   const currentUser = appStore.getCurrentUser();
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [isPersisted, setIsPersisted] = useState<boolean | null>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -27,22 +29,18 @@ export default function YourDataPage() {
     setIsPersisted(granted);
   };
 
-  const handleExport = () => {
-    const data = {
-      user: {
-        id: currentUser.id,
-        name: currentUser.name,
-        role: currentUser.role,
-      },
-      sessions: appStore.getSessions(currentUser.id),
-      metrics: appStore.getMetrics(currentUser.id),
-      readinessLogs: appStore.getWearableBiometricsHistory(currentUser.id),
-    };
-
-    const ts = triggerBackupDownload(data, `vyra-export-${currentUser.id}.json`);
-    setLastBackup(ts);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const data = await buildFullTraineeExportPayloadAsync(currentUser.id);
+      const ts = triggerBackupDownload(data, `vyra-export-${currentUser.id}.json`);
+      setLastBackup(ts);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -157,10 +155,11 @@ export default function YourDataPage() {
           <button
             type="button"
             onClick={handleExport}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer"
+            disabled={exporting}
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer"
           >
             {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> : <Download className="w-3.5 h-3.5" />}
-            <span>{copied ? "Exported" : "Export backup"}</span>
+            <span>{exporting ? "Preparing..." : copied ? "Exported" : "Export backup"}</span>
           </button>
         </div>
       </section>

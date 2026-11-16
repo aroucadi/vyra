@@ -144,6 +144,27 @@ export interface ExercisePrescription {
   subMovementOrder?: string; // e.g. "3A", "3B"
   supersetTag?: string;
   interSetRestSeconds?: number;
+  order?: string;
+  timeSlot?: string;
+  supersetGroup?: string | null;
+  pairedWithExerciseId?: string;
+  equipmentTypeLabel?: string;
+  targetWeightRangeKg?: string;
+  targetWeightNote?: string;
+  tempo?: string;
+  setupCues?: string[];
+  executionAndStretchCues?: string[];
+  progressionRule?: string;
+  setPrescriptions?: Array<{
+    setIndex: number;
+    targetReps: string;
+    targetWeightKg: number;
+    targetRir: number;
+    restSec: number;
+    blindNote?: string;
+  }>;
+  equipmentPhotoUrl?: string;
+  equipmentPhotoBase64?: string;
   weekRirGuidance?: {
     weeks1_2?: string;
     week3Plus?: string;
@@ -259,6 +280,21 @@ export interface ProgramDay {
   blocks: Block[];
   nutrition: MealPlanPrescription;
   supplementOverrides?: SupplementProtocol[];
+  timeWindow?: string;
+  warmupDurationSec?: number;
+  liftingDurationSec?: number;
+  totalTargetSets?: number;
+  dayBlindBriefing?: string;
+  warmupProtocol?: Array<
+    | string
+    | {
+        step: number;
+        timeSlot: string;
+        drill: string;
+        prescription: string;
+        cue: string;
+      }
+  >;
 }
 
 export interface ProgramWeek {
@@ -279,6 +315,19 @@ export interface Program {
   status: ProgramStatus;
   version: number;
   parentVersionId?: string;
+  launchDate?: string;
+  scheduleOverview?: {
+    daysPerWeek?: number;
+    trainingDays?: string[];
+    restDays?: string[];
+    lunchWorkoutWindow?: string;
+    mondayToThursdayWindow?: string;
+    friday?: string;
+    saturdayWindow?: string;
+    sunday?: string;
+  };
+  blindExecutionRules?: string[];
+  dailyNutritionAndSupplementProtocol?: Record<string, any>;
   weeks: ProgramWeek[];
   supplementProtocols?: SupplementProtocol[];
   hydrationGoal?: HydrationGoal;
@@ -293,6 +342,8 @@ export interface Program {
 }
 
 export type ExerciseBiofeedbackTag = "optimal" | "heavy" | "light" | "joint_strain" | "balance_issue";
+export type AudioTranscriptionStatus = "idle" | "pending" | "transcribing" | "completed" | "failed";
+export type VisionAnalysisStatus = "idle" | "pending" | "analyzing" | "completed" | "failed";
 
 export interface ExerciseFeedbackRecord {
   exerciseName: string;
@@ -300,7 +351,14 @@ export interface ExerciseFeedbackRecord {
   tags?: ExerciseBiofeedbackTag[];
   note?: string;
   photoUrl?: string;
+  equipmentPhotoUrl?: string;
+  equipmentPhotoBase64?: string;
   audioNoteUrl?: string;
+  audioTranscript?: string;
+  audioTranscriptionStatus?: AudioTranscriptionStatus;
+  audioTranscriptionError?: string;
+  visionAnalysisStatus?: VisionAnalysisStatus;
+  detectedEquipmentCategories?: string[];
   timestamp?: string;
 }
 
@@ -319,7 +377,14 @@ export interface SetLog {
   feedbackTags?: ExerciseBiofeedbackTag[];
   note?: string;
   photoUrl?: string;
+  equipmentPhotoUrl?: string;
+  equipmentPhotoBase64?: string;
   audioNoteUrl?: string;
+  audioTranscript?: string;
+  audioTranscriptionStatus?: AudioTranscriptionStatus;
+  audioTranscriptionError?: string;
+  visionAnalysisStatus?: VisionAnalysisStatus;
+  detectedEquipmentCategories?: string[];
   skipped?: boolean;
 }
 
@@ -344,6 +409,11 @@ export interface WorkoutSession {
   notes?: string;
   sessionNote?: string;
   audioNoteUrl?: string;
+  audioTranscript?: string;
+  audioTranscriptionStatus?: AudioTranscriptionStatus;
+  audioTranscriptionError?: string;
+  visionAnalysisStatus?: VisionAnalysisStatus;
+  detectedEquipmentCategories?: string[];
   gymId?: string;
   gymName?: string;
   gymAddress?: string;

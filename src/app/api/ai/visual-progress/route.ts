@@ -10,6 +10,7 @@ import {
   analyzeVisualProgressEvolution,
   extractPhotoCaptureDateMetadata,
   resolveHistoricalPhotoPrefill,
+  canTraineeUploadProgressPhotos,
 } from "@/lib/ai/visual-progress";
 import { WorkoutSession, BodyMetricEntry } from "@/lib/types";
 
@@ -65,9 +66,10 @@ export async function GET(req: NextRequest) {
 }
 
 export interface VisualProgressPostRequestBody {
-  action?: "compare" | "capture" | "extract_metadata";
+  action?: "compare" | "capture" | "extract_metadata" | "delete";
   traineeId?: string;
   poseId?: VisualPoseId;
+  snapshotId?: string;
   snapshotAId?: string;
   snapshotBId?: string;
   snapshotA?: VisualProgressSnapshot;
@@ -82,6 +84,10 @@ export interface VisualProgressPostRequestBody {
   weightKg?: number;
   traineeNote?: string;
   programStartDate?: string;
+  /** Explicit user confirmation when poseId === "back_relaxed" has no visible face */
+  confirmNoFaceVisible?: boolean;
+  /** Explicit user consent required before sending any image bytes to a cloud vision model */
+  cloudVisionConsentGranted?: boolean;
   /** Optional explicit workout sessions & metrics override for testing/custom evaluation */
   sessions?: WorkoutSession[];
   metrics?: BodyMetricEntry[];
@@ -137,8 +143,41 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Handle Photo Capture / Historical Import + Mandatory Privacy-First Face Anonymization
+    // 0A. Handle Snapshot Deletion (removes from store, localStorage, storage bucket, cached reports, and shadow logs)
+    if (body.action === "delete") {
+      if (!body.snapshotId) {
+        return NextResponse.json(
+          { ok: false, error: "snapshotId is required for deletion." },
+          { status: 400 }
+        );
+      }
+      const delResult = visualProgressStore.deleteSnapshot(body.snapshotId, traineeId);
+      return NextResponse.json(
+        {
+          ok: true,
+          action: "delete",
+          snapshotId: body.snapshotId,
+          deleted: delResult.deleted,
+          remainingCount: delResult.remainingCount,
+          receipt: delResult,
+        },
+        { status: 200 }
+      );
+    }
+
+    // 1. Handle Photo Capture / Historical Import + Mandatory Fail-Closed Face Detection & Anonymization
     if (body.action === "capture") {
+      const uploadGate = canTraineeUploadProgressPhotos(traineeId);
+      if (!uploadGate.allowed) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: uploadGate.reason,
+          },
+          { status: 403 }
+        );
+      }
+
       if (!body.rawImageDataUri) {
         return NextResponse.json(
           { ok: false, error: "rawImageDataUri is required for photo capture." },
@@ -146,21 +185,35 @@ export async function POST(req: Request) {
         );
       }
 
-      const capturedSnapshot = await visualProgressStore.addAnonymizedSnapshot({
-        traineeId,
-        poseId,
-        rawImageDataUri: body.rawImageDataUri,
-        milestoneLabel: body.milestoneLabel,
-        weekIndex: body.weekIndex,
-        date: body.date,
-        weightKg: body.weightKg,
-        traineeNote: body.traineeNote,
-        fileName: body.fileName,
-        fileLastModifiedMs: body.fileLastModifiedMs,
-        programStartDate: body.programStartDate,
-        metrics,
-        sessions,
-      });
+      let capturedSnapshot: VisualProgressSnapshot;
+      try {
+        capturedSnapshot = await visualProgressStore.addAnonymizedSnapshot({
+          traineeId,
+          poseId,
+          rawImageDataUri: body.rawImageDataUri,
+          milestoneLabel: body.milestoneLabel,
+          weekIndex: body.weekIndex,
+          date: body.date,
+          weightKg: body.weightKg,
+          traineeNote: body.traineeNote,
+          fileName: body.fileName,
+          fileLastModifiedMs: body.fileLastModifiedMs,
+          programStartDate: body.programStartDate,
+          metrics,
+          sessions,
+          confirmNoFaceVisible: body.confirmNoFaceVisible,
+        });
+      } catch (captureErr: any) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              captureErr?.message ||
+              "Face detection failed closed. Please retake the photo.",
+          },
+          { status: 400 }
+        );
+      }
 
       const allPoseSnapshots = visualProgressStore.getSnapshots(traineeId, poseId);
       const baselineSnapshot = allPoseSnapshots[0] || capturedSnapshot;
@@ -172,6 +225,7 @@ export async function POST(req: Request) {
         sessions,
         metrics,
         traineeGoals: currentUser.goals,
+        cloudVisionConsentGranted: body.cloudVisionConsentGranted,
       });
 
       return NextResponse.json(
@@ -259,6 +313,7 @@ export async function POST(req: Request) {
       sessions,
       metrics,
       traineeGoals: currentUser.goals,
+      cloudVisionConsentGranted: body.cloudVisionConsentGranted,
     });
 
     return NextResponse.json(
@@ -275,6 +330,39 @@ export async function POST(req: Request) {
         ok: false,
         error: err?.message || "Failed to analyze visual progress comparison.",
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const snapshotId = searchParams.get("snapshotId");
+    const currentUser = appStore.getCurrentUser();
+    const traineeId = searchParams.get("traineeId") || currentUser.id;
+
+    if (!snapshotId) {
+      return NextResponse.json(
+        { ok: false, error: "snapshotId query parameter is required." },
+        { status: 400 }
+      );
+    }
+
+    const delResult = visualProgressStore.deleteSnapshot(snapshotId, traineeId);
+    return NextResponse.json(
+      {
+        ok: true,
+        snapshotId,
+        deleted: delResult.deleted,
+        remainingCount: delResult.remainingCount,
+        receipt: delResult,
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message || "Failed to delete snapshot." },
       { status: 500 }
     );
   }

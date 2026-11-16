@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 const DAY_FOCUS_META: Record<number, { title: string; subtitle: string; tag: string }> = {
   0: { title: "Upper Power Hypertrophy", subtitle: "Incline Clavicular Bias & Chest Support", tag: "Upper Push" },
@@ -48,6 +49,7 @@ function formatExerciseName(name: string): string {
 }
 
 export default function ProgramCalendarPage() {
+  useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
@@ -58,13 +60,46 @@ export default function ProgramCalendarPage() {
 
   if (!program) {
     return (
-      <div className="p-8 text-center space-y-4 max-w-md mx-auto my-auto select-none">
+      <div className="p-6 text-center space-y-5 max-w-md mx-auto my-auto">
         <div className="w-14 h-14 rounded-2xl bg-[#111622] border border-[#1C2436] flex items-center justify-center text-amber-400 mx-auto shadow-inner">
           <Dumbbell className="w-6 h-6" />
         </div>
-        <div className="space-y-1">
-          <h2 className="text-base font-editorial font-bold text-white">No Active Blueprint</h2>
-          <p className="text-xs text-slate-400">Initialize your 16-week mesocycle to begin periodized loading.</p>
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-editorial font-bold text-white">No Active Blueprint Yet</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Your workspace starts completely clean. Build a custom split, import historical workouts, calibrate your Day-1 lifts, or sign in to restore your cloud vault.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 text-xs font-semibold pt-1">
+          <Link
+            href="/program/new"
+            className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center justify-center gap-2 transition"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Build Custom Program</span>
+          </Link>
+          <Link
+            href="/import"
+            className="w-full py-3 px-4 rounded-xl bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-slate-200 flex items-center justify-center gap-2 transition"
+          >
+            <Layers className="w-4 h-4 text-sky-400" />
+            <span>Import CSV or Workout Notes</span>
+          </Link>
+          <Link
+            href="/today?onboarding=day0"
+            className="w-full py-3 px-4 rounded-xl bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-slate-200 flex items-center justify-center gap-2 transition"
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>Calibrate Day-1 Starting Weights</span>
+          </Link>
+          <Link
+            href="/login"
+            className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-center justify-center gap-2 transition"
+          >
+            <span>Sign In to Restore Cloud Program</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
     );

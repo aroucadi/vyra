@@ -12,7 +12,7 @@ describe("Master Transformation 12-Week Blueprint & 4-Option Equipment Matrix", 
 
     const trainee = appStore.getUser("trainee_alaa");
     assert.ok(trainee, "Trainee Alaa must exist in store");
-    assert.equal(trainee?.role, "trainee");
+    assert.equal(trainee?.role, "both");
     assert.equal(trainee?.name, "Alaa");
     assert.ok(trainee?.injuries.some((i) => i.includes("52.05") || i.includes("Underweight")));
     assert.ok(trainee?.injuries.some((i) => i.includes("Left-Arm")));

@@ -23,11 +23,11 @@ describe('Cloud Database Seeding & Zero-Barrier Alpha Onboarding', () => {
     }
   });
 
-  it('verifies Alaa trainee account is fully pre-seeded for zero signup/signin friction', () => {
+  it('verifies Alaa canonical account is configured with verified Gmail + dual athlete/coach role', () => {
     assert.strictEqual(userAlaa.id, 'trainee_alaa');
     assert.strictEqual(userAlaa.name, 'Alaa');
-    assert.strictEqual(userAlaa.email, 'alaa@vyra.fit');
-    assert.strictEqual(userAlaa.role, 'trainee');
+    assert.strictEqual(userAlaa.email, 'alaaeddineroucadi@gmail.com');
+    assert.strictEqual(userAlaa.role, 'both');
     assert.strictEqual(userAlaa.heightCm, 172);
     assert.strictEqual(userAlaa.sex, 'male');
     assert.strictEqual(userAlaa.dob, '1989-03-15');

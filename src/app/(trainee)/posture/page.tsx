@@ -10,8 +10,10 @@ import { IntelligentPostureDiagnosis } from "@/components/trainee/IntelligentPos
 import { TraineeNav } from "@/components/trainee/TraineeNav";
 import { ArrowLeft, Shield, Lock, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function PostureArchitecturePage() {
+  const storeVersion = useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
   const userTier = ((currentUser as any).tier as SubscriptionTier) || "PRO";
   const isEntitled = hasEntitlement(userTier, "structural_balance_radar");
@@ -45,7 +47,7 @@ export default function PostureArchitecturePage() {
     return () => {
       active = false;
     };
-  }, [activeTemplateKey]);
+  }, [activeTemplateKey, storeVersion]);
 
   // 1-Tap Corrective Injection Handler
   const handleInjectCorrective = async (exerciseName: string) => {

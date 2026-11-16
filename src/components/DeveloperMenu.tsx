@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { switchUserAction } from "@/lib/actions/auth";
+import React, { useState, useRef } from "react";
+import Link from "next/link";
 import { User } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { CheckCircle, Shield } from "lucide-react";
+import { Shield, LogIn, RefreshCw } from "lucide-react";
+import { useVyraAuth } from "@/components/auth/VyraAuthProvider";
+import { appStore } from "@/lib/store";
 
 export function DeveloperMenu({
   currentUser,
@@ -16,25 +17,15 @@ export function DeveloperMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const clickCountRef = useRef(0);
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  const { isAuthenticated, isAlaa, authEmail, refreshBootstrap } = useVyraAuth();
 
-  // Hidden activation: 5 quick taps on version label
+  // Hidden diagnostics menu: 5 quick taps on version label
   const handleTrigger = () => {
     clickCountRef.current += 1;
     if (clickCountRef.current >= 5) {
       setIsOpen(true);
       clickCountRef.current = 0;
     }
-  };
-
-  const handleSwitch = (userId: string, targetPath: string) => {
-    startTransition(async () => {
-      await switchUserAction(userId);
-      setIsOpen(false);
-      router.push(targetPath);
-      router.refresh();
-    });
   };
 
   return (
@@ -48,54 +39,56 @@ export function DeveloperMenu({
           <SheetHeader>
             <div className="flex items-center gap-2 text-amber-400">
               <Shield className="w-4 h-4" />
-              <SheetTitle>Developer & Sandbox Controls</SheetTitle>
+              <SheetTitle>Tenant & Sync Diagnostics</SheetTitle>
             </div>
             <SheetDescription>
-              Hidden developer tool for testing personas and system state. Not visible to end users.
+              Read-only session and Firestore tenant state for the currently authenticated user.
             </SheetDescription>
           </SheetHeader>
 
           <div className="space-y-4 pt-2">
-            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
-              <div className="text-slate-400">Current Session User:</div>
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1.5">
+              <div className="text-slate-400">Active Tenant:</div>
               <div className="font-bold text-white flex items-center justify-between">
                 <span>{currentUser.name} ({currentUser.role})</span>
-                <span className="text-[10px] font-mono text-amber-400">ACTIVE</span>
+                <span className="text-[10px] font-mono text-amber-400">
+                  {isAuthenticated ? (isAlaa ? "ALAA VERIFIED" : "CLOUD SYNCED") : "LOCAL ANON"}
+                </span>
               </div>
+              <div className="text-[11px] font-mono text-slate-400 truncate">
+                UID: {currentUser.id}
+              </div>
+              {authEmail && (
+                <div className="text-[11px] font-mono text-emerald-400 truncate">
+                  Email: {authEmail}
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-slate-300">Switch Persona:</div>
-              
-              <button
-                type="button"
-                disabled={isPending || currentUser.id === "trainee_alaa"}
-                onClick={() => handleSwitch("trainee_alaa", "/today")}
-                className="w-full p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-800 text-left flex items-center justify-between transition"
-              >
-                <div>
-                  <div className="text-xs font-bold text-white">Alaa (Trainee)</div>
-                  <div className="text-[11px] text-slate-400">Block 1 Upper Hypertrophy · 16-Week Blueprint</div>
-                </div>
-                {currentUser.id === "trainee_alaa" && (
-                  <CheckCircle className="w-4 h-4 text-amber-400" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                disabled={isPending || currentUser.id === "trainer_1"}
-                onClick={() => handleSwitch("trainer_1", "/roster")}
-                className="w-full p-3 rounded-xl border border-slate-800 bg-slate-950 hover:bg-slate-800 text-left flex items-center justify-between transition"
-              >
-                <div>
-                  <div className="text-xs font-bold text-white">Coach Marcus, CSCS (Trainer)</div>
-                  <div className="text-[11px] text-slate-400">Trainer Roster · Athlete Management</div>
-                </div>
-                {currentUser.id === "trainer_1" && (
-                  <CheckCircle className="w-4 h-4 text-amber-400" />
-                )}
-              </button>
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await appStore.flushCloudSync();
+                    await refreshBootstrap();
+                    setIsOpen(false);
+                  }}
+                  className="flex-1 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Force Cloud Sync</span>
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex-1 p-3 rounded-xl border border-amber-500/30 bg-amber-500 text-slate-950 text-xs font-bold flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In with Firebase</span>
+                </Link>
+              )}
             </div>
           </div>
         </SheetContent>

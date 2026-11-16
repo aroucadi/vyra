@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import "@/db/coach-repository";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
 import { runVertexAgenticCoachLoop } from "@/lib/ai/vertex-agent-loop";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
 import {
@@ -40,13 +42,29 @@ export async function POST(req: Request) {
       );
     }
 
+    const tenant = await resolveRouteTenantContext(req, body.traineeId, {
+      allowUnauthenticatedAnon: true,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+
+    ensureFirestoreCoachBridgeRegistered();
+    const effectiveTraineeId = tenant.effectiveTraineeId;
+
     let ingestedSensoryNode: SensoryFeedbackEntry | null = null;
     if (body.feedbackToIngest && body.feedbackToIngest.exerciseName) {
-      ingestedSensoryNode = sensoryMemoryStore.ingest(body.feedbackToIngest);
+      ingestedSensoryNode = sensoryMemoryStore.ingest({
+        ...body.feedbackToIngest,
+        traineeId: effectiveTraineeId,
+      });
     }
 
     const jitInput: EvaluateJitInput = {
-      traineeId: body.traineeId,
+      traineeId: effectiveTraineeId,
       exerciseName: body.exerciseName,
       currentWeightKg: Number(body.currentWeightKg ?? 20),
       targetSets: Number(body.targetSets ?? 3),
@@ -66,7 +84,9 @@ export async function POST(req: Request) {
       jitInput,
       typeof body.maxTurns === "number" ? body.maxTurns : 6
     );
-    await athleteModelStore.syncToDatabase(body.traineeId);
+    if (tenant.session) {
+      await athleteModelStore.syncToDatabase(effectiveTraineeId);
+    }
 
     return NextResponse.json(
       {

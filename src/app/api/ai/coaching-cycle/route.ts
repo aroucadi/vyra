@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import "@/db/coach-repository";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
 import {
   runAutonomousCoachingLifecycleCheck,
   evaluateCommittedExperiments,
@@ -39,44 +41,59 @@ export async function POST(req: Request) {
       );
     }
 
+    const tenant = await resolveRouteTenantContext(req, body.traineeId, {
+      allowUnauthenticatedAnon: true,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+
+    ensureFirestoreCoachBridgeRegistered();
+    const effectiveTraineeId = tenant.effectiveTraineeId;
+
     const sessions = Array.isArray(body.sessions) ? body.sessions : [];
     const metricEntries = Array.isArray(body.metricEntries) ? body.metricEntries : [];
 
-    // Hydrate athlete model & experiment history from Drizzle PostgreSQL before running
-    await athleteModelStore.hydrateFromDatabase(body.traineeId);
+    // Hydrate athlete model & experiment history from Firestore/PostgreSQL before running
+    if (tenant.session) {
+      await athleteModelStore.hydrateFromDatabase(effectiveTraineeId);
+    }
 
     if (body.action === "evaluate_experiments") {
       const evaluated = evaluateCommittedExperiments({
-        traineeId: body.traineeId,
+        traineeId: effectiveTraineeId,
         sessions,
         metricEntries,
         currentDate: body.currentDate,
       });
-      await athleteModelStore.syncToDatabase(body.traineeId);
+      if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
       return NextResponse.json({ ok: true, evaluatedExperiments: evaluated }, { status: 200 });
     }
 
     if (body.action === "macro_review") {
       const caseFile = assembleAthleteCaseFile({
-        traineeId: body.traineeId,
+        traineeId: effectiveTraineeId,
         sessions,
         metricEntries,
         averageLoggedCalories: body.averageLoggedCalories,
       });
       const macroBlockPlan = executeMacroBlockReview(caseFile);
-      await athleteModelStore.syncToDatabase(body.traineeId);
+      if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
       return NextResponse.json({ ok: true, macroBlockPlan }, { status: 200 });
     }
 
     if (body.action === "weekly_review") {
       const evaluated = evaluateCommittedExperiments({
-        traineeId: body.traineeId,
+        traineeId: effectiveTraineeId,
         sessions,
         metricEntries,
         currentDate: body.currentDate,
       });
       const caseFile = assembleAthleteCaseFile({
-        traineeId: body.traineeId,
+        traineeId: effectiveTraineeId,
         sessions,
         metricEntries,
         averageLoggedCalories: body.averageLoggedCalories,
@@ -84,7 +101,7 @@ export async function POST(req: Request) {
       const weeklyReview = executeWeeklyMesoReview(caseFile, {
         hasNewEvidence: sessions.length > 0 || metricEntries.length > 0,
       });
-      await athleteModelStore.syncToDatabase(body.traineeId);
+      if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
       return NextResponse.json(
         { ok: true, evaluatedExperiments: evaluated, weeklyReview },
         { status: 200 }
@@ -92,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     const lifecycle = runAutonomousCoachingLifecycleCheck({
-      traineeId: body.traineeId,
+      traineeId: effectiveTraineeId,
       sessions,
       metricEntries,
       averageLoggedCalories: body.averageLoggedCalories,
@@ -100,7 +117,7 @@ export async function POST(req: Request) {
       forceMacroReview: body.forceMacroReview,
       forceWeeklyReview: body.forceWeeklyReview,
     });
-    await athleteModelStore.syncToDatabase(body.traineeId);
+    if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
 
     return NextResponse.json({ ok: true, ...lifecycle }, { status: 200 });
   } catch (err: any) {

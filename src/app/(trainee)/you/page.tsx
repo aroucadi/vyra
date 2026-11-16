@@ -5,17 +5,23 @@ import Link from "next/link";
 import { appStore } from "@/lib/store";
 import { DeveloperMenu } from "@/components/DeveloperMenu";
 import { WorkoutSession, SetLog } from "@/lib/types";
-import { Dumbbell, Trophy, ChevronRight, Moon, Calendar, Clock, CheckCircle2, MapPin, Sparkles } from "lucide-react";
+import { Dumbbell, Trophy, ChevronRight, Moon, MapPin, LogIn, LogOut, CheckCircle2, Sparkles } from "lucide-react";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
+import { useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { resolveProgramDay } from "@/lib/utils";
 
 export default function YouPage() {
+  useVyraStoreVersion();
+  const { isAuthenticated, isAlaa, authEmail, signOutAll } = useVyraAuth();
   const currentUser = appStore.getCurrentUser();
+  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
+  const resolvedWeek = activeProgram ? resolveProgramDay(activeProgram.startDate).weekIndex : null;
   const sessions = appStore.getSessions(currentUser.id);
   const [selectedSession, setSelectedSession] = React.useState<WorkoutSession | null>(null);
   const [isGymDrawerOpen, setIsGymDrawerOpen] = React.useState(false);
-  const [gymListVersion, setGymListVersion] = React.useState(0);
+  const [, setGymListVersion] = React.useState(0);
   const defaultGym = appStore.getDefaultGymLocation(currentUser.id);
   const gymsCount = appStore.getUserGymLocations(currentUser.id).length;
   const totalVolume = sessions.reduce((acc: number, s: WorkoutSession) => {
@@ -61,8 +67,12 @@ export default function YouPage() {
           <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider mt-0.5">Vol (kg)</div>
         </div>
         <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl text-center shadow-sm">
-          <div className="text-2xl font-display font-black text-amber-400 tabular-nums">Week 1</div>
-          <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider mt-0.5">Block 1</div>
+          <div className="text-2xl font-display font-black text-amber-400 tabular-nums">
+            {resolvedWeek ? `Week ${resolvedWeek}` : "Day 0"}
+          </div>
+          <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider mt-0.5">
+            {activeProgram ? `of ${activeProgram.durationWeeks}w` : "Calibrate"}
+          </div>
         </div>
       </section>
 
@@ -137,6 +147,70 @@ export default function YouPage() {
         )}
       </section>
 
+      {/* Cloud Auth & Sync Card */}
+      <section className="p-4 rounded-2xl bg-[#111622] border border-[#1C2436] space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+            Cloud Account & Multi-Device Sync
+          </span>
+          {isAuthenticated ? (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Firestore Active</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+              Local Device Only
+            </span>
+          )}
+        </div>
+
+        {isAuthenticated ? (
+          <div className="space-y-2.5">
+            <div className="text-xs text-slate-200 flex items-center justify-between gap-2">
+              <span className="truncate font-semibold">{authEmail || currentUser.email}</span>
+              {isAlaa && (
+                <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1 flex-shrink-0">
+                  <Sparkles className="w-3 h-3" />
+                  Owner Vault
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {(currentUser.role === "trainer" || currentUser.role === "both") && (
+                <Link
+                  href="/roster"
+                  className="flex-1 py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold text-center hover:bg-amber-500/25 transition"
+                >
+                  Open Coach Studio
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={signOutAll}
+                className="py-2 px-3 rounded-xl bg-[#090C11] border border-[#1C2436] hover:border-rose-500/40 text-slate-300 hover:text-rose-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] text-slate-400 leading-snug">
+              Sign in to sync workouts and unlock your saved cloud program across devices.
+            </p>
+            <Link
+              href="/login"
+              className="py-2 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 flex-shrink-0 transition"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </Link>
+          </div>
+        )}
+      </section>
+
       {/* Sovereign Vault & Cloud Anchor */}
       <section>
         <PasskeySyncCard
@@ -170,9 +244,11 @@ export default function YouPage() {
           >
             <div className="flex items-center gap-3 text-slate-200">
               <Dumbbell className="w-4 h-4 text-sky-400" />
-              <span className="font-medium">16-Week Transformation Blueprint</span>
+              <span className="font-medium truncate">
+                {activeProgram?.title || "Training Program & Blueprint"}
+              </span>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-500" />
+            <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
           </Link>
 
           <button
@@ -185,7 +261,7 @@ export default function YouPage() {
               <div className="min-w-0">
                 <span className="font-medium">Salles de Sport & Training Locations</span>
                 <p className="text-[10px] text-slate-400 font-normal truncate">
-                  {defaultGym?.name || "Punch by Badr Hari Lissasfa"} · {gymsCount} registered
+                  {defaultGym?.name || "No default gym added yet"} · {gymsCount} registered
                 </p>
               </div>
             </div>
@@ -228,7 +304,7 @@ export default function YouPage() {
       <section className="pt-8 pb-4 text-center">
         <DeveloperMenu currentUser={currentUser}>
           <div className="text-[11px] font-mono text-slate-600 hover:text-amber-400 transition select-none cursor-default">
-            <p>VYRA · v1.0.0-rc1 (The Alaa Release)</p>
+            <p>VYRA · v1.0.0 · Multi-Tenant Cloud Vault</p>
           </div>
         </DeveloperMenu>
       </section>

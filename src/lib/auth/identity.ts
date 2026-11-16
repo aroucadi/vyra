@@ -1,21 +1,23 @@
 /**
  * Athlete Identity & Late-Binding Sovereignty Engine (Phase 0: Step Zero)
- * 
+ *
  * Philosophy:
- * - Physical-First / Zero-Block: An athlete in the gym must NEVER be blocked
- *   by an authentication gate, expired JWT, or network login screen.
- * - On first app launch, the device instantiates a sovereign local identity.
- *   The athlete trains immediately with zero network latency.
- * - Late-Binding Cloud Anchor: When convenient (post-session summary or settings),
- *   the athlete anchors their vault via WebAuthn Passkey (FaceID / TouchID) or Google.
- * - Atomic Vault Claim: Transitioning from local sovereign to cloud vault atomically
- *   re-keys local IndexedDB event streams and queues them for cloud backup.
+ * - Physical-First / Zero-Block: An athlete on the gym floor must NEVER be blocked
+ *   by a login wall or network dependency.
+ * - Multi-Tenant Clean Boot: On first app launch without an authenticated cloud session,
+ *   the device instantiates an isolated, empty sovereign local identity (`anon_<id>`).
+ *   Pre-seeded data for Alaa (`trainee_alaa`) is unlocked ONLY via verified Firebase auth.
+ * - Late-Binding Cloud Anchor: When the athlete signs in with Firebase Auth / Passkey / Google,
+ *   local IndexedDB streams are atomically claimed to their authenticated `uid`.
  */
 
 import { openClientDatabase } from "../storage";
-import { getStorageAdapter } from "../storage/adapter";
 
-export type IdentityStatus = "sovereign_local" | "anchored_passkey" | "anchored_google";
+export type IdentityStatus =
+  | "sovereign_local"
+  | "anchored_passkey"
+  | "anchored_google"
+  | "anchored_firebase";
 
 export interface AthleteIdentity {
   uid: string;
@@ -30,15 +32,22 @@ export interface AthleteIdentity {
 
 const IDENTITY_KEY = "vyra_athlete_identity_v1";
 
+function generateAnonUid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `anon_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  }
+  return `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /**
  * Retrieves the current athlete identity.
- * If none exists, creates a zero-block sovereign local identity immediately.
+ * If none exists, creates an isolated sovereign anonymous identity (`anon_*`).
  */
 export function getAthleteIdentity(): AthleteIdentity {
   if (typeof window === "undefined") {
     return {
-      uid: "trainee_alaa",
-      displayName: "Alaa",
+      uid: "anon_visitor",
+      displayName: "Athlete",
       status: "sovereign_local",
       initializedAt: new Date().toISOString(),
       isCloudVaultEnabled: false,
@@ -48,18 +57,23 @@ export function getAthleteIdentity(): AthleteIdentity {
   try {
     const raw = localStorage.getItem(IDENTITY_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.uid) return parsed;
+      const parsed = JSON.parse(raw) as AthleteIdentity;
+      if (parsed && parsed.uid) {
+        // Guard against legacy unanchored localStorage cache from single-user builds
+        if (parsed.uid === "trainee_alaa" && parsed.status === "sovereign_local" && !parsed.isCloudVaultEnabled) {
+          // fall through to fresh isolated anonymous identity
+        } else {
+          return parsed;
+        }
+      }
     }
   } catch {
-    // ignore
+    // ignore parse failures
   }
 
-  // Initialize sovereign local identity
   const initial: AthleteIdentity = {
-    uid: "trainee_alaa",
-    displayName: "Alaa",
-    email: "alaa@vyra.fit",
+    uid: generateAnonUid(),
+    displayName: "Athlete",
     status: "sovereign_local",
     initializedAt: new Date().toISOString(),
     isCloudVaultEnabled: false,
@@ -67,7 +81,9 @@ export function getAthleteIdentity(): AthleteIdentity {
 
   try {
     localStorage.setItem(IDENTITY_KEY, JSON.stringify(initial));
-  } catch {}
+  } catch {
+    // ignore storage failures
+  }
 
   return initial;
 }
@@ -126,12 +142,70 @@ export async function anchorIdentityWithGoogle(
     } catch {}
   }
 
-  // If UID changed, atomically migrate local offline vault
   if (oldUid !== anchored.uid) {
     await claimAnonymousVault(oldUid, anchored.uid);
   }
 
   return anchored;
+}
+
+/**
+ * Anchors local identity to a verified Firebase Auth / canonical VYRA user session.
+ */
+export async function anchorIdentityWithFirebase(params: {
+  uid: string;
+  email?: string;
+  displayName?: string;
+  provider?: string;
+}): Promise<AthleteIdentity> {
+  const current = getAthleteIdentity();
+  const oldUid = current.uid;
+
+  const status: IdentityStatus =
+    params.provider === "google.com" ? "anchored_google" : "anchored_firebase";
+
+  const anchored: AthleteIdentity = {
+    uid: params.uid,
+    displayName: params.displayName || current.displayName || "Athlete",
+    email: params.email,
+    status,
+    initializedAt: current.initializedAt || new Date().toISOString(),
+    anchoredAt: new Date().toISOString(),
+    isCloudVaultEnabled: true,
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(IDENTITY_KEY, JSON.stringify(anchored));
+    } catch {}
+  }
+
+  if (oldUid && oldUid !== anchored.uid && oldUid.startsWith("anon_")) {
+    await claimAnonymousVault(oldUid, anchored.uid);
+  }
+
+  return anchored;
+}
+
+/**
+ * Clears cloud anchoring on sign-out and rotates back to an isolated anonymous visitor.
+ */
+export function clearAnchoredIdentity(): AthleteIdentity {
+  const fresh: AthleteIdentity = {
+    uid: generateAnonUid(),
+    displayName: "Athlete",
+    status: "sovereign_local",
+    initializedAt: new Date().toISOString(),
+    isCloudVaultEnabled: false,
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(IDENTITY_KEY, JSON.stringify(fresh));
+    } catch {}
+  }
+
+  return fresh;
 }
 
 /**

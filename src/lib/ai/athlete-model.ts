@@ -612,6 +612,13 @@ export class AthleteModelStore {
     };
   }
 
+  public setAthleteModelFromBootstrap(model: AthleteModel | null): void {
+    this.hydrate();
+    if (!model || !model.traineeId) return;
+    this.models.set(model.traineeId, model);
+    this.persist();
+  }
+
   public clearForTesting() {
     this.models.clear();
     this.hydrated = false;

@@ -113,10 +113,10 @@ export function WorkoutSessionDetailSheet({
         setCurrentGymName(session.gymName);
       } else if (session.gymId) {
         const gym = appStore.getUserGymLocations(session.traineeId).find((g) => g.id === session.gymId);
-        setCurrentGymName(gym?.name || "Punch by Badr Hari Lissasfa");
+        setCurrentGymName(gym?.name || "Gym Floor");
       } else {
         const defaultGym = appStore.getDefaultGymLocation(session.traineeId);
-        setCurrentGymName(defaultGym?.name || "Punch by Badr Hari Lissasfa");
+        setCurrentGymName(defaultGym?.name || "Gym Floor");
       }
     }
   }, [session]);

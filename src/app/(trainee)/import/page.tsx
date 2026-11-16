@@ -11,8 +11,10 @@ import {
   ImportParseResult,
 } from "@/lib/import/csv-importer";
 import { appStore } from "@/lib/store";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function ImportWorkoutsPage() {
+  useVyraStoreVersion();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUser = appStore.getCurrentUser();

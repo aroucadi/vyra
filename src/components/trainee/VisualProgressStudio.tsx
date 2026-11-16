@@ -217,7 +217,7 @@ export function VisualProgressStudio() {
     if (!uploadPermission.allowed) {
       setStatusBanner(
         uploadPermission.reason ||
-          "Photo uploads are currently restricted to the owner account (trainee_alaa)."
+          "Photo uploads are currently restricted to the verified owner account."
       );
       return;
     }

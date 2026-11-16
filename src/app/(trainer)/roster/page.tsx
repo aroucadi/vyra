@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { generateCoachInviteUrl } from "@/lib/trainer-invite";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function TrainerRosterPage() {
+  useVyraStoreVersion();
   const rosterItems = appStore.getRoster();
   const [searchQuery, setSearchQuery] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);

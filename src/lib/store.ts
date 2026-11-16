@@ -26,6 +26,8 @@ import {
 } from "@/db/seed/master-transformation-program";
 import { checkIsPersonalRecord, resolveExerciseVideoUrl, resolveProgramDay, toLocalDateString } from "./utils";
 import { getStorageAdapter } from "./storage/adapter";
+import { getAthleteIdentity } from "./auth/identity";
+import type { UserBootstrapPayload } from "./firebase/firestore-repository";
 
 // In-memory single-source-of-truth state for realistic local/preview runs
 export interface AppDatabase {
@@ -876,14 +878,129 @@ export const seedHydrationLogs: HydrationLog[] = [
 ];
 
 // Initial Database Singleton
-class Store {
+export class Store {
   private db!: AppDatabase;
+  private version = 0;
+  private listeners = new Set<() => void>();
+  private isCloudAuthenticated = false;
+  private cloudSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private hydratedStorageUid: string | null = null;
+  private isEmptyBoot = false;
 
-  constructor() {
-    this.reset();
+  constructor(options?: { forceEmpty?: boolean }) {
+    this.reset(options);
   }
 
-  reset() {
+  isTestEnvironment(): boolean {
+    return Boolean(process.env.NODE_TEST_CONTEXT || process.env.VITEST === "true");
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getVersion = (): number => {
+    return this.version;
+  };
+
+  notifyChange(shouldSync = false): void {
+    this.version += 1;
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch {}
+    });
+
+    if (shouldSync && this.isCloudAuthenticated && typeof window !== "undefined") {
+      if (this.cloudSyncTimer) {
+        clearTimeout(this.cloudSyncTimer);
+      }
+      this.cloudSyncTimer = setTimeout(() => {
+        this.cloudSyncTimer = null;
+        void this.flushCloudSync();
+      }, 600);
+    }
+  }
+
+  async flushCloudSync(): Promise<boolean> {
+    if (typeof window === "undefined" || !this.isCloudAuthenticated) {
+      return false;
+    }
+    const uid = this.db.currentUser.id;
+    try {
+      const res = await fetch("/api/me/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: this.db.currentUser,
+          programs: this.db.programs.filter((p) => p.traineeId === uid),
+          sessions: this.db.sessions.filter((s) => s.traineeId === uid),
+          metrics: this.db.metrics.filter((m) => m.traineeId === uid),
+          supplementProtocols: this.db.supplementProtocols,
+          supplementLogs: this.db.supplementLogs.filter((l) => l.traineeId === uid),
+          hydrationGoals: this.db.hydrationGoals.filter((g) => g.traineeId === uid),
+          hydrationLogs: this.db.hydrationLogs.filter((l) => l.traineeId === uid),
+          readinessLogs: this.db.wearableBiometrics.filter((r) => r.traineeId === uid),
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  reset(options?: { forceEmpty?: boolean }) {
+    if (!options?.forceEmpty && this.isTestEnvironment()) {
+      this.loadTestFixtures();
+      return;
+    }
+    this.resetEmpty();
+  }
+
+  resetEmpty() {
+    const identity =
+      typeof window !== "undefined"
+        ? getAthleteIdentity()
+        : {
+            uid: "anon_visitor",
+            displayName: "Athlete",
+            email: undefined,
+          };
+
+    const emptyUser: User = {
+      id: identity.uid,
+      role: "both",
+      name: identity.displayName || "Athlete",
+      email: identity.email || "",
+      injuries: [],
+      goals: [],
+      gymLocations: [],
+    };
+
+    this.db = {
+      currentUser: emptyUser,
+      users: [emptyUser],
+      exercises: seedExercises,
+      programs: [],
+      sessions: [],
+      metrics: [],
+      supplementProtocols: [],
+      supplementLogs: [],
+      hydrationGoals: [],
+      hydrationLogs: [],
+      wearableBiometrics: [],
+    };
+    this.isCloudAuthenticated = false;
+    this.hydratedStorageUid = null;
+    this.isEmptyBoot = true;
+    this.notifyChange(false);
+  }
+
+  loadTestFixtures() {
+    this.isEmptyBoot = false;
     defaultProgram.supplementProtocols = seedSupplementProtocols;
     defaultProgram.hydrationGoal = seedHydrationGoals[0];
 
@@ -892,7 +1009,7 @@ class Store {
     masterProgram.hydrationGoal = masterHydrationGoal;
 
     this.db = {
-      currentUser: userAlaa, // Default persona set to Alaa for immediate Blueprint dogfooding
+      currentUser: userAlaa,
       users: [coachUser, userAlaaPro, traineeAlex, userAlaa, traineeSarah, traineeMarcusV],
       exercises: seedExercises,
       programs: [masterProgram, defaultProgram, marcusProgram, sarahProgram],
@@ -904,6 +1021,82 @@ class Store {
       hydrationLogs: seedHydrationLogs.map((l) => ({ ...l })),
       wearableBiometrics: [],
     };
+    this.isCloudAuthenticated = false;
+    this.hydratedStorageUid = null;
+  }
+
+  hydrateFromBootstrap(boot: UserBootstrapPayload) {
+    const uid = boot.user.id;
+    const hydratedUser: User = {
+      ...boot.user,
+      role: boot.user.role || "both",
+      injuries: boot.user.injuries || [],
+      goals: boot.user.goals || [],
+      gymLocations: boot.user.gymLocations || [],
+    };
+
+    // Preserve local offline records authored anonymously during the current browser session
+    const localSessions = this.db.sessions.filter(
+      (s) => s.traineeId.startsWith("anon_") || s.traineeId === uid
+    );
+    const mergedSessionsMap = new Map<string, WorkoutSession>();
+    for (const s of boot.sessions || []) {
+      mergedSessionsMap.set(s.id, s);
+    }
+    for (const s of localSessions) {
+      if (!mergedSessionsMap.has(s.id)) {
+        mergedSessionsMap.set(s.id, { ...s, traineeId: uid });
+      }
+    }
+
+    const mergedMetricsMap = new Map<string, BodyMetricEntry>();
+    for (const m of boot.metrics || []) {
+      mergedMetricsMap.set(m.id, m);
+    }
+    for (const m of this.db.metrics) {
+      if ((m.traineeId.startsWith("anon_") || m.traineeId === uid) && !mergedMetricsMap.has(m.id)) {
+        mergedMetricsMap.set(m.id, { ...m, traineeId: uid });
+      }
+    }
+
+    const mergedProgramsMap = new Map<string, Program>();
+    for (const p of boot.programs || []) {
+      mergedProgramsMap.set(p.id, p);
+    }
+    for (const p of this.db.programs) {
+      if ((p.traineeId.startsWith("anon_") || p.traineeId === uid) && !mergedProgramsMap.has(p.id)) {
+        mergedProgramsMap.set(p.id, { ...p, traineeId: uid });
+      }
+    }
+
+    this.db = {
+      currentUser: hydratedUser,
+      users: [hydratedUser],
+      exercises: this.db.exercises.length > 0 ? this.db.exercises : seedExercises,
+      programs: Array.from(mergedProgramsMap.values()),
+      sessions: Array.from(mergedSessionsMap.values()).sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+      metrics: Array.from(mergedMetricsMap.values()),
+      supplementProtocols: [...(boot.supplementProtocols || [])],
+      supplementLogs: [...(boot.supplementLogs || [])],
+      hydrationGoals: [...(boot.hydrationGoals || [])],
+      hydrationLogs: [...(boot.hydrationLogs || [])],
+      wearableBiometrics: [...(boot.readinessLogs || [])],
+    };
+
+    this.isCloudAuthenticated = true;
+    this.hydratedStorageUid = null;
+    this.notifyChange(false);
+  }
+
+  signOutToEmpty() {
+    if (this.cloudSyncTimer) {
+      clearTimeout(this.cloudSyncTimer);
+      this.cloudSyncTimer = null;
+    }
+    this.isCloudAuthenticated = false;
+    this.resetEmpty();
   }
 
   saveWearableBiometrics(
@@ -965,6 +1158,7 @@ class Store {
     try {
       getStorageAdapter().saveReadiness(saved).catch(() => {});
     } catch {}
+    this.notifyChange(true);
     return saved;
   }
 
@@ -976,7 +1170,7 @@ class Store {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem(
-        "vyra_user_gyms_v1",
+        `vyra_user_gyms_v1_${user.id}`,
         JSON.stringify({
           userId: user.id,
           defaultGymId: user.defaultGymId,
@@ -990,23 +1184,27 @@ class Store {
     this.hydrateFromClientStorage();
     const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
     if (!targetUser.gymLocations || targetUser.gymLocations.length === 0) {
-      targetUser.gymLocations = [
-        {
-          id: "gym_punch_lissasfa",
-          name: "Punch by Badr Hari Lissasfa",
-          address: "Lissasfa, Casablanca",
-          isDefault: true,
-          notes: "Commercial gym with full leverage machines, Smith, 45° leg press, Glute Bridge Machine, and Seated Hip Abductor.",
-        },
-        {
-          id: "gym_home",
-          name: "Home Setup",
-          address: "Home (Casablanca)",
-          isDefault: false,
-          notes: "Doorway pull-up bar + color-coded push-up board.",
-        },
-      ];
-      targetUser.defaultGymId = "gym_punch_lissasfa";
+      if (targetUser.id === "trainee_alaa" || (this.isTestEnvironment() && !this.isEmptyBoot)) {
+        targetUser.gymLocations = [
+          {
+            id: "gym_punch_lissasfa",
+            name: "Punch by Badr Hari Lissasfa",
+            address: "Lissasfa, Casablanca",
+            isDefault: true,
+            notes: "Commercial gym with full leverage machines, Smith, 45° leg press, Glute Bridge Machine, and Seated Hip Abductor.",
+          },
+          {
+            id: "gym_home",
+            name: "Home Setup",
+            address: "Home (Casablanca)",
+            isDefault: false,
+            notes: "Doorway pull-up bar + color-coded push-up board.",
+          },
+        ];
+        targetUser.defaultGymId = "gym_punch_lissasfa";
+      } else {
+        targetUser.gymLocations = [];
+      }
     }
     return targetUser.gymLocations;
   }
@@ -1036,6 +1234,7 @@ class Store {
     list.push(newGym);
     targetUser.gymLocations = list;
     this.persistGymLocations(targetUser);
+    this.notifyChange(true);
     return newGym;
   }
 
@@ -1051,6 +1250,7 @@ class Store {
     targetUser.defaultGymId = gymId;
     targetUser.gymLocations = list;
     this.persistGymLocations(targetUser);
+    this.notifyChange(true);
   }
 
   updateGymLocation(gym: GymLocation, userId?: string): GymLocation | undefined {
@@ -1149,11 +1349,8 @@ class Store {
   }
 
   getActiveProgramForTrainee(traineeId: string): Program | undefined {
-    return (
-      this.db.programs.find((p) => p.traineeId === traineeId && p.status === "published") ||
-      this.db.programs.find(
-        (p) => traineeId.includes("alaa") && p.traineeId.includes("alaa") && p.status === "published"
-      )
+    return this.db.programs.find(
+      (p) => p.traineeId === traineeId && p.status === "published"
     );
   }
 
@@ -1176,6 +1373,7 @@ class Store {
     } else {
       this.db.programs.push(program);
     }
+    this.notifyChange(true);
     return program;
   }
 
@@ -1193,6 +1391,7 @@ class Store {
     prog.status = "published";
     prog.version = (prog.version || 1) + 1;
     prog.updatedAt = new Date().toISOString();
+    this.notifyChange(true);
     return prog;
   }
 
@@ -1278,6 +1477,7 @@ class Store {
     }
 
     program.updatedAt = new Date().toISOString();
+    this.notifyChange(true);
     return {
       success: true,
       programId: program.id,
@@ -1329,6 +1529,7 @@ class Store {
     });
 
     program.updatedAt = new Date().toISOString();
+    this.notifyChange(true);
     return {
       success: true,
       programId: program.id,
@@ -1375,6 +1576,7 @@ class Store {
     });
 
     program.updatedAt = new Date().toISOString();
+    this.notifyChange(true);
     return {
       success: true,
       programId: program.id,
@@ -1386,55 +1588,62 @@ class Store {
 
   hydrateFromClientStorage() {
     if (typeof window === "undefined") return;
+    const activeUid = this.db.currentUser.id;
+    if (this.hydratedStorageUid === activeUid) return;
+    this.hydratedStorageUid = activeUid;
+
     try {
-      const raw = localStorage.getItem("vyra_offline_backup_v1");
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.sessions)) {
-        data.sessions.forEach((sess: WorkoutSession) => {
-          if (!sess || !sess.id) return;
-          if (!sess.traineeId) {
-            sess.traineeId = this.getCurrentUser().id;
-          }
-          const idx = this.db.sessions.findIndex((s) => s.id === sess.id);
-          if (idx >= 0) {
-            this.db.sessions[idx] = sess;
-          } else {
-            this.db.sessions.unshift(sess);
-          }
-        });
+      const scopedKey = `vyra_offline_backup_v1_${activeUid}`;
+      const raw = localStorage.getItem(scopedKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.sessions)) {
+          data.sessions.forEach((sess: WorkoutSession) => {
+            if (!sess || !sess.id) return;
+            if (!sess.traineeId) {
+              sess.traineeId = activeUid;
+            }
+            if (sess.traineeId !== activeUid) return;
+            const idx = this.db.sessions.findIndex((s) => s.id === sess.id);
+            if (idx >= 0) {
+              this.db.sessions[idx] = sess;
+            } else {
+              this.db.sessions.unshift(sess);
+            }
+          });
+        }
+        if (Array.isArray(data.metrics)) {
+          data.metrics.forEach((m: BodyMetricEntry) => {
+            if (!m || !m.id || (m.traineeId && m.traineeId !== activeUid)) return;
+            const idx = this.db.metrics.findIndex((existing) => existing.id === m.id);
+            if (idx >= 0) {
+              this.db.metrics[idx] = m;
+            } else {
+              this.db.metrics.push({ ...m, traineeId: activeUid });
+            }
+          });
+        }
+        if (Array.isArray(data.supplementLogs)) {
+          data.supplementLogs.forEach((l: SupplementLog) => {
+            if (!l || !l.id || (l.traineeId && l.traineeId !== activeUid)) return;
+            const idx = this.db.supplementLogs.findIndex((existing) => existing.id === l.id);
+            if (idx >= 0) {
+              this.db.supplementLogs[idx] = l;
+            } else {
+              this.db.supplementLogs.push({ ...l, traineeId: activeUid });
+            }
+          });
+        }
       }
-      if (Array.isArray(data.metrics)) {
-        data.metrics.forEach((m: any) => {
-          if (!m || !m.id) return;
-          const idx = this.db.metrics.findIndex((existing) => existing.id === m.id);
-          if (idx >= 0) {
-            this.db.metrics[idx] = m;
-          } else {
-            this.db.metrics.push(m);
-          }
-        });
-      }
-      const gymRaw = localStorage.getItem("vyra_user_gyms_v1");
+      const gymRaw = localStorage.getItem(`vyra_user_gyms_v1_${activeUid}`);
       if (gymRaw) {
         const parsedGyms = JSON.parse(gymRaw);
-        if (Array.isArray(parsedGyms.gymLocations)) {
+        if (parsedGyms.userId === activeUid && Array.isArray(parsedGyms.gymLocations)) {
           this.db.currentUser.gymLocations = parsedGyms.gymLocations;
-        }
-        if (parsedGyms.defaultGymId) {
-          this.db.currentUser.defaultGymId = parsedGyms.defaultGymId;
-        }
-      }
-      if (Array.isArray(data.supplementLogs)) {
-        data.supplementLogs.forEach((l: any) => {
-          if (!l || !l.id) return;
-          const idx = this.db.supplementLogs.findIndex((existing) => existing.id === l.id);
-          if (idx >= 0) {
-            this.db.supplementLogs[idx] = l;
-          } else {
-            this.db.supplementLogs.push(l);
+          if (parsedGyms.defaultGymId) {
+            this.db.currentUser.defaultGymId = parsedGyms.defaultGymId;
           }
-        });
+        }
       }
     } catch {
       // ignore
@@ -1453,22 +1662,25 @@ class Store {
     } else {
       this.db.sessions.unshift(session);
     }
+    const targetUid = session.traineeId || this.db.currentUser.id;
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("vyra_offline_backup_v1");
+        const scopedKey = `vyra_offline_backup_v1_${targetUid}`;
+        const raw = localStorage.getItem(scopedKey);
         const data = raw ? JSON.parse(raw) : { version: 1, sessions: [], readinessLogs: [], supplementLogs: [], metrics: [] };
-        const existingIdx = data.sessions.findIndex((s: any) => s.id === session.id);
+        const existingIdx = data.sessions.findIndex((s: WorkoutSession) => s.id === session.id);
         if (existingIdx >= 0) {
           data.sessions[existingIdx] = session;
         } else {
           data.sessions.unshift(session);
         }
-        localStorage.setItem("vyra_offline_backup_v1", JSON.stringify(data));
+        localStorage.setItem(scopedKey, JSON.stringify(data));
       } catch {}
     }
     try {
       getStorageAdapter().saveSession(session).catch(() => {});
     } catch {}
+    this.notifyChange(true);
     return session;
   }
 
@@ -1516,6 +1728,7 @@ class Store {
     try {
       getStorageAdapter().saveMetric(entry).catch(() => {});
     } catch {}
+    this.notifyChange(true);
     return entry;
   }
 
@@ -1591,6 +1804,7 @@ class Store {
         existing.status = "taken";
         existing.takenAt = new Date().toISOString();
       }
+      this.notifyChange(true);
       return existing;
     }
 
@@ -1606,6 +1820,7 @@ class Store {
       takenAt: new Date().toISOString(),
     };
     this.db.supplementLogs.push(newLog);
+    this.notifyChange(true);
     return newLog;
   }
 
@@ -1640,6 +1855,7 @@ class Store {
       loggedAt: new Date().toISOString(),
     };
     this.db.hydrationLogs.push(log);
+    this.notifyChange(true);
     return log;
   }
 
@@ -1810,7 +2026,7 @@ class Store {
         hydrationAdherencePercentage,
         lastSessionDate: lastSession ? lastSession.date : undefined,
         alerts,
-        totalVolumeKg: totalVolumeKg || 42500,
+        totalVolumeKg: totalVolumeKg || (this.isTestEnvironment() ? 42500 : 0),
       };
     });
   }

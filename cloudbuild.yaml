@@ -16,7 +16,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/vyra-repo/vyra-app:latest']
 
-  # Deploy container image to Cloud Run (me-central1: Doha, Qatar Canary - Alaa Dedicated)
+  # Deploy container image to Cloud Run (me-central1: Middle East Production)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: 
@@ -33,9 +33,9 @@ steps:
       - '8080'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'COMMIT_SHA=${_COMMIT_SHA},RELEASE_CHANNEL=aero_canary,DEPLOY_REGION=me-central1'
+      - 'COMMIT_SHA=${_COMMIT_SHA},RELEASE_CHANNEL=unified_production,DEPLOY_REGION=me-central1,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
 
-  # Deploy container image to Cloud Run (us-central1: Public Production)
+  # Deploy container image to Cloud Run (us-central1: US Production)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: 
@@ -52,7 +52,7 @@ steps:
       - '8080'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'COMMIT_SHA=${_COMMIT_SHA},RELEASE_CHANNEL=public_production,DEPLOY_REGION=us-central1'
+      - 'COMMIT_SHA=${_COMMIT_SHA},RELEASE_CHANNEL=unified_production,DEPLOY_REGION=us-central1,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
 
 substitutions:
   _COMMIT_SHA: 'latest'

@@ -19,13 +19,16 @@ import { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
+import { useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function TodayPage() {
   const router = useRouter();
+  const storeVersion = useVyraStoreVersion();
+  const { isAuthenticated, isAlaa, authEmail } = useVyraAuth();
   const currentUser = appStore.getCurrentUser();
   const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState(false);
   const [isAdjustSheetOpen, setIsAdjustSheetOpen] = useState(false);
-  const [forceDayZero, setForceDayZero] = useState<boolean>(false);
+  const [forceDayZero, setForceDayZero] = useState<boolean | undefined>(undefined);
   const [tick, setTick] = useState(0);
   const [previewPrescription, setPreviewPrescription] = useState<ExercisePrescription | null>(null);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
@@ -33,6 +36,7 @@ export default function TodayPage() {
   const metricEntries = appStore.getMetrics(currentUser.id);
 
   const program = appStore.getActiveProgramForTrainee(currentUser.id);
+  const effectiveForceDayZero = forceDayZero !== undefined ? forceDayZero : !program && sessions.length === 0;
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
   const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
   const todaySession = currentWeek?.days ? currentWeek.days.find((d) => d.dayOfWeek === resolved.dayOfWeek) : undefined;
@@ -69,9 +73,9 @@ export default function TodayPage() {
 
   // Derive clock-aware Day timeline from current state
   const { moments, heroMoment, insight, readinessStatus, hasReadinessInput, isRestDay, isDayZero } = React.useMemo(
-    () => deriveDayTimeline(currentUser.id, undefined, undefined, { forceDayZero }),
+    () => deriveDayTimeline(currentUser.id, undefined, undefined, { forceDayZero: effectiveForceDayZero }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser.id, tick, forceDayZero]
+    [currentUser.id, tick, effectiveForceDayZero, storeVersion]
   );
 
   const handleMomentClick = (moment: TimelineMoment) => {
@@ -105,19 +109,51 @@ export default function TodayPage() {
   return (
     <div className="flex-1 pb-24 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300">
       
-      {/* 1. Brand Top Bar + Date greeting */}
+      {/* 1. Brand Top Bar + Date & Account status */}
       <div className="flex items-center justify-between border-b border-[#1C2436]/60 pb-3">
-        <VyraLogo size="sm" variant="wordmark" href="/today" showTagline tagline="THE ALAA RELEASE" />
-        <span className="text-[10px] font-mono text-slate-400">
-          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-        </span>
+        <VyraLogo
+          size="sm"
+          variant="wordmark"
+          href="/today"
+          showTagline
+          tagline={isAlaa ? "PRECISION HYPERTROPHY · CLOUD SYNCED" : "PRECISION HYPERTROPHY"}
+        />
+        <div className="flex items-center gap-2">
+          {(currentUser.role === "trainer" || currentUser.role === "both") && (
+            <Link
+              href="/roster"
+              className="text-[10px] font-mono px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 hover:bg-indigo-500/20 transition"
+            >
+              Coach
+            </Link>
+          )}
+          {!isAuthenticated ? (
+            <Link
+              href="/login"
+              className="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 hover:bg-amber-500/20 transition"
+            >
+              Sign In
+            </Link>
+          ) : (
+            <Link
+              href="/you"
+              title={authEmail || "Signed in"}
+              className="text-[10px] font-mono font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25"
+            >
+              Synced
+            </Link>
+          )}
+          <span className="text-[10px] font-mono text-slate-400">
+            {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+          </span>
+        </div>
       </div>
 
       <header className="flex items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              Week {resolved.weekIndex} of {program?.durationWeeks || 16}
+              {program ? `Week ${resolved.weekIndex} of ${program.durationWeeks || 16}` : "Day 0 Calibration"}
             </span>
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight font-editorial">

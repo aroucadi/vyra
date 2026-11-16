@@ -8,6 +8,7 @@ import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
 import { Send, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 interface Message {
   id: string;
@@ -17,6 +18,7 @@ interface Message {
 }
 
 function CoachChat() {
+  useVyraStoreVersion();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get("prompt") || "";
   const currentUser = appStore.getCurrentUser();

@@ -82,6 +82,7 @@ import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
 import { sensoryMemoryStore, inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { createEventEnvelope } from "@/lib/storage/events";
 import { clsx } from "clsx";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 interface ActiveExercise {
   id: string;
@@ -177,6 +178,7 @@ function compressImage(file: File, maxDim = 800, quality = 0.7): Promise<string>
 }
 
 function SessionFlow() {
+  const storeVersion = useVyraStoreVersion();
   const router = useRouter();
   const searchParams = useSearchParams();
   const dayParam = searchParams.get("day");
@@ -207,6 +209,13 @@ function SessionFlow() {
   const [selectedGym, setSelectedGym] = useState<GymLocation | null>(() => {
     return appStore.getDefaultGymLocation(currentUser.id) || null;
   });
+
+  useEffect(() => {
+    if (!selectedGym) {
+      const def = appStore.getDefaultGymLocation(currentUser.id);
+      if (def) setSelectedGym(def);
+    }
+  }, [storeVersion, currentUser.id, selectedGym]);
 
   // Exercises initialization
   const [exercises, setExercises] = useState<ActiveExercise[]>(() => {
@@ -530,7 +539,7 @@ function SessionFlow() {
             if (draft.gymId || draft.gymName) {
               setSelectedGym({
                 id: draft.gymId || "gym_restored",
-                name: draft.gymName || "Punch by Badr Hari Lissasfa",
+                name: draft.gymName || "Gym Floor",
                 address: draft.gymAddress,
               });
             }
@@ -1395,7 +1404,7 @@ function SessionFlow() {
       audioTranscript: sessionAudioTranscript,
       sessionNote: sessionNote,
       gymId: selectedGym?.id,
-      gymName: selectedGym?.name || "Punch by Badr Hari Lissasfa",
+      gymName: selectedGym?.name || "Gym Floor",
       gymAddress: selectedGym?.address,
       setLogs: allSetLogs,
       exerciseFeedbacks: listToSave
@@ -1515,7 +1524,7 @@ function SessionFlow() {
                 )}
               </div>
               <p className="font-semibold text-white text-xs truncate">
-                {selectedGym?.name || "Punch by Badr Hari Lissasfa"}
+                {selectedGym?.name || "Select Gym / Location"}
               </p>
               {selectedGym?.address && (
                 <p className="text-[10px] text-slate-400 truncate">
@@ -2373,7 +2382,7 @@ function SessionFlow() {
                 Salle de Sport
               </span>
               <p className="font-semibold text-white text-xs truncate">
-                {selectedGym?.name || "Punch by Badr Hari Lissasfa"}
+                {selectedGym?.name || "Select Gym / Location"}
               </p>
               {selectedGym?.address && (
                 <p className="text-[11px] text-slate-400 truncate">

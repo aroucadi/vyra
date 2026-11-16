@@ -4,8 +4,9 @@ import {
   getAthleteIdentity,
   anchorIdentityWithPasskey,
   anchorIdentityWithGoogle,
+  anchorIdentityWithFirebase,
+  clearAnchoredIdentity,
   claimAnonymousVault,
-  AthleteIdentity,
 } from "../../../src/lib/auth/identity";
 
 test("Phase 0: Athlete Identity & Late-Binding Sovereignty Engine", async (t) => {
@@ -30,13 +31,32 @@ test("Phase 0: Athlete Identity & Late-Binding Sovereignty Engine", async (t) =>
     (globalThis as any).window = originalWindow;
   });
 
-  await t.test("getAthleteIdentity returns zero-block sovereign local identity on first boot", () => {
+  await t.test("getAthleteIdentity returns isolated anonymous sovereign identity on clean first boot", () => {
     const identity = getAthleteIdentity();
     assert.equal(identity.status, "sovereign_local");
-    assert.equal(identity.uid, "trainee_alaa");
-    assert.equal(identity.displayName, "Alaa");
+    assert.ok(identity.uid.startsWith("anon_"), `Expected anonymous uid, got ${identity.uid}`);
+    assert.notEqual(identity.uid, "trainee_alaa");
+    assert.equal(identity.displayName, "Athlete");
     assert.equal(identity.isCloudVaultEnabled, false);
     assert.ok(identity.initializedAt);
+  });
+
+  await t.test("anchorIdentityWithFirebase binds canonical uid & clearAnchoredIdentity rotates back to isolated anon", async () => {
+    const anchored = await anchorIdentityWithFirebase({
+      uid: "trainee_alaa",
+      email: "alaaeddineroucadi@gmail.com",
+      displayName: "Alaa",
+      provider: "password",
+    });
+    assert.equal(anchored.status, "anchored_firebase");
+    assert.equal(anchored.uid, "trainee_alaa");
+    assert.equal(anchored.isCloudVaultEnabled, true);
+
+    const signedOut = clearAnchoredIdentity();
+    assert.equal(signedOut.status, "sovereign_local");
+    assert.ok(signedOut.uid.startsWith("anon_"));
+    assert.notEqual(signedOut.uid, "trainee_alaa");
+    assert.equal(signedOut.isCloudVaultEnabled, false);
   });
 
   await t.test("anchorIdentityWithPasskey anchors local vault to WebAuthn credential without blocking", async () => {

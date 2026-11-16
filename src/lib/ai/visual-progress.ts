@@ -506,6 +506,7 @@ export function expandFaceBoundingBoxWithMargin(box: FaceBoundingBox): FaceBound
 export const OWNER_PHOTO_UPLOAD_ALLOWLIST: ReadonlySet<string> = new Set([
   "trainee_alaa",
   "trainer_alaa",
+  "alaaeddineroucadi@gmail.com",
 ]);
 
 /**

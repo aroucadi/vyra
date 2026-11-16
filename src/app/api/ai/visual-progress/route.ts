@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appStore } from "@/lib/store";
+import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { ensureFirestoreCoachBridgeRegistered } from "@/lib/firebase/firestore-repository";
 import {
   STANDARDIZED_POSE_GUIDES,
   VisualPoseId,
@@ -20,7 +22,19 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const currentUser = appStore.getCurrentUser();
-    const traineeId = searchParams.get("traineeId") || currentUser.id;
+    const requestedTraineeId = searchParams.get("traineeId");
+    const tenant = await resolveRouteTenantContext(req, requestedTraineeId, {
+      allowUnauthenticatedAnon: true,
+      fallbackTraineeId: currentUser.id,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+    ensureFirestoreCoachBridgeRegistered();
+    const traineeId = tenant.effectiveTraineeId;
     const poseParam = (searchParams.get("poseId") || "front_relaxed") as VisualPoseId;
     const poseId: VisualPoseId = STANDARDIZED_POSE_GUIDES[poseParam]
       ? poseParam
@@ -99,7 +113,18 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Partial<VisualProgressPostRequestBody>;
     const currentUser = appStore.getCurrentUser();
-    const traineeId = body.traineeId || currentUser.id;
+    const tenant = await resolveRouteTenantContext(req, body.traineeId, {
+      allowUnauthenticatedAnon: true,
+      fallbackTraineeId: currentUser.id,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+    ensureFirestoreCoachBridgeRegistered();
+    const traineeId = tenant.effectiveTraineeId;
     const poseParam = (body.poseId || "front_relaxed") as VisualPoseId;
     const poseId: VisualPoseId = STANDARDIZED_POSE_GUIDES[poseParam]
       ? poseParam
@@ -340,7 +365,18 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const snapshotId = searchParams.get("snapshotId");
     const currentUser = appStore.getCurrentUser();
-    const traineeId = searchParams.get("traineeId") || currentUser.id;
+    const tenant = await resolveRouteTenantContext(req, searchParams.get("traineeId"), {
+      allowUnauthenticatedAnon: true,
+      fallbackTraineeId: currentUser.id,
+    });
+    if (!tenant.isAllowed) {
+      return NextResponse.json(
+        { ok: false, error: tenant.error || "Unauthorized" },
+        { status: tenant.statusCode || 401 }
+      );
+    }
+    ensureFirestoreCoachBridgeRegistered();
+    const traineeId = tenant.effectiveTraineeId;
 
     if (!snapshotId) {
       return NextResponse.json(

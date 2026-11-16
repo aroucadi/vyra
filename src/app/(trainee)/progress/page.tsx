@@ -18,11 +18,14 @@ import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboar
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VisualProgressStudio } from "@/components/trainee/VisualProgressStudio";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function ProgressPage() {
+  useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
   const athleteModel = athleteModelStore.getAthleteModel(currentUser.id);
-  const [metrics, setMetrics] = useState(() => appStore.getMetrics(currentUser.id));
+  const metrics = appStore.getMetrics(currentUser.id);
+  const [, setLocalTick] = useState(0);
   const sessions = appStore.getSessions(currentUser.id);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
 
@@ -37,7 +40,7 @@ export default function ProgressPage() {
 
     setIsLogging(true);
     await logWeightAction(currentUser.id, val);
-    setMetrics(appStore.getMetrics(currentUser.id));
+    setLocalTick((v) => v + 1);
     setIsLogging(false);
     setWeightInput("");
     setSuccessMessage("Weight logged successfully.");

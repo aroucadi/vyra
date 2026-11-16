@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { appStore } from '@/lib/store';
+import { getAuthenticatedSession } from '@/lib/auth/server-session';
+import { loadBootstrapForUser } from '@/lib/firebase/firestore-repository';
 import {
   TEMPLATES,
   computeBalance,
@@ -19,9 +21,25 @@ export async function GET(req: NextRequest) {
         ? TEMPLATES[rawTemplateKey]
         : TEMPLATES.poliquin;
 
+    const authSession = await getAuthenticatedSession(req);
     const currentUser = appStore.getCurrentUser();
-    const sessions = appStore.getSessions(currentUser.id);
-    const metrics = appStore.getMetrics(currentUser.id);
+    let sessions = appStore.getSessions(currentUser.id);
+    let metrics = appStore.getMetrics(currentUser.id);
+
+    if (authSession) {
+      try {
+        const boot = await loadBootstrapForUser({
+          uid: authSession.uid,
+          email: authSession.email,
+          displayName: authSession.name,
+        });
+        sessions = boot.sessions;
+        metrics = boot.metrics;
+      } catch {
+        // Fallback to store metrics/sessions
+      }
+    }
+
     const latestBw = metrics.length ? metrics[metrics.length - 1].weightKg : 80;
 
     const mappedWorkouts = sessions.map((s) => ({

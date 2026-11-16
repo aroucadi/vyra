@@ -28,9 +28,9 @@ export const userAlaaPro: User = {
 
 export const userAlaa: User = {
   id: 'trainee_alaa',
-  role: 'trainee',
+  role: 'both',
   name: 'Alaa',
-  email: 'alaa@vyra.fit',
+  email: 'alaaeddineroucadi@gmail.com',
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop',
   heightCm: 172,
   sex: 'male',

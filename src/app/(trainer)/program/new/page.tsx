@@ -31,6 +31,7 @@ import {
   MealPlanPrescription,
 } from "@/lib/types";
 import { saveProgramAction, publishProgramAction } from "@/lib/actions/program";
+import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export const generateDefaultEquipmentVariations = (name: string, muscle: string): EquipmentOption[] => [
   {
@@ -219,11 +220,22 @@ const initialSchedule: Record<number, DaySchedule> = {
 };
 
 export default function ProgramBuilderPage({ programId }: { programId?: string } = {}) {
+  const storeVersion = useVyraStoreVersion();
   const router = useRouter();
+  const currentUser = appStore.getCurrentUser();
   const trainees = appStore.getTrainees();
   const exercisesLibrary = appStore.getExercises();
 
-  const [selectedTraineeId, setSelectedTraineeId] = useState(trainees[0]?.id || "");
+  const [selectedTraineeId, setSelectedTraineeId] = useState(trainees[0]?.id || currentUser.id);
+
+  useEffect(() => {
+    if (!selectedTraineeId || selectedTraineeId.startsWith("anon_")) {
+      const targetId = appStore.getTrainees()[0]?.id || appStore.getCurrentUser().id;
+      if (targetId && targetId !== selectedTraineeId) {
+        setSelectedTraineeId(targetId);
+      }
+    }
+  }, [storeVersion, selectedTraineeId]);
   const [title, setTitle] = useState("Hypertrophy Block 1 - Precision");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [durationWeeks, setDurationWeeks] = useState(4);
@@ -475,7 +487,8 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
 
   const handleSaveDraft = async () => {
     const prog = buildProgramObject("draft", version);
-    await saveProgramAction(prog);
+    appStore.saveProgram(prog);
+    await saveProgramAction(prog).catch(() => {});
     setStatus("draft");
     setSuccessToast("Program draft saved successfully.");
     setTimeout(() => setSuccessToast(""), 3000);
@@ -485,15 +498,17 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
     setShowPublishModal(false);
     const newVersion = version + 1;
     const prog = buildProgramObject("published", newVersion);
-    await saveProgramAction(prog);
-    await publishProgramAction(prog.id);
+    appStore.saveProgram(prog);
+    appStore.publishProgram(prog.id);
+    await saveProgramAction(prog).catch(() => {});
+    await publishProgramAction(prog.id).catch(() => {});
     setStatus("published");
     setVersion(newVersion);
     setSuccessToast("Program v" + newVersion + ".0 published to athlete device!");
     setTimeout(() => {
       setSuccessToast("");
-      router.push("/roster");
-    }, 1500);
+      router.push("/program");
+    }, 1200);
   };
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

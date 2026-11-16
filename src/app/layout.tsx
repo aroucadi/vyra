@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { VyraAuthProvider } from "@/components/auth/VyraAuthProvider";
 
 export const metadata: Metadata = {
   title: "VYRA",
@@ -50,7 +51,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="bg-[#090C11] text-[#F9FAFB] min-h-screen flex flex-col antialiased selection:bg-amber-500/20 font-body">
-        <main className="flex-1 flex flex-col">{children}</main>
+        <VyraAuthProvider>
+          <main className="flex-1 flex flex-col">{children}</main>
+        </VyraAuthProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

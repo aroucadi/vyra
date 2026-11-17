@@ -1130,4 +1130,78 @@ describe("Self-Evolving Athletic Program — Vector RAG, Multilingual French Ing
     });
     assert.equal(rejectedProp, null, "Rejected proposition with same evidence must be suppressed");
   });
+
+  it("19. protects tight knee joint ('left knee feels tight') without misclassifying 'quad-safe' as quad pain", async () => {
+    const legExercises = [
+      {
+        id: "ex_squat",
+        name: "Barbell Back Squat",
+        equipment: "barbell",
+        target: "quads",
+        targetSets: 4,
+        repLow: 6,
+        repHigh: 8,
+        currentWeight: 100,
+        restSeconds: 120,
+        targetRir: 2,
+      },
+      {
+        id: "ex_rdl",
+        name: "Romanian Deadlift",
+        equipment: "barbell",
+        target: "hamstrings",
+        targetSets: 3,
+        repLow: 8,
+        repHigh: 10,
+        currentWeight: 90,
+        restSeconds: 90,
+        targetRir: 2,
+      },
+      {
+        id: "ex_lunge",
+        name: "Walking Dumbbell Lunge",
+        equipment: "dumbbell",
+        target: "quads",
+        targetSets: 3,
+        repLow: 10,
+        repHigh: 12,
+        currentWeight: 20,
+        restSeconds: 75,
+        targetRir: 2,
+      },
+      {
+        id: "ex_calf",
+        name: "Standing Calf Raise",
+        equipment: "machine",
+        target: "calves",
+        targetSets: 3,
+        repLow: 12,
+        repHigh: 15,
+        currentWeight: 60,
+        restSeconds: 60,
+        targetRir: 1,
+      },
+    ];
+
+    const result = await adaptDailyWorkoutSession({
+      traineeId: "anon_knee_test",
+      voiceOrTextMessage:
+        "left knee feels tight today, give me a quad-safe lower body option and keep it under 35 minutes",
+      gymId: "gym_default_commercial",
+      exercises: legExercises,
+    });
+
+    assert.equal(result.scope, "TODAY_SESSION_ONLY");
+    assert.equal(result.longTermProgramModified, false);
+    assert.ok(result.detectedPainRegions.includes("knees"));
+    assert.ok(!result.detectedPainRegions.includes("quads"));
+    assert.equal(result.targetDurationMinutes, 35);
+    assert.ok(result.estimatedAdaptedDurationMinutes <= 35);
+
+    const squat = result.adaptedExercises.find((e) => e.id === "ex_squat");
+    assert.ok(squat !== undefined);
+    assert.equal(squat.wasAdapted, true);
+    assert.notEqual(squat.name, "Barbell Back Squat");
+    assert.ok(squat.adaptationNotes.some((n) => n.includes("KNEES Protection")));
+  });
 });

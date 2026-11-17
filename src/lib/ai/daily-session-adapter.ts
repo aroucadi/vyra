@@ -557,47 +557,67 @@ export function parseDailySituationMessage(message: string): ParsedOpenEndedInte
     if (/rack|squat/i.test(m)) occupiedEquipment.add("barbell");
   }
 
-  // 8. Detect Pain / Soreness / Injury Intent vs Focus / Extra Volume Intent across ALL 18 anatomical regions
-  const isPainContext =
-    /hurt|pain|sore|injured|injury|strain|tender|tweak|pinch|ache|aggravate|football|soccer|avoid|skip|mal |douleur|blessé|courbature|pincement|fragile|éviter/i.test(
-      m
-    );
-  const isFocusContext =
-    /focus|extra|prioritize|emphasize|add|more|grow|target|blast|accentuer|ajouter|priorité|cibler|plus de/i.test(
-      m
-    );
+  // 8. Detect Pain / Soreness / Tightness / Injury Intent vs Focus / Extra Volume Intent across ALL 18 anatomical regions
+  const painTriggerRegex =
+    /hurt|pain|sore|injured|injury|strain|tender|tweak|pinch|ache|achy|tight|tightness|stiff|stiffness|cranky|twinge|bother|bothering|irritat|discomfort|uncomfortable|flare|swollen|swelling|clicking|popping|aggravate|football|soccer|avoid|skip|mal\b|douleur|blessé|courbature|pincement|fragile|raide|tendu|gêne|éviter/i;
+  const focusTriggerRegex =
+    /focus|extra|prioritize|emphasize|add|more|grow|target|blast|accentuer|ajouter|priorité|cibler|plus de/i;
 
-  for (const item of ANATOMICAL_LEXICON) {
-    if (item.pattern.test(m)) {
-      if (isPainContext && !isFocusContext) {
+  const isPainContext = painTriggerRegex.test(m);
+  const isFocusContext = focusTriggerRegex.test(m);
+
+  const majorClauses = m
+    .split(/[,.;?!]+/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  let hasClauseLevelMatch = false;
+
+  const classifySubClause = (clauseText: string, inheritPain: boolean, inheritFocus: boolean) => {
+    const clauseHasPain = painTriggerRegex.test(clauseText) || inheritPain;
+    const clauseHasFocus = focusTriggerRegex.test(clauseText) || inheritFocus;
+
+    for (const item of ANATOMICAL_LEXICON) {
+      if (!item.pattern.test(clauseText)) continue;
+
+      if (clauseHasPain && !clauseHasFocus) {
         painRegions.add(item.region);
         constraints.add("acute_injury_or_soreness");
-      } else if (isFocusContext && !isPainContext) {
+        hasClauseLevelMatch = true;
+      } else if (clauseHasFocus && !clauseHasPain) {
         focusRegions.add(item.region);
         constraints.add("muscle_focus_request");
-      } else if (isPainContext && isFocusContext) {
-        // Distinguish clause-by-clause (e.g. "My wrist hurts so avoid barbell, and let's focus on chest")
-        const clauses = m.split(/[,.;]|and|mais|et|so\b/i);
-        for (const clause of clauses) {
-          if (item.pattern.test(clause)) {
-            if (
-              /hurt|pain|sore|tender|injured|strain|avoid|mal|douleur|éviter/i.test(
-                clause
-              )
-            ) {
-              painRegions.add(item.region);
-              constraints.add("acute_injury_or_soreness");
-            } else if (/focus|extra|prioritize|add|more|cibler|ajouter/i.test(clause)) {
-              focusRegions.add(item.region);
-              constraints.add("muscle_focus_request");
-            } else {
-              painRegions.add(item.region);
-              constraints.add("acute_injury_or_soreness");
-            }
+        hasClauseLevelMatch = true;
+      } else if (clauseHasPain && clauseHasFocus) {
+        const subClauses = clauseText
+          .split(/\b(?:and|mais|et|so)\b/i)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        for (const sub of subClauses) {
+          if (!item.pattern.test(sub)) continue;
+          if (painTriggerRegex.test(sub)) {
+            painRegions.add(item.region);
+            constraints.add("acute_injury_or_soreness");
+          } else if (focusTriggerRegex.test(sub)) {
+            focusRegions.add(item.region);
+            constraints.add("muscle_focus_request");
+          } else {
+            painRegions.add(item.region);
+            constraints.add("acute_injury_or_soreness");
           }
+          hasClauseLevelMatch = true;
         }
       }
     }
+  };
+
+  for (const clause of majorClauses) {
+    classifySubClause(clause, false, false);
+  }
+
+  // Fallback for multi-sentence utterances where trigger and region are in separate sentences (e.g. "Pain today. Shoulder.")
+  if (!hasClauseLevelMatch && (isPainContext || isFocusContext)) {
+    classifySubClause(m, isPainContext && !isFocusContext, isFocusContext && !isPainContext);
   }
 
   // 9. Detect Gym / Equipment mention in text
@@ -1128,9 +1148,10 @@ export async function adaptDailyWorkoutSession(
       restSeconds: ex.restSeconds,
     }));
 
+    let lastSynthFailureReason = "";
     for (const candidateModel of modelChain) {
       const transport = await resolveGeminiTransport(candidateModel);
-      if (!transport) break;
+      if (!transport) continue;
       try {
         const synthesisRes = await fetch(transport.url, {
           method: "POST",
@@ -1193,56 +1214,78 @@ You may add brief per-exercise biomechanical cue improvements for non-skipped ex
           }),
           signal:
             typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(7000)
+              ? AbortSignal.timeout(15_000)
               : undefined,
         });
 
-        if (synthesisRes.status === 404 && candidateModel !== modelChain[modelChain.length - 1]) {
-          continue;
-        }
-
-        if (synthesisRes.ok) {
-          const synthJson = await synthesisRes.json();
-          const rawText = extractCandidateText(synthJson);
-          if (rawText) {
-            const parsedSynth = JSON.parse(rawText) as {
-              coachHeadline?: string;
-              coachExplanation?: string;
-              exerciseCues?: Array<{ id: string; formCue?: string; note?: string }>;
-            };
-            if (typeof parsedSynth.coachHeadline === "string" && parsedSynth.coachHeadline.trim()) {
-              finalHeadline = parsedSynth.coachHeadline.trim().slice(0, 140);
-            }
-            if (typeof parsedSynth.coachExplanation === "string" && parsedSynth.coachExplanation.trim()) {
-              finalExplanation = parsedSynth.coachExplanation.trim().slice(0, 600);
-            }
-            if (Array.isArray(parsedSynth.exerciseCues)) {
-              for (const cue of parsedSynth.exerciseCues) {
-                const target = adapted.find((ex) => ex.id === cue.id && !ex.skippedForToday);
-                if (!target) continue;
-                if (typeof cue.formCue === "string" && cue.formCue.trim()) {
-                  target.formCue = cue.formCue.trim().slice(0, 220);
-                }
-                if (typeof cue.note === "string" && cue.note.trim()) {
-                  target.adaptationNotes.push(`🧠 Gemini Cue: ${cue.note.trim().slice(0, 180)}`);
-                  target.wasAdapted = true;
-                }
-              }
-            }
-            executionEngine = "gemini_4_argon_live";
-            modelUsed = candidateModel;
-            agentSteps.push({
-              step: agentSteps.length + 1,
-              tool: "gemini_4_synthesis",
-              summary: `Synthesized personalized coaching cues via ${candidateModel} (${transport.authMode}) within verified safety bounds.`,
-            });
+        if (!synthesisRes.ok) {
+          lastSynthFailureReason = `HTTP ${synthesisRes.status} on ${candidateModel}`;
+          if (
+            (synthesisRes.status === 404 ||
+              synthesisRes.status === 429 ||
+              synthesisRes.status >= 500) &&
+            candidateModel !== modelChain[modelChain.length - 1]
+          ) {
+            continue;
           }
           break;
         }
-        break;
-      } catch {
-        break;
+
+        const synthJson = await synthesisRes.json();
+        const rawText = extractCandidateText(synthJson);
+        if (rawText) {
+          const cleanedText = rawText
+            .replace(/^```json\s*/i, "")
+            .replace(/```$/i, "")
+            .trim();
+          const parsedSynth = JSON.parse(cleanedText) as {
+            coachHeadline?: string;
+            coachExplanation?: string;
+            exerciseCues?: Array<{ id: string; formCue?: string; note?: string }>;
+          };
+          if (typeof parsedSynth.coachHeadline === "string" && parsedSynth.coachHeadline.trim()) {
+            finalHeadline = parsedSynth.coachHeadline.trim().slice(0, 140);
+          }
+          if (typeof parsedSynth.coachExplanation === "string" && parsedSynth.coachExplanation.trim()) {
+            finalExplanation = parsedSynth.coachExplanation.trim().slice(0, 600);
+          }
+          if (Array.isArray(parsedSynth.exerciseCues)) {
+            for (const cue of parsedSynth.exerciseCues) {
+              const target = adapted.find((ex) => ex.id === cue.id && !ex.skippedForToday);
+              if (!target) continue;
+              if (typeof cue.formCue === "string" && cue.formCue.trim()) {
+                target.formCue = cue.formCue.trim().slice(0, 220);
+              }
+              if (typeof cue.note === "string" && cue.note.trim()) {
+                target.adaptationNotes.push(`🧠 Gemini Cue: ${cue.note.trim().slice(0, 180)}`);
+                target.wasAdapted = true;
+              }
+            }
+          }
+          executionEngine = "gemini_4_argon_live";
+          modelUsed = candidateModel;
+          agentSteps.push({
+            step: agentSteps.length + 1,
+            tool: "gemini_4_synthesis",
+            summary: `Synthesized personalized coaching cues via ${candidateModel} (${transport.authMode}) within verified safety bounds.`,
+          });
+          break;
+        }
+        lastSynthFailureReason = `Empty candidate from ${candidateModel}`;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.name || err.message : "network_error";
+        lastSynthFailureReason = `${msg} on ${candidateModel}`;
+        if (candidateModel !== modelChain[modelChain.length - 1]) {
+          continue;
+        }
       }
+    }
+    if (executionEngine === "deterministic_local" && lastSynthFailureReason) {
+      agentSteps.push({
+        step: agentSteps.length + 1,
+        tool: "gemini_4_synthesis_fallback",
+        summary: `Fell back to deterministic guardrail output (${lastSynthFailureReason}).`,
+      });
     }
   }
 

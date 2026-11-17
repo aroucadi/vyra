@@ -22,12 +22,12 @@ import {
   fromKilograms,
   parseHandoffQueryUrl,
   resolveDayOneWorkoutDay,
-  resolveEquipmentManifestation,
   resolveGoalAwareKineticCues,
   toKilograms,
 } from "@/lib/onboarding";
 import { telemetry } from "@/lib/telemetry";
 import { DeepLinkLiftConfig, parseDeepLinkParams, recordDeepLinkAttribution } from "@/lib/deep-link";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 import {
   ArrowRight,
   CheckCircle2,
@@ -55,6 +55,8 @@ interface DayZeroOnboardingCardProps {
 
 export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardingCardProps) {
   const router = useRouter();
+  const isHydrated = useIsClientHydrated();
+  const storeVersion = useVyraStoreVersion();
 
   // Core calibration state
   const [unit, setUnit] = useState<WeightUnit>("kg");
@@ -77,8 +79,21 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [copiedHandoff, setCopiedHandoff] = useState(false);
   const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkLiftConfig | null>(null);
 
-  const webViewStatus = useMemo(() => detectInAppWebView(), []);
-  const dayOne = useMemo(() => resolveDayOneWorkoutDay(userId), [userId]);
+  const webViewStatus = useMemo(
+    () =>
+      isHydrated
+        ? detectInAppWebView()
+        : { isInAppWebView: false, sourceApp: null, recommendedBrowser: "Chrome" as const },
+    [isHydrated]
+  );
+  const dayOne = useMemo(
+    () =>
+      isHydrated
+        ? resolveDayOneWorkoutDay(userId)
+        : { programDay: null, exerciseCount: 0, estimatedMinutes: 35, primaryExercise: null },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isHydrated, userId, storeVersion]
+  );
 
   // Hydrate from URL query params (?anchor=80x8&unit=kg) or deep link (?lift=incline_db_press)
   useEffect(() => {
@@ -144,20 +159,36 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
     };
   }, [userId]);
 
-  // Compute all Day-1 loads deterministically in <1ms
+  // Compute all Day-1 loads deterministically in <1ms (SSR-gated until client hydration commits)
   const calibration = useMemo(
     () =>
-      deriveStartingWeightsFromAnchor(userId, {
-        anchorLift,
-        weight: inputWeight,
-        reps: inputReps,
-        unit,
-        sleepMode,
-        mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
-        goal,
-        equipment,
-      }),
-    [userId, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal, equipment]
+      isHydrated
+        ? deriveStartingWeightsFromAnchor(userId, {
+            anchorLift,
+            weight: inputWeight,
+            reps: inputReps,
+            unit,
+            sleepMode,
+            mode: calibrationMode === "uncalibrated" ? "calibrated" : calibrationMode,
+            goal,
+            equipment,
+          })
+        : {
+            anchorLift,
+            anchorLabel: "Barbell Bench Press",
+            inputWeight,
+            inputReps,
+            unit,
+            anchorWeightKg: inputWeight,
+            estimatedBench1RmKg: 100,
+            sleepMode,
+            calibrationMode: "uncalibrated" as CalibrationMode,
+            goal,
+            equipment,
+            targets: [],
+          },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isHydrated, userId, storeVersion, anchorLift, inputWeight, inputReps, unit, sleepMode, calibrationMode, goal, equipment]
   );
 
   const primaryTarget = calibration.targets[0];

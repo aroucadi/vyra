@@ -961,20 +961,11 @@ export class Store {
   }
 
   resetEmpty() {
-    const identity =
-      typeof window !== "undefined"
-        ? getAthleteIdentity()
-        : {
-            uid: "anon_visitor",
-            displayName: "Athlete",
-            email: undefined,
-          };
-
     const emptyUser: User = {
-      id: identity.uid,
+      id: "anon_visitor",
       role: "both",
-      name: identity.displayName || "Athlete",
-      email: identity.email || "",
+      name: "Athlete",
+      email: "",
       injuries: [],
       goals: [],
       gymLocations: [],
@@ -1243,7 +1234,6 @@ export class Store {
   }
 
   getUserGymLocations(userId?: string): GymLocation[] {
-    this.hydrateFromClientStorage();
     const targetUser = userId ? this.getUser(userId) || this.getCurrentUser() : this.getCurrentUser();
     if (!targetUser.gymLocations || targetUser.gymLocations.length === 0) {
       if (targetUser.id === "trainee_alaa" || (this.isTestEnvironment() && !this.isEmptyBoot)) {
@@ -1428,18 +1418,36 @@ export class Store {
     return this.db.programs.filter((p) => p.traineeId === traineeId);
   }
 
+  private persistProgramsToClientStorage(traineeId: string): void {
+    if (typeof window === "undefined" || !traineeId) return;
+    try {
+      const scopedKey = `vyra_offline_backup_v1_${traineeId}`;
+      const raw = localStorage.getItem(scopedKey);
+      const data = raw
+        ? JSON.parse(raw)
+        : { version: 1, programs: [], sessions: [], readinessLogs: [], supplementLogs: [], metrics: [] };
+      data.programs = this.db.programs.filter((p) => p.traineeId === traineeId);
+      localStorage.setItem(scopedKey, JSON.stringify(data));
+    } catch {
+      // ignore local storage quota errors
+    }
+  }
+
   saveProgram(program: Program): Program {
+    this.hydrateFromClientStorage();
     const idx = this.db.programs.findIndex((p) => p.id === program.id);
     if (idx >= 0) {
       this.db.programs[idx] = program;
     } else {
       this.db.programs.push(program);
     }
+    this.persistProgramsToClientStorage(program.traineeId || this.db.currentUser.id);
     this.notifyChange(true);
     return program;
   }
 
   publishProgram(programId: string): Program {
+    this.hydrateFromClientStorage();
     const prog = this.getProgram(programId);
     if (!prog) throw new Error("Program not found");
 
@@ -1453,6 +1461,7 @@ export class Store {
     prog.status = "published";
     prog.version = (prog.version || 1) + 1;
     prog.updatedAt = new Date().toISOString();
+    this.persistProgramsToClientStorage(prog.traineeId || this.db.currentUser.id);
     this.notifyChange(true);
     return prog;
   }
@@ -1539,6 +1548,7 @@ export class Store {
     }
 
     program.updatedAt = new Date().toISOString();
+    this.persistProgramsToClientStorage(traineeId);
     this.notifyChange(true);
     return {
       success: true,
@@ -1591,6 +1601,7 @@ export class Store {
     });
 
     program.updatedAt = new Date().toISOString();
+    this.persistProgramsToClientStorage(traineeId);
     this.notifyChange(true);
     return {
       success: true,
@@ -1638,6 +1649,7 @@ export class Store {
     });
 
     program.updatedAt = new Date().toISOString();
+    this.persistProgramsToClientStorage(traineeId);
     this.notifyChange(true);
     return {
       success: true,
@@ -1648,10 +1660,33 @@ export class Store {
     };
   }
 
-  hydrateFromClientStorage() {
+  hydrateFromClientStorage(notify = false) {
     if (typeof window === "undefined") return;
+    let loadedAny = false;
+    if (!this.isCloudAuthenticated && this.db.currentUser.id === "anon_visitor") {
+      try {
+        const identity = getAthleteIdentity();
+        if (identity.uid && identity.uid !== this.db.currentUser.id) {
+          this.db.currentUser = {
+            ...this.db.currentUser,
+            id: identity.uid,
+            name: identity.displayName || this.db.currentUser.name || "Athlete",
+            email: identity.email || this.db.currentUser.email || "",
+          };
+          this.db.users = [this.db.currentUser];
+          loadedAny = true;
+        }
+      } catch {
+        // ignore identity storage errors
+      }
+    }
     const activeUid = this.db.currentUser.id;
-    if (this.hydratedStorageUid === activeUid) return;
+    if (this.hydratedStorageUid === activeUid) {
+      if (notify && loadedAny) {
+        this.notifyChange(false);
+      }
+      return;
+    }
     this.hydratedStorageUid = activeUid;
 
     try {
@@ -1659,6 +1694,22 @@ export class Store {
       const raw = localStorage.getItem(scopedKey);
       if (raw) {
         const data = JSON.parse(raw);
+        if (Array.isArray(data.programs)) {
+          data.programs.forEach((prog: Program) => {
+            if (!prog || !prog.id) return;
+            if (!prog.traineeId) {
+              prog.traineeId = activeUid;
+            }
+            if (prog.traineeId !== activeUid) return;
+            const idx = this.db.programs.findIndex((p) => p.id === prog.id);
+            if (idx >= 0) {
+              this.db.programs[idx] = prog;
+            } else {
+              this.db.programs.push(prog);
+            }
+            loadedAny = true;
+          });
+        }
         if (Array.isArray(data.sessions)) {
           data.sessions.forEach((sess: WorkoutSession) => {
             if (!sess || !sess.id) return;
@@ -1672,6 +1723,7 @@ export class Store {
             } else {
               this.db.sessions.unshift(sess);
             }
+            loadedAny = true;
           });
         }
         if (Array.isArray(data.metrics)) {
@@ -1683,6 +1735,7 @@ export class Store {
             } else {
               this.db.metrics.push({ ...m, traineeId: activeUid });
             }
+            loadedAny = true;
           });
         }
         if (Array.isArray(data.supplementLogs)) {
@@ -1694,6 +1747,7 @@ export class Store {
             } else {
               this.db.supplementLogs.push({ ...l, traineeId: activeUid });
             }
+            loadedAny = true;
           });
         }
       }
@@ -1705,15 +1759,18 @@ export class Store {
           if (parsedGyms.defaultGymId) {
             this.db.currentUser.defaultGymId = parsedGyms.defaultGymId;
           }
+          loadedAny = true;
         }
       }
     } catch {
       // ignore
     }
+    if (notify && loadedAny) {
+      this.notifyChange(false);
+    }
   }
 
   getSessions(traineeId: string): WorkoutSession[] {
-    this.hydrateFromClientStorage();
     return this.db.sessions.filter((s) => s.traineeId === traineeId);
   }
 

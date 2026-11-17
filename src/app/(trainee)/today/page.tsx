@@ -19,24 +19,30 @@ import { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
-import { useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function TodayPage() {
   const router = useRouter();
   const storeVersion = useVyraStoreVersion();
+  const isHydrated = useIsClientHydrated();
   const { isAuthenticated, isAlaa, authEmail } = useVyraAuth();
-  const currentUser = appStore.getCurrentUser();
+  const rawUser = appStore.getCurrentUser();
+  const currentUser = isHydrated
+    ? rawUser
+    : { ...rawUser, id: "anon_visitor", name: "Athlete", role: "both" as const };
   const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState(false);
   const [isAdjustSheetOpen, setIsAdjustSheetOpen] = useState(false);
   const [forceDayZero, setForceDayZero] = useState<boolean | undefined>(undefined);
   const [tick, setTick] = useState(0);
   const [previewPrescription, setPreviewPrescription] = useState<ExercisePrescription | null>(null);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
-  const sessions = appStore.getSessions(currentUser.id);
-  const metricEntries = appStore.getMetrics(currentUser.id);
+  const sessions = isHydrated ? appStore.getSessions(currentUser.id) : [];
+  const metricEntries = isHydrated ? appStore.getMetrics(currentUser.id) : [];
 
-  const program = appStore.getActiveProgramForTrainee(currentUser.id);
-  const effectiveForceDayZero = forceDayZero !== undefined ? forceDayZero : !program && sessions.length === 0;
+  const program = isHydrated ? appStore.getActiveProgramForTrainee(currentUser.id) : undefined;
+  const effectiveForceDayZero = isHydrated
+    ? (forceDayZero !== undefined ? forceDayZero : !program && sessions.length === 0)
+    : true;
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
   const currentWeek = program?.weeks ? program.weeks[Math.min(resolved.weekIndex - 1, program.weeks.length - 1)] : undefined;
   const todaySession = currentWeek?.days ? currentWeek.days.find((d) => d.dayOfWeek === resolved.dayOfWeek) : undefined;
@@ -73,9 +79,12 @@ export default function TodayPage() {
 
   // Derive clock-aware Day timeline from current state
   const { moments, heroMoment, insight, readinessStatus, hasReadinessInput, isRestDay, isDayZero } = React.useMemo(
-    () => deriveDayTimeline(currentUser.id, undefined, undefined, { forceDayZero: effectiveForceDayZero }),
+    () =>
+      deriveDayTimeline(currentUser.id, undefined, undefined, {
+        forceDayZero: effectiveForceDayZero,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser.id, tick, effectiveForceDayZero, storeVersion]
+    [isHydrated, currentUser.id, tick, effectiveForceDayZero, storeVersion]
   );
 
   const handleMomentClick = (moment: TimelineMoment) => {
@@ -144,7 +153,9 @@ export default function TodayPage() {
             </Link>
           )}
           <span className="text-[10px] font-mono text-slate-400">
-            {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+            {isHydrated
+              ? new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+              : "Today"}
           </span>
         </div>
       </div>

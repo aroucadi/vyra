@@ -18,8 +18,11 @@
 
 import { WorkoutSession, BodyMetricEntry } from "../types";
 import {
+  buildGeminiGenerationConfig,
+  extractCandidateText,
   getActiveVisionReasoningModel,
   getGeminiAuthContext,
+  resolveGeminiTransport,
   VYRA_AI_CONFIG,
 } from "../gemini";
 import { inferPrimaryMuscleFromExerciseName } from "./sensory-memory";
@@ -2571,67 +2574,70 @@ export async function analyzeVisualProgressEvolution(params: {
 
   // 4B. Live Gemini 4 Argon Multimodal Vision Call
   // Strictly requires explicit user consent (`cloudVisionConsentGranted === true`) before transmitting any image bytes to a cloud model.
-  // Never places GEMINI_API_KEY in the URL query string.
+  // Supports both GEMINI_API_KEY and Cloud Run Vertex AI OAuth2 ADC credentials cleanly.
   if (
     !autonomousSynthesis &&
-    process.env.GEMINI_API_KEY &&
     params.cloudVisionConsentGranted === true
   ) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-      const multimodalParts: Array<Record<string, unknown>> = [
-        { text: promptText },
-      ];
-      if (partA.base64Data) {
-        multimodalParts.push({
-          inlineData: {
-            mimeType: partA.mimeType,
-            data: partA.base64Data,
-          },
-        });
-      }
-      if (partB.base64Data) {
-        multimodalParts.push({
-          inlineData: {
-            mimeType: partB.mimeType,
-            data: partB.base64Data,
-          },
-        });
-      }
+    const transport = await resolveGeminiTransport(model);
+    if (transport) {
+      try {
+        const multimodalParts: Array<Record<string, unknown>> = [
+          { text: promptText },
+        ];
+        if (partA.base64Data) {
+          multimodalParts.push({
+            inlineData: {
+              mimeType: partA.mimeType,
+              data: partA.base64Data,
+            },
+          });
+        }
+        if (partB.base64Data) {
+          multimodalParts.push({
+            inlineData: {
+              mimeType: partB.mimeType,
+              data: partB.base64Data,
+            },
+          });
+        }
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: multimodalParts }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 4096,
-            responseMimeType: "application/json",
-            responseSchema: VISUAL_EVOLUTION_RESPONSE_SCHEMA,
-          },
-        }),
-      });
+        const res = await fetch(transport.url, {
+          method: "POST",
+          headers: transport.headers,
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: multimodalParts }],
+            generationConfig: buildGeminiGenerationConfig({
+              model,
+              thinkingLevel: "medium",
+              maxOutputTokens: 16384,
+              temperature: 0.2,
+              responseMimeType: "application/json",
+              responseSchema: VISUAL_EVOLUTION_RESPONSE_SCHEMA,
+            }),
+          }),
+          signal:
+            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+              ? AbortSignal.timeout(25_000)
+              : undefined,
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        const candidateText =
-          data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (candidateText) {
-          autonomousSynthesis = parseAutonomousAiVisualSynthesis(
-            candidateText,
-            alignmentDelta
-          );
-          if (autonomousSynthesis) {
-            analysisEngine = "gemini_4_argon_live_multimodal";
+        if (res.ok) {
+          const data = await res.json();
+          const candidateText = extractCandidateText(data);
+          if (candidateText) {
+            autonomousSynthesis = parseAutonomousAiVisualSynthesis(
+              candidateText,
+              alignmentDelta
+            );
+            if (autonomousSynthesis) {
+              analysisEngine = "gemini_4_argon_live_multimodal";
+            }
           }
         }
+      } catch {
+        // Fallback cleanly to context-driven biomechanical synthesis
       }
-    } catch {
-      // Fallback cleanly to context-driven biomechanical synthesis
     }
   }
 

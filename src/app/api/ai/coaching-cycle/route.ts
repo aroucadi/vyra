@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
@@ -35,8 +36,17 @@ export interface CoachingCycleRequestBody {
  * - `executeWeeklyMesoReview` (Loop B, 7 days)
  */
 export async function POST(req: Request) {
+  let body: Partial<CoachingCycleRequestBody>;
   try {
-    const body = (await req.json()) as Partial<CoachingCycleRequestBody>;
+    body = (await req.json()) as Partial<CoachingCycleRequestBody>;
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Malformed JSON request body." },
+      { status: 400 }
+    );
+  }
+
+  try {
     if (!body || !body.traineeId) {
       return NextResponse.json(
         { ok: false, error: "Missing required field: traineeId" },
@@ -51,6 +61,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: tenant.error || "Unauthorized" },
         { status: tenant.statusCode || 401 }
+      );
+    }
+
+    const rl = checkRateLimit(
+      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-coaching-cycle"),
+      { maxRequests: 60, windowMs: 60_000 }
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Rate limit exceeded." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
       );
     }
 

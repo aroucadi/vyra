@@ -9,21 +9,24 @@ import { Dumbbell, Trophy, ChevronRight, Moon, MapPin, LogIn, LogOut, CheckCircl
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
-import { useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraAuth, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 import { resolveProgramDay } from "@/lib/utils";
 
 export default function YouPage() {
   useVyraStoreVersion();
+  const isHydrated = useIsClientHydrated();
   const { isAuthenticated, isAlaa, authEmail, signOutAll } = useVyraAuth();
   const currentUser = appStore.getCurrentUser();
-  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
+  const displayName = isHydrated ? currentUser.name : "Athlete";
+  const displayAvatar = isHydrated ? currentUser.avatarUrl : undefined;
+  const activeProgram = isHydrated ? appStore.getActiveProgramForTrainee(currentUser.id) : undefined;
   const resolvedWeek = activeProgram ? resolveProgramDay(activeProgram.startDate).weekIndex : null;
-  const sessions = appStore.getSessions(currentUser.id);
+  const sessions = isHydrated ? appStore.getSessions(currentUser.id) : [];
   const [selectedSession, setSelectedSession] = React.useState<WorkoutSession | null>(null);
   const [isGymDrawerOpen, setIsGymDrawerOpen] = React.useState(false);
   const [, setGymListVersion] = React.useState(0);
-  const defaultGym = appStore.getDefaultGymLocation(currentUser.id);
-  const gymsCount = appStore.getUserGymLocations(currentUser.id).length;
+  const defaultGym = isHydrated ? appStore.getDefaultGymLocation(currentUser.id) : undefined;
+  const gymsCount = isHydrated ? appStore.getUserGymLocations(currentUser.id).length : 0;
   const totalVolume = sessions.reduce((acc: number, s: WorkoutSession) => {
     const sessVol = s.setLogs ? s.setLogs.reduce((sAcc: number, l: SetLog) => sAcc + (l.weightKg || 0) * (l.reps || 0), 0) : 0;
     return acc + sessVol;
@@ -35,15 +38,15 @@ export default function YouPage() {
       {/* Header */}
       <header className="flex items-center gap-4">
         <div className="w-14 h-14 rounded-2xl bg-[#111622] border border-[#1C2436] flex items-center justify-center text-amber-400 overflow-hidden font-display font-black text-xl shadow-sm">
-          {currentUser.avatarUrl ? (
-            <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full object-cover" />
+          {displayAvatar ? (
+            <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
           ) : (
-            currentUser.name.charAt(0)
+            displayName.charAt(0)
           )}
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-editorial font-bold text-white tracking-tight">{currentUser.name}</h1>
+            <h1 className="text-xl font-editorial font-bold text-white tracking-tight">{displayName}</h1>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">
               ATHLETE
             </span>

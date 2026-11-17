@@ -4,13 +4,18 @@
  * Combines uploaded gym setup photos with the athlete's workout location (`gymId`)
  * to build a persistent, location-bound equipment inventory:
  * 1. Recognizes available machines, weights, benches, cables, and racks from photos
- *    using Google Cloud Vertex AI / Gemini 2.5 Flash Multimodal Vision.
+ *    using Google Cloud Vertex AI / Gemini 4 Argon Multimodal Vision.
  * 2. Understands gym-specific limitations (e.g. Home/Hotel gym lacking cable towers or pec deck).
  * 3. Recommends suitable biomechanical alternatives from the 6,554-exercise catalogue
  *    when switching workout locations.
  */
 
-import { getActiveGeminiModel } from "../gemini";
+import {
+  buildGeminiGenerationConfig,
+  extractCandidateText,
+  getActiveVisionReasoningModel,
+  resolveGeminiTransport,
+} from "../gemini";
 import { inferMuscleSubdivision, findBiomechanicalSubstitutes } from "../training-math/substitution-copilot";
 import { inferPrimaryMuscleFromExerciseName } from "./sensory-memory";
 import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
@@ -762,16 +767,21 @@ export class GymVisionInventoryStore {
       }
     }
 
-    // 4. If Gemini API key is configured and photoDataUri is a base64 image, call Gemini Vision
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 4. If Vertex AI ADC or Gemini API key is configured and photoDataUri is a base64 image, call Gemini 4 Argon Vision
+    const model = getActiveVisionReasoningModel();
+    const transport =
+      params.photoDataUri &&
+      params.photoDataUri.startsWith("data:image/") &&
+      !validation.malformed
+        ? await resolveGeminiTransport(model)
+        : null;
     if (
-      apiKey &&
+      transport &&
       params.photoDataUri &&
       params.photoDataUri.startsWith("data:image/") &&
       !validation.malformed
     ) {
       try {
-        const model = getActiveGeminiModel();
         const base64Data = params.photoDataUri.split(",")[1];
         const mimeType =
           params.photoDataUri.substring(
@@ -779,13 +789,9 @@ export class GymVisionInventoryStore {
             params.photoDataUri.indexOf(";")
           ) || "image/jpeg";
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-        const response = await fetch(url, {
+        const response = await fetch(transport.url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
+          headers: transport.headers,
           body: JSON.stringify({
             contents: [
               {
@@ -803,16 +809,23 @@ export class GymVisionInventoryStore {
                 ],
               },
             ],
-            generationConfig: {
+            generationConfig: buildGeminiGenerationConfig({
+              model,
+              thinkingLevel: "low",
+              maxOutputTokens: 8192,
               temperature: 0.1,
               responseMimeType: "application/json",
-            },
+            }),
           }),
+          signal:
+            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+              ? AbortSignal.timeout(15000)
+              : undefined,
         });
 
         if (response.ok) {
           const data = await response.json();
-          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const rawText = extractCandidateText(data);
           if (rawText) {
             const parsed = JSON.parse(rawText);
             if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {

@@ -9,7 +9,12 @@
  *    exact token-set lookup (no lookbehind regex soup, no substring collisions like "avocados" -> "dos").
  */
 
-import { getActiveGeminiModel } from "../gemini";
+import {
+  buildGeminiGenerationConfig,
+  extractCandidateText,
+  getActiveGeminiModel,
+  resolveGeminiTransport,
+} from "../gemini";
 
 export type AnatomicalJoint =
   | "shoulder"
@@ -598,25 +603,39 @@ export async function extractStructuredSymptomsViaLlm(
   notes: string[],
   options?: { fetchImpl?: typeof fetch; apiKey?: string }
 ): Promise<ParsedSymptomAssessment> {
-  const apiKey =
+  const fetchFn = options?.fetchImpl || fetch;
+  const model = getActiveGeminiModel();
+  const explicitKey =
     options?.apiKey ||
     (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : undefined);
 
-  if (!apiKey && !options?.fetchImpl) {
+  const transport = explicitKey
+    ? {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": explicitKey,
+        },
+      }
+    : (await resolveGeminiTransport(model, { fetchImpl: options?.fetchImpl })) ||
+      (options?.fetchImpl
+        ? {
+            url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": "test-key",
+            },
+          }
+        : null);
+
+  if (!transport) {
     return parseSymptomsFromTokenTable(notes);
   }
 
-  const fetchFn = options?.fetchImpl || fetch;
-  const model = getActiveGeminiModel();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
   try {
-    const res = await fetchFn(url, {
+    const res = await fetchFn(transport.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey || "test-key",
-      },
+      headers: transport.headers,
       body: JSON.stringify({
         contents: [
           {
@@ -630,7 +649,10 @@ Notes: ${JSON.stringify(notes)}`,
             ],
           },
         ],
-        generationConfig: {
+        generationConfig: buildGeminiGenerationConfig({
+          model,
+          thinkingLevel: "low",
+          maxOutputTokens: 8192,
           temperature: 0.0,
           responseMimeType: "application/json",
           responseSchema: {
@@ -670,8 +692,14 @@ Notes: ${JSON.stringify(notes)}`,
             },
             required: ["items"],
           },
-        },
+        }),
       }),
+      signal:
+        !options?.fetchImpl &&
+        typeof AbortSignal !== "undefined" &&
+        typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(10000)
+          : undefined,
     });
 
     if (!res.ok) {
@@ -679,7 +707,7 @@ Notes: ${JSON.stringify(notes)}`,
     }
 
     const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawText = extractCandidateText(data);
     if (!rawText) {
       return parseSymptomsFromTokenTable(notes);
     }

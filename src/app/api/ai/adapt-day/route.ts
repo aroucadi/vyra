@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   adaptDailyWorkoutSession,
   AdaptDailyWorkoutInput,
@@ -15,9 +16,17 @@ import {
  * - Adapts ONLY today's workout session (`scope: "TODAY_SESSION_ONLY"`, `longTermProgramModified: false`).
  */
 export async function POST(req: Request) {
+  let body: Partial<AdaptDailyWorkoutInput>;
   try {
-    const body = (await req.json()) as Partial<AdaptDailyWorkoutInput>;
+    body = (await req.json()) as Partial<AdaptDailyWorkoutInput>;
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Malformed JSON request body." },
+      { status: 400 }
+    );
+  }
 
+  try {
     if (!body || !body.traineeId || !Array.isArray(body.exercises)) {
       return NextResponse.json(
         {
@@ -36,6 +45,20 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: tenant.error || "Unauthorized" },
         { status: tenant.statusCode || 401 }
+      );
+    }
+
+    const rl = checkRateLimit(
+      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-adapt-day"),
+      { maxRequests: 40, windowMs: 60_000 }
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Rate limit exceeded for daily adaptation." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSeconds) },
+        }
       );
     }
 

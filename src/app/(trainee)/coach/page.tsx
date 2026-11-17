@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { appStore } from "@/lib/store";
 import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine";
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
+import { resolveProgramDay } from "@/lib/utils";
 import { Send, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
@@ -15,6 +16,7 @@ interface Message {
   sender: "user" | "coach";
   text: string;
   card?: CoachSmartActionCardData;
+  engineLabel?: string;
 }
 
 function CoachChat() {
@@ -25,17 +27,31 @@ function CoachChat() {
 
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [activeEngineStatus, setActiveEngineStatus] = useState<
+    "GEMINI 4 ARGON" | "LOCAL ENGINE"
+  >("GEMINI 4 ARGON");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "m_welcome",
       sender: "coach",
-      text: `Ready when you are, ${currentUser.name.split(" ")[0]}. Ask about your load, request exercise swaps, or adjust for time.`,
+      text: `Ready when you are, ${currentUser.name.split(" ")[0]}. Ask about your load, request exercise swaps, review nutrition, or adapt today's session.`,
     },
   ]);
 
-  const handleSend = (textToSend?: string) => {
-    const query = textToSend || input;
-    if (!query.trim() || isStreaming) return;
+  const messagesRef = useRef<Message[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  const feedEndRef = useRef<HTMLDivElement | null>(null);
+  const initialSentRef = useRef(false);
+
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, isStreaming]);
+
+  const handleSend = async (textToSend?: string) => {
+    const query = (textToSend ?? input).trim();
+    if (!query || isStreaming) return;
 
     const userMsg: Message = {
       id: `msg_user_${Date.now()}`,
@@ -43,23 +59,105 @@ function CoachChat() {
       text: query,
     };
 
+    const nextHistory = [...messagesRef.current, userMsg]
+      .slice(-6)
+      .map((m) => ({ sender: m.sender, text: m.text }));
+
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsStreaming(true);
 
-    const coachResolved = resolveCoachQuery(currentUser.id, query);
+    try {
+      const program = appStore.getActiveProgramForTrainee(currentUser.id);
+      const metrics = appStore.getMetrics(currentUser.id);
+      const biometrics = appStore.getLatestWearableBiometrics(currentUser.id);
+      const resolvedDay = program ? resolveProgramDay(program.startDate) : null;
+      const currentWeek =
+        program?.weeks && resolvedDay
+          ? program.weeks[
+              Math.min(Math.max(0, resolvedDay.weekIndex - 1), program.weeks.length - 1)
+            ]
+          : undefined;
+      const todayDay =
+        currentWeek?.days.find((d) => d.dayOfWeek === resolvedDay?.dayOfWeek && !d.isRestDay) ||
+        currentWeek?.days.find((d) => !d.isRestDay);
+      const exercises = todayDay
+        ? todayDay.blocks
+            .flatMap((b) => b.exercises)
+            .map(
+              (e) =>
+                `${e.exerciseName} (${e.sets}x${e.repRangeLow}-${e.repRangeHigh}${e.targetWeightKg ? ` @ ${e.targetWeightKg}kg` : ""})`
+            )
+        : [];
 
-    // Progressive visual streaming compiler: first render text tokens, then resolve interactive card into reserved boundaries
-    setTimeout(() => {
-      const coachReply: Message = {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 11000);
+      const res = await fetch("/api/ai/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          traineeId: currentUser.id,
+          query,
+          conversationHistory: nextHistory,
+          clientContext: {
+            programTitle: program?.title,
+            activeDayLabel: todayDay?.label,
+            exercises,
+            latestWeightKg: metrics[metrics.length - 1]?.weightKg,
+            readinessSource: biometrics?.source || "none",
+            sleepHours: biometrics?.sleepHours,
+          },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const json = (await res.json()) as {
+          ok?: boolean;
+          response?: {
+            id: string;
+            text: string;
+            card?: CoachSmartActionCardData;
+            engine?: "gemini_4_argon_live" | "deterministic_local";
+            modelUsed?: string;
+          };
+        };
+
+        if (json?.ok && json.response) {
+          const isLive = json.response.engine === "gemini_4_argon_live";
+          setActiveEngineStatus(isLive ? "GEMINI 4 ARGON" : "LOCAL ENGINE");
+          const coachReply: Message = {
+            id: json.response.id,
+            sender: "coach",
+            text: json.response.text,
+            card: json.response.card,
+            engineLabel: isLive
+              ? (json.response.modelUsed || "gemini-4-argon").toUpperCase()
+              : "LOCAL DETERMINISTIC",
+          };
+          setMessages((prev) => [...prev, coachReply]);
+          setIsStreaming(false);
+          return;
+        }
+      }
+    } catch {
+      // Seamless local fallback if offline or timed out
+    }
+
+    const coachResolved = resolveCoachQuery(currentUser.id, query);
+    setActiveEngineStatus("LOCAL ENGINE");
+    setMessages((prev) => [
+      ...prev,
+      {
         id: coachResolved.id,
         sender: "coach",
         text: coachResolved.text,
         card: coachResolved.card,
-      };
-      setMessages((prev) => [...prev, coachReply]);
-      setIsStreaming(false);
-    }, 280);
+        engineLabel: "LOCAL DETERMINISTIC",
+      },
+    ]);
+    setIsStreaming(false);
   };
 
   useEffect(() => {
@@ -73,36 +171,48 @@ function CoachChat() {
   }, [currentUser.id]);
 
   useEffect(() => {
-    if (initialPrompt) {
-      handleSend(initialPrompt);
+    if (initialPrompt && !initialSentRef.current) {
+      initialSentRef.current = true;
+      void handleSend(initialPrompt);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
 
   const quickChips = [
     { label: "Why this weight?", prompt: "Why was this specific weight prescribed for my sets?" },
-    { label: "Swap exercise", prompt: "I need an alternative exercise for the machine press." },
+    { label: "Swap exercise", prompt: "I need an alternative exercise for my pressing movement." },
     { label: "Nutrition & Surplus", prompt: "Am I eating enough calories to progress on my lifts?" },
     { label: "Weekly Review", prompt: "Run my weekly meso review and diagnose my bottlenecks." },
     { label: "Short on time (30m)", prompt: "I am short on time today, condense my workout to 30 min." },
-    { label: "Explain my sleep score", prompt: "How does my sleep score impact my workout today?" },
+    { label: "Explain my sleep", prompt: "How does my sleep impact my workout today?" },
   ];
 
   return (
-    <div className="flex-1 flex flex-col pb-24 px-4 pt-6 max-w-md mx-auto w-full h-screen">
-      
+    <div className="flex-1 flex flex-col bg-[#090C11] pb-24 px-4 pt-6 max-w-lg mx-auto w-full min-h-[calc(100dvh-16px)]">
       {/* Header */}
-      <header className="flex items-center justify-between pb-4 border-b border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+      <header className="flex items-center justify-between pb-4 border-b border-[#1C2436] flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight">VYRA Coach</h1>
-            <p className="text-[11px] text-slate-400">Adaptive Performance Concierge</p>
+            <h1 className="font-editorial text-xl font-bold text-[#F8FAFC] tracking-tight leading-none">
+              VYRA Coach
+            </h1>
+            <p className="text-[11px] text-[#94A3B8] mt-1">
+              Adaptive Performance Concierge
+            </p>
           </div>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400 font-bold">
-          ONLINE
+        <span
+          className={clsx(
+            "text-[10px] font-mono px-2.5 py-1 rounded-full border font-bold tracking-wider",
+            activeEngineStatus === "GEMINI 4 ARGON"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+              : "bg-[#111622] border-[#1C2436] text-amber-400"
+          )}
+        >
+          {activeEngineStatus}
         </span>
       </header>
 
@@ -112,23 +222,28 @@ function CoachChat() {
           <div
             key={m.id}
             className={clsx(
-              "flex flex-col",
+              "flex flex-col gap-1",
               m.sender === "user" ? "items-end" : "items-start"
             )}
           >
             <div
               className={clsx(
-                "p-3.5 rounded-2xl text-xs max-w-[85%] leading-relaxed",
+                "p-3.5 rounded-2xl text-xs max-w-[88%] leading-relaxed whitespace-pre-line",
                 m.sender === "user"
-                  ? "bg-amber-400 text-slate-950 font-semibold rounded-br-none"
-                  : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-sm"
+                  ? "bg-amber-400 text-[#090C11] font-semibold rounded-br-none shadow-sm"
+                  : "bg-[#111622] border border-[#1C2436] text-[#E2E8F0] rounded-bl-none shadow-sm"
               )}
             >
               {m.text}
             </div>
+            {m.sender === "coach" && m.engineLabel && (
+              <span className="text-[9px] font-mono text-[#64748B] px-1 uppercase tracking-widest">
+                {m.engineLabel}
+              </span>
+            )}
 
             {m.card && (
-              <div className="w-full max-w-[95%]">
+              <div className="w-full max-w-[96%]">
                 <CoachSmartActionCard card={m.card} traineeId={currentUser.id} />
               </div>
             )}
@@ -138,17 +253,20 @@ function CoachChat() {
         {/* Intelligent UI Progressive Streaming Reserved Space (Zero-CLS) */}
         {isStreaming && (
           <div className="flex flex-col items-start space-y-2 animate-in fade-in duration-200">
-            <div className="p-3.5 rounded-2xl rounded-bl-none bg-slate-900 border border-slate-800 text-xs text-slate-300 max-w-[85%] flex items-center gap-2">
+            <div className="p-3.5 rounded-2xl rounded-bl-none bg-[#111622] border border-[#1C2436] text-xs text-[#CBD5E1] max-w-[88%] flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span className="text-[11px] text-slate-400">Composing action card...</span>
+              <span className="text-[11px] text-[#94A3B8]">
+                Reasoning with Case File & Biomechanics...
+              </span>
             </div>
-            <div className="w-full max-w-[95%] h-36 rounded-2xl bg-slate-900/40 border border-slate-800/60 p-4 space-y-3 animate-pulse">
-              <div className="h-3 w-1/3 bg-slate-800 rounded" />
-              <div className="h-4 w-2/3 bg-slate-800 rounded" />
-              <div className="h-10 w-full bg-slate-800/60 rounded-xl" />
+            <div className="w-full max-w-[96%] h-32 rounded-2xl bg-[#111622]/60 border border-[#1C2436] p-4 space-y-3 animate-pulse">
+              <div className="h-3 w-1/3 bg-[#1C2436] rounded" />
+              <div className="h-4 w-2/3 bg-[#1C2436] rounded" />
+              <div className="h-9 w-full bg-[#1C2436]/70 rounded-xl" />
             </div>
           </div>
         )}
+        <div ref={feedEndRef} />
       </div>
 
       {/* Contextual Quick Chips */}
@@ -157,8 +275,9 @@ function CoachChat() {
           <button
             key={idx}
             type="button"
-            onClick={() => handleSend(chip.prompt)}
-            className="whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 hover:border-slate-700 text-[11px] text-slate-300 transition"
+            disabled={isStreaming}
+            onClick={() => void handleSend(chip.prompt)}
+            className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#111622] border border-[#1C2436] hover:border-amber-500/40 text-[11px] text-[#CBD5E1] transition disabled:opacity-50"
           >
             {chip.label}
           </button>
@@ -169,7 +288,7 @@ function CoachChat() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSend();
+          void handleSend();
         }}
         className="pt-2 flex items-center gap-2 flex-shrink-0"
       >
@@ -178,24 +297,30 @@ function CoachChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything or request a swap..."
-          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="flex-1 bg-[#111622] border border-[#1C2436] rounded-xl px-3.5 py-3 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-amber-400"
         />
         <button
           type="submit"
+          disabled={isStreaming || !input.trim()}
           aria-label="Send message"
-          className="w-11 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-slate-950 rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold"
+          className="w-11 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-[#090C11] rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold disabled:opacity-50"
         >
           <Send className="w-4 h-4" />
         </button>
       </form>
-
     </div>
   );
 }
 
 export default function CoachPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-slate-400 text-xs">Loading Coach...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6 text-[#94A3B8] text-xs bg-[#090C11] min-h-screen">
+          Loading VYRA Coach...
+        </div>
+      }
+    >
       <CoachChat />
     </Suspense>
   );

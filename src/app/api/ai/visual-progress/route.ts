@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appStore } from "@/lib/store";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
@@ -129,8 +130,17 @@ export interface VisualProgressPostRequestBody {
 }
 
 export async function POST(req: Request) {
+  let body: Partial<VisualProgressPostRequestBody>;
   try {
-    const body = (await req.json()) as Partial<VisualProgressPostRequestBody>;
+    body = (await req.json()) as Partial<VisualProgressPostRequestBody>;
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Malformed JSON request body." },
+      { status: 400 }
+    );
+  }
+
+  try {
     const currentUser = appStore.getCurrentUser();
     const tenant = await resolveRouteTenantContext(req, body.traineeId, {
       allowUnauthenticatedAnon: true,
@@ -140,6 +150,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: tenant.error || "Unauthorized" },
         { status: tenant.statusCode || 401 }
+      );
+    }
+
+    const rl = checkRateLimit(
+      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-visual-progress"),
+      { maxRequests: 40, windowMs: 60_000 }
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Rate limit exceeded." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
       );
     }
     ensureFirestoreCoachBridgeRegistered();

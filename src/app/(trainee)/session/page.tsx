@@ -1451,6 +1451,122 @@ function SessionFlow() {
     setMode("summary");
   };
 
+  const handleQuickStartStarterSession = () => {
+    const nowIso = new Date().toISOString();
+    const todayDow = (new Date().getDay() + 6) % 7;
+    const progId = `prog_starter_${currentUser.id}_${Date.now()}`;
+    const weekId = `${progId}_w1`;
+    const dayId = `${weekId}_d${todayDow}`;
+
+    const starterProgram = {
+      id: progId,
+      traineeId: currentUser.id,
+      trainerId: currentUser.id,
+      title: "Foundational Full Body Starter",
+      durationWeeks: 4,
+      startDate: nowIso.split("T")[0],
+      endDate: new Date(Date.now() + 28 * 86400000).toISOString().split("T")[0],
+      version: 1,
+      status: "published" as const,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      weeks: [
+        {
+          id: weekId,
+          programId: progId,
+          weekIndex: 1,
+          days: [
+            {
+              id: dayId,
+              weekId,
+              dayOfWeek: todayDow,
+              label: "Day-1 Full Body Foundation",
+              isRestDay: false,
+              morningRoutine: ["500ml water on waking", "5 min shoulder & hip mobility"],
+              nutrition: {
+                targetProteinGrams: 140,
+                supplements: [],
+              },
+              blocks: [
+                {
+                  id: `${dayId}_b1`,
+                  order: 1,
+                  type: "straight" as const,
+                  exercises: [
+                    {
+                      id: `${dayId}_ex1`,
+                      exerciseId: "ex_incline_db_press",
+                      exerciseName: "30° Incline Dumbbell Press",
+                      sets: 3,
+                      repRangeLow: 8,
+                      repRangeHigh: 12,
+                      rirScheme: [2, 2, 1],
+                      targetWeightKg: 20,
+                      restSeconds: 90,
+                      selectedEquipment: "dumbbell" as const,
+                      loadGuidance: "Pick a comfortable weight leaving ~2 reps in reserve; log set 1 to calibrate.",
+                      formCueText: "Tuck elbows ~45°, lower with 2-second control to upper chest.",
+                      targetMuscleGroups: ["Chest", "Front Delts"],
+                    },
+                    {
+                      id: `${dayId}_ex2`,
+                      exerciseId: "ex_lat_pulldown",
+                      exerciseName: "Wide-Grip Lat Pulldown",
+                      sets: 3,
+                      repRangeLow: 8,
+                      repRangeHigh: 12,
+                      rirScheme: [2, 2, 1],
+                      targetWeightKg: 40,
+                      restSeconds: 90,
+                      selectedEquipment: "cable" as const,
+                      loadGuidance: "Drive elbows down cleanly without swinging the torso.",
+                      formCueText: "Depress shoulder blades first, pull bar to upper clavicle.",
+                      targetMuscleGroups: ["Lats", "Upper Back"],
+                    },
+                    {
+                      id: `${dayId}_ex3`,
+                      exerciseId: "ex_45_leg_press",
+                      exerciseName: "45° Machine Leg Press",
+                      sets: 3,
+                      repRangeLow: 10,
+                      repRangeHigh: 12,
+                      rirScheme: [2, 2, 1],
+                      targetWeightKg: 80,
+                      restSeconds: 90,
+                      selectedEquipment: "machine" as const,
+                      loadGuidance: "Keep lumbar glued flat into the pad; stop shy of knee lockout.",
+                      formCueText: "Control descent for 2 seconds, push evenly through mid-foot.",
+                      targetMuscleGroups: ["Quadriceps", "Glutes"],
+                    },
+                    {
+                      id: `${dayId}_ex4`,
+                      exerciseId: "ex_db_lateral_raise",
+                      exerciseName: "Dumbbell Lateral Raise",
+                      sets: 3,
+                      repRangeLow: 12,
+                      repRangeHigh: 15,
+                      rirScheme: [2, 1, 1],
+                      targetWeightKg: 8,
+                      restSeconds: 60,
+                      selectedEquipment: "dumbbell" as const,
+                      loadGuidance: "Raise in the scapular plane (30° forward) with soft elbows.",
+                      formCueText: "Lead with elbows to shoulder height; pause briefly at top.",
+                      targetMuscleGroups: ["Lateral Delts"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    appStore.saveProgram(starterProgram);
+    appStore.publishProgram(progId);
+    router.push(`/session?day=${dayId}&mode=preview`);
+  };
+
   // --------------------------------------------------------------------------
   // STATE 1: SESSION PREVIEW (Between Today and Active Workout)
   // --------------------------------------------------------------------------
@@ -1472,11 +1588,18 @@ function SessionFlow() {
 
         {!targetDay ? (
           <div className="p-6 bg-[#111622] border border-[#1C2436] rounded-2xl text-center space-y-4">
-            <h1 className="text-xl font-editorial font-bold text-white">Choose today&apos;s session</h1>
-            <p className="text-xs text-slate-400">
-              No workout is scheduled for today. Select a session from your active blueprint below.
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+              <Dumbbell className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-editorial font-bold text-white">
+              {program ? "Rest Day in Blueprint" : "Ready for Your First Session"}
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {program
+                ? "Today is scheduled as active recovery. Select any training day from your split or launch a quick session."
+                : "No workout split is active yet. Jump straight into a balanced Day-1 full-body session or design a custom split."}
             </p>
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2.5 pt-2">
               {currentWeek?.days.filter((d) => !d.isRestDay).map((d) => (
                 <button
                   key={d.id}
@@ -1488,9 +1611,35 @@ function SessionFlow() {
                   <span className="text-[10px] text-amber-400 font-mono">Select →</span>
                 </button>
               ))}
+              {!program && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleQuickStartStarterSession}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#090C11] font-display uppercase tracking-wider text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Quick-Start Day-1 Full Body</span>
+                  </button>
+                  <Link
+                    href="/program/new"
+                    className="w-full py-3 px-4 bg-[#090C11] border border-[#1C2436] hover:border-amber-500/40 rounded-xl text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Build Custom Program</span>
+                  </Link>
+                  <Link
+                    href="/today?onboarding=day0"
+                    className="w-full py-2.5 px-4 bg-[#090C11] border border-[#1C2436] rounded-xl text-xs text-slate-400 hover:text-white flex items-center justify-center gap-2 transition"
+                  >
+                    <span>Calibrate Starting Weights First</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         ) : (
+          <>
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">
@@ -1505,10 +1654,9 @@ function SessionFlow() {
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              {exercises.length} exercises · ~55 min · Target RIR 2
+              {exercises.length} exercises · ~{Math.max(15, Math.round(exercises.reduce((a, e) => a + e.targetSets, 0) * 3.5))} min · Target RIR {exercises[0]?.targetRir ?? 2}
             </p>
           </div>
-        )}
 
         {/* Salle de Sport / Training Location Selector */}
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#111622] border border-[#1C2436] text-xs shadow-sm">
@@ -1754,6 +1902,8 @@ function SessionFlow() {
         >
           <span>Begin Workout →</span>
         </button>
+          </>
+        )}
 
         {/* Different Day Picker Sheet */}
         <Sheet open={isDayPickerOpen} onOpenChange={setIsDayPickerOpen}>

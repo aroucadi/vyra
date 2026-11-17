@@ -32,6 +32,7 @@ import {
 import {
   assessBodyImageWellbeingSafety,
 } from "./visual-progress";
+import { getActiveGeminiModel, resolveGeminiTransport } from "../gemini";
 import { WorkoutSession, BodyMetricEntry } from "../types";
 
 export interface EvalCaseJson {
@@ -661,8 +662,14 @@ export async function runLiveModelVarianceEval(options?: {
   const apiKey =
     options?.apiKey ||
     (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : undefined);
+  const transport =
+    !apiKey && !options?.fetchImpl
+      ? await resolveGeminiTransport(getActiveGeminiModel(), {
+          fetchImpl: options?.fetchImpl,
+        })
+      : null;
 
-  if (!apiKey && !options?.fetchImpl) {
+  if (!apiKey && !transport && !options?.fetchImpl) {
     return {
       status: "skipped_no_api_key_in_env",
       iterationsPerCase,

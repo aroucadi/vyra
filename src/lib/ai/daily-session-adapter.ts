@@ -21,12 +21,15 @@
  *      Occupied Stations / Crowd Bypass, Time Constraints, Poor Sleep, and Location Equipment Vision.
  */
 
-import { getActiveGeminiModel, getGeminiAuthContext } from "../gemini";
-import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
 import {
-  findBiomechanicalSubstitutes,
-  inferMuscleSubdivision,
-} from "../training-math/substitution-copilot";
+  buildGeminiGenerationConfig,
+  extractCandidateText,
+  getActiveGeminiModel,
+  getGeminiFallbackChain,
+  resolveGeminiTransport,
+} from "../gemini";
+import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
+import { findBiomechanicalSubstitutes } from "../training-math/substitution-copilot";
 import {
   gymVisionInventoryStore,
   LocationEquipmentInventory,
@@ -111,6 +114,8 @@ export interface DailyWorkoutAdaptationResult {
   coachExplanation: string;
   gymInventoryUsed: LocationEquipmentInventory;
   adaptedExercises: AdaptedSessionExerciseOutput[];
+  executionEngine?: "gemini_4_argon_live" | "deterministic_local";
+  modelUsed?: string;
   agentSteps: Array<{
     step: number;
     tool: string;
@@ -663,7 +668,8 @@ export async function adaptDailyWorkoutSession(
   // Step 2: Inspect or update Location-Bound Visual Gym Inventory
   let gymInventory = gymVisionInventoryStore.getInventoryForGym(
     input.gymId,
-    input.gymName
+    input.gymName,
+    input.traineeId
   );
   if (
     input.gymPhotoDataUri ||
@@ -674,6 +680,7 @@ export async function adaptDailyWorkoutSession(
       await gymVisionInventoryStore.analyzeGymPhotoAndUpdateInventory({
         gymId: input.gymId || gymInventory.gymId,
         gymName: input.gymName || gymInventory.gymName,
+        traineeId: input.traineeId,
         photoDataUri: input.gymPhotoDataUri,
         userCaptionOrHint:
           input.gymPhotoCaption || input.voiceOrTextMessage,
@@ -764,7 +771,7 @@ export async function adaptDailyWorkoutSession(
 
   // Step 4: Handle Occupied Stations / Crowd Bypass
   if (parsed.occupiedEquipment.length > 0) {
-    let catalogueExercises: any[] = [];
+    let catalogueExercises: ReturnType<typeof loadSafeExerciseCatalogue> = [];
     try {
       catalogueExercises = loadSafeExerciseCatalogue();
     } catch {
@@ -797,7 +804,7 @@ export async function adaptDailyWorkoutSession(
 
   // Step 5: Handle Muscle Focus / Extra Emphasis Requests (`inject_focus_exercise` / boost sets)
   if (parsed.focusRegions.length > 0) {
-    let catalogueExercises: any[] = [];
+    let catalogueExercises: ReturnType<typeof loadSafeExerciseCatalogue> = [];
     try {
       catalogueExercises = loadSafeExerciseCatalogue();
     } catch {
@@ -1087,6 +1094,158 @@ export async function adaptDailyWorkoutSession(
     `Your long-term 16-week training plan and progression targets remain 100% unchanged for next week.`,
   ].join(" ");
 
+  let finalHeadline = coachHeadline;
+  let finalExplanation = coachExplanation;
+  let executionEngine: "gemini_4_argon_live" | "deterministic_local" =
+    "deterministic_local";
+  let modelUsed: string | undefined;
+
+  // Step 10: Optional Server-Side Gemini 4 Synthesis (strictly bounded by guardrails)
+  if (typeof window === "undefined" && input.voiceOrTextMessage.trim().length > 0) {
+    const modelChain = getGeminiFallbackChain(getActiveGeminiModel());
+    const sensoryRecall = sensoryMemoryStore
+      .queryRAG({
+        traineeId: input.traineeId,
+        searchQuery: input.voiceOrTextMessage,
+        limit: 3,
+      })
+      .map(
+        (m) =>
+          `[${m.entry.date}] ${m.entry.exerciseName}: ${
+            m.entry.canonicalEnglishSummary || m.entry.freeTextNote || ""
+          }`
+      )
+      .join(" | ");
+
+    const compactExercises = adapted.map((ex) => ({
+      id: ex.id,
+      name: ex.name,
+      skippedForToday: ex.skippedForToday,
+      targetSets: ex.targetSets,
+      repLow: ex.repLow,
+      repHigh: ex.repHigh,
+      currentWeight: ex.currentWeight,
+      restSeconds: ex.restSeconds,
+    }));
+
+    for (const candidateModel of modelChain) {
+      const transport = await resolveGeminiTransport(candidateModel);
+      if (!transport) break;
+      try {
+        const synthesisRes = await fetch(transport.url, {
+          method: "POST",
+          headers: transport.headers,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [
+                {
+                  text: `You are VYRA's Frontier Clinical & Biomechanical Daily Session Coach powered by Gemini 4.
+Given an athlete's check-in note, recent sensory memory, gym inventory, and safety-verified exercise adaptations, craft a concise, empathetic, actionable daily brief in the athlete's language (English/French/Darija cues if helpful).
+You may add brief per-exercise biomechanical cue improvements for non-skipped exercises, without reversing pain/injury protections or gym limitations.`,
+                },
+              ],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      athleteMessage: input.voiceOrTextMessage,
+                      gym: gymInventory.gymName,
+                      availableEquipment: gymInventory.availableCategories,
+                      protectedRegions: parsed.painRegions,
+                      constraints: uniqueConstraints,
+                      sensoryMemory: sensoryRecall || "None recorded",
+                      baselineHeadline: coachHeadline,
+                      exercises: compactExercises,
+                    }),
+                  },
+                ],
+              },
+            ],
+            generationConfig: buildGeminiGenerationConfig({
+              model: candidateModel,
+              thinkingLevel: "low",
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  coachHeadline: { type: "STRING" },
+                  coachExplanation: { type: "STRING" },
+                  exerciseCues: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        id: { type: "STRING" },
+                        formCue: { type: "STRING" },
+                        note: { type: "STRING" },
+                      },
+                      required: ["id"],
+                    },
+                  },
+                },
+                required: ["coachHeadline", "coachExplanation"],
+              },
+            }),
+          }),
+          signal:
+            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+              ? AbortSignal.timeout(7000)
+              : undefined,
+        });
+
+        if (synthesisRes.status === 404 && candidateModel !== modelChain[modelChain.length - 1]) {
+          continue;
+        }
+
+        if (synthesisRes.ok) {
+          const synthJson = await synthesisRes.json();
+          const rawText = extractCandidateText(synthJson);
+          if (rawText) {
+            const parsedSynth = JSON.parse(rawText) as {
+              coachHeadline?: string;
+              coachExplanation?: string;
+              exerciseCues?: Array<{ id: string; formCue?: string; note?: string }>;
+            };
+            if (typeof parsedSynth.coachHeadline === "string" && parsedSynth.coachHeadline.trim()) {
+              finalHeadline = parsedSynth.coachHeadline.trim().slice(0, 140);
+            }
+            if (typeof parsedSynth.coachExplanation === "string" && parsedSynth.coachExplanation.trim()) {
+              finalExplanation = parsedSynth.coachExplanation.trim().slice(0, 600);
+            }
+            if (Array.isArray(parsedSynth.exerciseCues)) {
+              for (const cue of parsedSynth.exerciseCues) {
+                const target = adapted.find((ex) => ex.id === cue.id && !ex.skippedForToday);
+                if (!target) continue;
+                if (typeof cue.formCue === "string" && cue.formCue.trim()) {
+                  target.formCue = cue.formCue.trim().slice(0, 220);
+                }
+                if (typeof cue.note === "string" && cue.note.trim()) {
+                  target.adaptationNotes.push(`🧠 Gemini Cue: ${cue.note.trim().slice(0, 180)}`);
+                  target.wasAdapted = true;
+                }
+              }
+            }
+            executionEngine = "gemini_4_argon_live";
+            modelUsed = candidateModel;
+            agentSteps.push({
+              step: agentSteps.length + 1,
+              tool: "gemini_4_synthesis",
+              summary: `Synthesized personalized coaching cues via ${candidateModel} (${transport.authMode}) within verified safety bounds.`,
+            });
+          }
+          break;
+        }
+        break;
+      } catch {
+        break;
+      }
+    }
+  }
+
   return {
     adaptationId: `daily_adapt_${Date.now()}`,
     scope: "TODAY_SESSION_ONLY",
@@ -1099,10 +1258,12 @@ export async function adaptDailyWorkoutSession(
     targetDurationMinutes: parsed.targetMinutes,
     estimatedAdaptedDurationMinutes: estimatedAdaptedMinutes,
     estimatedOriginalDurationMinutes: originalMinutes,
-    coachHeadline,
-    coachExplanation,
+    coachHeadline: finalHeadline,
+    coachExplanation: finalExplanation,
     gymInventoryUsed: gymInventory,
     adaptedExercises: adapted,
+    executionEngine,
+    modelUsed,
     agentSteps,
   };
 }

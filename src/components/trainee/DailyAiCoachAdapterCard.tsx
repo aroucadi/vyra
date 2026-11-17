@@ -70,12 +70,46 @@ export function DailyAiCoachAdapterCard({
     traineeId
   );
 
+  const runViaServerThenLocal = async (payload: {
+    traineeId: string;
+    voiceOrTextMessage: string;
+    gymId?: string;
+    gymName?: string;
+    gymPhotoDataUri?: string;
+    gymPhotoCaption?: string;
+    exercises: PlannedSessionExerciseInput[];
+  }): Promise<DailyWorkoutAdaptationResult> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const res = await fetch("/api/ai/adapt-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const json = (await res.json()) as {
+          ok?: boolean;
+          adaptation?: DailyWorkoutAdaptationResult;
+        };
+        if (json?.ok && json.adaptation) {
+          return json.adaptation;
+        }
+      }
+    } catch {
+      // Fall back seamlessly to local deterministic engine when offline
+    }
+    return adaptDailyWorkoutSession(payload);
+  };
+
   const handleRunAdaptation = async (customPrompt?: string) => {
     const textToUse = (customPrompt ?? message).trim();
     if (!textToUse) return;
     setIsAdapting(true);
     try {
-      const result = await adaptDailyWorkoutSession({
+      const result = await runViaServerThenLocal({
         traineeId,
         voiceOrTextMessage: textToUse,
         gymId,
@@ -98,7 +132,7 @@ export function DailyAiCoachAdapterCard({
       const reader = new FileReader();
       reader.onload = async () => {
         const dataUri = typeof reader.result === "string" ? reader.result : undefined;
-        const result = await adaptDailyWorkoutSession({
+        const result = await runViaServerThenLocal({
           traineeId,
           voiceOrTextMessage:
             message || `Recognize available equipment from gym photo at ${gymName || "current gym"}`,
@@ -354,6 +388,11 @@ export function DailyAiCoachAdapterCard({
           </div>
           <div style={{ fontSize: 11.5, color: "#CBD5E1", lineHeight: 1.4 }}>
             {activeAdaptation.coachExplanation}
+          </div>
+          <div style={{ fontSize: 10, color: "#64748B", marginTop: 6, fontFamily: "monospace" }}>
+            {activeAdaptation.executionEngine === "gemini_4_argon_live"
+              ? `ENGINE: ${(activeAdaptation.modelUsed || "gemini-4-argon").toUpperCase()} · GUARDRAIL VERIFIED`
+              : "ENGINE: LOCAL GUARDRAIL ENGINE · LONG-TERM BLUEPRINT UNCHANGED"}
           </div>
         </div>
       )}

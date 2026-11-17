@@ -4,6 +4,9 @@ import { diagnoseNutritionAndEnergyBalance } from "./ai/nutrition-coach";
 import { assembleAthleteCaseFile, executeWeeklyMesoReview } from "./ai/coaching-cycle";
 import { athleteModelStore } from "./ai/athlete-model";
 import { calculateSmoothedBodyweightTrend } from "./training-math/trend-analytics";
+import { findBiomechanicalSubstitutes } from "./training-math/substitution-copilot";
+import { inferPrimaryMuscleFromExerciseName } from "./ai/sensory-memory";
+import { loadSafeExerciseCatalogue } from "./ai/catalogue-bridge";
 
 export type CoachCardActionType = "swap" | "condense" | "autoregulate" | "nutrition" | "load_explanation" | "none";
 
@@ -63,8 +66,13 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
 
   const targetDay = currentWeek?.days.find((d) => d.dayOfWeek === resolved.dayOfWeek && !d.isRestDay) ||
     currentWeek?.days.find((d) => !d.isRestDay) ||
-    { label: "Today's Session", dayOfWeek: 0 };
+    { label: "Today's Session", dayOfWeek: 0, blocks: [] };
 
+  const targetDayExercises = ("blocks" in targetDay && Array.isArray(targetDay.blocks))
+    ? targetDay.blocks.flatMap((b) => b.exercises)
+    : [];
+
+  const isAlaaAccount = traineeId === "trainee_alaa";
   const responseId = `msg_coach_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
   // 1. EXERCISE SWAP INTENT
@@ -78,24 +86,51 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     normalized.includes("pain")
   ) {
     const isShoulderPain = normalized.includes("shoulder") || normalized.includes("pain") || normalized.includes("impingement");
-    const currentEx = "Incline Machine Chest Press";
-    const replacementEx = "30° Incline Dumbbell Press";
+    const matchedPress = targetDayExercises.find((e) => /press|bench|fly|dip/i.test(e.exerciseName));
+    const currentEx = isAlaaAccount
+      ? "Incline Machine Chest Press"
+      : matchedPress?.exerciseName || targetDayExercises[0]?.exerciseName || "Incline Machine Chest Press";
+
+    let replacementEx = "30° Incline Dumbbell Press";
+    if (!isAlaaAccount && currentEx !== "Incline Machine Chest Press") {
+      try {
+        const catalogue = loadSafeExerciseCatalogue();
+        const subs = findBiomechanicalSubstitutes(
+          {
+            name: currentEx,
+            target:
+              matchedPress?.targetMuscleGroups?.[0] ||
+              inferPrimaryMuscleFromExerciseName(currentEx),
+            equipment: matchedPress?.selectedEquipment || "barbell",
+          },
+          catalogue,
+          { limit: 2 }
+        );
+        if (subs[0]?.exercise?.name) {
+          replacementEx = subs[0].exercise.name;
+        }
+      } catch {
+        // Fallback to clean default press variation
+      }
+    }
+    const targetSetsLabel = matchedPress?.sets ?? 3;
+    const targetWeightLabel = matchedPress?.targetWeightKg ? `${matchedPress.targetWeightKg} kg` : "Matched RIR";
 
     return {
       id: responseId,
       text: isShoulderPain
-        ? `Shoulder impingement typically arises from rigid fixed-axis machines under high load. I've configured an alternative to 30° Incline Dumbbell Press, which allows natural scapular glide and free humeral rotation while matching upper clavicular pectoral recruitment.`
-        : `I've analyzed biomechanically equivalent alternatives for ${currentEx}. The 30° Incline Dumbbell Press matches the tension curve while allowing individual limb stabilization.`,
+        ? `Shoulder impingement typically arises from rigid fixed-axis machines under high load. I've configured an alternative to ${replacementEx}, which allows natural scapular glide and free humeral rotation while matching upper-body recruitment.`
+        : `I've analyzed biomechanically equivalent alternatives for ${currentEx}. ${replacementEx} matches the tension curve while allowing smoother joint mechanics.`,
       card: {
         type: "swap",
         eyebrow: `AUTOREGULATION · ${targetDay.label.toUpperCase()}`,
         headline: `${currentEx} ➔ ${replacementEx}`,
-        subtext: "Preserves upper-chest stimulus while eliminating fixed-axis Glenohumeral joint impingement.",
+        subtext: "Preserves target muscle stimulus while reducing joint shear and fixed-axis restriction.",
         ctaLabel: `Apply Swap to ${targetDay.label}`,
         targetDayLabel: targetDay.label,
         details: [
-          { label: "Target Load", value: "28 kg DBs" },
-          { label: "Prescription", value: "3 Sets · RIR 2" },
+          { label: "Target Load", value: isAlaaAccount ? "28 kg DBs" : targetWeightLabel },
+          { label: "Prescription", value: `${targetSetsLabel} Sets · RIR 2` },
           { label: "Plane", value: "Converging Arc" },
         ],
         actionPayload: {
@@ -204,12 +239,58 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     normalized.includes("reps") ||
     normalized.includes("overload")
   ) {
-    const pb = appStore.getPersonalBestForExercise(traineeId, "Barbell Back Squat");
-    const pbWeight = pb ? pb.weightKg : 140;
+    const asksForSquat = normalized.includes("squat");
+    const primaryLift =
+      isAlaaAccount || asksForSquat ? undefined : targetDayExercises[0];
+    const pb = primaryLift
+      ? appStore.getPersonalBestForExercise(traineeId, primaryLift.exerciseName)
+      : appStore.getPersonalBestForExercise(traineeId, "Barbell Back Squat");
+    const pbWeight = pb
+      ? pb.weightKg
+      : primaryLift?.targetWeightKg && primaryLift.targetWeightKg > 0
+      ? primaryLift.targetWeightKg
+      : isAlaaAccount
+      ? 140
+      : 0;
+
+    if (pbWeight === 0 && !isAlaaAccount) {
+      return {
+        id: responseId,
+        text: `You haven't logged calibrated working weights yet. Start your first session with an easy top set around RIR 2–3 — once saved, I'll apply strict Double Progression (+2.5 kg whenever you clear the upper rep ceiling across all working sets).`,
+        card: {
+          type: "load_explanation",
+          eyebrow: "PROGRESSION RULES · CALIBRATION",
+          headline: "Double Progression Ceiling Model",
+          subtext: "Log your first calibrated working set to lock in personalized load targets.",
+          ctaLabel: "Review in Exercise Library",
+          targetDayLabel: targetDay.label,
+          details: [
+            { label: "Current Load", value: "Calibrating" },
+            { label: "Rep Target", value: "8–10 Reps" },
+            { label: "Next Step", value: "+2.5 kg (@ 10r)" },
+          ],
+          actionPayload: {
+            actionType: "load_explanation",
+            dayOfWeek: targetDay.dayOfWeek,
+          },
+          interactiveData: {
+            formula: "Next Load = Current Load + 2.5kg (if Reps >= 10 on all working sets)",
+            baselineWeightKg: 0,
+            currentReps: 8,
+            targetReps: 10,
+            nextIncrementKg: 2.5,
+            conditionSummary: "Complete your Day-1 calibration sets to establish your baseline weight.",
+          },
+        },
+      };
+    }
+
+    const repLow = primaryLift?.repRangeLow ?? 8;
+    const repHigh = primaryLift?.repRangeHigh ?? 10;
 
     return {
       id: responseId,
-      text: `Your working load targets (${pbWeight} kg baseline) follow our strict Double Progression rule: you must hit the upper ceiling of your prescribed rep range (e.g. 10 clean reps @ 2 RIR) across all scheduled working sets before earning a +2.5 kg weight bump. This prevents ego-lifting and builds genuine tendon resilience.`,
+      text: `Your working load targets (${pbWeight} kg baseline) follow our strict Double Progression rule: you must hit the upper ceiling of your prescribed rep range (e.g. ${repHigh} clean reps @ 2 RIR) across all scheduled working sets before earning a +2.5 kg weight bump. This prevents ego-lifting and builds genuine tendon resilience.`,
       card: {
         type: "load_explanation",
         eyebrow: "PROGRESSION RULES · FORMULA & MATH",
@@ -219,20 +300,20 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
         targetDayLabel: targetDay.label,
         details: [
           { label: "Current Load", value: `${pbWeight} kg` },
-          { label: "Rep Target", value: "8–10 Reps" },
-          { label: "Next Step", value: `+2.5 kg (@ 10r)` },
+          { label: "Rep Target", value: `${repLow}–${repHigh} Reps` },
+          { label: "Next Step", value: `+2.5 kg (@ ${repHigh}r)` },
         ],
         actionPayload: {
           actionType: "load_explanation",
           dayOfWeek: targetDay.dayOfWeek,
         },
         interactiveData: {
-          formula: "Next Load = Current Load + 2.5kg (if Reps >= 10 on all 3 sets)",
+          formula: `Next Load = Current Load + 2.5kg (if Reps >= ${repHigh} on all 3 sets)`,
           baselineWeightKg: pbWeight,
-          currentReps: 9,
-          targetReps: 10,
+          currentReps: Math.max(repLow, repHigh - 1),
+          targetReps: repHigh,
           nextIncrementKg: 2.5,
-          conditionSummary: "1 more clean rep needed on Set 3 to unlock 142.5 kg next session.",
+          conditionSummary: `1 more clean rep needed on final set to unlock ${(pbWeight + 2.5).toFixed(1)} kg next session.`,
         },
       },
     };
@@ -255,18 +336,29 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     const metrics = appStore.getMetrics(traineeId);
     const weightTrend = calculateSmoothedBodyweightTrend(metrics);
     const diag = diagnoseNutritionAndEnergyBalance(athlete, weightTrend);
-    const weightKg = weightTrend.smoothedKg || weightTrend.latestRawKg || athlete.dynamic.energyBalanceTrend.value.smoothedWeightKg || 52.0;
+    const weightKg =
+      weightTrend.smoothedKg ||
+      weightTrend.latestRawKg ||
+      athlete.dynamic.energyBalanceTrend.value.smoothedWeightKg ||
+      (isAlaaAccount ? 52.0 : 0);
     const weightProvenance = athlete.dynamic.energyBalanceTrend.source ?? "measured";
+    const dietaryStaples = athlete.static.lifestyle.locationContext.value.dietaryStaples;
+    const staplesCopy =
+      dietaryStaples && dietaryStaples.length > 0
+        ? dietaryStaples.slice(0, 4).join(", ")
+        : isAlaaAccount
+        ? "4–6 whole eggs daily, olive oil drizzled on lentils/harira, fresh sardines, and a whole-milk banana shake with almonds"
+        : "4–6 whole eggs daily, extra-virgin olive oil over rice or legumes, fatty fish or poultry, and a calorie-dense milk/nut smoothie";
 
     if (diag.isCaloricBottleneck) {
       return {
         id: responseId,
-        text: `Energy balance is currently your #1 bottleneck. Swapping exercises won't fix an empty fuel tank. Your bodyweight is currently ${weightKg.toFixed(1)} kg (${weightProvenance}, smoothed trend ${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). To build muscle tissue and drive progressive overload, you need a deliberate surplus of +${diag.surplusDeltaKcal} kcal/day (${diag.prescribedDailyKcal} kcal total) with ${diag.prescribedDailyProteinGrams}g protein. Focus on accessible Casablanca whole-food staples: 4–6 whole eggs daily, olive oil drizzled on lentils/harira, fresh sardines, and a whole-milk banana shake with almonds.`,
+        text: `Energy balance is currently your #1 bottleneck. Swapping exercises won't fix an empty fuel tank. Your bodyweight is currently ${weightKg > 0 ? `${weightKg.toFixed(1)} kg` : "uncalibrated"} (${weightProvenance}, smoothed trend ${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). To build muscle tissue and drive progressive overload, you need a deliberate surplus of +${diag.surplusDeltaKcal} kcal/day (${diag.prescribedDailyKcal} kcal total) with ${diag.prescribedDailyProteinGrams}g protein. Focus on accessible whole-food staples: ${staplesCopy}.`,
         card: {
           type: "nutrition",
           eyebrow: "NUTRITION & ENERGY BALANCE · SURPLUS PROTOCOL",
-          headline: `Energy Bottleneck Detected · +${diag.surplusDeltaKcal} kcal Surplus`,
-          subtext: `Current intake matches maintenance (~${diag.currentEstimatedMaintenanceKcal} kcal) for ${weightKg.toFixed(1)} kg. Fuel is the primary limiter on your compound lifts.`,
+          headline: `Energy Bottleneck · +${diag.surplusDeltaKcal} kcal Surplus`,
+          subtext: `Current intake matches maintenance (~${diag.currentEstimatedMaintenanceKcal} kcal)${weightKg > 0 ? ` for ${weightKg.toFixed(1)} kg` : ""}. Fuel is the primary limiter on your compound lifts.`,
           ctaLabel: "Commit Surplus Strategy",
           targetDayLabel: "Daily Target",
           details: [
@@ -283,7 +375,7 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
     } else {
       return {
         id: responseId,
-        text: `Your current energy balance is supporting your training. Smoothed weight is ${weightKg.toFixed(1)} kg (${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). Recommended target remains ${diag.prescribedDailyKcal} kcal with ${diag.prescribedDailyProteinGrams}g protein to maintain recovery capacity.`,
+        text: `Your current energy balance is supporting your training. Smoothed weight is ${weightKg > 0 ? `${weightKg.toFixed(1)} kg` : "calibrating"} (${weightTrend.weeklyDeltaKg >= 0 ? "+" : ""}${weightTrend.weeklyDeltaKg.toFixed(2)} kg/week). Recommended target remains ${diag.prescribedDailyKcal} kcal with ${diag.prescribedDailyProteinGrams}g protein to maintain recovery capacity.`,
         card: {
           type: "nutrition",
           eyebrow: "NUTRITION TARGETS",
@@ -368,9 +460,12 @@ export function resolveCoachQuery(traineeId: string, query: string): CoachRespon
   const athlete = athleteModelStore.getAthleteModel(traineeId);
   const regime = athlete.static.regime.value ?? "hypertrophy";
   const trainingAgeY = (athlete.static.trainingAgeMonths.value / 12).toFixed(1);
+  const activePlanSummary = program
+    ? `Active plan: "${program.title}" (next focus: ${targetDay.label}).`
+    : "No active split selected yet — you can generate a custom program in Plan -> New Program or start a quick Day-1 calibration session.";
 
   return {
     id: responseId,
-    text: `Maintaining your ${regime} periodization blueprint (training age: ${trainingAgeY}y). Current focus is progressive overload, strict scapular control, and sound recovery. Let me know if you need to swap an exercise, adjust load, condense your session, or review your nutrition and energy balance.`,
+    text: `Maintaining your ${regime} periodization blueprint (training age: ${trainingAgeY}y). ${activePlanSummary} Ask me to swap an exercise, adjust load, condense a session for time, run a weekly review, or audit your nutrition target.`,
   };
 }

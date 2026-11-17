@@ -12,7 +12,13 @@ import { ExerciseBiofeedbackTag, AudioTranscriptionStatus } from "../types";
 import { inferMuscleSubdivision, inferResistanceProfile, MuscleSubdivision } from "../training-math/substitution-copilot";
 import { getStorageAdapter } from "../storage/adapter";
 import { computeBiomechanicalEmbedding, cosineSimilarity } from "./vector-engine";
-import { getActiveGeminiModel, getGeminiAuthContext } from "../gemini";
+import {
+  buildGeminiGenerationConfig,
+  extractCandidateText,
+  getActiveGeminiModel,
+  getGeminiAuthContext,
+  resolveGeminiTransport,
+} from "../gemini";
 import { hasNegatedOrResolvedSymptomTokens } from "./symptom-nlu";
 
 export type SensationCategory =
@@ -355,20 +361,16 @@ export async function transcribeAudioFeedbackWithGemini(
   const base64Data = validation.base64Data || "";
   if (!base64Data) return undefined;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const model = getActiveGeminiModel();
+  const transport = await resolveGeminiTransport(model);
+  if (!transport) {
     return undefined;
   }
 
   try {
-    const model = getActiveGeminiModel();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    const response = await fetch(url, {
+    const response = await fetch(transport.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
+      headers: transport.headers,
       body: JSON.stringify({
         contents: [
           {
@@ -388,16 +390,22 @@ export async function transcribeAudioFeedbackWithGemini(
             ],
           },
         ],
-        generationConfig: {
+        generationConfig: buildGeminiGenerationConfig({
+          model,
+          thinkingLevel: "low",
+          maxOutputTokens: 8192,
           temperature: 0.1,
-          maxOutputTokens: 512,
-        },
+        }),
       }),
+      signal:
+        typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(15_000)
+          : undefined,
     });
 
     if (response.ok) {
       const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const text = extractCandidateText(data);
       return text || undefined;
     }
     return undefined;
@@ -922,8 +930,16 @@ export class SensoryMemoryStore {
       canonicalEnglishSummary: extracted.canonicalEnglishSummary,
       biomechanicalEntities: extracted.biomechanicalEntities,
       embeddingVector,
-      gymId: input.gymId || "gym_punch_lissasfa",
-      gymName: input.gymName || "Punch by Badr Hari Lissasfa",
+      gymId:
+        input.gymId ||
+        (input.traineeId === "trainee_alaa"
+          ? "gym_punch_lissasfa"
+          : "gym_default_commercial"),
+      gymName:
+        input.gymName ||
+        (input.traineeId === "trainee_alaa"
+          ? "Punch by Badr Hari Lissasfa"
+          : "Default Gym"),
       epochMs: effectiveEpochMs,
     };
 

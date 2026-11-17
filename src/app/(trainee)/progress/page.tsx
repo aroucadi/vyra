@@ -5,7 +5,6 @@ import {
   TrendingDown,
   Plus,
   Trophy,
-  Activity,
   CheckCircle2,
   Dumbbell,
   ChevronRight,
@@ -18,16 +17,19 @@ import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboar
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { VisualProgressStudio } from "@/components/trainee/VisualProgressStudio";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function ProgressPage() {
   useVyraStoreVersion();
+  const isHydrated = useIsClientHydrated();
   const currentUser = appStore.getCurrentUser();
-  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
-  const athleteModel = athleteModelStore.getAthleteModel(currentUser.id);
-  const metrics = appStore.getMetrics(currentUser.id);
+  const activeProgram = isHydrated ? appStore.getActiveProgramForTrainee(currentUser.id) : undefined;
+  const athleteModel = isHydrated
+    ? athleteModelStore.getAthleteModel(currentUser.id)
+    : athleteModelStore.getAthleteModel("anon_visitor");
+  const metrics = isHydrated ? appStore.getMetrics(currentUser.id) : [];
   const [, setLocalTick] = useState(0);
-  const sessions = appStore.getSessions(currentUser.id);
+  const sessions = isHydrated ? appStore.getSessions(currentUser.id) : [];
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
 
   const [weightInput, setWeightInput] = useState("");
@@ -242,7 +244,7 @@ export default function ProgressPage() {
 
       {/* 2. Weekly Volume Dashboard & Biomechanical Architecture */}
       {activeProgram ? (
-        <WeeklyVolumeDashboard />
+        <WeeklyVolumeDashboard program={activeProgram} />
       ) : (
         <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-2">
           <div className="flex items-center justify-between">

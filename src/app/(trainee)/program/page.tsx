@@ -4,17 +4,14 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
 import { resolveProgramDay } from "@/lib/utils";
-import { ProgramDay, ExercisePrescription } from "@/lib/types";
+import { ExercisePrescription } from "@/lib/types";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
 import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
 import {
   Dumbbell,
-  Clock,
   ArrowRight,
-  ShieldCheck,
   Moon,
-  Flame,
   Activity,
   Eye,
   Sparkles,
@@ -23,7 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 const DAY_FOCUS_META: Record<number, { title: string; subtitle: string; tag: string }> = {
   0: { title: "Upper Power Hypertrophy", subtitle: "Incline Clavicular Bias & Chest Support", tag: "Upper Push" },
@@ -50,8 +47,9 @@ function formatExerciseName(name: string): string {
 
 export default function ProgramCalendarPage() {
   useVyraStoreVersion();
+  const isHydrated = useIsClientHydrated();
   const currentUser = appStore.getCurrentUser();
-  const program = appStore.getActiveProgramForTrainee(currentUser.id);
+  const program = isHydrated ? appStore.getActiveProgramForTrainee(currentUser.id) : undefined;
   const resolved = program ? resolveProgramDay(program.startDate) : { weekIndex: 1, dayOfWeek: 0, started: true };
 
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(() => resolved.dayOfWeek);
@@ -111,11 +109,24 @@ export default function ProgramCalendarPage() {
   const selectedDay = currentWeek.days.find((d) => d.dayOfWeek === selectedDayOfWeek) || currentWeek.days[0];
   const exercises: ExercisePrescription[] = selectedDay.blocks ? selectedDay.blocks.flatMap((b) => b.exercises) : [];
   const isSelectedToday = resolved.dayOfWeek === selectedDay.dayOfWeek;
-  const dayMeta = DAY_FOCUS_META[selectedDay.dayOfWeek] || {
-    title: selectedDay.label,
-    subtitle: "Biomechanical Protocol",
-    tag: "Training",
-  };
+  const isAlaaMaster = program.id === "prog_alaa_master";
+  const trainingDaysCount = currentWeek.days.filter((d) => !d.isRestDay && d.blocks?.some((b) => b.exercises.length > 0)).length;
+  const totalDaySets = exercises.reduce((acc, ex) => acc + (ex.sets || 0), 0);
+  const estimatedDayMinutes = Math.max(15, Math.round(totalDaySets * 3.2));
+  const muscleTagSummary = Array.from(
+    new Set(exercises.flatMap((ex) => ex.targetMuscleGroups || []).filter(Boolean))
+  ).slice(0, 3);
+
+  const dayMeta = isAlaaMaster && DAY_FOCUS_META[selectedDay.dayOfWeek]
+    ? DAY_FOCUS_META[selectedDay.dayOfWeek]
+    : {
+        title: selectedDay.label || `Day ${selectedDay.dayOfWeek + 1} Session`,
+        subtitle:
+          muscleTagSummary.length > 0
+            ? `Primary focus: ${muscleTagSummary.join(" · ")}`
+            : "Progressive Hypertrophy & Strength Protocol",
+        tag: selectedDay.isRestDay ? "Rest" : muscleTagSummary[0] || "Training",
+      };
 
   // Inspect exercise in detail modal
   const handleInspectExercise = async (ex: ExercisePrescription) => {
@@ -168,21 +179,32 @@ export default function ProgramCalendarPage() {
             </span>
           </div>
 
-          <Link
-            href="/posture"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#111622] border border-[#1C2436] hover:border-amber-500/40 text-[10px] font-mono font-bold text-amber-400 hover:text-amber-300 transition shrink-0 shadow-sm"
-          >
-            <Activity className="w-3 h-3" />
-            <span>Radar</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/program/new"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 text-[10px] font-mono font-bold text-amber-400 hover:text-amber-300 transition shrink-0 shadow-sm"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>+ New</span>
+            </Link>
+            <Link
+              href="/posture"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#111622] border border-[#1C2436] hover:border-amber-500/40 text-[10px] font-mono font-bold text-amber-400 hover:text-amber-300 transition shrink-0 shadow-sm"
+            >
+              <Activity className="w-3 h-3" />
+              <span>Radar</span>
+            </Link>
+          </div>
         </div>
 
         <div className="pt-1">
           <h1 className="text-2xl font-editorial font-bold text-white tracking-tight">
-            Program Architecture
+            {isAlaaMaster ? "Program Architecture" : program.title || "Program Architecture"}
           </h1>
           <p className="text-xs text-slate-400 font-body leading-relaxed mt-0.5">
-            Strict 3-slot split engineered for clavicular width and joint longevity.
+            {isAlaaMaster
+              ? "Strict 3-slot split engineered for clavicular width and joint longevity."
+              : `${trainingDaysCount}-day structured split · ${program.durationWeeks}-week progression block.`}
           </p>
         </div>
       </header>
@@ -322,7 +344,9 @@ export default function ProgramCalendarPage() {
               <span className="text-xs font-mono font-bold text-amber-400 block tabular-nums">
                 {exercises.length} Exercises
               </span>
-              <span className="text-[10px] font-mono text-slate-500 block">~34 min floor</span>
+              <span className="text-[10px] font-mono text-slate-500 block">
+                ~{isAlaaMaster ? 34 : estimatedDayMinutes} min floor
+              </span>
             </div>
           </div>
 
@@ -428,13 +452,15 @@ export default function ProgramCalendarPage() {
               Block 3
             </span>
             <div className="font-editorial font-bold text-white text-xs">Realize</div>
-            <div className="text-[10px] text-slate-400 font-mono">W13–W16 · 57kg</div>
+            <div className="text-[10px] text-slate-400 font-mono">
+              {isAlaaMaster ? "W13–W16 · 57kg" : "W13–W16 · Peak"}
+            </div>
           </div>
         </div>
       </div>
 
       {/* 5. Elevated Biomechanical Architecture HUD */}
-      <WeeklyVolumeDashboard />
+      <WeeklyVolumeDashboard program={program} />
 
       {/* 6. Biomechanical Exercise Detail Modal */}
       <ExerciseDetailSheet

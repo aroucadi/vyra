@@ -38,6 +38,20 @@ export function useVyraAuth(): VyraAuthContextValue {
   return useContext(VyraAuthContext);
 }
 
+const noopSubscribe = () => () => {};
+
+/**
+ * Returns `false` on SSR and during React's initial client hydration pass, then
+ * flips cleanly to `true` immediately after hydration commits (0 `#418` mismatches).
+ */
+export function useIsClientHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
+}
+
 /**
  * Subscribes a Client Component cleanly to `appStore` mutations (bootstrap hydration,
  * workout saves, bodyweight metrics, supplements, hydration, sign-out).
@@ -117,11 +131,15 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     const init = async () => {
-      setIsBootstrapping(true);
+      appStore.hydrateFromClientStorage(true);
       await applyBootstrap();
       if (active) setIsBootstrapping(false);
     };
-    init();
+
+    const hydrateTimer = setTimeout(() => {
+      if (!active) return;
+      void init();
+    }, 0);
 
     const unsub = subscribeFirebaseAuthState(async (fbUser) => {
       if (!active) return;
@@ -141,6 +159,7 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
+      clearTimeout(hydrateTimer);
       unsub();
     };
   }, [applyBootstrap]);

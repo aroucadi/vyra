@@ -16,7 +16,13 @@
  *    `CoachingExperiment` with an explicit hypothesis, review window, and adjudication metric.
  */
 
-import { getActiveGeminiModel, getGeminiAuthContext } from "../gemini";
+import {
+  buildGeminiGenerationConfig,
+  getActiveGeminiModel,
+  getGeminiAuthContext,
+  resolveGeminiTransport,
+  ResolvedGeminiTransport,
+} from "../gemini";
 import {
   VERTEX_AGENT_TOOL_DECLARATIONS,
   EvaluateJitInput,
@@ -1006,7 +1012,12 @@ export async function runVertexAgenticCoachLoop(
         };
       }
       case "get_gym_equipment_inventory": {
-        return toolGetGymEquipment(args.gymId || input.gymId, input.gymName);
+        return toolGetGymEquipment(
+          args.gymId ? String(args.gymId) : input.gymId,
+          input.gymName,
+          input.equipmentPhotoCaption,
+          input.traineeId
+        );
       }
       case "audit_systemic_cns_recovery": {
         return toolAuditRecoveryState({
@@ -1031,7 +1042,12 @@ export async function runVertexAgenticCoachLoop(
         };
       }
       case "verify_evolution_candidate": {
-        const gym = toolGetGymEquipment(input.gymId, input.gymName);
+        const gym = toolGetGymEquipment(
+          input.gymId,
+          input.gymName,
+          input.equipmentPhotoCaption,
+          input.traineeId
+        );
         const rag = toolRagFeedbackMemory(input.traineeId, input.exerciseName, input.sessions);
         const prevEq = input.equipment || "dumbbell";
         const prevProfile = inferResistanceProfile(input.exerciseName, prevEq);
@@ -1069,7 +1085,12 @@ export async function runVertexAgenticCoachLoop(
         stagesCompleted.propose = true;
         const mappedTier: CoachingTier = parsed.tier;
 
-        const gym = toolGetGymEquipment(input.gymId, input.gymName);
+        const gym = toolGetGymEquipment(
+          input.gymId,
+          input.gymName,
+          input.equipmentPhotoCaption,
+          input.traineeId
+        );
         const rag = toolRagFeedbackMemory(input.traineeId, input.exerciseName, input.sessions);
         const replacementName = parsed.replacementExerciseName;
         const replacementEq = parsed.replacementEquipment || input.equipment;
@@ -1156,16 +1177,31 @@ export async function runVertexAgenticCoachLoop(
     }
   };
 
-  // If live GEMINI_API_KEY or custom fetchImpl/fault simulation is configured, execute multi-turn native function-calling loop
-  const shouldUseLiveLlmPath = Boolean(
-    process.env.GEMINI_API_KEY ||
-      opts.fetchImpl ||
-      opts.simulateStageFailure === "timeout" ||
-      opts.simulateStageFailure === "rate_limit_429" ||
-      opts.simulateStageFailure === "service_unavailable_503"
+  // Resolve live LLM transport (GEMINI_API_KEY, Cloud Run Vertex AI OAuth2 ADC, custom fetchImpl, or fault simulation)
+  const resolvedTransport: ResolvedGeminiTransport | null =
+    opts.fetchImpl ||
+    opts.simulateStageFailure === "timeout" ||
+    opts.simulateStageFailure === "rate_limit_429" ||
+    opts.simulateStageFailure === "service_unavailable_503"
+      ? {
+          url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY || "test-key",
+          },
+          authMode: "ai_studio_api_key",
+        }
+      : await resolveGeminiTransport(model);
+
+  const shouldUseLiveLlmPath = Boolean(resolvedTransport);
+  const resolvedGym = toolGetGymEquipment(
+    input.gymId,
+    input.gymName,
+    input.equipmentPhotoCaption,
+    input.traineeId
   );
 
-  if (shouldUseLiveLlmPath) {
+  if (shouldUseLiveLlmPath && resolvedTransport) {
     let turns = 0;
     try {
       const contents: any[] = [
@@ -1175,7 +1211,7 @@ export async function runVertexAgenticCoachLoop(
             {
               text: `You are the VYRA Autonomous CSCS Strength & Biomechanics Coach.
 You reason about the PERSON first, then the exercise.
-1. Call get_athlete_case_file, retrieve_science_principles, query_athlete_history, and rag_sensory_feedback for trainee "${input.traineeId}" and exercise "${input.exerciseName}" (${input.currentWeightKg}kg, target ${input.targetSets} sets x ${input.repLow}-${input.repHigh} reps) at gym "${input.gymName || "Punch by Badr Hari Lissasfa"}".
+1. Call get_athlete_case_file, retrieve_science_principles, query_athlete_history, and rag_sensory_feedback for trainee "${input.traineeId}" and exercise "${input.exerciseName}" (${input.currentWeightKg}kg, target ${input.targetSets} sets x ${input.repLow}-${input.repHigh} reps) at gym "${resolvedGym.gymName}".
 2. Rank bottlenecks strictly along the Coach Priority Hierarchy:
    (1) Medical/Safety & Joint Integrity -> (2) Adherence -> (3) Energy Balance & Protein -> (4) Progressive Overload -> (5) Sleep/Recovery -> (6) Exercise Selection.
 3. Call propose_and_critique_intervention to challenge your own hypothesis ("What would make this intervention wrong? Is it proportional to the athlete's training age?").
@@ -1202,22 +1238,23 @@ You reason about the PERSON first, then the exercise.
 
       while (turns < maxTurns) {
         turns++;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const { response: res } = await fetchWithRetryTimeoutAndCircuitBreaker({
-          url,
+          url: resolvedTransport.url,
           init: {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": process.env.GEMINI_API_KEY || "test-key",
-            },
+            headers: resolvedTransport.headers,
             body: JSON.stringify({
               contents,
               tools: [{ functionDeclarations: VERTEX_AGENT_TOOL_DECLARATIONS }],
-              generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+              generationConfig: buildGeminiGenerationConfig({
+                model,
+                thinkingLevel: "low",
+                maxOutputTokens: 16384,
+                temperature: 0.1,
+              }),
             }),
           },
-          timeoutMs: opts.timeoutMs ?? 8000,
+          timeoutMs: opts.timeoutMs ?? 12000,
           maxRetries: opts.maxRetries ?? 3,
           baseDelayMs: opts.baseDelayMs ?? 150,
           fetchImpl: effectiveFetch,
@@ -1260,7 +1297,7 @@ You reason about the PERSON first, then the exercise.
         }
 
         contents.push({
-          role: "function",
+          role: "user",
           parts: responseParts,
         });
 

@@ -257,6 +257,9 @@ function SessionFlow() {
     });
   });
 
+  const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [isRecalibrationApplied, setIsRecalibrationApplied] = useState<boolean>(false);
+  const [isRecalibrationDismissed, setIsRecalibrationDismissed] = useState<boolean>(false);
   const [previewDetailEx, setPreviewDetailEx] = useState<ActiveExercise | null>(null);
 
   // Re-sync exercises whenever targetDay changes
@@ -307,7 +310,6 @@ function SessionFlow() {
     setIsRecalibrationDismissed(false);
   }, [targetDay?.id]);
 
-  const [currentExIndex, setCurrentExIndex] = useState(0);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
   const [isSwapDrawerOpen, setIsSwapDrawerOpen] = useState(false);
@@ -473,6 +475,9 @@ function SessionFlow() {
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => soundService.getIsMuted());
   const [sessionStartTime, setSessionStartTime] = useState(() => new Date().toISOString());
   const [lastSetLoggedAt, setLastSetLoggedAt] = useState<number>(() => Date.now());
+  // Keep snapshot of un-adapted exercises for true Undo support
+  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ActiveExercise[] | null>(null);
+  const [activeDailyAdaptation, setActiveDailyAdaptation] = useState<DailyWorkoutAdaptationResult | null>(null);
 
   // Helper to persist draft with exact epoch timestamps
   const persistDraft = (
@@ -502,6 +507,8 @@ function SessionFlow() {
       gymId: selectedGym?.id,
       gymName: selectedGym?.name,
       gymAddress: selectedGym?.address,
+      isAdaptedSession: Boolean(activeDailyAdaptation),
+      activeDailyAdaptation: activeDailyAdaptation || undefined,
     });
   };
 
@@ -515,9 +522,12 @@ function SessionFlow() {
           const hasLoggedSets = draft.exercises.some((e: any) => e.completedSets?.length > 0);
           const matchesDay = !dayParam || !draft.programDayId || draft.programDayId === targetDay?.id;
           const expectedCount = targetDay?.blocks?.flatMap((b) => b.exercises).length || 0;
-          const isStaleDraft = expectedCount > 0 && draft.exercises.length < expectedCount;
+          const isStaleDraft =
+            expectedCount > 0 &&
+            draft.exercises.length < expectedCount &&
+            !draft.isAdaptedSession;
 
-          if (hasLoggedSets && matchesDay && !isStaleDraft) {
+          if ((hasLoggedSets || draft.isAdaptedSession) && matchesDay && !isStaleDraft) {
             setExercises(
               draft.exercises.map((e: ActiveExercise) => ({
                 ...e,
@@ -530,6 +540,9 @@ function SessionFlow() {
                 }),
               }))
             );
+            if (draft.activeDailyAdaptation) {
+              setActiveDailyAdaptation(draft.activeDailyAdaptation as DailyWorkoutAdaptationResult);
+            }
             if (typeof draft.currentExerciseIndex === "number") {
               setCurrentExIndex(Math.min(draft.currentExerciseIndex, draft.exercises.length - 1));
             }
@@ -661,8 +674,6 @@ function SessionFlow() {
   const [sleepHours, setSleepHours] = useState<number>(() => {
     return latestSnapshot ? latestSnapshot.sleepHours : 7.5;
   });
-  const [isRecalibrationApplied, setIsRecalibrationApplied] = useState<boolean>(false);
-  const [isRecalibrationDismissed, setIsRecalibrationDismissed] = useState<boolean>(false);
 
   // Generate real-time autoregulation plan for current exercises
   const minimalTargets: MinimalExerciseTarget[] = React.useMemo(() => {
@@ -686,46 +697,59 @@ function SessionFlow() {
     });
   }, [minimalTargets, sleepHours, latestSnapshot]);
 
-  // Keep snapshot of un-adapted exercises for true Undo support
-  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ActiveExercise[] | null>(null);
-  const [activeDailyAdaptation, setActiveDailyAdaptation] = useState<DailyWorkoutAdaptationResult | null>(null);
-
   const handleApplyDailyAdaptation = (result: DailyWorkoutAdaptationResult) => {
     if (!originalExercisesSnapshot) {
       setOriginalExercisesSnapshot(exercises);
     }
     setActiveDailyAdaptation(result);
-    setExercises((prev) => {
-      const baseList = originalExercisesSnapshot || prev;
-      const nextList = baseList
-        .map((ex) => {
-          const adapted = result.adaptedExercises.find((a) => a.id === ex.id);
-          if (!adapted) return ex;
-          if (adapted.skippedForToday) {
-            return { ...ex, skippedRemaining: true };
-          }
-          return {
-            ...ex,
-            name: adapted.name,
-            equipment: adapted.equipment || ex.equipment,
-            target: adapted.target || inferPrimaryMuscleFromExerciseName(adapted.name),
-            videoUrl: resolveExerciseVideoUrl(adapted.name, {
-              previousExerciseName: ex.name,
-              previousVideoUrl: ex.videoUrl,
-              catalogue,
-            }),
-            targetSets: adapted.targetSets,
-            restSeconds: adapted.restSeconds,
-            targetRir: adapted.targetRir,
-            currentWeight: adapted.currentWeight,
-            lastBestWeight: adapted.currentWeight,
-            formCue: adapted.formCue || ex.formCue,
-            loadGuidance: adapted.adaptationNotes.join(" · ") || ex.loadGuidance,
-            skippedRemaining: false,
-          };
-        })
-        .filter((ex) => !ex.skippedRemaining);
-      return nextList.length > 0 ? nextList : baseList;
+    const baseList = originalExercisesSnapshot || exercises;
+    const nextList = baseList
+      .map((ex) => {
+        const adapted = result.adaptedExercises.find((a) => a.id === ex.id);
+        if (!adapted) return ex;
+        if (adapted.skippedForToday) {
+          return { ...ex, skippedRemaining: true };
+        }
+        return {
+          ...ex,
+          name: adapted.name,
+          equipment: adapted.equipment || ex.equipment,
+          target: adapted.target || inferPrimaryMuscleFromExerciseName(adapted.name),
+          videoUrl: resolveExerciseVideoUrl(adapted.name, {
+            previousExerciseName: ex.name,
+            previousVideoUrl: ex.videoUrl,
+            catalogue,
+          }),
+          targetSets: adapted.targetSets,
+          restSeconds: adapted.restSeconds,
+          targetRir: adapted.targetRir,
+          currentWeight: adapted.currentWeight,
+          lastBestWeight: adapted.currentWeight,
+          formCue: adapted.formCue || ex.formCue,
+          loadGuidance: adapted.adaptationNotes.join(" · ") || ex.loadGuidance,
+          skippedRemaining: false,
+        };
+      })
+      .filter((ex) => !ex.skippedRemaining);
+    const finalExercises = nextList.length > 0 ? nextList : baseList;
+    setExercises(finalExercises);
+    saveSessionDraft({
+      traineeId: currentUser.id,
+      programDayId: targetDay?.id,
+      dayLabel: targetDay?.label,
+      exercises: finalExercises,
+      currentExIndex: 0,
+      currentExerciseIndex: 0,
+      sessionDurationSec,
+      durationSec: sessionDurationSec,
+      startedAt: sessionStartTime,
+      updatedAt: new Date().toISOString(),
+      phase: mode,
+      gymId: selectedGym?.id,
+      gymName: selectedGym?.name,
+      gymAddress: selectedGym?.address,
+      isAdaptedSession: true,
+      activeDailyAdaptation: result,
     });
     soundService.playTargetHitFeedback(false);
     getStorageAdapter()

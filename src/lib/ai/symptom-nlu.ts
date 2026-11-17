@@ -13,6 +13,8 @@ import {
   buildGeminiGenerationConfig,
   extractCandidateText,
   getActiveGeminiModel,
+  getGeminiFallbackChain,
+  parseGeminiJson,
   resolveGeminiTransport,
 } from "../gemini";
 
@@ -610,176 +612,199 @@ export async function extractStructuredSymptomsViaLlm(
   options?: { fetchImpl?: typeof fetch; apiKey?: string }
 ): Promise<ParsedSymptomAssessment> {
   const fetchFn = options?.fetchImpl || fetch;
-  const model = getActiveGeminiModel();
+  const primaryModel = getActiveGeminiModel();
   const explicitKey =
     options?.apiKey ||
     (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : undefined);
 
-  const transport = explicitKey
-    ? {
-        url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+  const resolveForModel = async (candidateModel: string) => {
+    if (explicitKey) {
+      return {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent`,
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": explicitKey,
         },
-      }
-    : (await resolveGeminiTransport(model, { fetchImpl: options?.fetchImpl })) ||
-      (options?.fetchImpl
-        ? {
-            url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": "test-key",
-            },
-          }
-        : null);
+      };
+    }
+    const resolved = await resolveGeminiTransport(candidateModel, { fetchImpl: options?.fetchImpl });
+    if (resolved) return resolved;
+    if (options?.fetchImpl) {
+      return {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent`,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": "test-key",
+        },
+      };
+    }
+    return null;
+  };
 
-  if (!transport) {
+  const modelChain = getGeminiFallbackChain(primaryModel);
+  const initialTransport = await resolveForModel(modelChain[0]);
+  if (!initialTransport) {
     return parseSymptomsFromTokenTable(notes);
   }
 
-  try {
-    const res = await fetchFn(transport.url, {
-      method: "POST",
-      headers: transport.headers,
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: `Extract structured joint symptom assessments from the following athlete notes (which may be in English, French, Moroccan Darija, or Arabizi).
+  for (let i = 0; i < modelChain.length; i++) {
+    const model = modelChain[i];
+    const hasFallbackNext = i < modelChain.length - 1;
+    const transport = i === 0 ? initialTransport : await resolveForModel(model);
+    if (!transport) {
+      if (hasFallbackNext) continue;
+      return parseSymptomsFromTokenTable(notes);
+    }
+
+    try {
+      const res = await fetchFn(transport.url, {
+        method: "POST",
+        headers: transport.headers,
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `Extract structured joint symptom assessments from the following athlete notes (which may be in English, French, Moroccan Darija, or Arabizi).
 Distinguish active pain ("active_pain") from negated or past-resolved pain ("resolved_or_negated"), ambiguous/unspecified pain ("uncertain"), and benign non-pain notes ("no_symptom").
 Notes: ${JSON.stringify(notes)}`,
-              },
-            ],
-          },
-        ],
-        generationConfig: buildGeminiGenerationConfig({
-          model,
-          thinkingLevel: "low",
-          maxOutputTokens: 8192,
-          temperature: 0.0,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              items: {
-                type: "ARRAY",
+                },
+              ],
+            },
+          ],
+          generationConfig: buildGeminiGenerationConfig({
+            model,
+            thinkingLevel: "low",
+            maxOutputTokens: 8192,
+            temperature: 0.0,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
                 items: {
-                  type: "OBJECT",
-                  properties: {
-                    rawInput: { type: "STRING" },
-                    joint: {
-                      type: "STRING",
-                      enum: [
-                        "shoulder",
-                        "elbow",
-                        "wrist",
-                        "lumbar",
-                        "knee",
-                        "unspecified",
-                      ],
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      rawInput: { type: "STRING" },
+                      joint: {
+                        type: "STRING",
+                        enum: [
+                          "shoulder",
+                          "elbow",
+                          "wrist",
+                          "lumbar",
+                          "knee",
+                          "unspecified",
+                        ],
+                      },
+                      polarity: {
+                        type: "STRING",
+                        enum: [
+                          "active_pain",
+                          "resolved_or_negated",
+                          "uncertain",
+                          "no_symptom",
+                        ],
+                      },
+                      clarifyingQuestion: { type: "STRING" },
                     },
-                    polarity: {
-                      type: "STRING",
-                      enum: [
-                        "active_pain",
-                        "resolved_or_negated",
-                        "uncertain",
-                        "no_symptom",
-                      ],
-                    },
-                    clarifyingQuestion: { type: "STRING" },
+                    required: ["rawInput", "joint", "polarity"],
                   },
-                  required: ["rawInput", "joint", "polarity"],
                 },
               },
+              required: ["items"],
             },
-            required: ["items"],
-          },
+          }),
         }),
-      }),
-      signal:
-        !options?.fetchImpl &&
-        typeof AbortSignal !== "undefined" &&
-        typeof AbortSignal.timeout === "function"
-          ? AbortSignal.timeout(10000)
-          : undefined,
-    });
+        signal:
+          !options?.fetchImpl &&
+          typeof AbortSignal !== "undefined" &&
+          typeof AbortSignal.timeout === "function"
+            ? AbortSignal.timeout(10000)
+            : undefined,
+      });
 
-    if (!res.ok) {
-      return parseSymptomsFromTokenTable(notes);
-    }
-
-    const data = await res.json();
-    const rawText = extractCandidateText(data);
-    if (!rawText) {
-      return parseSymptomsFromTokenTable(notes);
-    }
-
-    const parsed = JSON.parse(rawText) as {
-      items?: Array<{
-        rawInput: string;
-        joint: AnatomicalJoint;
-        polarity: SymptomPolarity;
-        clarifyingQuestion?: string;
-      }>;
-    };
-
-    if (!Array.isArray(parsed.items)) {
-      return parseSymptomsFromTokenTable(notes);
-    }
-
-    const mapped = new Set<string>();
-    const clarifyingQuestions = new Set<string>();
-    const structuredReports: ParsedSymptomAssessment["structuredReports"] = [];
-    let isAmbiguous = false;
-
-    for (const item of parsed.items) {
-      if (item.polarity === "active_pain" && item.joint !== "unspecified") {
-        const canonicals = JOINT_TO_CANONICAL_SYMPTOMS[item.joint] || [];
-        canonicals.forEach((c) => mapped.add(c));
-        structuredReports.push({
-          rawInput: item.rawInput,
-          joint: item.joint,
-          polarity: "active_pain",
-          canonicalSymptoms: canonicals,
-          extractionMethod: "llm_semantic",
-        });
-      } else if (
-        item.polarity === "uncertain" ||
-        (item.polarity === "active_pain" && item.joint === "unspecified")
-      ) {
-        isAmbiguous = true;
-        clarifyingQuestions.add(
-          item.clarifyingQuestion || CLARIFYING_QUESTION_PROMPT
-        );
-        structuredReports.push({
-          rawInput: item.rawInput,
-          joint: item.joint,
-          polarity: "uncertain",
-          canonicalSymptoms: [],
-          extractionMethod: "llm_semantic",
-        });
-      } else {
-        structuredReports.push({
-          rawInput: item.rawInput,
-          joint: item.joint,
-          polarity: item.polarity,
-          canonicalSymptoms: [],
-          extractionMethod: "llm_semantic",
-        });
+      if (!res.ok) {
+        if (hasFallbackNext) continue;
+        return parseSymptomsFromTokenTable(notes);
       }
-    }
 
-    return {
-      symptoms: Array.from(mapped),
-      isAmbiguous,
-      clarifyingQuestions: Array.from(clarifyingQuestions),
-      structuredReports,
-    };
-  } catch {
-    return parseSymptomsFromTokenTable(notes);
+      const data = await res.json();
+      const rawText = extractCandidateText(data);
+      if (!rawText) {
+        if (hasFallbackNext) continue;
+        return parseSymptomsFromTokenTable(notes);
+      }
+
+      const parsed = parseGeminiJson<{
+        items?: Array<{
+          rawInput: string;
+          joint: AnatomicalJoint;
+          polarity: SymptomPolarity;
+          clarifyingQuestion?: string;
+        }>;
+      }>(rawText);
+
+      if (!Array.isArray(parsed.items)) {
+        if (hasFallbackNext) continue;
+        return parseSymptomsFromTokenTable(notes);
+      }
+
+      const mapped = new Set<string>();
+      const clarifyingQuestions = new Set<string>();
+      const structuredReports: ParsedSymptomAssessment["structuredReports"] = [];
+      let isAmbiguous = false;
+
+      for (const item of parsed.items) {
+        if (item.polarity === "active_pain" && item.joint !== "unspecified") {
+          const canonicals = JOINT_TO_CANONICAL_SYMPTOMS[item.joint] || [];
+          canonicals.forEach((c) => mapped.add(c));
+          structuredReports.push({
+            rawInput: item.rawInput,
+            joint: item.joint,
+            polarity: "active_pain",
+            canonicalSymptoms: canonicals,
+            extractionMethod: "llm_semantic",
+          });
+        } else if (
+          item.polarity === "uncertain" ||
+          (item.polarity === "active_pain" && item.joint === "unspecified")
+        ) {
+          isAmbiguous = true;
+          clarifyingQuestions.add(
+            item.clarifyingQuestion || CLARIFYING_QUESTION_PROMPT
+          );
+          structuredReports.push({
+            rawInput: item.rawInput,
+            joint: item.joint,
+            polarity: "uncertain",
+            canonicalSymptoms: [],
+            extractionMethod: "llm_semantic",
+          });
+        } else {
+          structuredReports.push({
+            rawInput: item.rawInput,
+            joint: item.joint,
+            polarity: item.polarity,
+            canonicalSymptoms: [],
+            extractionMethod: "llm_semantic",
+          });
+        }
+      }
+
+      return {
+        symptoms: Array.from(mapped),
+        isAmbiguous,
+        clarifyingQuestions: Array.from(clarifyingQuestions),
+        structuredReports,
+      };
+    } catch {
+      if (hasFallbackNext) continue;
+      return parseSymptomsFromTokenTable(notes);
+    }
   }
+
+  return parseSymptomsFromTokenTable(notes);
 }

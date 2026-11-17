@@ -3,26 +3,32 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { appStore } from "@/lib/store";
-import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, AlertCircle, HardDrive, RefreshCw, History } from "lucide-react";
+import { ArrowLeft, Shield, Download, Trash2, CheckCircle2, HardDrive, History } from "lucide-react";
 import { isStoragePersisted, requestPersistentStorage, clearClientStorage, triggerBackupDownload } from "@/lib/storage";
 import { buildFullTraineeExportPayloadAsync } from "@/lib/export-backup";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function YourDataPage() {
+  const isHydrated = useIsClientHydrated();
+  useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [isPersisted, setIsPersisted] = useState<boolean | null>(null);
-  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [backupUpdatedAt, setBackupUpdatedAt] = useState<string | null>(null);
+
+  const lastBackup =
+    backupUpdatedAt ||
+    (isHydrated && typeof window !== "undefined"
+      ? localStorage.getItem("vyra_last_backup_at")
+      : null);
 
   useEffect(() => {
+    if (!isHydrated) return;
     isStoragePersisted().then((res) => setIsPersisted(res));
-    if (typeof window !== "undefined") {
-      const ts = localStorage.getItem("vyra_last_backup_at");
-      if (ts) setLastBackup(ts);
-    }
-  }, []);
+  }, [isHydrated]);
 
   const handleRequestPersist = async () => {
     const granted = await requestPersistentStorage();
@@ -35,7 +41,7 @@ export default function YourDataPage() {
     try {
       const data = await buildFullTraineeExportPayloadAsync(currentUser.id);
       const ts = triggerBackupDownload(data, `vyra-export-${currentUser.id}.json`);
-      setLastBackup(ts);
+      setBackupUpdatedAt(ts);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } finally {
@@ -48,6 +54,7 @@ export default function YourDataPage() {
       const confirmed = window.confirm("Are you sure you want to delete all locally stored session data?");
       if (confirmed) {
         await clearClientStorage();
+        setBackupUpdatedAt(null);
         setDeleted(true);
       }
     }
@@ -114,11 +121,13 @@ export default function YourDataPage() {
       </section>
 
       {/* Multi-Device Passkey Sync (Spec 021) */}
-      <PasskeySyncCard
-        userId={currentUser.id}
-        userName={currentUser.name}
-        sessionsCount={appStore.getSessions(currentUser.id).length}
-      />
+      {isHydrated && (
+        <PasskeySyncCard
+          userId={currentUser.id}
+          userName={currentUser.name}
+          sessionsCount={appStore.getSessions(currentUser.id).length}
+        />
+      )}
 
       {/* Historical Log Importer (Spec 020) */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">

@@ -4,7 +4,7 @@ import React from "react";
 import clsx from "clsx";
 import { WorkoutSession, SetLog } from "@/lib/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dumbbell, Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause, MapPin } from "lucide-react";
+import { Clock, Trophy, Flame, CheckCircle2, Calendar, Camera, FileText, X, Share2, Sparkles, Volume2, Play, Pause, MapPin } from "lucide-react";
 import { shareEquipmentPhotoWithGemini, shareAudioNoteWithGemini } from "@/lib/share-equipment";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { appStore } from "@/lib/store";
@@ -105,23 +105,26 @@ export function WorkoutSessionDetailSheet({
 }: WorkoutSessionDetailSheetProps) {
   const [selectedPhoto, setSelectedPhoto] = React.useState<{ url: string; exerciseName: string } | null>(null);
   const [isGymDrawerOpen, setIsGymDrawerOpen] = React.useState(false);
-  const [currentGymName, setCurrentGymName] = React.useState<string>("");
-
-  React.useEffect(() => {
-    if (session) {
-      if (session.gymName) {
-        setCurrentGymName(session.gymName);
-      } else if (session.gymId) {
-        const gym = appStore.getUserGymLocations(session.traineeId).find((g) => g.id === session.gymId);
-        setCurrentGymName(gym?.name || "Gym Floor");
-      } else {
-        const defaultGym = appStore.getDefaultGymLocation(session.traineeId);
-        setCurrentGymName(defaultGym?.name || "Gym Floor");
-      }
-    }
-  }, [session]);
+  const [gymOverride, setGymOverride] = React.useState<{
+    sessionId: string;
+    gymId: string;
+    gymName: string;
+  } | null>(null);
 
   if (!session) return null;
+
+  const activeGymOverride = gymOverride?.sessionId === session.id ? gymOverride : null;
+  const currentGymId = activeGymOverride?.gymId ?? session.gymId;
+  const currentGymName = (() => {
+    if (activeGymOverride?.gymName) return activeGymOverride.gymName;
+    if (session.gymName) return session.gymName;
+    if (session.gymId) {
+      const gym = appStore.getUserGymLocations(session.traineeId).find((g) => g.id === session.gymId);
+      if (gym?.name) return gym.name;
+    }
+    const defaultGym = appStore.getDefaultGymLocation(session.traineeId);
+    return defaultGym?.name || "Gym Floor";
+  })();
 
   const totalVolume = session.setLogs
     ? session.setLogs.reduce(
@@ -565,12 +568,13 @@ export function WorkoutSessionDetailSheet({
         <GymSelectorDrawer
           isOpen={isGymDrawerOpen}
           onOpenChange={setIsGymDrawerOpen}
-          selectedGymId={session.gymId}
+          selectedGymId={currentGymId ?? session.gymId}
           onSelectGym={(gym) => {
-            setCurrentGymName(gym.name);
-            session.gymId = gym.id;
-            session.gymName = gym.name;
-            session.gymAddress = gym.address;
+            setGymOverride({
+              sessionId: session.id,
+              gymId: gym.id,
+              gymName: gym.name,
+            });
             appStore.updateSessionGym(session.id, {
               id: gym.id,
               name: gym.name,

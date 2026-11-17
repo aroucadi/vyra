@@ -22,6 +22,7 @@ import {
   extractCandidateText,
   getActiveVisionReasoningModel,
   getGeminiAuthContext,
+  getGeminiFallbackChain,
   resolveGeminiTransport,
   VYRA_AI_CONFIG,
 } from "../gemini";
@@ -365,6 +366,7 @@ export interface VisualProgressComparisonReport {
   mediaResolution: "high" | "medium" | "low";
   analysisEngine:
     | "gemini_4_argon_live_multimodal"
+    | "gemini_3_8_flash_live_multimodal"
     | "gemini_4_argon_contextual_autonomous"
     | "no_vision_analysis_available";
   authMode: string;
@@ -2553,6 +2555,7 @@ export async function analyzeVisualProgressEvolution(params: {
   };
 
   let autonomousSynthesis: AutonomousVisualScanSynthesis | null = null;
+  let actualModelUsed: string = model;
   let analysisEngine: VisualProgressComparisonReport["analysisEngine"] =
     "gemini_4_argon_contextual_autonomous";
 
@@ -2572,35 +2575,38 @@ export async function analyzeVisualProgressEvolution(params: {
     }
   }
 
-  // 4B. Live Gemini 4 Argon Multimodal Vision Call
+  // 4B. Live Gemini 4 Argon Multimodal Vision Call (failover only to gemini-3.8-flash)
   // Strictly requires explicit user consent (`cloudVisionConsentGranted === true`) before transmitting any image bytes to a cloud model.
   // Supports both GEMINI_API_KEY and Cloud Run Vertex AI OAuth2 ADC credentials cleanly.
   if (
     !autonomousSynthesis &&
     params.cloudVisionConsentGranted === true
   ) {
-    const transport = await resolveGeminiTransport(model);
-    if (transport) {
+    const modelChain = getGeminiFallbackChain(model);
+    const multimodalParts: Array<Record<string, unknown>> = [
+      { text: promptText },
+    ];
+    if (partA.base64Data) {
+      multimodalParts.push({
+        inlineData: {
+          mimeType: partA.mimeType,
+          data: partA.base64Data,
+        },
+      });
+    }
+    if (partB.base64Data) {
+      multimodalParts.push({
+        inlineData: {
+          mimeType: partB.mimeType,
+          data: partB.base64Data,
+        },
+      });
+    }
+
+    for (const candidateModel of modelChain) {
       try {
-        const multimodalParts: Array<Record<string, unknown>> = [
-          { text: promptText },
-        ];
-        if (partA.base64Data) {
-          multimodalParts.push({
-            inlineData: {
-              mimeType: partA.mimeType,
-              data: partA.base64Data,
-            },
-          });
-        }
-        if (partB.base64Data) {
-          multimodalParts.push({
-            inlineData: {
-              mimeType: partB.mimeType,
-              data: partB.base64Data,
-            },
-          });
-        }
+        const transport = await resolveGeminiTransport(candidateModel);
+        if (!transport) continue;
 
         const res = await fetch(transport.url, {
           method: "POST",
@@ -2608,7 +2614,7 @@ export async function analyzeVisualProgressEvolution(params: {
           body: JSON.stringify({
             contents: [{ role: "user", parts: multimodalParts }],
             generationConfig: buildGeminiGenerationConfig({
-              model,
+              model: candidateModel,
               thinkingLevel: "medium",
               maxOutputTokens: 16384,
               temperature: 0.2,
@@ -2622,21 +2628,29 @@ export async function analyzeVisualProgressEvolution(params: {
               : undefined,
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const candidateText = extractCandidateText(data);
-          if (candidateText) {
-            autonomousSynthesis = parseAutonomousAiVisualSynthesis(
-              candidateText,
-              alignmentDelta
-            );
-            if (autonomousSynthesis) {
-              analysisEngine = "gemini_4_argon_live_multimodal";
-            }
+        if (!res.ok) {
+          if (candidateModel !== modelChain[modelChain.length - 1]) continue;
+          break;
+        }
+
+        const data = await res.json();
+        const candidateText = extractCandidateText(data);
+        if (candidateText) {
+          autonomousSynthesis = parseAutonomousAiVisualSynthesis(
+            candidateText,
+            alignmentDelta
+          );
+          if (autonomousSynthesis) {
+            actualModelUsed = candidateModel;
+            analysisEngine =
+              candidateModel === model
+                ? "gemini_4_argon_live_multimodal"
+                : "gemini_3_8_flash_live_multimodal";
+            break;
           }
         }
       } catch {
-        // Fallback cleanly to context-driven biomechanical synthesis
+        // Try next fallback model or fall back cleanly to context-driven biomechanical synthesis
       }
     }
   }
@@ -2730,7 +2744,7 @@ export async function analyzeVisualProgressEvolution(params: {
       confidence: 0.5,
     })),
     wellbeingSafeguard,
-    modelUsed: model,
+    modelUsed: actualModelUsed,
     mediaResolution,
     analysisEngine,
     authMode: auth.mode,

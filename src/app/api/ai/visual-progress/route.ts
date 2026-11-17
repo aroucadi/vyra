@@ -399,7 +399,7 @@ export async function POST(req: Request) {
       snapshotB: snapB,
       sessions,
       metrics,
-      traineeGoals: currentUser.goals,
+      traineeGoals,
       cloudVisionConsentGranted: body.cloudVisionConsentGranted,
     });
 
@@ -411,11 +411,11 @@ export async function POST(req: Request) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch {
     return NextResponse.json(
       {
         ok: false,
-        error: err?.message || "Failed to analyze visual progress comparison.",
+        error: "Failed to analyze visual progress comparison.",
       },
       { status: 500 }
     );

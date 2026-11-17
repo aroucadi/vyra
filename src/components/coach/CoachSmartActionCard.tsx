@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { CoachSmartActionCardData } from "@/lib/coach-engine";
+import { Program } from "@/lib/types";
 import { appStore } from "@/lib/store";
 import { telemetry } from "@/lib/telemetry";
 import { Check, ArrowRight, Sparkles, RefreshCw, Clock, ShieldAlert, Utensils } from "lucide-react";
@@ -22,14 +23,23 @@ export function CoachSmartActionCard({
   const [isApplied, setIsApplied] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const preMutationSnapshotRef = useRef<Program | null>(null);
 
   if (isDismissed) return null;
 
   const handleApply = () => {
+    setErrorMessage(null);
     const { actionType, currentExercise, newExercise, targetMinutes, loadFactor, rirDelta, dayOfWeek } =
       card.actionPayload;
 
+    const currentProg = appStore.getActiveProgramForTrainee(traineeId);
+    preMutationSnapshotRef.current = currentProg
+      ? (JSON.parse(JSON.stringify(currentProg)) as Program)
+      : null;
+
     let resMessage = "";
+    let actionSucceeded = true;
 
     if (actionType === "swap" && currentExercise && newExercise) {
       const res = appStore.swapExerciseInActiveProgram(
@@ -38,6 +48,7 @@ export function CoachSmartActionCard({
         newExercise,
         dayOfWeek
       );
+      actionSucceeded = res.success;
       resMessage = res.message;
     } else if (actionType === "condense") {
       const res = appStore.condenseActiveProgramDay(
@@ -45,6 +56,7 @@ export function CoachSmartActionCard({
         targetMinutes || 30,
         dayOfWeek
       );
+      actionSucceeded = res.success;
       resMessage = res.message;
     } else if (actionType === "autoregulate") {
       const res = appStore.recalibrateActiveProgramLoads(
@@ -53,9 +65,16 @@ export function CoachSmartActionCard({
         rirDelta || 1,
         dayOfWeek
       );
+      actionSucceeded = res.success;
       resMessage = res.message;
     } else if (actionType === "nutrition") {
       resMessage = "Nutrition and energy surplus target committed to your athlete model.";
+    }
+
+    if (!actionSucceeded) {
+      preMutationSnapshotRef.current = null;
+      setErrorMessage(resMessage || "Unable to update program right now.");
+      return;
     }
 
     setIsApplied(true);
@@ -74,6 +93,15 @@ export function CoachSmartActionCard({
     if (onApplied) {
       onApplied(resMessage);
     }
+  };
+
+  const handleUndo = () => {
+    if (preMutationSnapshotRef.current) {
+      appStore.saveProgram(preMutationSnapshotRef.current);
+      preMutationSnapshotRef.current = null;
+    }
+    setIsApplied(false);
+    setStatusMessage("");
   };
 
   const handleDismiss = () => {
@@ -177,10 +205,7 @@ export function CoachSmartActionCard({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsApplied(false);
-                  setStatusMessage("");
-                }}
+                onClick={handleUndo}
                 className="text-[11px] underline text-slate-400 hover:text-white px-1.5 py-0.5 cursor-pointer font-medium"
               >
                 Undo
@@ -222,6 +247,11 @@ export function CoachSmartActionCard({
               Dismiss
             </button>
           </div>
+        )}
+        {errorMessage && (
+          <p className="text-[11px] text-rose-400 mt-2" role="alert">
+            {errorMessage}
+          </p>
         )}
       </div>
     </div>

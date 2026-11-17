@@ -40,6 +40,8 @@ export interface ActiveSessionDraft {
   gymId?: string;
   gymName?: string;
   gymAddress?: string;
+  isAdaptedSession?: boolean;
+  activeDailyAdaptation?: unknown;
 }
 
 export interface QueuedMutation {
@@ -636,16 +638,42 @@ export async function clearClientStorage(): Promise<void> {
   try {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(MUTATION_QUEUE_KEY);
+    const lsKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("vyra_")) {
+        lsKeys.push(k);
+      }
+    }
+    lsKeys.forEach((k) => localStorage.removeItem(k));
+  } catch {}
+
+  try {
+    const ssKeys: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith("vyra_")) {
+        ssKeys.push(k);
+      }
+    }
+    ssKeys.forEach((k) => sessionStorage.removeItem(k));
   } catch {}
 
   try {
     const db = await openClientDatabase();
-    const tx = db.transaction(["sessions", "readinessLogs", "supplementLogs", "session_drafts", "mutation_queue"], "readwrite");
-    tx.objectStore("sessions").clear();
-    tx.objectStore("readinessLogs").clear();
-    tx.objectStore("supplementLogs").clear();
-    tx.objectStore("session_drafts").clear();
-    tx.objectStore("mutation_queue").clear();
+    const storeNames = [
+      "sessions",
+      "readinessLogs",
+      "supplementLogs",
+      "meta",
+      "session_drafts",
+      "mutation_queue",
+      "athletic_events",
+    ].filter((name) => db.objectStoreNames.contains(name));
+    if (storeNames.length > 0) {
+      const tx = db.transaction(storeNames, "readwrite");
+      storeNames.forEach((name) => tx.objectStore(name).clear());
+    }
   } catch {}
 }
 

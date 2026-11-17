@@ -14,6 +14,8 @@ import {
   buildGeminiGenerationConfig,
   extractCandidateText,
   getActiveVisionReasoningModel,
+  getGeminiFallbackChain,
+  parseGeminiJson,
   resolveGeminiTransport,
 } from "../gemini";
 import { inferMuscleSubdivision, findBiomechanicalSubstitutes } from "../training-math/substitution-copilot";
@@ -355,7 +357,7 @@ export class GymVisionInventoryStore {
     traineeId?: string
   ): LocationEquipmentInventory {
     this.hydrate();
-    const isAlaaTenant = !traineeId || traineeId === "trainee_alaa";
+    const isAlaaTenant = traineeId === "trainee_alaa";
     const id = gymId || (isAlaaTenant ? "gym_punch_lissasfa" : "gym_default_commercial");
     if (traineeId) {
       const scopedKey = this.getScopedKey(id, traineeId);
@@ -363,9 +365,14 @@ export class GymVisionInventoryStore {
         return this.ensureInventoryShape(this.inventories[scopedKey]);
       }
     }
-    if (this.inventories[id]) {
+    const sharedCandidate = this.inventories[id];
+    if (
+      sharedCandidate &&
+      (!traineeId || !sharedCandidate.traineeId || sharedCandidate.traineeId === traineeId) &&
+      (isAlaaTenant || id !== "gym_punch_lissasfa")
+    ) {
       return this.ensureInventoryShape({
-        ...this.inventories[id],
+        ...sharedCandidate,
         ...(traineeId ? { traineeId } : {}),
       });
     }
@@ -389,11 +396,47 @@ export class GymVisionInventoryStore {
       });
     }
 
+    if (isAlaaTenant) {
+      return this.ensureInventoryShape({
+        ...DEFAULT_GYM_INVENTORIES.gym_punch_lissasfa,
+        gymId: id,
+        gymName: gymName || "Punch by Badr Hari Lissasfa",
+        traineeId: "trainee_alaa",
+      });
+    }
+
     return this.ensureInventoryShape({
-      ...DEFAULT_GYM_INVENTORIES.gym_punch_lissasfa,
       gymId: id,
-      gymName: gymName || (isAlaaTenant ? "Punch by Badr Hari Lissasfa" : "Commercial Gym"),
+      gymName: gymName || "Commercial Gym",
       ...(traineeId ? { traineeId } : {}),
+      availableCategories: [
+        "dumbbell",
+        "barbell",
+        "cable",
+        "machine",
+        "bench",
+        "pullup_bar",
+        "bodyweight",
+      ],
+      confirmedEquipment: [
+        "dumbbell",
+        "barbell",
+        "cable",
+        "machine",
+        "bench",
+        "pullup_bar",
+        "bodyweight",
+      ],
+      aiDetectedEquipment: [],
+      uncertainDetections: [],
+      unavailableEquipment: [],
+      detectedStations: [],
+      limitations: [],
+      maxDumbbellKg: 40,
+      photosAnalyzedCount: 0,
+      analyzedPhotoFingerprints: [],
+      lastAnalysisStatus: "completed",
+      lastUpdated: new Date().toISOString(),
     });
   }
 
@@ -464,9 +507,10 @@ export class GymVisionInventoryStore {
       lastUpdated: new Date().toISOString(),
     });
 
-    this.inventories[params.gymId] = updated;
     if (params.traineeId) {
       this.inventories[this.getScopedKey(params.gymId, params.traineeId)] = updated;
+    } else {
+      this.inventories[params.gymId] = updated;
     }
     this.persist();
     return updated;
@@ -509,9 +553,10 @@ export class GymVisionInventoryStore {
         lastAnalysisStatus: "failed",
         lastAnalysisError: validation.reason,
       };
-      this.inventories[params.gymId] = failedInv;
       if (params.traineeId) {
         this.inventories[this.getScopedKey(params.gymId, params.traineeId)] = failedInv;
+      } else {
+        this.inventories[params.gymId] = failedInv;
       }
       this.persist();
       return {
@@ -767,112 +812,124 @@ export class GymVisionInventoryStore {
       }
     }
 
-    // 4. If Vertex AI ADC or Gemini API key is configured and photoDataUri is a base64 image, call Gemini 4 Argon Vision
+    // 4. If Vertex AI ADC or Gemini API key is configured and photoDataUri is a base64 image, call Gemini 4 Argon Vision (failover only to gemini-3.8-flash)
     const model = getActiveVisionReasoningModel();
-    const transport =
-      params.photoDataUri &&
-      params.photoDataUri.startsWith("data:image/") &&
-      !validation.malformed
-        ? await resolveGeminiTransport(model)
-        : null;
+    const modelChain = getGeminiFallbackChain(model);
     if (
-      transport &&
       params.photoDataUri &&
       params.photoDataUri.startsWith("data:image/") &&
       !validation.malformed
     ) {
-      try {
-        const base64Data = params.photoDataUri.split(",")[1];
-        const mimeType =
-          params.photoDataUri.substring(
-            params.photoDataUri.indexOf(":") + 1,
-            params.photoDataUri.indexOf(";")
-          ) || "image/jpeg";
+      const base64Data = params.photoDataUri.split(",")[1];
+      const mimeType =
+        params.photoDataUri.substring(
+          params.photoDataUri.indexOf(":") + 1,
+          params.photoDataUri.indexOf(";")
+        ) || "image/jpeg";
 
-        const response = await fetch(transport.url, {
-          method: "POST",
-          headers: transport.headers,
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `Analyze this gym setup photo at "${params.gymName}". Return JSON with: {"categories": ["dumbbell","barbell","cable","machine","bench","pullup_bar"], "uncertainCategories": ["string"], "unavailableCategories": ["string"], "stations": ["string"], "limitations": ["string"], "confidence": 0.95, "summary": "string"}`,
-                  },
-                  {
-                    inlineData: {
-                      mimeType,
-                      data: base64Data,
+      for (const candidateModel of modelChain) {
+        try {
+          const transport = await resolveGeminiTransport(candidateModel);
+          if (!transport) continue;
+
+          const response = await fetch(transport.url, {
+            method: "POST",
+            headers: transport.headers,
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: `Analyze this gym setup photo at "${params.gymName}". Return JSON with: {"categories": ["dumbbell","barbell","cable","machine","bench","pullup_bar"], "uncertainCategories": ["string"], "unavailableCategories": ["string"], "stations": ["string"], "limitations": ["string"], "confidence": 0.95, "summary": "string"}`,
                     },
-                  },
-                ],
-              },
-            ],
-            generationConfig: buildGeminiGenerationConfig({
-              model,
-              thinkingLevel: "low",
-              maxOutputTokens: 8192,
-              temperature: 0.1,
-              responseMimeType: "application/json",
+                    {
+                      inlineData: {
+                        mimeType,
+                        data: base64Data,
+                      },
+                    },
+                  ],
+                },
+              ],
+              generationConfig: buildGeminiGenerationConfig({
+                model: candidateModel,
+                thinkingLevel: "low",
+                maxOutputTokens: 8192,
+                temperature: 0.1,
+                responseMimeType: "application/json",
+              }),
             }),
-          }),
-          signal:
-            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(15000)
-              : undefined,
-        });
+            signal:
+              typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+                ? AbortSignal.timeout(15000)
+                : undefined,
+          });
 
-        if (response.ok) {
+          if (!response.ok) {
+            if (candidateModel !== modelChain[modelChain.length - 1]) continue;
+            break;
+          }
+
           const data = await response.json();
           const rawText = extractCandidateText(data);
-          if (rawText) {
-            const parsed = JSON.parse(rawText);
-            if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
-              for (const rawCat of parsed.categories) {
-                const norm = normalizeEquipmentTokenToCategory(String(rawCat));
-                if (norm && !unavailableSet.has(norm)) {
-                  recognizedCategories.add(norm);
-                  aiDetectedSet.add(norm);
-                }
-              }
-              recognizedCategories.add("bodyweight");
-            }
-            if (Array.isArray(parsed.uncertainCategories)) {
-              for (const rawUnc of parsed.uncertainCategories) {
-                const norm = normalizeEquipmentTokenToCategory(String(rawUnc));
-                if (norm && !confirmedSet.has(norm)) {
-                  uncertainSet.add(norm);
-                }
-              }
-            }
-            if (Array.isArray(parsed.unavailableCategories)) {
-              for (const rawUnavail of parsed.unavailableCategories) {
-                const norm = normalizeEquipmentTokenToCategory(String(rawUnavail));
-                if (norm && norm !== "bodyweight") {
-                  unavailableSet.add(norm);
-                  recognizedCategories.delete(norm);
-                  confirmedSet.delete(norm);
-                  aiDetectedSet.delete(norm);
-                }
+          if (!rawText) continue;
+
+          const parsed = parseGeminiJson<{
+            categories?: string[];
+            uncertainCategories?: string[];
+            unavailableCategories?: string[];
+            stations?: string[];
+            limitations?: string[];
+            confidence?: number;
+            summary?: string;
+          }>(rawText);
+
+          if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+            for (const rawCat of parsed.categories) {
+              const norm = normalizeEquipmentTokenToCategory(String(rawCat));
+              if (norm && !unavailableSet.has(norm)) {
+                recognizedCategories.add(norm);
+                aiDetectedSet.add(norm);
               }
             }
-            if (Array.isArray(parsed.stations)) {
-              parsed.stations.forEach((s: string) => detectedStations.add(s));
-            }
-            if (Array.isArray(parsed.limitations)) {
-              parsed.limitations.forEach((l: string) => limitations.add(l));
-            }
-            if (typeof parsed.confidence === "number") {
-              confidenceScore = parsed.confidence;
-            }
-            if (parsed.summary) {
-              visionSummary = parsed.summary;
+            recognizedCategories.add("bodyweight");
+          }
+          if (Array.isArray(parsed.uncertainCategories)) {
+            for (const rawUnc of parsed.uncertainCategories) {
+              const norm = normalizeEquipmentTokenToCategory(String(rawUnc));
+              if (norm && !confirmedSet.has(norm)) {
+                uncertainSet.add(norm);
+              }
             }
           }
+          if (Array.isArray(parsed.unavailableCategories)) {
+            for (const rawUnavail of parsed.unavailableCategories) {
+              const norm = normalizeEquipmentTokenToCategory(String(rawUnavail));
+              if (norm && norm !== "bodyweight") {
+                unavailableSet.add(norm);
+                recognizedCategories.delete(norm);
+                confirmedSet.delete(norm);
+                aiDetectedSet.delete(norm);
+              }
+            }
+          }
+          if (Array.isArray(parsed.stations)) {
+            parsed.stations.forEach((s: string) => detectedStations.add(s));
+          }
+          if (Array.isArray(parsed.limitations)) {
+            parsed.limitations.forEach((l: string) => limitations.add(l));
+          }
+          if (typeof parsed.confidence === "number") {
+            confidenceScore = parsed.confidence;
+          }
+          if (parsed.summary) {
+            visionSummary = parsed.summary;
+          }
+          break;
+        } catch {
+          // Try next fallback model or fall back cleanly to deterministic inventory
         }
-      } catch {
-        // Fallback cleanly to deterministic inventory without corrupting state
       }
     }
 
@@ -922,9 +979,10 @@ export class GymVisionInventoryStore {
       lastUpdated: new Date().toISOString(),
     };
 
-    this.inventories[params.gymId] = updatedInventory;
     if (params.traineeId) {
       this.inventories[this.getScopedKey(params.gymId, params.traineeId)] = updatedInventory;
+    } else {
+      this.inventories[params.gymId] = updatedInventory;
     }
     this.persist();
 

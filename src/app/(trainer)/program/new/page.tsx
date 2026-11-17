@@ -18,6 +18,7 @@ import {
   Sparkles,
   Flame,
   Utensils,
+  X,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import {
@@ -31,7 +32,7 @@ import {
   MealPlanPrescription,
 } from "@/lib/types";
 import { saveProgramAction, publishProgramAction } from "@/lib/actions/program";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export const generateDefaultEquipmentVariations = (name: string, muscle: string): EquipmentOption[] => [
   {
@@ -220,24 +221,23 @@ const initialSchedule: Record<number, DaySchedule> = {
 };
 
 export default function ProgramBuilderPage({ programId }: { programId?: string } = {}) {
+  const isHydrated = useIsClientHydrated();
   const storeVersion = useVyraStoreVersion();
   const router = useRouter();
   const currentUser = appStore.getCurrentUser();
-  const trainees = appStore.getTrainees();
-  const exercisesLibrary = appStore.getExercises();
+  const trainees = isHydrated ? appStore.getTrainees() : [];
+  const exercisesLibrary = isHydrated ? appStore.getExercises() : [];
 
-  const [selectedTraineeId, setSelectedTraineeId] = useState(trainees[0]?.id || currentUser.id);
+  const [selectedTraineeId, setSelectedTraineeId] = useState("trainee_alaa");
+  const resolvedTraineeId =
+    selectedTraineeId && !selectedTraineeId.startsWith("anon_")
+      ? selectedTraineeId
+      : trainees[0]?.id || currentUser.id;
 
-  useEffect(() => {
-    if (!selectedTraineeId || selectedTraineeId.startsWith("anon_")) {
-      const targetId = appStore.getTrainees()[0]?.id || appStore.getCurrentUser().id;
-      if (targetId && targetId !== selectedTraineeId) {
-        setSelectedTraineeId(targetId);
-      }
-    }
-  }, [storeVersion, selectedTraineeId]);
   const [title, setTitle] = useState("Hypertrophy Block 1 - Precision");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [customStartDate, setCustomStartDate] = useState<string | null>(null);
+  const startDate =
+    customStartDate ?? (isHydrated ? new Date().toISOString().split("T")[0] : "");
   const [durationWeeks, setDurationWeeks] = useState(4);
   const [activeWeekIndex, setActiveWeekIndex] = useState(1);
   const [activeDayIndex, setActiveDayIndex] = useState(0); // 0 = Mon
@@ -248,61 +248,101 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [pickerTargetBlockIndex, setPickerTargetBlockIndex] = useState<number | null>(null);
   const [successToast, setSuccessToast] = useState("");
+  const [errorToast, setErrorToast] = useState("");
 
   // Track expanded equipment matrix per exercise ID and active equipment tab
   const [expandedMatrices, setExpandedMatrices] = useState<Record<string, boolean>>({});
   const [activeEquipmentTabs, setActiveEquipmentTabs] = useState<Record<string, EquipmentType>>({});
 
-  // Full 7-day meso-cycle schedule state
-  const [schedule, setSchedule] = useState<Record<number, DaySchedule>>(initialSchedule);
+  // Multi-week schedule map keyed by 1-based weekIndex -> dayOfWeek -> DaySchedule
+  const [weekSchedules, setWeekSchedules] = useState<Record<number, Record<number, DaySchedule>>>({
+    1: initialSchedule,
+  });
+  const [draftProgramId, setDraftProgramId] = useState<string | null>(programId || null);
 
-  // Load existing program if editing
+  // Load existing program once if editing
+  const existingProgram = isHydrated && programId ? appStore.getProgram(programId) : undefined;
+  const [loadedEditProgramId, setLoadedEditProgramId] = useState<string | null>(null);
   useEffect(() => {
-    if (!programId) return;
-    const existing = appStore.getProgram(programId);
-    if (!existing) return;
+    if (!existingProgram || loadedEditProgramId === existingProgram.id) return;
+    const applyLoaded = () => {
+      setLoadedEditProgramId(existingProgram.id);
+      setDraftProgramId(existingProgram.id);
+      setTitle(existingProgram.title);
+      setSelectedTraineeId(existingProgram.traineeId);
+      setCustomStartDate(existingProgram.startDate);
+      setDurationWeeks(existingProgram.durationWeeks);
+      setStatus(existingProgram.status === "archived" ? "draft" : existingProgram.status);
+      setVersion(existingProgram.version);
 
-    setTitle(existing.title);
-    setSelectedTraineeId(existing.traineeId);
-    setStartDate(existing.startDate);
-    setDurationWeeks(existing.durationWeeks);
-    setStatus(existing.status === "archived" ? "draft" : existing.status);
-    setVersion(existing.version);
-
-    if (existing.weeks && existing.weeks.length > 0) {
-      const firstWeek = existing.weeks[0];
-      if (firstWeek.days && firstWeek.days.length > 0) {
-        const loadedSchedule: Record<number, DaySchedule> = {};
-        firstWeek.days.forEach((d) => {
-          loadedSchedule[d.dayOfWeek] = {
-            label: d.label,
-            isRestDay: d.isRestDay,
-            morningRoutine: d.morningRoutine || [],
-            nutrition: d.nutrition,
-            blocks: d.blocks || [],
-          };
+      if (existingProgram.weeks && existingProgram.weeks.length > 0) {
+        const nextWeekMap: Record<number, Record<number, DaySchedule>> = {};
+        existingProgram.weeks.forEach((wk, idx) => {
+          const wNum = wk.weekIndex || idx + 1;
+          const dayMap: Record<number, DaySchedule> = {};
+          (wk.days || []).forEach((d) => {
+            dayMap[d.dayOfWeek] = {
+              label: d.label,
+              isRestDay: d.isRestDay,
+              morningRoutine: d.morningRoutine || [],
+              nutrition: d.nutrition,
+              blocks: JSON.parse(JSON.stringify(d.blocks || [])),
+            };
+          });
+          nextWeekMap[wNum] = dayMap;
         });
-        setSchedule(loadedSchedule);
+        setWeekSchedules(nextWeekMap);
       }
-    }
-  }, [programId]);
+    };
+    const t = setTimeout(applyLoaded, 0);
+    return () => clearTimeout(t);
+  }, [existingProgram, loadedEditProgramId, storeVersion]);
+
+  const schedule = weekSchedules[activeWeekIndex] || weekSchedules[1] || initialSchedule;
+
+  const setActiveWeekDaySchedule = (
+    dayIdx: number,
+    updater: (prevDay: DaySchedule) => DaySchedule
+  ) => {
+    setWeekSchedules((prev) => {
+      const baseWeek = prev[activeWeekIndex] || prev[1] || initialSchedule;
+      const clonedWeek = JSON.parse(JSON.stringify(baseWeek)) as Record<number, DaySchedule>;
+      const curDay = clonedWeek[dayIdx] || {
+        label: `Day ${dayIdx + 1}`,
+        isRestDay: false,
+        blocks: [],
+      };
+      return {
+        ...prev,
+        [activeWeekIndex]: {
+          ...clonedWeek,
+          [dayIdx]: updater(curDay),
+        },
+      };
+    });
+  };
 
   const handleApplyMasterTemplate = () => {
     const masterProg =
       appStore.getPrograms().find((p) => p.title.includes("Master Hypertrophy")) ||
       appStore.getPrograms()[0];
     if (masterProg && masterProg.weeks[0]) {
-      const loadedSchedule: Record<number, DaySchedule> = {};
-      masterProg.weeks[0].days.forEach((d: ProgramDay) => {
-        loadedSchedule[d.dayOfWeek] = {
-          label: d.label,
-          isRestDay: d.isRestDay,
-          morningRoutine: d.morningRoutine || [],
-          nutrition: d.nutrition,
-          blocks: d.blocks || [],
-        };
+      const nextWeekMap: Record<number, Record<number, DaySchedule>> = {};
+      masterProg.weeks.forEach((wk: ProgramWeek, idx: number) => {
+        const wNum = wk.weekIndex || idx + 1;
+        const loadedSchedule: Record<number, DaySchedule> = {};
+        wk.days.forEach((d: ProgramDay) => {
+          loadedSchedule[d.dayOfWeek] = {
+            label: d.label,
+            isRestDay: d.isRestDay,
+            morningRoutine: d.morningRoutine || [],
+            nutrition: d.nutrition,
+            blocks: JSON.parse(JSON.stringify(d.blocks || [])),
+          };
+        });
+        nextWeekMap[wNum] = loadedSchedule;
       });
-      setSchedule(loadedSchedule);
+      setWeekSchedules(nextWeekMap);
       setTitle(masterProg.title);
       setDurationWeeks(masterProg.durationWeeks);
       setSuccessToast(`Loaded ${masterProg.title} (4-day split, 17 slots, 4 modalities, morning drills & nutrient architecture)!`);
@@ -318,32 +358,23 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   const blocks = currentDaySchedule.blocks;
 
   const setBlocks = (newBlocks: Block[]) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [activeDayIndex]: {
-        ...prev[activeDayIndex],
-        blocks: newBlocks,
-      },
+    setActiveWeekDaySchedule(activeDayIndex, (prevDay) => ({
+      ...prevDay,
+      blocks: newBlocks,
     }));
   };
 
   const toggleRestDay = (isRest: boolean) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [activeDayIndex]: {
-        ...prev[activeDayIndex],
-        isRestDay: isRest,
-      },
+    setActiveWeekDaySchedule(activeDayIndex, (prevDay) => ({
+      ...prevDay,
+      isRestDay: isRest,
     }));
   };
 
   const updateDayLabel = (newLabel: string) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [activeDayIndex]: {
-        ...prev[activeDayIndex],
-        label: newLabel,
-      },
+    setActiveWeekDaySchedule(activeDayIndex, (prevDay) => ({
+      ...prevDay,
+      label: newLabel,
     }));
   };
 
@@ -396,11 +427,33 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
       equipmentVariations: generateDefaultEquipmentVariations(ex.name, ex.primaryMuscle),
     };
 
-    const updated = [...blocks];
-    updated[pickerTargetBlockIndex].exercises.push(newPrescription);
+    const updated = blocks.map((blk, i) =>
+      i === pickerTargetBlockIndex
+        ? { ...blk, exercises: [...blk.exercises, newPrescription] }
+        : blk
+    );
     setBlocks(updated);
     setShowExercisePicker(false);
     setPickerTargetBlockIndex(null);
+  };
+
+  const updateBlockExercise = (
+    blockIdx: number,
+    exIdx: number,
+    updater: (ex: ExercisePrescription) => ExercisePrescription
+  ) => {
+    setBlocks(
+      blocks.map((blk, bI) =>
+        bI === blockIdx
+          ? {
+              ...blk,
+              exercises: blk.exercises.map((item, eI) =>
+                eI === exIdx ? updater(item) : item
+              ),
+            }
+          : blk
+      )
+    );
   };
 
   const updateEquipmentOption = (
@@ -410,36 +463,48 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
     field: keyof EquipmentOption,
     value: string
   ) => {
-    const updated = [...blocks];
-    const ex = updated[blockIdx].exercises[exIdx];
-    if (!ex.equipmentVariations || ex.equipmentVariations.length === 0) {
-      ex.equipmentVariations = generateDefaultEquipmentVariations(ex.exerciseName, ex.targetMuscleGroups[0] || "Target");
-    }
-    const opt = ex.equipmentVariations.find((o) => o.equipmentType === eqType);
-    if (opt) {
-      (opt as any)[field] = value;
-    }
-    setBlocks(updated);
+    updateBlockExercise(blockIdx, exIdx, (ex) => {
+      const variations =
+        ex.equipmentVariations && ex.equipmentVariations.length > 0
+          ? [...ex.equipmentVariations]
+          : generateDefaultEquipmentVariations(
+              ex.exerciseName,
+              ex.targetMuscleGroups[0] || "Target"
+            );
+      const nextVariations = variations.map((opt) =>
+        opt.equipmentType === eqType ? { ...opt, [field]: value } : opt
+      );
+      return { ...ex, equipmentVariations: nextVariations };
+    });
   };
 
   const removeExercise = (blockIdx: number, exIdx: number) => {
-    const updated = [...blocks];
-    updated[blockIdx].exercises.splice(exIdx, 1);
-    setBlocks(updated);
+    setBlocks(
+      blocks.map((blk, bI) =>
+        bI === blockIdx
+          ? { ...blk, exercises: blk.exercises.filter((_, eI) => eI !== exIdx) }
+          : blk
+      )
+    );
   };
 
   const buildProgramObject = (progStatus: "draft" | "published", progVersion: number): Program => {
-    const progId = `prog_${Date.now()}`;
+    const progId = draftProgramId || `prog_${Date.now()}`;
+    if (!draftProgramId) {
+      setDraftProgramId(progId);
+    }
     const weeks: ProgramWeek[] = [];
-    const end = new Date(startDate);
+    const safeStart = startDate || new Date().toISOString().split("T")[0];
+    const end = new Date(safeStart);
     end.setDate(end.getDate() + durationWeeks * 7 - 1);
     const endDateStr = end.toISOString().split("T")[0];
 
     for (let w = 1; w <= durationWeeks; w++) {
+      const weekSched = weekSchedules[w] || weekSchedules[1] || initialSchedule;
       const weekId = `week_${progId}_${w}`;
       const days: ProgramDay[] = [];
       for (let d = 0; d < 7; d++) {
-        const daySched = schedule[d] || {
+        const daySched = weekSched[d] || {
           label: `Day ${d + 1}`,
           isRestDay: d === 2 || d === 5 || d === 6,
           blocks: [],
@@ -453,7 +518,9 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           morningRoutine: daySched.morningRoutine && daySched.morningRoutine.length > 0
             ? daySched.morningRoutine
             : ["500ml hydration", "Dynamic mobility warmup"],
-          blocks: daySched.isRestDay ? [] : daySched.blocks,
+          blocks: daySched.isRestDay
+            ? []
+            : (JSON.parse(JSON.stringify(daySched.blocks)) as Block[]),
           nutrition: daySched.nutrition || {
             targetProteinGrams: 160,
             supplements: [{ name: "Creatine", dosage: "5g", timing: "14:00 Post-workout", checked: true }],
@@ -472,9 +539,9 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
     return {
       id: progId,
       trainerId: currentTrainer.id || "trainer_1",
-      traineeId: selectedTraineeId,
+      traineeId: resolvedTraineeId,
       title,
-      startDate,
+      startDate: safeStart,
       endDate: endDateStr,
       durationWeeks,
       status: progStatus,
@@ -486,9 +553,14 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   };
 
   const handleSaveDraft = async () => {
+    setErrorToast("");
     const prog = buildProgramObject("draft", version);
     appStore.saveProgram(prog);
-    await saveProgramAction(prog).catch(() => {});
+    try {
+      await saveProgramAction(prog);
+    } catch {
+      // Local device draft succeeded; cloud sync skipped when unauthenticated
+    }
     setStatus("draft");
     setSuccessToast("Program draft saved successfully.");
     setTimeout(() => setSuccessToast(""), 3000);
@@ -496,19 +568,27 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
 
   const handlePublish = async () => {
     setShowPublishModal(false);
-    const newVersion = version + 1;
-    const prog = buildProgramObject("published", newVersion);
-    appStore.saveProgram(prog);
-    appStore.publishProgram(prog.id);
-    await saveProgramAction(prog).catch(() => {});
-    await publishProgramAction(prog.id).catch(() => {});
-    setStatus("published");
-    setVersion(newVersion);
-    setSuccessToast("Program v" + newVersion + ".0 published to athlete device!");
-    setTimeout(() => {
-      setSuccessToast("");
-      router.push("/program");
-    }, 1200);
+    setErrorToast("");
+    try {
+      const prog = buildProgramObject("draft", version);
+      appStore.saveProgram(prog);
+      const publishedLocal = appStore.publishProgram(prog.id);
+      try {
+        await saveProgramAction(publishedLocal);
+        await publishProgramAction(publishedLocal.id);
+      } catch {
+        // Local publish succeeded; cloud push only active for signed-in coach session
+      }
+      setStatus("published");
+      setVersion(publishedLocal.version);
+      setSuccessToast("Program v" + publishedLocal.version + ".0 published to athlete device!");
+      setTimeout(() => {
+        setSuccessToast("");
+        router.push("/roster");
+      }, 1000);
+    } catch (err) {
+      setErrorToast(err instanceof Error ? err.message : "Failed to publish program.");
+    }
   };
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -543,6 +623,11 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
         </div>
 
         <div className="flex items-center gap-2">
+          {errorToast && (
+            <span className="text-xs text-rose-400 font-mono font-bold mr-2" role="alert">
+              {errorToast}
+            </span>
+          )}
           {successToast && (
             <span className="text-xs text-[#10B981] font-mono font-bold flex items-center gap-1 mr-2">
               <CheckCircle2 className="w-4 h-4" /> {successToast}
@@ -582,7 +667,7 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
         <div>
           <label className="text-slate-400 font-mono text-[10px] uppercase">Assigned Athlete</label>
           <select
-            value={selectedTraineeId}
+            value={resolvedTraineeId}
             onChange={(e) => setSelectedTraineeId(e.target.value)}
             className="w-full mt-1 px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
           >
@@ -599,7 +684,7 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => setCustomStartDate(e.target.value)}
             className="w-full mt-1 px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981] font-mono"
           />
         </div>
@@ -819,11 +904,12 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                           <input
                             type="number"
                             value={ex.sets}
-                            onChange={(e) => {
-                              const updated = [...blocks];
-                              updated[bIdx].exercises[exIdx].sets = parseInt(e.target.value) || 1;
-                              setBlocks(updated);
-                            }}
+                            onChange={(e) =>
+                              updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                ...prev,
+                                sets: parseInt(e.target.value) || 1,
+                              }))
+                            }
                             className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-white text-xs"
                           />
                         </div>
@@ -833,22 +919,24 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                             <input
                               type="number"
                               value={ex.repRangeLow}
-                              onChange={(e) => {
-                                const updated = [...blocks];
-                                updated[bIdx].exercises[exIdx].repRangeLow = parseInt(e.target.value) || 1;
-                                setBlocks(updated);
-                              }}
+                              onChange={(e) =>
+                                updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                  ...prev,
+                                  repRangeLow: parseInt(e.target.value) || 1,
+                                }))
+                              }
                               className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-white text-xs"
                             />
                             <span>-</span>
                             <input
                               type="number"
                               value={ex.repRangeHigh}
-                              onChange={(e) => {
-                                const updated = [...blocks];
-                                updated[bIdx].exercises[exIdx].repRangeHigh = parseInt(e.target.value) || 1;
-                                setBlocks(updated);
-                              }}
+                              onChange={(e) =>
+                                updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                  ...prev,
+                                  repRangeHigh: parseInt(e.target.value) || 1,
+                                }))
+                              }
                               className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-white text-xs"
                             />
                           </div>
@@ -858,11 +946,12 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                           <input
                             type="number"
                             value={ex.rirScheme[0]}
-                            onChange={(e) => {
-                              const updated = [...blocks];
-                              updated[bIdx].exercises[exIdx].rirScheme = [parseInt(e.target.value) || 0];
-                              setBlocks(updated);
-                            }}
+                            onChange={(e) =>
+                              updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                ...prev,
+                                rirScheme: [parseInt(e.target.value) || 0],
+                              }))
+                            }
                             className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-[#06B6D4] text-xs"
                           />
                         </div>
@@ -871,11 +960,12 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                           <input
                             type="number"
                             value={ex.restSeconds}
-                            onChange={(e) => {
-                              const updated = [...blocks];
-                              updated[bIdx].exercises[exIdx].restSeconds = parseInt(e.target.value) || 0;
-                              setBlocks(updated);
-                            }}
+                            onChange={(e) =>
+                              updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                ...prev,
+                                restSeconds: parseInt(e.target.value) || 0,
+                              }))
+                            }
                             className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-white text-xs"
                           />
                         </div>
@@ -886,11 +976,12 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                         <input
                           type="text"
                           value={ex.formCueText || ""}
-                          onChange={(e) => {
-                            const updated = [...blocks];
-                            updated[bIdx].exercises[exIdx].formCueText = e.target.value;
-                            setBlocks(updated);
-                          }}
+                          onChange={(e) =>
+                            updateBlockExercise(bIdx, exIdx, (prev) => ({
+                              ...prev,
+                              formCueText: e.target.value,
+                            }))
+                          }
                           placeholder="e.g. Pause on chest, avoid flared elbows."
                           className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
                         />
@@ -903,15 +994,16 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                             <input
                               type="checkbox"
                               checked={!!ex.hasDropSet}
-                              onChange={(e) => {
-                                const updated = [...blocks];
-                                updated[bIdx].exercises[exIdx].hasDropSet = e.target.checked;
-                                if (e.target.checked && !updated[bIdx].exercises[exIdx].dropSetGuidance) {
-                                  updated[bIdx].exercises[exIdx].dropSetGuidance =
-                                    "Set 4 Drop Set: Immediate 40% weight drop taken to absolute 0 RIR failure.";
-                                }
-                                setBlocks(updated);
-                              }}
+                              onChange={(e) =>
+                                updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                  ...prev,
+                                  hasDropSet: e.target.checked,
+                                  dropSetGuidance:
+                                    e.target.checked && !prev.dropSetGuidance
+                                      ? "Set 4 Drop Set: Immediate 40% weight drop taken to absolute 0 RIR failure."
+                                      : prev.dropSetGuidance,
+                                }))
+                              }
                               className="rounded border-[#334155] bg-[#0F172A] text-[#EF4444] focus:ring-0"
                             />
                             <span className="text-xs font-bold text-slate-200 flex items-center gap-1">
@@ -934,11 +1026,12 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
                             <input
                               type="text"
                               value={ex.dropSetGuidance || ""}
-                              onChange={(e) => {
-                                const updated = [...blocks];
-                                updated[bIdx].exercises[exIdx].dropSetGuidance = e.target.value;
-                                setBlocks(updated);
-                              }}
+                              onChange={(e) =>
+                                updateBlockExercise(bIdx, exIdx, (prev) => ({
+                                  ...prev,
+                                  dropSetGuidance: e.target.value,
+                                }))
+                              }
                               placeholder="e.g. Set 4 Drop Set: Immediate 40% weight drop taken to absolute 0 RIR failure."
                               className="w-full bg-[#0F172A] border border-[#334155] rounded px-2 py-1 text-slate-300 text-xs mt-0.5"
                             />
@@ -1118,9 +1211,31 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
 
       {/* Exercise Picker Modal */}
       {showExercisePicker && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#162032] border border-[#334155] rounded-2xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl">
-            <h3 className="text-base font-black text-white">Select from Exercise Library</h3>
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => {
+            setShowExercisePicker(false);
+            setPickerTargetBlockIndex(null);
+          }}
+        >
+          <div
+            className="bg-[#162032] border border-[#334155] rounded-2xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-white">Select from Exercise Library</h3>
+              <button
+                type="button"
+                aria-label="Close exercise library"
+                onClick={() => {
+                  setShowExercisePicker(false);
+                  setPickerTargetBlockIndex(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#0F172A]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <div className="space-y-1.5">
               {exercisesLibrary.map((ex) => (
                 <button

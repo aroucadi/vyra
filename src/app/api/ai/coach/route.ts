@@ -15,6 +15,7 @@ import {
   extractCandidateText,
   getActiveGeminiModel,
   getGeminiFallbackChain,
+  parseGeminiJson,
   resolveGeminiTransport,
 } from "@/lib/gemini";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
@@ -320,12 +321,12 @@ STRICT TRUTHFULNESS RULES:
         const data = await geminiRes.json();
         const rawText = extractCandidateText(data);
         if (rawText) {
-          const parsed = JSON.parse(rawText) as {
+          const parsed = parseGeminiJson<{
             text?: string;
             includeGroundedCard?: boolean;
             refinedCardHeadline?: string;
             refinedCardSubtext?: string;
-          };
+          }>(rawText);
 
           const finalText =
             typeof parsed.text === "string" && parsed.text.trim().length > 0

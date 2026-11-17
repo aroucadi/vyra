@@ -125,7 +125,7 @@ export async function syncLocalDataToCloud(
   userId: string,
   credentialId: string,
   sessionsCount: number
-): Promise<{ success: boolean; syncedAt: string }> {
+): Promise<{ success: boolean; syncedAt: string; persistedToCloud?: boolean }> {
   const syncedAt = new Date().toISOString();
   try {
     const res = await fetch("/api/auth/passkey", {
@@ -140,13 +140,21 @@ export async function syncLocalDataToCloud(
     });
 
     if (!res.ok) {
-      // In offline or local fallback mode, gracefully record local sync timestamp
-      return { success: true, syncedAt };
+      // In offline or local fallback mode, record local passkey binding cleanly without claiming cloud sync
+      return { success: true, syncedAt, persistedToCloud: false };
     }
 
-    return await res.json();
+    const json = (await res.json()) as {
+      success?: boolean;
+      syncedAt?: string;
+    };
+    return {
+      success: Boolean(json.success ?? true),
+      syncedAt: json.syncedAt || syncedAt,
+      persistedToCloud: true,
+    };
   } catch {
     // Offline resilience: always succeed locally so trainee is never blocked
-    return { success: true, syncedAt };
+    return { success: true, syncedAt, persistedToCloud: false };
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
@@ -15,7 +15,6 @@ import {
   ChevronRight,
   RotateCcw,
   Zap,
-  SlidersHorizontal,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -62,7 +61,10 @@ export default function TraineeExerciseLibraryPage() {
   const [selectedEquipment, setSelectedEquipment] = useState("all");
   const [isBodyMapSheetOpen, setIsBodyMapSheetOpen] = useState(false);
   const [exercises, setExercises] = useState<RagExercise[]>([]);
+  const [totalMatches, setTotalMatches] = useState<number>(6554);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [selectedExercise, setSelectedExercise] = useState<RagExercise | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [, startTransition] = useTransition();
@@ -92,6 +94,7 @@ export default function TraineeExerciseLibraryPage() {
     let active = true;
     const fetchExercises = async () => {
       setLoading(true);
+      setFetchError(null);
       try {
         const params = new URLSearchParams();
         if (query.trim()) params.set("q", query.trim());
@@ -105,11 +108,15 @@ export default function TraineeExerciseLibraryPage() {
         if (active) {
           startTransition(() => {
             setExercises(data.exercises || []);
+            setTotalMatches(typeof data.total === "number" ? data.total : (data.exercises?.length || 0));
             setLoading(false);
           });
         }
-      } catch (err) {
-        if (active) setLoading(false);
+      } catch {
+        if (active) {
+          setFetchError("Unable to load exercise index right now.");
+          setLoading(false);
+        }
       }
     };
 
@@ -118,7 +125,7 @@ export default function TraineeExerciseLibraryPage() {
       active = false;
       clearTimeout(timer);
     };
-  }, [query, selectedMuscle, selectedEquipment]);
+  }, [query, selectedMuscle, selectedEquipment, retryNonce]);
 
   return (
     <div className="min-h-screen bg-[#090C11] text-slate-100 pb-44 w-full max-w-md mx-auto flex flex-col font-body selection:bg-amber-500/20 overflow-x-hidden">
@@ -146,7 +153,9 @@ export default function TraineeExerciseLibraryPage() {
                 </span>
               </div>
               <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
-                6,554 Protocols
+                {hasActiveFilters
+                  ? `${totalMatches.toLocaleString()} Matching Protocols`
+                  : `${totalMatches.toLocaleString()} Protocols`}
               </p>
             </div>
           </div>
@@ -298,6 +307,21 @@ export default function TraineeExerciseLibraryPage() {
           <div className="py-20 text-center space-y-3">
             <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-400 font-mono">Calibrating biomechanical index...</p>
+          </div>
+        ) : fetchError ? (
+          <div className="py-16 text-center space-y-3 p-8 bg-[#111622] rounded-3xl border border-rose-500/30 shadow-sm">
+            <Dumbbell className="w-10 h-10 text-rose-400 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-editorial">Search Temporarily Unavailable</h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-body">{fetchError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRetryNonce((n) => n + 1)}
+              className="mt-2 px-5 py-2.5 rounded-xl bg-[#182030] hover:bg-[#222D42] text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
+            >
+              Retry Search
+            </button>
           </div>
         ) : exercises.length === 0 ? (
           <div className="py-20 text-center space-y-3 p-8 bg-[#111622] rounded-3xl border border-[#1C2436] shadow-sm">

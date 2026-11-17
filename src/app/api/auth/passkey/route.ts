@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 
 /**
  * POST /api/auth/passkey
@@ -7,8 +8,31 @@ import { resolveRouteTenantContext } from "@/lib/auth/server-session";
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { userId, credentialId, sessionsCount } = body;
+    const rl = checkRateLimit(resolveRateLimitKey(req, "auth-passkey"), {
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many passkey requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
+
+    let body: {
+      userId?: unknown;
+      credentialId?: unknown;
+      sessionsCount?: unknown;
+    };
+    try {
+      body = (await req.json()) as typeof body;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body." },
+        { status: 400 }
+      );
+    }
+    const { userId, credentialId, sessionsCount } = body || {};
 
     if (
       !userId ||
@@ -48,8 +72,7 @@ export async function POST(req: NextRequest) {
       sessionsCount: safeSessionsCount,
       message: "Passkey registered. Local session data transitioned to cloud sync.",
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal Server Error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

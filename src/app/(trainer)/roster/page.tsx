@@ -16,11 +16,12 @@ import {
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { generateCoachInviteUrl } from "@/lib/trainer-invite";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function TrainerRosterPage() {
+  const isHydrated = useIsClientHydrated();
   useVyraStoreVersion();
-  const rosterItems = appStore.getRoster();
+  const rosterItems = isHydrated ? appStore.getRoster() : [];
   const [searchQuery, setSearchQuery] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -35,19 +36,20 @@ export default function TrainerRosterPage() {
 
   const currentUser = appStore.getCurrentUser();
   const coachId = currentUser.role === "trainer" || currentUser.role === "both" ? currentUser.id : "coach_1";
-  const coachName = currentUser.name || "Coach Julian";
+  const coachName = (isHydrated && currentUser.name) || "Coach Marcus";
 
-  const inviteUrl = typeof window !== "undefined"
-    ? generateCoachInviteUrl(window.location.origin, {
-        coachId,
-        coachName,
-        programTitle: "16-Week Recomposition & Structural Balance",
-        weeks: 16,
-        anchorLift: "barbell_bench",
-        startingBenchKg: 80,
-        unit: "kg",
-      })
-    : `/invite/${coachId}`;
+  const inviteUrl =
+    isHydrated && typeof window !== "undefined"
+      ? generateCoachInviteUrl(window.location.origin, {
+          coachId,
+          coachName,
+          programTitle: "16-Week Recomposition & Structural Balance",
+          weeks: 16,
+          anchorLift: "barbell_bench",
+          startingBenchKg: 80,
+          unit: "kg",
+        })
+      : `/invite/${coachId}`;
 
   const handleCopyLink = async () => {
     try {

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { KeyRound, CheckCircle2, ShieldCheck, Loader2 } from "lucide-react";
 import { hasSavedPasskey, setSavedPasskey, registerPasskey, syncLocalDataToCloud } from "@/lib/auth/passkey";
 import { anchorIdentityWithPasskey, getAthleteIdentity } from "@/lib/auth/identity";
 import { telemetry } from "@/lib/telemetry";
+import { useIsClientHydrated } from "@/components/auth/VyraAuthProvider";
 
 interface PasskeySyncCardProps {
   userId: string;
@@ -19,16 +20,16 @@ export function PasskeySyncCard({
   sessionsCount = 1,
   onRegistered,
 }: PasskeySyncCardProps) {
-  const [isSaved, setIsSaved] = useState(false);
+  const isHydrated = useIsClientHydrated();
+  const [newlySavedCloud, setNewlySavedCloud] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const identity = getAthleteIdentity();
-    if (identity.status === "anchored_passkey" || hasSavedPasskey(userId)) {
-      setIsSaved(true);
-    }
-  }, [userId]);
+  const identity = isHydrated ? getAthleteIdentity() : null;
+  const isSaved =
+    newlySavedCloud !== null ||
+    Boolean(isHydrated && (identity?.status === "anchored_passkey" || hasSavedPasskey(userId)));
+  const isCloudVerified = newlySavedCloud === true || Boolean(identity?.isCloudVaultEnabled);
 
   const handleCreatePasskey = async () => {
     setLoading(true);
@@ -39,8 +40,8 @@ export function PasskeySyncCard({
       if (res.success && res.credentialId) {
         setSavedPasskey(userId, res.credentialId);
         await anchorIdentityWithPasskey(res.credentialId, userName);
-        await syncLocalDataToCloud(userId, res.credentialId, sessionsCount);
-        setIsSaved(true);
+        const syncRes = await syncLocalDataToCloud(userId, res.credentialId, sessionsCount);
+        setNewlySavedCloud(Boolean(syncRes.persistedToCloud));
         telemetry.track("passkey_registered", { userId, isMock: res.isMock }, userId);
         onRegistered?.();
       } else {
@@ -62,8 +63,14 @@ export function PasskeySyncCard({
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xs font-semibold text-white block">Passkey Cloud Vault Active</span>
-            <span className="text-[11px] text-slate-400">Device biometric bound & synced securely</span>
+            <span className="text-xs font-semibold text-white block">
+              {isCloudVerified ? "Passkey Vault Anchored" : "Local Passkey Bound"}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {isCloudVerified
+                ? "Device biometric anchored to your sovereign vault"
+                : "Passkey bound on device · Sign in for cross-device cloud backup"}
+            </span>
           </div>
         </div>
         <span className="text-[10px] font-mono uppercase bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">

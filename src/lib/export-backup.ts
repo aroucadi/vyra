@@ -494,7 +494,7 @@ export function buildFullTraineeExportPayload(
   const gymInventory: LocationEquipmentInventory[] = [];
   for (const gym of gymLocations) {
     try {
-      const inv = gymVisionInventoryStore.getInventoryForGym(gym.id, traineeId);
+      const inv = gymVisionInventoryStore.getInventoryForGym(gym.id, gym.name, traineeId);
       if (inv) gymInventory.push(cloneJson(inv));
     } catch {}
   }

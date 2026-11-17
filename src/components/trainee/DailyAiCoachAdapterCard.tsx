@@ -70,6 +70,45 @@ export function DailyAiCoachAdapterCard({
     traineeId
   );
 
+  const compressPhotoFile = (file: File, maxDim = 1024, quality = 0.78): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read selected image file."));
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!dataUrl) {
+          reject(new Error("Empty image data."));
+          return;
+        }
+        const img = new Image();
+        img.onerror = () => resolve(dataUrl);
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+
   const runViaServerThenLocal = async (payload: {
     traineeId: string;
     voiceOrTextMessage: string;
@@ -81,7 +120,7 @@ export function DailyAiCoachAdapterCard({
   }): Promise<DailyWorkoutAdaptationResult> => {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
       const res = await fetch("/api/ai/adapt-day", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,30 +165,32 @@ export function DailyAiCoachAdapterCard({
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setPhotoStatus("Photo exceeds 15MB limit. Please choose a smaller photo.");
+      return;
+    }
     setIsAdapting(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const dataUri = typeof reader.result === "string" ? reader.result : undefined;
-        const result = await runViaServerThenLocal({
-          traineeId,
-          voiceOrTextMessage:
-            message || `Recognize available equipment from gym photo at ${gymName || "current gym"}`,
-          gymId,
-          gymName,
-          gymPhotoDataUri: dataUri,
-          gymPhotoCaption: message,
-          exercises,
-        });
-        setPhotoStatus(
-          `📸 Equipment recognized at ${result.gymInventoryUsed.gymName}: ${result.gymInventoryUsed.availableCategories.join(", ")}`
-        );
-        onApplyDailyAdaptation(result);
-        setIsAdapting(false);
-      };
-      reader.readAsDataURL(file);
+      const dataUri = await compressPhotoFile(file);
+      const result = await runViaServerThenLocal({
+        traineeId,
+        voiceOrTextMessage:
+          message || `Recognize available equipment from gym photo at ${gymName || "current gym"}`,
+        gymId,
+        gymName,
+        gymPhotoDataUri: dataUri,
+        gymPhotoCaption: message,
+        exercises,
+      });
+      setPhotoStatus(
+        `📸 Equipment recognized at ${result.gymInventoryUsed.gymName}: ${result.gymInventoryUsed.availableCategories.join(", ")}`
+      );
+      onApplyDailyAdaptation(result);
     } catch {
+      setPhotoStatus("Could not process photo. Keeping current gym equipment inventory.");
+    } finally {
       setIsAdapting(false);
     }
   };
@@ -394,6 +435,20 @@ export function DailyAiCoachAdapterCard({
               ? `ENGINE: ${(activeAdaptation.modelUsed || "gemini-4-argon").toUpperCase()} · GUARDRAIL VERIFIED`
               : "ENGINE: LOCAL GUARDRAIL ENGINE · LONG-TERM BLUEPRINT UNCHANGED"}
           </div>
+          {Array.isArray(activeAdaptation.agentSteps) && activeAdaptation.agentSteps.length > 0 && (
+            <details style={{ marginTop: 6 }}>
+              <summary style={{ fontSize: 10.5, color: "#94A3B8", cursor: "pointer", fontFamily: "monospace" }}>
+                Agent Tool Trace ({activeAdaptation.agentSteps.length} steps)
+              </summary>
+              <ul style={{ marginTop: 4, paddingLeft: 14, fontSize: 10.5, color: "#94A3B8", lineHeight: 1.4 }}>
+                {activeAdaptation.agentSteps.map((step, idx) => (
+                  <li key={`${step.tool}_${idx}`}>
+                    <strong style={{ color: "#CBD5E1" }}>{step.tool}</strong>: {step.summary}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
     </div>

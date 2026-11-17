@@ -12,10 +12,40 @@ import {
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { formatDuration, resolveProgramDay } from "@/lib/utils";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function TraineeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const isHydrated = useIsClientHydrated();
+  useVyraStoreVersion();
   const resolvedParams = use(params);
-  const trainee = appStore.getUser(resolvedParams.id) || appStore.getTrainees()[0];
+  const trainee = isHydrated ? appStore.getUser(resolvedParams.id) : undefined;
+
+  if (!isHydrated) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="h-32 rounded-xl bg-[#162032] border border-[#1E293B] animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!trainee) {
+    return (
+      <div className="p-6 max-w-xl mx-auto mt-12 bg-[#162032] border border-[#1E293B] rounded-2xl text-center space-y-4">
+        <h1 className="text-xl font-black text-white">Athlete Not Found</h1>
+        <p className="text-xs text-slate-400">
+          No athlete profile matched ID <span className="font-mono text-slate-200">{resolvedParams.id}</span> on this device.
+        </p>
+        <Link
+          href="/roster"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#10B981] text-slate-950 font-bold text-xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Roster
+        </Link>
+      </div>
+    );
+  }
+
   const program = appStore.getActiveProgramForTrainee(trainee.id);
   const sessions = appStore.getSessions(trainee.id);
   const metrics = appStore.getMetrics(trainee.id);
@@ -111,8 +141,8 @@ export default function TraineeDetailPage({ params }: { params: Promise<{ id: st
         <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-2">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Physical Baseline</span>
           <div className="space-y-1 text-xs">
-            <p className="text-slate-300">Height: <strong className="text-white font-mono">{trainee.heightCm || 180} cm</strong></p>
-            <p className="text-slate-300">Current Weight: <strong className="text-white font-mono">{metrics.length ? metrics[metrics.length - 1].weightKg : 80} kg</strong></p>
+            <p className="text-slate-300">Height: <strong className="text-white font-mono">{trainee.heightCm ? `${trainee.heightCm} cm` : "Not logged"}</strong></p>
+            <p className="text-slate-300">Current Weight: <strong className="text-white font-mono">{metrics.length ? `${metrics[metrics.length - 1].weightKg} kg` : "Not logged"}</strong></p>
             <p className="text-slate-300">Goal: <strong className="text-[#10B981]">{trainee.goals[0] || "Strength Progression"}</strong></p>
           </div>
         </div>

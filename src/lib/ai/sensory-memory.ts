@@ -16,7 +16,7 @@ import {
   buildGeminiGenerationConfig,
   extractCandidateText,
   getActiveGeminiModel,
-  getGeminiAuthContext,
+  getGeminiFallbackChain,
   resolveGeminiTransport,
 } from "../gemini";
 import { hasNegatedOrResolvedSymptomTokens } from "./symptom-nlu";
@@ -361,57 +361,68 @@ export async function transcribeAudioFeedbackWithGemini(
   const base64Data = validation.base64Data || "";
   if (!base64Data) return undefined;
 
-  const model = getActiveGeminiModel();
-  const transport = await resolveGeminiTransport(model);
-  if (!transport) {
-    return undefined;
-  }
+  const primaryModel = getActiveGeminiModel();
+  const modelChain = getGeminiFallbackChain(primaryModel);
 
-  try {
-    const response = await fetch(transport.url, {
-      method: "POST",
-      headers: transport.headers,
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: `Transcribe this athlete's gym voice note${
-                  exerciseName ? ` recorded on "${exerciseName}"` : ""
-                } verbatim in its original language (French, Darija, or English). Return ONLY the spoken transcript text with no extra commentary.`,
-              },
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Data,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: buildGeminiGenerationConfig({
-          model,
-          thinkingLevel: "low",
-          maxOutputTokens: 8192,
-          temperature: 0.1,
-        }),
-      }),
-      signal:
-        typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-          ? AbortSignal.timeout(15_000)
-          : undefined,
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const text = extractCandidateText(data);
-      return text || undefined;
+  for (let i = 0; i < modelChain.length; i++) {
+    const model = modelChain[i];
+    const hasFallbackNext = i < modelChain.length - 1;
+    const transport = await resolveGeminiTransport(model);
+    if (!transport) {
+      return undefined;
     }
-    return undefined;
-  } catch {
-    return undefined;
+
+    try {
+      const response = await fetch(transport.url, {
+        method: "POST",
+        headers: transport.headers,
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `Transcribe this athlete's gym voice note${
+                    exerciseName ? ` recorded on "${exerciseName}"` : ""
+                  } verbatim in its original language (French, Darija, or English). Return ONLY the spoken transcript text with no extra commentary.`,
+                },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64Data,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: buildGeminiGenerationConfig({
+            model,
+            thinkingLevel: "low",
+            maxOutputTokens: 8192,
+            temperature: 0.1,
+          }),
+        }),
+        signal:
+          typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+            ? AbortSignal.timeout(15_000)
+            : undefined,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = extractCandidateText(data);
+        if (text) return text;
+      }
+      if (!hasFallbackNext) {
+        return undefined;
+      }
+    } catch {
+      if (!hasFallbackNext) {
+        return undefined;
+      }
+    }
   }
+  return undefined;
 }
 
 /**

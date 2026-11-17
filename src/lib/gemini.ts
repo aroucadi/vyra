@@ -326,6 +326,14 @@ export interface GeminiContentInvocationOptions {
   fetchImpl?: typeof fetch;
 }
 
+export function parseGeminiJson<T = unknown>(rawText: string): T {
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  return JSON.parse(cleaned) as T;
+}
+
 /**
  * Extracts visible text parts from Gemini candidate response while skipping internal thought parts.
  */

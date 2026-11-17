@@ -7,6 +7,7 @@
 
 import { appStore } from "./store";
 import { User, Program } from "./types";
+import { generateMaster16WeekProgram } from "@/db/seed/master-transformation-program";
 import {
   deriveStartingWeightsFromAnchor,
   applyCalibratedWeightsToDayOne,
@@ -126,25 +127,29 @@ export function acceptCoachInvite(
     trainee = appStore.addUser(newTrainee);
   }
 
-  // 2. Clone master program or generate 16-week mesocycle assigned to coachId
-  const masterProg = appStore.getPrograms()[0];
+  // 2. Clone master program (or seeded 16-week template when clean multi-tenant boot has empty DB)
+  const templateProg = appStore.getPrograms()[0] || generateMaster16WeekProgram();
   const programId = `prog_invite_${traineeId}_${Date.now()}`;
   const now = new Date();
   const endDate = new Date(now.getTime() + invite.weeks * 7 * 86400000);
+  const startStr = now.toISOString().split("T")[0];
+  const clonedWeeks = JSON.parse(
+    JSON.stringify(templateProg.weeks.slice(0, invite.weeks))
+  ) as Program["weeks"];
 
   const assignedProgram: Program = {
     id: programId,
     trainerId: invite.coachId,
     traineeId: trainee.id,
     title: invite.programTitle,
-    startDate: now.toISOString().split("T")[0],
+    startDate: startStr,
     endDate: endDate.toISOString().split("T")[0],
     durationWeeks: invite.weeks,
     status: "published",
     version: 1,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
-    weeks: masterProg ? masterProg.weeks.map((w) => ({ ...w, programId })) : [],
+    weeks: clonedWeeks.map((w) => ({ ...w, programId })),
   };
 
   appStore.saveProgram(assignedProgram);

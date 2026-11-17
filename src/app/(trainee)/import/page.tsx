@@ -2,7 +2,6 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, FileText, CheckCircle2, AlertCircle, Dumbbell, History, Sparkles } from "lucide-react";
 import {
   parseHistoricalWorkoutCsv,
@@ -15,31 +14,39 @@ import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function ImportWorkoutsPage() {
   useVyraStoreVersion();
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUser = appStore.getCurrentUser();
 
   const [activeTab, setActiveTab] = useState<"file" | "paste">("file");
   const [pasteText, setPasteText] = useState("");
   const [parseResult, setParseResult] = useState<ImportParseResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<"idle" | "committed">("idle");
   const [commitSummary, setCommitSummary] = useState<{ committedSessions: number; prsDetected: number } | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+    setErrorMessage(null);
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size exceeds the 10MB limit.");
+      setErrorMessage("File size exceeds the 10MB limit.");
       return;
     }
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      setErrorMessage("Could not read the selected file. Please check file permissions and retry.");
+    };
     reader.onload = (event) => {
       const content = event.target?.result as string;
       if (content) {
         const parsed = parseHistoricalWorkoutCsv(content);
         setParseResult(parsed);
+        if (parsed.totalWorkouts === 0) {
+          setErrorMessage("No valid workout sets detected in this CSV.");
+        }
       }
     };
     reader.readAsText(file);
@@ -47,6 +54,7 @@ export default function ImportWorkoutsPage() {
 
   const handlePasteChange = (val: string) => {
     setPasteText(val);
+    setErrorMessage(null);
     if (val.trim().length > 10) {
       const parsed = parsePastedWorkoutText(val);
       setParseResult(parsed);
@@ -56,7 +64,10 @@ export default function ImportWorkoutsPage() {
   };
 
   const handleCommit = () => {
-    if (!parseResult || parseResult.sessions.length === 0) return;
+    if (!parseResult || parseResult.sessions.length === 0) {
+      setErrorMessage("Add at least one valid set before committing.");
+      return;
+    }
     const summary = commitImportedSessions(currentUser.id, parseResult.sessions);
     setCommitSummary(summary);
     setImportStatus("committed");
@@ -184,9 +195,29 @@ export default function ImportWorkoutsPage() {
             </div>
           )}
 
+          {errorMessage && (
+            <div
+              role="alert"
+              className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-xs text-rose-300 flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           {/* Parsed Verification Summary */}
           {parseResult && (
             <div className="space-y-4 pt-2">
+              {parseResult.errors && parseResult.errors.length > 0 && (
+                <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 text-[11px] text-amber-300 space-y-1">
+                  {parseResult.errors.slice(0, 3).map((err, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{err}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-200">Parsed Preview</span>
@@ -239,8 +270,10 @@ export default function ImportWorkoutsPage() {
 
               {/* Single Primary CTA */}
               <button
+                type="button"
+                disabled={parseResult.totalWorkouts === 0 || parseResult.sessions.length === 0}
                 onClick={handleCommit}
-                className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-sm transition-all flex items-center justify-center gap-2"
               >
                 <History className="w-4 h-4" />
                 Commit {parseResult.totalWorkouts} Workouts to History

@@ -1384,6 +1384,7 @@ export class Store {
     } else {
       this.db.users.push(user);
     }
+    this.notifyChange(true);
     return user;
   }
 

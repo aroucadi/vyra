@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,15 +10,17 @@ import {
   CheckCircle2,
   ArrowRight,
   UserCheck,
-  Sparkles,
 } from "lucide-react";
 import { decodeTrainerInvite, acceptCoachInvite, TrainerInvitePayload } from "@/lib/trainer-invite";
 import { appStore } from "@/lib/store";
+import { getAthleteIdentity } from "@/lib/auth/identity";
+import { useIsClientHydrated } from "@/components/auth/VyraAuthProvider";
 
-export default function CoachInvitePage() {
+function CoachInviteContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isHydrated = useIsClientHydrated();
 
   const coachId = (params?.coachId as string) || "trainer_1";
   const token = searchParams.get("token") || "";
@@ -30,10 +32,10 @@ export default function CoachInvitePage() {
     const decoded = decodeTrainerInvite(token);
     if (decoded) return decoded;
 
-    const coach = appStore.getUser(coachId);
+    const coach = isHydrated ? appStore.getUser(coachId) : undefined;
     return {
       coachId,
-      coachName: coach?.name || "Coach Julian",
+      coachName: coach?.name || "Coach Marcus",
       programTitle: "16-Week Recomposition & Structural Balance",
       weeks: 16,
       anchorLift: "barbell_bench",
@@ -41,11 +43,15 @@ export default function CoachInvitePage() {
       unit: "kg",
       customNote: "Your custom periodization program is calibrated and ready on your phone.",
     };
-  }, [coachId, token]);
+  }, [coachId, token, isHydrated]);
 
   const handleAccept = () => {
-    const randomTraineeId = `athlete_${Date.now()}`;
-    acceptCoachInvite(randomTraineeId, invite);
+    const identity = getAthleteIdentity();
+    const validAnonId =
+      identity.uid && identity.uid !== "anon_visitor"
+        ? identity.uid
+        : `anon_${typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID().replace(/-/g, "").slice(0, 12) : Date.now().toString(36)}`;
+    acceptCoachInvite(validAnonId, invite);
     setAccepted(true);
     setTimeout(() => {
       router.push("/today");
@@ -170,5 +176,19 @@ export default function CoachInvitePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CoachInvitePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0B0F17] text-slate-400 flex items-center justify-center text-xs font-mono">
+          Loading coach invitation...
+        </div>
+      }
+    >
+      <CoachInviteContent />
+    </Suspense>
   );
 }

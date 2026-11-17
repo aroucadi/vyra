@@ -7,15 +7,17 @@ import type { RoleEvaluationResult } from "@/lib/training-math/structural-balanc
 import { hasEntitlement, SubscriptionTier } from "@/lib/entitlements";
 import { StructuralBalanceRadar } from "@/components/trainee/StructuralBalanceRadar";
 import { IntelligentPostureDiagnosis } from "@/components/trainee/IntelligentPostureDiagnosis";
-import { TraineeNav } from "@/components/trainee/TraineeNav";
 import { ArrowLeft, Shield, Lock, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 export default function PostureArchitecturePage() {
+  const isHydrated = useIsClientHydrated();
   const storeVersion = useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
-  const userTier = ((currentUser as any).tier as SubscriptionTier) || "PRO";
+  const userTier =
+    (isHydrated ? (currentUser as unknown as { tier?: SubscriptionTier }).tier : "PRO") ||
+    "PRO";
   const isEntitled = hasEntitlement(userTier, "structural_balance_radar");
 
   const [activeTemplateKey, setActiveTemplateKey] = useState<string>("poliquin");
@@ -24,13 +26,27 @@ export default function PostureArchitecturePage() {
   const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch structural balance from /api/posture
+  // Fetch structural balance from /api/posture (forwarding client-local sessions when present)
   useEffect(() => {
+    if (!isHydrated) return;
     let active = true;
     const fetchBalance = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/posture?template=${activeTemplateKey}`);
+        const localSessions = appStore.getSessions(currentUser.id);
+        const localMetrics = appStore.getMetrics(currentUser.id);
+        const res =
+          localSessions.length > 0
+            ? await fetch("/api/posture", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  template: activeTemplateKey,
+                  sessions: localSessions,
+                  metrics: localMetrics,
+                }),
+              })
+            : await fetch(`/api/posture?template=${encodeURIComponent(activeTemplateKey)}`);
         if (!res.ok) throw new Error("Failed to compute balance");
         const data = await res.json();
         if (active) {
@@ -38,20 +54,24 @@ export default function PostureArchitecturePage() {
           setRoleLabels(data.labels || {});
           setLoading(false);
         }
-      } catch (err) {
+      } catch {
         if (active) setLoading(false);
       }
     };
 
-    fetchBalance();
+    void fetchBalance();
     return () => {
       active = false;
     };
-  }, [activeTemplateKey, storeVersion]);
+  }, [activeTemplateKey, storeVersion, isHydrated, currentUser.id]);
 
   // 1-Tap Corrective Injection Handler
   const handleInjectCorrective = async (exerciseName: string) => {
-    appStore.swapExerciseInActiveProgram(currentUser.id, "Standing Dumbbell Lateral Raise", exerciseName);
+    return appStore.swapExerciseInActiveProgram(
+      currentUser.id,
+      "Standing Dumbbell Lateral Raise",
+      exerciseName
+    );
   };
 
   return (
@@ -119,13 +139,13 @@ export default function PostureArchitecturePage() {
               </p>
             </div>
             <Link
-              href="/pricing"
+              href="/coach?prompt=Tell+me+how+to+unlock+Vyra+Pro+Postural+Architecture"
               className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-xs shadow-md transition"
             >
-              Upgrade to Vyra Pro ($19/mo) →
+              Ask Coach About Vyra Pro →
             </Link>
           </div>
-        ) : loading ? (
+        ) : !isHydrated || loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3 text-slate-400 text-xs">
             <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
             <span>Computing Biomechanical Symmetry...</span>
@@ -148,9 +168,6 @@ export default function PostureArchitecturePage() {
           </>
         )}
       </main>
-
-      {/* Trainee Navigation Footer */}
-      <TraineeNav />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, useSyncExternalStore, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { appStore } from "@/lib/store";
 import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine";
@@ -9,7 +9,7 @@ import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
 import { resolveProgramDay } from "@/lib/utils";
 import { Send, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
-import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
 interface Message {
   id: string;
@@ -19,24 +19,79 @@ interface Message {
   engineLabel?: string;
 }
 
+const EMPTY_CHAT_HISTORY: Message[] = [];
+const coachHistoryListeners = new Set<() => void>();
+const coachHistoryCache = new Map<string, Message[]>();
+
+function readCoachHistory(userId: string): Message[] {
+  if (typeof window === "undefined") return EMPTY_CHAT_HISTORY;
+  if (coachHistoryCache.has(userId)) {
+    return coachHistoryCache.get(userId) || EMPTY_CHAT_HISTORY;
+  }
+  try {
+    const raw = sessionStorage.getItem(`vyra_coach_chat_v1_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Message[];
+      if (Array.isArray(parsed)) {
+        coachHistoryCache.set(userId, parsed);
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return EMPTY_CHAT_HISTORY;
+}
+
+function appendCoachMessages(userId: string, additions: Message[]) {
+  const next = [...readCoachHistory(userId), ...additions].slice(-30);
+  coachHistoryCache.set(userId, next);
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem(`vyra_coach_chat_v1_${userId}`, JSON.stringify(next));
+    } catch {
+      // ignore storage quota errors
+    }
+  }
+  coachHistoryListeners.forEach((l) => l());
+}
+
+function subscribeCoachHistory(cb: () => void) {
+  coachHistoryListeners.add(cb);
+  return () => {
+    coachHistoryListeners.delete(cb);
+  };
+}
+
 function CoachChat() {
+  const isHydrated = useIsClientHydrated();
   useVyraStoreVersion();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get("prompt") || "";
   const currentUser = appStore.getCurrentUser();
+  const persistedThread = useSyncExternalStore(
+    subscribeCoachHistory,
+    () => (isHydrated ? readCoachHistory(currentUser.id) : EMPTY_CHAT_HISTORY),
+    () => EMPTY_CHAT_HISTORY
+  );
 
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeEngineStatus, setActiveEngineStatus] = useState<
     "GEMINI 4 ARGON" | "LOCAL ENGINE"
   >("GEMINI 4 ARGON");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "m_welcome",
-      sender: "coach",
-      text: `Ready when you are, ${currentUser.name.split(" ")[0]}. Ask about your load, request exercise swaps, review nutrition, or adapt today's session.`,
-    },
-  ]);
+  const firstName = (isHydrated ? currentUser.name : "Athlete").split(" ")[0];
+  const messages: Message[] = useMemo(
+    () => [
+      {
+        id: "m_welcome",
+        sender: "coach",
+        text: `Ready when you are, ${firstName}. Ask about your load, request exercise swaps, review nutrition, or adapt today's session.`,
+      },
+      ...persistedThread,
+    ],
+    [firstName, persistedThread]
+  );
 
   const messagesRef = useRef<Message[]>(messages);
   useEffect(() => {
@@ -63,7 +118,7 @@ function CoachChat() {
       .slice(-6)
       .map((m) => ({ sender: m.sender, text: m.text }));
 
-    setMessages((prev) => [...prev, userMsg]);
+    appendCoachMessages(currentUser.id, [userMsg]);
     setInput("");
     setIsStreaming(true);
 
@@ -91,7 +146,7 @@ function CoachChat() {
         : [];
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 11000);
+      const timeoutId = setTimeout(() => controller.abort(), 16000);
       const res = await fetch("/api/ai/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,7 +191,7 @@ function CoachChat() {
               ? (json.response.modelUsed || "gemini-4-argon").toUpperCase()
               : "LOCAL DETERMINISTIC",
           };
-          setMessages((prev) => [...prev, coachReply]);
+          appendCoachMessages(currentUser.id, [coachReply]);
           setIsStreaming(false);
           return;
         }
@@ -147,8 +202,7 @@ function CoachChat() {
 
     const coachResolved = resolveCoachQuery(currentUser.id, query);
     setActiveEngineStatus("LOCAL ENGINE");
-    setMessages((prev) => [
-      ...prev,
+    appendCoachMessages(currentUser.id, [
       {
         id: coachResolved.id,
         sender: "coach",

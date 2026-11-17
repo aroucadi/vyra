@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { EventEnvelope } from "@/lib/storage/events";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
+import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   ensureFirestoreCoachBridgeRegistered,
   saveAthleticEventsToFirestore,
@@ -15,8 +16,27 @@ interface SyncEventsRequestBody {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: SyncEventsRequestBody = await req.json();
-    const { traineeId, events } = body;
+    const rl = checkRateLimit(resolveRateLimitKey(req, "sync-events"), {
+      maxRequests: 60,
+      windowMs: 60_000,
+    });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many sync requests. Please retry shortly." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
+
+    let body: SyncEventsRequestBody;
+    try {
+      body = (await req.json()) as SyncEventsRequestBody;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body" },
+        { status: 400 }
+      );
+    }
+    const { traineeId, events } = body || {};
 
     if (!traineeId || typeof traineeId !== "string" || !Array.isArray(events)) {
       return NextResponse.json(
@@ -106,8 +126,7 @@ export async function POST(req: NextRequest) {
       debriefDispatched: debriefSummaries.length > 0,
       debriefSummaries,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Sync processing error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Sync processing error" }, { status: 500 });
   }
 }

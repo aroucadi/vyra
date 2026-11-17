@@ -20,6 +20,7 @@ import {
   buildGeminiGenerationConfig,
   getActiveGeminiModel,
   getGeminiAuthContext,
+  getGeminiFallbackChain,
   resolveGeminiTransport,
   ResolvedGeminiTransport,
 } from "../gemini";
@@ -1177,21 +1178,33 @@ export async function runVertexAgenticCoachLoop(
     }
   };
 
-  // Resolve live LLM transport (GEMINI_API_KEY, Cloud Run Vertex AI OAuth2 ADC, custom fetchImpl, or fault simulation)
-  const resolvedTransport: ResolvedGeminiTransport | null =
-    opts.fetchImpl ||
+  const isFaultInjection = Boolean(
     opts.simulateStageFailure === "timeout" ||
-    opts.simulateStageFailure === "rate_limit_429" ||
-    opts.simulateStageFailure === "service_unavailable_503"
-      ? {
-          url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": process.env.GEMINI_API_KEY || "test-key",
-          },
-          authMode: "ai_studio_api_key",
-        }
-      : await resolveGeminiTransport(model);
+      opts.simulateStageFailure === "rate_limit_429" ||
+      opts.simulateStageFailure === "service_unavailable_503"
+  );
+  const candidateModels = isFaultInjection ? [model] : getGeminiFallbackChain(model);
+
+  const resolveTransportForModel = async (
+    candidateModel: string
+  ): Promise<ResolvedGeminiTransport | null> => {
+    if (opts.fetchImpl || isFaultInjection) {
+      return {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent`,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY || "test-key",
+        },
+        authMode: "ai_studio_api_key",
+      };
+    }
+    return resolveGeminiTransport(candidateModel);
+  };
+
+  // Resolve live LLM transport (GEMINI_API_KEY, Cloud Run Vertex AI OAuth2 ADC, custom fetchImpl, or fault simulation)
+  const resolvedTransport: ResolvedGeminiTransport | null = await resolveTransportForModel(
+    candidateModels[0]
+  );
 
   const shouldUseLiveLlmPath = Boolean(resolvedTransport);
   const resolvedGym = toolGetGymEquipment(
@@ -1202,14 +1215,13 @@ export async function runVertexAgenticCoachLoop(
   );
 
   if (shouldUseLiveLlmPath && resolvedTransport) {
-    let turns = 0;
-    try {
-      const contents: any[] = [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `You are the VYRA Autonomous CSCS Strength & Biomechanics Coach.
+    const callerBreaker = opts.circuitBreaker;
+    const baseContents: Array<Record<string, unknown>> = [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `You are the VYRA Autonomous CSCS Strength & Biomechanics Coach.
 You reason about the PERSON first, then the exercise.
 1. Call get_athlete_case_file, retrieve_science_principles, query_athlete_history, and rag_sensory_feedback for trainee "${input.traineeId}" and exercise "${input.exerciseName}" (${input.currentWeightKg}kg, target ${input.targetSets} sets x ${input.repLow}-${input.repHigh} reps) at gym "${resolvedGym.gymName}".
 2. Rank bottlenecks strictly along the Coach Priority Hierarchy:
@@ -1217,211 +1229,264 @@ You reason about the PERSON first, then the exercise.
 3. Call propose_and_critique_intervention to challenge your own hypothesis ("What would make this intervention wrong? Is it proportional to the athlete's training age?").
 4. If an exercise substitution is genuinely needed, call search_6554_exercise_catalogue and verify_evolution_candidate.
 5. Call commit_coaching_decision with your chosen tier, target weight/sets/reps, explainability fields (whyThis, whyNow, whyForYou, whatWeWatch, whenWeRevisit), and experimentHypothesis.`,
-            },
-          ],
-        },
-      ];
-
-      const effectiveFetch: typeof fetch =
-        opts.fetchImpl ||
-        (opts.simulateStageFailure === "timeout"
-          ? async () => {
-              const err = new Error("Request timed out");
-              err.name = "TimeoutError";
-              throw err;
-            }
-          : opts.simulateStageFailure === "rate_limit_429"
-            ? async () => new Response("Too Many Requests", { status: 429 })
-            : opts.simulateStageFailure === "service_unavailable_503"
-              ? async () => new Response("Service Unavailable", { status: 503 })
-              : fetch);
-
-      while (turns < maxTurns) {
-        turns++;
-        const { response: res } = await fetchWithRetryTimeoutAndCircuitBreaker({
-          url: resolvedTransport.url,
-          init: {
-            method: "POST",
-            headers: resolvedTransport.headers,
-            body: JSON.stringify({
-              contents,
-              tools: [{ functionDeclarations: VERTEX_AGENT_TOOL_DECLARATIONS }],
-              generationConfig: buildGeminiGenerationConfig({
-                model,
-                thinkingLevel: "low",
-                maxOutputTokens: 16384,
-                temperature: 0.1,
-              }),
-            }),
           },
-          timeoutMs: opts.timeoutMs ?? 12000,
-          maxRetries: opts.maxRetries ?? 3,
-          baseDelayMs: opts.baseDelayMs ?? 150,
-          fetchImpl: effectiveFetch,
-          circuitBreaker: opts.circuitBreaker,
-        });
+        ],
+      },
+    ];
 
-        const data = await res.json();
-        const candidateContent = data?.candidates?.[0]?.content;
-        if (!candidateContent || !Array.isArray(candidateContent.parts)) {
-          break;
-        }
+    const effectiveFetch: typeof fetch =
+      opts.fetchImpl ||
+      (opts.simulateStageFailure === "timeout"
+        ? async () => {
+            const err = new Error("Request timed out");
+            err.name = "TimeoutError";
+            throw err;
+          }
+        : opts.simulateStageFailure === "rate_limit_429"
+          ? async () => new Response("Too Many Requests", { status: 429 })
+          : opts.simulateStageFailure === "service_unavailable_503"
+            ? async () => new Response("Service Unavailable", { status: 503 })
+            : fetch);
 
-        contents.push(candidateContent);
+    let activeModel = candidateModels[0];
+    let turns = 0;
 
-        const functionCallParts = candidateContent.parts.filter((p: any) => p.functionCall);
-        if (functionCallParts.length === 0) {
-          break;
-        }
-
-        const responseParts: any[] = [];
-        for (const part of functionCallParts) {
-          const fc = part.functionCall;
-          const toolName = String(fc.name);
-          const toolArgs = (fc.args as Record<string, unknown>) || {};
-          const toolOutput = dispatchTool(toolName, toolArgs);
-
-          toolCallsHistory.push({
-            turn: turns,
-            toolName,
-            args: toolArgs,
-            resultSummary: JSON.stringify(toolOutput).slice(0, 180),
-          });
-
-          responseParts.push({
-            functionResponse: {
-              name: toolName,
-              response: { result: toolOutput },
-            },
-          });
-        }
-
-        contents.push({
-          role: "user",
-          parts: responseParts,
-        });
-
-        if (llmCommittedProposition || schemaValidationErrors.length > 0) {
-          break;
-        }
+    for (let mIdx = 0; mIdx < candidateModels.length; mIdx++) {
+      const candidateModel = candidateModels[mIdx];
+      const hasFallbackNext = mIdx < candidateModels.length - 1;
+      const candidateTransport =
+        mIdx === 0 ? resolvedTransport : await resolveTransportForModel(candidateModel);
+      if (!candidateTransport) {
+        if (hasFallbackNext) continue;
+        break;
       }
 
-      // If schema validation failed or propose/critique did not complete, fail closed to safe no-op
-      if (!llmCommittedProposition || schemaValidationErrors.length > 0 || !stagesCompleted.propose || !stagesCompleted.critique) {
-        return buildDegradedSafeNoopResult({
-          authMode: auth.mode,
-          modelUsed: model,
+      activeModel = candidateModel;
+      turns = 0;
+      schemaValidationErrors = [];
+      llmCommittedProposition = null;
+      stagesCompleted.propose = false;
+      stagesCompleted.critique = false;
+      stagesCompleted.verify = false;
+      toolCallsHistory.length = 0;
+      const contents: Array<Record<string, unknown>> = [...baseContents];
+      // Use an isolated probe breaker when falling back across models so primary 404/transient doesn't lock out gemini-3.8-flash;
+      // use the caller/global breaker directly on single-model / last-resort attempts.
+      const modelBreaker = hasFallbackNext ? new CoachCircuitBreaker(3, 30_000) : callerBreaker;
+
+      try {
+        while (turns < maxTurns) {
+          turns++;
+          const { response: res } = await fetchWithRetryTimeoutAndCircuitBreaker({
+            url: candidateTransport.url,
+            init: {
+              method: "POST",
+              headers: candidateTransport.headers,
+              body: JSON.stringify({
+                contents,
+                tools: [{ functionDeclarations: VERTEX_AGENT_TOOL_DECLARATIONS }],
+                generationConfig: buildGeminiGenerationConfig({
+                  model: candidateModel,
+                  thinkingLevel: "low",
+                  maxOutputTokens: 16384,
+                  temperature: 0.1,
+                }),
+              }),
+            },
+            timeoutMs: opts.timeoutMs ?? 12000,
+            maxRetries: opts.maxRetries ?? 3,
+            baseDelayMs: opts.baseDelayMs ?? 150,
+            fetchImpl: effectiveFetch,
+            circuitBreaker: modelBreaker,
+          });
+
+          const data = await res.json();
+          const candidateContent = data?.candidates?.[0]?.content;
+          if (!candidateContent || !Array.isArray(candidateContent.parts)) {
+            break;
+          }
+
+          contents.push(candidateContent);
+
+          const functionCallParts = candidateContent.parts.filter(
+            (p: Record<string, unknown>) => p.functionCall
+          );
+          if (functionCallParts.length === 0) {
+            break;
+          }
+
+          const responseParts: Array<Record<string, unknown>> = [];
+          for (const part of functionCallParts) {
+            const fc = part.functionCall as Record<string, unknown>;
+            const toolName = String(fc.name);
+            const toolArgs = (fc.args as Record<string, unknown>) || {};
+            const toolOutput = dispatchTool(toolName, toolArgs);
+
+            toolCallsHistory.push({
+              turn: turns,
+              toolName,
+              args: toolArgs,
+              resultSummary: JSON.stringify(toolOutput).slice(0, 180),
+            });
+
+            responseParts.push({
+              functionResponse: {
+                name: toolName,
+                response: { result: toolOutput },
+              },
+            });
+          }
+
+          contents.push({
+            role: "user",
+            parts: responseParts,
+          });
+
+          if (llmCommittedProposition || schemaValidationErrors.length > 0) {
+            break;
+          }
+        }
+
+        // If schema validation failed or propose/critique did not complete, fail closed to safe no-op
+        if (
+          !llmCommittedProposition ||
+          schemaValidationErrors.length > 0 ||
+          !stagesCompleted.propose ||
+          !stagesCompleted.critique
+        ) {
+          if (!llmCommittedProposition && turns === 1 && hasFallbackNext && !opts.simulateStageFailure) {
+            continue;
+          }
+          return buildDegradedSafeNoopResult({
+            authMode: candidateTransport.authMode,
+            modelUsed: candidateModel,
+            turnsExecuted: turns,
+            stagesCompleted,
+            schemaValidationErrors,
+            athleteModelContext,
+            toolCallsHistory,
+          });
+        }
+
+        const { constrained, audit } = enforceDeterministicSafetyRails(
+          llmCommittedProposition,
+          input,
+          athleteModel
+        );
+        stagesCompleted.verify = audit.blockedViolations.length === 0;
+
+        if (!stagesCompleted.verify) {
+          return buildDegradedSafeNoopResult({
+            authMode: candidateTransport.authMode,
+            modelUsed: candidateModel,
+            turnsExecuted: turns,
+            stagesCompleted,
+            athleteModelContext,
+            toolCallsHistory,
+          });
+        }
+
+        callerBreaker?.recordSuccess();
+
+        if (shadowMode) {
+          const shadowEntry: ShadowModeLogEntry = {
+            id: `shadow_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: new Date().toISOString(),
+            traineeId: input.traineeId,
+            exerciseName: input.exerciseName,
+            caseFileSeen: toolGetAthleteCaseFile(input.traineeId),
+            recommendedProposition: constrained,
+            reasoningTrace: toolCallsHistory,
+            safetyRailAudit: audit,
+            mutationApplied: false,
+          };
+          shadowModeLogs.push(shadowEntry);
+          {
+            const repo = await getCoachDbPersistence();
+            if (repo) await repo.insertShadowLogInDb(shadowEntry);
+          }
+          return {
+            proposition: {
+              ...constrained,
+              headline: "Shadow mode active - keeping current plan",
+              mutation: {
+                newTargetWeightKg: input.currentWeightKg,
+                newTargetSets: input.targetSets,
+              },
+            },
+            authMode: candidateTransport.authMode,
+            modelUsed: candidateModel,
+            turnsExecuted: turns,
+            decisionOrigin: "llm_committed_decision",
+            statusMessage: "Shadow mode active - recommendation logged without mutating plan",
+            mutationApplied: false,
+            shadowMode: true,
+            shadowModeLogged: true,
+            stagesCompleted,
+            safetyRailAudit: audit,
+            athleteModelContext,
+            toolCallsHistory,
+          };
+        }
+
+        const exp = athleteModelStore.recordExperiment({
+          traineeId: input.traineeId,
+          startDate: new Date().toISOString().split("T")[0],
+          targetReviewDate: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
+          category:
+            constrained.tier === "tier_2_surgical_swap"
+              ? "exercise_rotation"
+              : constrained.tier === "tier_3_volume_prune"
+                ? "volume_pruning"
+                : constrained.tier === "tier_5_macro_pivot"
+                  ? "tendon_deload"
+                  : "setup_calibration",
+          hypothesis: constrained.rootCauseDiagnosis,
+          actionTaken: constrained.proposedFix,
+          successMetric: constrained.explainability?.whatWeWatch || "Progression within RIR 1-2 without joint friction",
+          status: "active",
+        });
+        await athleteModelStore.syncToDatabase(input.traineeId);
+
+        return {
+          proposition: constrained,
+          authMode: candidateTransport.authMode,
+          modelUsed: candidateModel,
           turnsExecuted: turns,
+          decisionOrigin: "llm_committed_decision",
+          mutationApplied: true,
+          stagesCompleted,
+          safetyRailAudit: audit,
+          committedExperimentId: exp.id,
+          athleteModelContext,
+          toolCallsHistory,
+        };
+      } catch {
+        if (hasFallbackNext) {
+          continue;
+        }
+        // Fail closed on LLM error, timeout, 429/503 retry exhaustion, or open circuit breaker
+        return buildDegradedSafeNoopResult({
+          authMode: candidateTransport.authMode,
+          modelUsed: candidateModel,
+          turnsExecuted: Math.max(1, turns),
           stagesCompleted,
           schemaValidationErrors,
           athleteModelContext,
           toolCallsHistory,
         });
       }
-
-      const { constrained, audit } = enforceDeterministicSafetyRails(
-        llmCommittedProposition,
-        input,
-        athleteModel
-      );
-      stagesCompleted.verify = audit.blockedViolations.length === 0;
-
-      if (!stagesCompleted.verify) {
-        return buildDegradedSafeNoopResult({
-          authMode: auth.mode,
-          modelUsed: model,
-          turnsExecuted: turns,
-          stagesCompleted,
-          athleteModelContext,
-          toolCallsHistory,
-        });
-      }
-
-      if (shadowMode) {
-        const shadowEntry: ShadowModeLogEntry = {
-          id: `shadow_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          timestamp: new Date().toISOString(),
-          traineeId: input.traineeId,
-          exerciseName: input.exerciseName,
-          caseFileSeen: toolGetAthleteCaseFile(input.traineeId),
-          recommendedProposition: constrained,
-          reasoningTrace: toolCallsHistory,
-          safetyRailAudit: audit,
-          mutationApplied: false,
-        };
-        shadowModeLogs.push(shadowEntry);
-        {
-          const repo = await getCoachDbPersistence();
-          if (repo) await repo.insertShadowLogInDb(shadowEntry);
-        }
-        return {
-          proposition: {
-            ...constrained,
-            headline: "Shadow mode active - keeping current plan",
-            mutation: {
-              newTargetWeightKg: input.currentWeightKg,
-              newTargetSets: input.targetSets,
-            },
-          },
-          authMode: auth.mode,
-          modelUsed: model,
-          turnsExecuted: turns,
-          decisionOrigin: "llm_committed_decision",
-          statusMessage: "Shadow mode active - recommendation logged without mutating plan",
-          mutationApplied: false,
-          shadowMode: true,
-          shadowModeLogged: true,
-          stagesCompleted,
-          safetyRailAudit: audit,
-          athleteModelContext,
-          toolCallsHistory,
-        };
-      }
-
-      const exp = athleteModelStore.recordExperiment({
-        traineeId: input.traineeId,
-        startDate: new Date().toISOString().split("T")[0],
-        targetReviewDate: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-        category:
-          constrained.tier === "tier_2_surgical_swap"
-            ? "exercise_rotation"
-            : constrained.tier === "tier_3_volume_prune"
-              ? "volume_pruning"
-              : constrained.tier === "tier_5_macro_pivot"
-                ? "tendon_deload"
-                : "setup_calibration",
-        hypothesis: constrained.rootCauseDiagnosis,
-        actionTaken: constrained.proposedFix,
-        successMetric: constrained.explainability?.whatWeWatch || "Progression within RIR 1-2 without joint friction",
-        status: "active",
-      });
-      await athleteModelStore.syncToDatabase(input.traineeId);
-
-      return {
-        proposition: constrained,
-        authMode: auth.mode,
-        modelUsed: model,
-        turnsExecuted: turns,
-        decisionOrigin: "llm_committed_decision",
-        mutationApplied: true,
-        stagesCompleted,
-        safetyRailAudit: audit,
-        committedExperimentId: exp.id,
-        athleteModelContext,
-        toolCallsHistory,
-      };
-    } catch {
-      // Fail closed on LLM error, timeout, 429/503 retry exhaustion, or open circuit breaker
-      return buildDegradedSafeNoopResult({
-        authMode: auth.mode,
-        modelUsed: model,
-        turnsExecuted: Math.max(1, turns),
-        stagesCompleted,
-        schemaValidationErrors,
-        athleteModelContext,
-        toolCallsHistory,
-      });
     }
+
+    return buildDegradedSafeNoopResult({
+      authMode: resolvedTransport.authMode,
+      modelUsed: activeModel,
+      turnsExecuted: Math.max(1, turns),
+      stagesCompleted,
+      schemaValidationErrors,
+      athleteModelContext,
+      toolCallsHistory,
+    });
   }
 
   // Offline / Local Propose-Critique-Verify Engine + Deterministic Safety Rails + Experiment Logging

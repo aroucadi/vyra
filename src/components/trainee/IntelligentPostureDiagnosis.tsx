@@ -7,7 +7,9 @@ import { clsx } from "clsx";
 
 export interface IntelligentPostureDiagnosisProps {
   results: RoleEvaluationResult[];
-  onInjectCorrective?: (exerciseName: string) => Promise<void> | void;
+  onInjectCorrective?: (
+    exerciseName: string
+  ) => Promise<{ success?: boolean; message?: string } | void> | { success?: boolean; message?: string } | void;
   className?: string;
 }
 
@@ -17,20 +19,31 @@ export function IntelligentPostureDiagnosis({
   className,
 }: IntelligentPostureDiagnosisProps) {
   const [injectedExercise, setInjectedExercise] = useState<string | null>(null);
+  const [injectError, setInjectError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
   // Analyze deficits across evaluated roles
+  const hasMeasuredData = results.some((r) => r.status !== BALANCE_STATUSES.NO_DATA);
   const weakRoles = results.filter((r) => r.status === BALANCE_STATUSES.WEAK);
   const borderlineRoles = results.filter((r) => r.status === BALANCE_STATUSES.BORDERLINE);
 
   // Determine biomechanical diagnosis profile
-  let diagnosisTitle = "Optimal Biomechanical Symmetry";
-  let diagnosisRisk = "Low joint shear risk. Anterior and posterior chains are structurally aligned.";
+  let diagnosisTitle = "Baseline Lifts Needed for Diagnosis";
+  let diagnosisRisk =
+    "Log sets on Bench Press, Barbell Row, Back Squat, or Deadlift to compute real structural balance ratios and joint shear risk.";
   let correctiveExercise = "Standing Cable Face Pull";
-  let correctiveReason = "Maintain scapular stability and rotator cuff endurance.";
-  let riskSeverity: "safe" | "moderate" | "high" = "safe";
+  let correctiveReason =
+    "Optional pre-diagnostic scapular & external rotation primer while building your baseline.";
+  let riskSeverity: "no_data" | "safe" | "moderate" | "high" = "no_data";
 
-  if (weakRoles.length > 0 || borderlineRoles.length > 0) {
+  if (hasMeasuredData) {
+    diagnosisTitle = "Optimal Biomechanical Symmetry";
+    diagnosisRisk = "Low joint shear risk. Anterior and posterior chains are structurally aligned.";
+    correctiveReason = "Maintain scapular stability and rotator cuff endurance.";
+    riskSeverity = "safe";
+  }
+
+  if (hasMeasuredData && (weakRoles.length > 0 || borderlineRoles.length > 0)) {
     const laggingRole = weakRoles[0]?.roleId || borderlineRoles[0]?.roleId || "";
 
     if (laggingRole.includes("bench") || laggingRole.includes("incline") || laggingRole.includes("overhead")) {
@@ -62,9 +75,16 @@ export function IntelligentPostureDiagnosis({
   const handleInject = async () => {
     if (!onInjectCorrective || isBusy || injectedExercise) return;
     setIsBusy(true);
+    setInjectError(null);
     try {
-      await onInjectCorrective(correctiveExercise);
-      setInjectedExercise(correctiveExercise);
+      const res = await onInjectCorrective(correctiveExercise);
+      if (res && typeof res === "object" && res.success === false) {
+        setInjectError(res.message || "No active training program to update yet.");
+      } else {
+        setInjectedExercise(correctiveExercise);
+      }
+    } catch {
+      setInjectError("Unable to update training blueprint right now.");
     } finally {
       setIsBusy(false);
     }
@@ -96,14 +116,18 @@ export function IntelligentPostureDiagnosis({
         <span
           className={clsx(
             "text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold flex items-center gap-1",
-            riskSeverity === "safe"
+            riskSeverity === "no_data"
+              ? "bg-slate-800 text-slate-300 border-slate-700"
+              : riskSeverity === "safe"
               ? "bg-sky-500/15 text-sky-400 border-sky-500/30"
               : riskSeverity === "moderate"
               ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
               : "bg-rose-500/15 text-rose-400 border-rose-500/30"
           )}
         >
-          {riskSeverity === "safe" ? (
+          {riskSeverity === "no_data" ? (
+            <span>NO DATA</span>
+          ) : riskSeverity === "safe" ? (
             <>
               <CheckCircle2 className="w-3 h-3" />
               <span>SYMMETRICAL</span>
@@ -159,6 +183,11 @@ export function IntelligentPostureDiagnosis({
               </>
             )}
           </button>
+        )}
+        {injectError && (
+          <p className="text-[11px] text-rose-400 pt-1" role="alert">
+            {injectError}
+          </p>
         )}
       </div>
     </div>

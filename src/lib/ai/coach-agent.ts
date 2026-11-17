@@ -333,13 +333,14 @@ export interface GymEquipmentProfile {
 // AGENT TOOL 1: Query Athlete Exercise History (28-Day Window)
 // ----------------------------------------------------------------------------
 export function toolQueryAthleteHistory(
-  sessions: WorkoutSession[],
+  sessions: WorkoutSession[] | undefined,
   exerciseName: string,
   repHighTarget: number = 10,
   targetEquipment?: string
 ): AthleteExerciseHistoryReport {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
   const needle = exerciseName.trim().toLowerCase();
-  const matchingSessions = sessions.filter((s) =>
+  const matchingSessions = safeSessions.filter((s) =>
     s.setLogs?.some(
       (l) =>
         l.exerciseName.trim().toLowerCase() === needle &&

@@ -247,6 +247,45 @@ async function uploadToS3(
   };
 }
 
+const ALLOWED_IMAGE_MIME = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+
+const MAX_DATA_URI_CHARS = 14 * 1024 * 1024; // ~10MB decoded binary
+
+function validateUploadImageInput(dataUriOrUrl: string): {
+  valid: boolean;
+  error?: string;
+} {
+  if (typeof dataUriOrUrl !== "string" || dataUriOrUrl.trim().length === 0) {
+    return { valid: false, error: "Image payload is required." };
+  }
+  if (dataUriOrUrl.length > MAX_DATA_URI_CHARS) {
+    return { valid: false, error: "Image payload exceeds 10MB limit." };
+  }
+  if (dataUriOrUrl.startsWith("http://") || dataUriOrUrl.startsWith("https://")) {
+    return { valid: true };
+  }
+  const mimeMatch = dataUriOrUrl.match(/^data:([^;]+);base64,/i);
+  if (!mimeMatch) {
+    return {
+      valid: false,
+      error: "Invalid image format: must be base64 data URI or HTTP(S) URL",
+    };
+  }
+  const normalizedType = mimeMatch[1].toLowerCase();
+  if (!ALLOWED_IMAGE_MIME.has(normalizedType)) {
+    return {
+      valid: false,
+      error: `Unsupported image content type: ${mimeMatch[1]}`,
+    };
+  }
+  return { valid: true };
+}
+
 /**
  * Main Entry Point: Upload Equipment Photo
  * 
@@ -258,6 +297,18 @@ export async function uploadEquipmentPhoto(
   dataUriOrBase64: string,
   metadata: UploadPhotoMetadata
 ): Promise<StorageUploadResult> {
+  // 0. Validate MIME type & payload bounds even in local fallback mode (blocks SVG/HTML XSS & >10MB DoS)
+  const inputValidation = validateUploadImageInput(dataUriOrBase64);
+  if (!inputValidation.valid) {
+    return {
+      success: false,
+      url: "",
+      isCloud: false,
+      provider: "local_fallback",
+      error: inputValidation.error,
+    };
+  }
+
   // 1. FEATURE FLAG CHECK: If disabled, stay 100% local
   if (!isCloudStorageEnabled()) {
     return {
@@ -291,12 +342,6 @@ export async function uploadEquipmentPhoto(
 
   const { buffer, contentType } = parsed;
   const normalizedType = contentType.toLowerCase();
-  const ALLOWED_IMAGE_MIME = new Set([
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-  ]);
   if (!ALLOWED_IMAGE_MIME.has(normalizedType)) {
     return {
       success: false,

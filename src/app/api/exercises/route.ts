@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const rawLimit = parseInt(searchParams.get('limit') || '30', 10);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 30;
 
-    let results = q ? searchExercises(q, { limit: 100 }) : loadExerciseCatalogue().exercises;
+    let results = q ? searchExercises(q, { limit: 6600 }) : loadExerciseCatalogue().exercises;
 
     if (muscle && muscle !== 'all') {
       const m = muscle.toLowerCase();
@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: 'Failed to search exercise catalogue', message: error?.message },
+      { error: 'Failed to search exercise catalogue' },
       { status: 500 }
     );
   }

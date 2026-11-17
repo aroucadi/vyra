@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { clsx } from "clsx";
 
 export interface AnatomicalBodyMapProps {
@@ -123,16 +123,11 @@ export function AnatomicalBodyMap({
     normalizedPrimary.includes("glute") ||
     normalizedPrimary.includes("trap");
 
-  const [view, setView] = useState<"front" | "back">(isBackDominant ? "back" : "front");
-
-  useEffect(() => {
-    if (mode === "visualizer" || (selectedMuscle && selectedMuscle !== "all")) {
-      const activeMeta = Object.values(MUSCLE_METADATA).find((m) => isPrimary(m.id));
-      if (activeMeta) {
-        setView(activeMeta.view);
-      }
-    }
-  }, [normalizedPrimary, mode]);
+  const targetKey = `${mode}:${selectedMuscle || ""}`;
+  const [viewOverride, setViewOverride] = useState<{
+    key: string;
+    view: "front" | "back";
+  } | null>(null);
 
   const isPrimary = (muscleId: string) => {
     if (!normalizedPrimary || normalizedPrimary === "all") return false;
@@ -171,6 +166,16 @@ export function AnatomicalBodyMap({
     | AnatomicalRegion
     | undefined;
   const activeMeta = activeRegionId ? MUSCLE_METADATA[activeRegionId] : null;
+  const derivedView: "front" | "back" =
+    (mode === "visualizer" || (selectedMuscle && selectedMuscle !== "all")) && activeMeta
+      ? activeMeta.view
+      : isBackDominant
+      ? "back"
+      : "front";
+  const view = viewOverride?.key === targetKey ? viewOverride.view : derivedView;
+  const setView = (nextView: "front" | "back") => {
+    setViewOverride({ key: targetKey, view: nextView });
+  };
 
   const handleRegionClick = (regionId: AnatomicalRegion) => {
     if (!onSelectMuscle) return;

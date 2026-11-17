@@ -1026,17 +1026,35 @@ export class Store {
   }
 
   hydrateFromBootstrap(boot: UserBootstrapPayload) {
+    // Load any pending offline anonymous records from localStorage before merging
+    const prevUid = this.db.currentUser.id;
+    this.hydrateFromClientStorage();
+
     const uid = boot.user.id;
+    let claimedLocalAnonData = false;
+
+    const mergedGymsMap = new Map<string, GymLocation>();
+    for (const g of boot.user.gymLocations || []) {
+      if (g?.id) mergedGymsMap.set(g.id, g);
+    }
+    if (prevUid.startsWith("anon_")) {
+      for (const g of this.db.currentUser.gymLocations || []) {
+        if (g?.id && !mergedGymsMap.has(g.id)) {
+          mergedGymsMap.set(g.id, g);
+          claimedLocalAnonData = true;
+        }
+      }
+    }
+
     const hydratedUser: User = {
       ...boot.user,
       role: boot.user.role || "both",
       injuries: boot.user.injuries || [],
       goals: boot.user.goals || [],
-      gymLocations: boot.user.gymLocations || [],
+      gymLocations: Array.from(mergedGymsMap.values()),
     };
 
     // Preserve local offline records authored anonymously during the current browser session
-    let claimedLocalAnonData = false;
     const localSessions = this.db.sessions.filter(
       (s) => s.traineeId.startsWith("anon_") || s.traineeId === uid
     );
@@ -1073,6 +1091,39 @@ export class Store {
       }
     }
 
+    const mergedSuppLogsMap = new Map<string, SupplementLog>();
+    for (const sl of boot.supplementLogs || []) {
+      mergedSuppLogsMap.set(sl.id, sl);
+    }
+    for (const sl of this.db.supplementLogs) {
+      if ((sl.traineeId.startsWith("anon_") || sl.traineeId === uid) && !mergedSuppLogsMap.has(sl.id)) {
+        if (sl.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
+        mergedSuppLogsMap.set(sl.id, { ...sl, traineeId: uid });
+      }
+    }
+
+    const mergedHydLogsMap = new Map<string, HydrationLog>();
+    for (const hl of boot.hydrationLogs || []) {
+      mergedHydLogsMap.set(hl.id, hl);
+    }
+    for (const hl of this.db.hydrationLogs) {
+      if ((hl.traineeId.startsWith("anon_") || hl.traineeId === uid) && !mergedHydLogsMap.has(hl.id)) {
+        if (hl.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
+        mergedHydLogsMap.set(hl.id, { ...hl, traineeId: uid });
+      }
+    }
+
+    const mergedReadinessMap = new Map<string, WearableBiometricSnapshot>();
+    for (const rl of boot.readinessLogs || []) {
+      mergedReadinessMap.set(rl.id, rl);
+    }
+    for (const rl of this.db.wearableBiometrics || []) {
+      if ((rl.traineeId.startsWith("anon_") || rl.traineeId === uid) && !mergedReadinessMap.has(rl.id)) {
+        if (rl.traineeId.startsWith("anon_")) claimedLocalAnonData = true;
+        mergedReadinessMap.set(rl.id, { ...rl, traineeId: uid });
+      }
+    }
+
     this.db = {
       currentUser: hydratedUser,
       users: [hydratedUser],
@@ -1083,14 +1134,21 @@ export class Store {
       ),
       metrics: Array.from(mergedMetricsMap.values()),
       supplementProtocols: [...(boot.supplementProtocols || [])],
-      supplementLogs: [...(boot.supplementLogs || [])],
+      supplementLogs: Array.from(mergedSuppLogsMap.values()),
       hydrationGoals: [...(boot.hydrationGoals || [])],
-      hydrationLogs: [...(boot.hydrationLogs || [])],
-      wearableBiometrics: [...(boot.readinessLogs || [])],
+      hydrationLogs: Array.from(mergedHydLogsMap.values()),
+      wearableBiometrics: Array.from(mergedReadinessMap.values()),
     };
 
+    if (typeof window !== "undefined" && prevUid.startsWith("anon_") && prevUid !== uid) {
+      try {
+        localStorage.removeItem(`vyra_offline_backup_v1_${prevUid}`);
+        localStorage.removeItem(`vyra_user_gyms_v1_${prevUid}`);
+      } catch {}
+    }
+
     this.isCloudAuthenticated = true;
-    this.hydratedStorageUid = null;
+    this.hydratedStorageUid = uid;
     this.notifyChange(claimedLocalAnonData);
   }
 

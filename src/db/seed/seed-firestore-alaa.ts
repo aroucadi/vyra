@@ -33,12 +33,18 @@ export interface SeedFirestoreResult {
 }
 
 async function ensureAlaaFirebaseAuthUser(auth: Auth): Promise<{ authUid: string; created: boolean }> {
+  const forceVerify =
+    process.argv.includes("--force-verify-owner") ||
+    Boolean(process.env.ALAA_INITIAL_PASSWORD);
   try {
     const existingByEmail = await auth.getUserByEmail(ALAA_CANONICAL_EMAIL);
-    if (!existingByEmail.emailVerified) {
+    if (!existingByEmail.emailVerified && (existingByEmail.uid === ALAA_CANONICAL_UID || forceVerify)) {
       await auth.updateUser(existingByEmail.uid, {
         emailVerified: true,
         displayName: existingByEmail.displayName || "Alaa",
+        ...(process.env.ALAA_INITIAL_PASSWORD
+          ? { password: process.env.ALAA_INITIAL_PASSWORD }
+          : {}),
       });
     }
     return { authUid: existingByEmail.uid, created: false };

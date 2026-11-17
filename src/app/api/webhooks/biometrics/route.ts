@@ -3,6 +3,7 @@ import { appStore } from "@/lib/store";
 import { calculateReadinessScore } from "@/lib/autoregulation";
 import { telemetry } from "@/lib/telemetry";
 import { InboundBiometricsPayload, WearableDeviceSource } from "@/lib/types";
+import { saveUserSyncBatch } from "@/lib/firebase/firestore-repository";
 
 import crypto from "crypto";
 
@@ -17,7 +18,12 @@ function safeCompare(a?: string | null, b?: string | null): boolean {
 }
 
 function isAuthorized(req: NextRequest, bodySecret?: string): boolean {
-  const configuredSecret = process.env.BIOMETRICS_WEBHOOK_SECRET || DEFAULT_WEBHOOK_SECRET;
+  const isProdNonTest =
+    process.env.NODE_ENV === "production" && !appStore.isTestEnvironment();
+  const configuredSecret =
+    process.env.BIOMETRICS_WEBHOOK_SECRET ||
+    (isProdNonTest ? "" : DEFAULT_WEBHOOK_SECRET);
+  if (!configuredSecret) return false;
 
   const authHeader = req.headers.get("authorization");
   if (authHeader) {
@@ -118,6 +124,10 @@ export async function POST(req: NextRequest) {
       reducedRecovery: readiness.state !== "optimal",
       cnsFatigueDetected: readiness.state !== "optimal",
     });
+
+    if (!appStore.isTestEnvironment()) {
+      await saveUserSyncBatch(traineeId, { readinessLogs: [snapshot] }).catch(() => {});
+    }
 
     // Record non-blocking telemetry for autoregulation activation
     telemetry.track("workout_recalibration_applied", {

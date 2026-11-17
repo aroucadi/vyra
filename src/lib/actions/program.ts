@@ -2,8 +2,8 @@
 
 import { appStore } from "@/lib/store";
 import { Program } from "@/lib/types";
-import { getAuthenticatedSession } from "@/lib/auth/server-session";
-import { saveProgramToFirestore } from "@/lib/firebase/firestore-repository";
+import { getAuthenticatedSession, isAnonymousTraineeId } from "@/lib/auth/server-session";
+import { saveProgramToFirestore, saveUserSyncBatch } from "@/lib/firebase/firestore-repository";
 import { revalidatePath } from "next/cache";
 
 function safeRevalidate(path: string) {
@@ -15,18 +15,33 @@ function safeRevalidate(path: string) {
 }
 
 export async function getActiveProgram(traineeId: string) {
-  return appStore.getActiveProgramForTrainee(traineeId);
+  const session = await getAuthenticatedSession();
+  const effectiveId = session
+    ? session.uid
+    : appStore.isTestEnvironment() || isAnonymousTraineeId(traineeId)
+      ? traineeId
+      : "anon_visitor";
+  return appStore.getActiveProgramForTrainee(effectiveId);
 }
 
 export async function getProgramById(programId: string) {
-  return appStore.getProgram(programId);
+  const session = await getAuthenticatedSession();
+  const prog = appStore.getProgram(programId);
+  if (!prog) return undefined;
+  if (session && prog.traineeId !== session.uid) return undefined;
+  if (!session && !appStore.isTestEnvironment() && !isAnonymousTraineeId(prog.traineeId)) {
+    return undefined;
+  }
+  return prog;
 }
 
 export async function saveProgramAction(program: Program) {
   const session = await getAuthenticatedSession();
   const scopedProgram: Program = session
     ? { ...program, traineeId: session.uid, trainerId: session.uid }
-    : program;
+    : !appStore.isTestEnvironment() && !isAnonymousTraineeId(program.traineeId)
+      ? { ...program, traineeId: "anon_visitor", trainerId: "anon_visitor" }
+      : program;
 
   const saved = appStore.saveProgram(scopedProgram);
   if (session) {
@@ -41,9 +56,23 @@ export async function saveProgramAction(program: Program) {
 
 export async function publishProgramAction(programId: string) {
   const session = await getAuthenticatedSession();
+  const existing = appStore.getProgram(programId);
+  if (existing && !appStore.isTestEnvironment()) {
+    if (session && existing.traineeId !== session.uid) {
+      throw new Error("Forbidden: Cross-tenant program publish is not permitted.");
+    }
+    if (!session && !isAnonymousTraineeId(existing.traineeId)) {
+      throw new Error("Authentication required to publish registered user program.");
+    }
+  }
   const published = appStore.publishProgram(programId);
   if (session && published.traineeId === session.uid) {
-    await saveProgramToFirestore(session.uid, published).catch(() => {});
+    const allTraineePrograms = appStore
+      .getAllProgramsForTrainee(session.uid)
+      .filter((p) => p.traineeId === session.uid);
+    await saveUserSyncBatch(session.uid, {
+      programs: allTraineePrograms.length > 0 ? allTraineePrograms : [published],
+    }).catch(() => {});
   }
   safeRevalidate("/(trainee)/today");
   safeRevalidate("/(trainee)/program");

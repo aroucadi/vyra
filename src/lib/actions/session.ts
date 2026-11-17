@@ -2,7 +2,7 @@
 
 import { appStore } from "@/lib/store";
 import { EquipmentType, WorkoutSession } from "@/lib/types";
-import { getAuthenticatedSession } from "@/lib/auth/server-session";
+import { getAuthenticatedSession, isAnonymousTraineeId } from "@/lib/auth/server-session";
 import { saveUserSyncBatch } from "@/lib/firebase/firestore-repository";
 import { revalidatePath } from "next/cache";
 
@@ -18,7 +18,9 @@ export async function saveSessionAction(session: WorkoutSession) {
   const authSession = await getAuthenticatedSession();
   const scopedSession: WorkoutSession = authSession
     ? { ...session, traineeId: authSession.uid }
-    : session;
+    : !appStore.isTestEnvironment() && !isAnonymousTraineeId(session.traineeId)
+      ? { ...session, traineeId: "anon_visitor" }
+      : session;
 
   const saved = appStore.saveSession(scopedSession);
   if (authSession) {
@@ -31,7 +33,13 @@ export async function saveSessionAction(session: WorkoutSession) {
 }
 
 export async function getSessionsAction(traineeId: string) {
-  return appStore.getSessions(traineeId);
+  const authSession = await getAuthenticatedSession();
+  const effectiveId = authSession
+    ? authSession.uid
+    : appStore.isTestEnvironment() || isAnonymousTraineeId(traineeId)
+      ? traineeId
+      : "anon_visitor";
+  return appStore.getSessions(effectiveId);
 }
 
 export async function getPersonalBestAction(
@@ -39,5 +47,11 @@ export async function getPersonalBestAction(
   exerciseName: string,
   equipmentType?: EquipmentType
 ) {
-  return appStore.getPersonalBestForExercise(traineeId, exerciseName, equipmentType);
+  const authSession = await getAuthenticatedSession();
+  const effectiveId = authSession
+    ? authSession.uid
+    : appStore.isTestEnvironment() || isAnonymousTraineeId(traineeId)
+      ? traineeId
+      : "anon_visitor";
+  return appStore.getPersonalBestForExercise(effectiveId, exerciseName, equipmentType);
 }

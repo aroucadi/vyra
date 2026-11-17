@@ -10,7 +10,7 @@
  *    when switching workout locations.
  */
 
-import { getActiveGeminiModel, getGeminiAuthContext } from "../gemini";
+import { getActiveGeminiModel } from "../gemini";
 import { inferMuscleSubdivision, findBiomechanicalSubstitutes } from "../training-math/substitution-copilot";
 import { inferPrimaryMuscleFromExerciseName } from "./sensory-memory";
 import { loadSafeExerciseCatalogue } from "./catalogue-bridge";
@@ -350,7 +350,8 @@ export class GymVisionInventoryStore {
     traineeId?: string
   ): LocationEquipmentInventory {
     this.hydrate();
-    const id = gymId || "gym_punch_lissasfa";
+    const isAlaaTenant = !traineeId || traineeId === "trainee_alaa";
+    const id = gymId || (isAlaaTenant ? "gym_punch_lissasfa" : "gym_default_commercial");
     if (traineeId) {
       const scopedKey = this.getScopedKey(id, traineeId);
       if (this.inventories[scopedKey]) {
@@ -386,7 +387,7 @@ export class GymVisionInventoryStore {
     return this.ensureInventoryShape({
       ...DEFAULT_GYM_INVENTORIES.gym_punch_lissasfa,
       gymId: id,
-      gymName: gymName || "Punch by Badr Hari Lissasfa",
+      gymName: gymName || (isAlaaTenant ? "Punch by Badr Hari Lissasfa" : "Commercial Gym"),
       ...(traineeId ? { traineeId } : {}),
     });
   }
@@ -961,7 +962,7 @@ export class GymVisionInventoryStore {
         .filter((c) => !unavailableSet.has(c))
     );
 
-    let catalogueExercises: any[] = [];
+    let catalogueExercises: ReturnType<typeof loadSafeExerciseCatalogue> = [];
     try {
       catalogueExercises = loadSafeExerciseCatalogue();
     } catch {

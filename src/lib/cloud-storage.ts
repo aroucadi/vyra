@@ -290,25 +290,55 @@ export async function uploadEquipmentPhoto(
   }
 
   const { buffer, contentType } = parsed;
-  const extension = contentType.includes("png") ? "png" : "jpg";
+  const normalizedType = contentType.toLowerCase();
+  const ALLOWED_IMAGE_MIME = new Set([
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+  ]);
+  if (!ALLOWED_IMAGE_MIME.has(normalizedType)) {
+    return {
+      success: false,
+      url: "",
+      isCloud: false,
+      provider: "local_fallback",
+      error: `Unsupported image content type: ${contentType}`,
+    };
+  }
+  if (buffer.length > 10 * 1024 * 1024) {
+    return {
+      success: false,
+      url: "",
+      isCloud: false,
+      provider: "local_fallback",
+      error: "Image payload exceeds 10MB limit.",
+    };
+  }
+  const extension = normalizedType.includes("png")
+    ? "png"
+    : normalizedType.includes("webp")
+      ? "webp"
+      : "jpg";
   const destinationPath = generateEquipmentPhotoPath(metadata, extension);
 
   // 3. Dispatch to Configured Provider
   try {
     if (activeConfig.provider === "s3") {
-      return await uploadToS3(buffer, destinationPath, contentType, activeConfig);
+      return await uploadToS3(buffer, destinationPath, normalizedType, activeConfig);
     } else {
-      return await uploadToGcs(buffer, destinationPath, contentType, activeConfig);
+      return await uploadToGcs(buffer, destinationPath, normalizedType, activeConfig);
     }
-  } catch (err: any) {
-    console.warn(`[CloudStorage] Upload to ${activeConfig.provider} failed, falling back to local:`, err?.message || err);
+  } catch (err: unknown) {
+    const errMessage = err instanceof Error ? err.message : String(err);
+    console.warn(`[CloudStorage] Upload to ${activeConfig.provider} failed, falling back to local:`, errMessage);
     // Graceful fallback to local data URI on failure so the workout flow never breaks
     return {
       success: false,
       url: dataUriOrBase64,
       isCloud: false,
       provider: "local_fallback",
-      error: err?.message || "Cloud upload failed",
+      error: errMessage || "Cloud upload failed",
     };
   }
 }

@@ -2,7 +2,6 @@ import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import {
   isCloudStorageEnabled,
-  getCloudStorageConfig,
   setCloudStorageConfig,
   resetCloudStorageConfig,
   sanitizeStorageKey,
@@ -131,5 +130,25 @@ describe("Cloud Storage Service & Feature Flag Gate (GCS / S3)", () => {
     assert.strictEqual(result.isCloud, true);
     assert.strictEqual(result.provider, "s3");
     assert.ok(result.url.includes("vyra-s3-bucket.s3.eu-west-1.amazonaws.com"));
+  });
+
+  test("rejects non-raster SVG data URIs when cloud storage upload is enabled", async () => {
+    setCloudStorageConfig({
+      enabled: true,
+      provider: "gcs",
+      bucketName: "vyra-test-bucket",
+    });
+
+    const maliciousSvg =
+      "data:image/svg+xml;base64," +
+      Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString("base64");
+    const result = await uploadEquipmentPhoto(maliciousSvg, {
+      traineeId: "trainee_alaa",
+      exerciseName: "chest_press",
+    });
+
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.isCloud, false);
+    assert.match(result.error || "", /Unsupported image content type/i);
   });
 });

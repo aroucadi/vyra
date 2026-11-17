@@ -134,10 +134,18 @@ export interface RouteTenantResolution {
   error?: string;
 }
 
+export function isAnonymousTraineeId(id: string | null | undefined): boolean {
+  const cleaned = (id || "").trim();
+  if (!cleaned || cleaned === "anonymous") return true;
+  return /^anon_[a-zA-Z0-9_-]{1,64}$/.test(cleaned);
+}
+
 /**
- * Resolves the tenant scope for server API routes cleanly while protecting `trainee_alaa`:
+ * Resolves the tenant scope for server API routes cleanly while protecting `trainee_alaa`
+ * and all registered Firebase accounts:
  * - Authenticated users are strictly locked to `session.uid` (`trainee_alaa` only when verified as `alaaeddineroucadi@gmail.com`).
- * - Cross-tenant attempts against `trainee_alaa` / `trainer_alaa` return 401/403.
+ * - Unauthenticated requests may only operate on ephemeral `anon_*` IDs (when `allowUnauthenticatedAnon: true`);
+ *   targeting `trainee_alaa` or any non-anonymous UID returns 401.
  */
 export async function resolveRouteTenantContext(
   req: Request,
@@ -183,18 +191,14 @@ export async function resolveRouteTenantContext(
     };
   }
 
-  // In production / Cloud Run runtime, unauthenticated callers cannot target Alaa or named cloud accounts
-  if (
-    cleanedRequested === "trainee_alaa" ||
-    cleanedRequested === "trainer_alaa" ||
-    cleanedRequested === "usr_trainee_alaa"
-  ) {
+  // In production / Cloud Run runtime, unauthenticated callers cannot target Alaa or any registered non-anonymous UID
+  if (cleanedRequested && !isAnonymousTraineeId(cleanedRequested)) {
     return {
       session: null,
       effectiveTraineeId: options?.fallbackTraineeId || "anon_visitor",
       isAllowed: false,
       statusCode: 401,
-      error: "Authentication required to access Alaa's private account data.",
+      error: "Authentication required to access registered account data.",
     };
   }
 

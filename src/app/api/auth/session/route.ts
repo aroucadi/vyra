@@ -58,8 +58,10 @@ export async function POST(req: NextRequest) {
 
     const expiresInMs = SESSION_COOKIE_MAX_AGE_SECONDS * 1000;
     let cookieValue = idToken;
+    let cookieMaxAgeSeconds = 60 * 60; // 1 hour fallback if raw ID token is stored
     try {
       cookieValue = await auth.createSessionCookie(idToken, { expiresIn: expiresInMs });
+      cookieMaxAgeSeconds = SESSION_COOKIE_MAX_AGE_SECONDS;
     } catch {
       // Fallback to verified ID token if session cookie minting is unavailable in local/test env
     }
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
       secure: isSecureRequest(req),
       sameSite: "lax",
       path: "/",
-      maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+      maxAge: cookieMaxAgeSeconds,
     });
 
     return res;

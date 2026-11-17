@@ -22,9 +22,13 @@ export async function GET(req: NextRequest) {
         : TEMPLATES.poliquin;
 
     const authSession = await getAuthenticatedSession(req);
-    const currentUser = appStore.getCurrentUser();
-    let sessions = appStore.getSessions(currentUser.id);
-    let metrics = appStore.getMetrics(currentUser.id);
+    const fallbackUid = authSession
+      ? authSession.uid
+      : appStore.isTestEnvironment()
+        ? appStore.getCurrentUser().id
+        : 'anon_visitor';
+    let sessions = appStore.getSessions(fallbackUid);
+    let metrics = appStore.getMetrics(fallbackUid);
 
     if (authSession) {
       try {
@@ -36,7 +40,7 @@ export async function GET(req: NextRequest) {
         sessions = boot.sessions;
         metrics = boot.metrics;
       } catch {
-        // Fallback to store metrics/sessions
+        // Fallback to tenant-scoped store metrics/sessions
       }
     }
 
@@ -95,9 +99,10 @@ export async function GET(req: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Failed to compute structural balance', message: error?.message },
+      { error: 'Failed to compute structural balance', message },
       { status: 500 }
     );
   }

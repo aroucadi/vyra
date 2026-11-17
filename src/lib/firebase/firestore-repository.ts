@@ -98,6 +98,22 @@ function formatWeekDocId(weekIndex: number): string {
   return `w${String(Math.max(1, weekIndex)).padStart(2, "0")}`;
 }
 
+/**
+ * Sanitizes client-supplied IDs before passing them into Firestore `.doc(id)`
+ * to prevent path traversal (`/` or `..`), empty doc IDs, or oversized IDs.
+ */
+export function sanitizeFirestoreDocId(rawId: unknown): string | null {
+  if (rawId === null || rawId === undefined) return null;
+  const cleaned = String(rawId)
+    .trim()
+    .replace(/\.\.+/g, "_")
+    .replace(/[^a-zA-Z0-9_\-\.:]/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 128);
+  if (!cleaned || cleaned === "." || cleaned === "..") return null;
+  return cleaned;
+}
+
 export async function commitFirestoreOperationsInChunks(
   db: Firestore,
   ops: Array<(batch: WriteBatch) => void>,
@@ -130,7 +146,7 @@ export function buildEmptyUserProfile(params: {
 
   return {
     id: params.uid,
-    role: params.role || "trainee",
+    role: params.role || "both",
     name: fallbackName,
     email: (params.email || "").trim().toLowerCase(),
     injuries: [],
@@ -146,7 +162,8 @@ export async function ensureUserProfileDoc(params: {
   db?: Firestore;
 }): Promise<User> {
   const db = params.db || getFirestoreDb();
-  const userRef = db.collection("users").doc(params.uid);
+  const safeUid = sanitizeFirestoreDocId(params.uid) || "anon_visitor";
+  const userRef = db.collection("users").doc(safeUid);
   const snap = await userRef.get();
 
   if (snap.exists) {
@@ -154,13 +171,14 @@ export async function ensureUserProfileDoc(params: {
     const normalizedEmail = (params.email || data.email || "").trim().toLowerCase();
     return {
       ...data,
-      id: params.uid,
+      id: safeUid,
+      role: data.role || "both",
       email: normalizedEmail,
     };
   }
 
   const fresh = buildEmptyUserProfile({
-    uid: params.uid,
+    uid: safeUid,
     email: params.email,
     displayName: params.displayName,
   });
@@ -182,7 +200,11 @@ export async function saveProgramToFirestore(
   dbInput?: Firestore
 ): Promise<void> {
   const db = dbInput || getFirestoreDb();
-  const progRef = db.collection("users").doc(uid).collection("programs").doc(program.id);
+  const safeUid = sanitizeFirestoreDocId(uid);
+  const safeProgId = sanitizeFirestoreDocId(program?.id);
+  if (!safeUid || !safeProgId) return;
+
+  const progRef = db.collection("users").doc(safeUid).collection("programs").doc(safeProgId);
   const { weeks, ...headerFields } = program;
   const ops: Array<(batch: WriteBatch) => void> = [];
 
@@ -191,19 +213,33 @@ export async function saveProgramToFirestore(
       progRef,
       stripUndefinedDeep({
         ...headerFields,
-        traineeId: uid,
+        id: safeProgId,
+        traineeId: safeUid,
         updatedAt: program.updatedAt || new Date().toISOString(),
       }),
       { merge: true }
     );
   });
 
+  const validWeekDocIds = new Set<string>();
   if (Array.isArray(weeks)) {
     for (const week of weeks) {
-      const weekRef = progRef.collection("weeks").doc(formatWeekDocId(week.weekIndex));
+      const weekDocId = formatWeekDocId(week.weekIndex);
+      validWeekDocIds.add(weekDocId);
+      const weekRef = progRef.collection("weeks").doc(weekDocId);
       ops.push((batch) => {
         batch.set(weekRef, stripUndefinedDeep(week), { merge: true });
       });
+    }
+    try {
+      const existingWeeksSnap = await progRef.collection("weeks").get();
+      for (const existingDoc of existingWeeksSnap.docs) {
+        if (!validWeekDocIds.has(existingDoc.id)) {
+          ops.push((batch) => batch.delete(existingDoc.ref));
+        }
+      }
+    } catch {
+      // Non-fatal if week subcollection listing is mocked or unavailable
     }
   }
 
@@ -323,13 +359,16 @@ export async function saveUserSyncBatch(
   dbInput?: Firestore
 ): Promise<{ writtenDocs: number }> {
   const db = dbInput || getFirestoreDb();
-  const userRef = db.collection("users").doc(uid);
+  const safeUid = sanitizeFirestoreDocId(uid);
+  if (!safeUid) return { writtenDocs: 0 };
+
+  const userRef = db.collection("users").doc(safeUid);
   const ops: Array<(batch: WriteBatch) => void> = [];
 
   if (payload.user) {
     const safeUserPatch = stripUndefinedDeep({
       ...payload.user,
-      id: uid,
+      id: safeUid,
       updatedAt: new Date().toISOString(),
     });
     // Never allow client payload to self-promote or reassign uid
@@ -342,15 +381,17 @@ export async function saveUserSyncBatch(
 
   if (Array.isArray(payload.programs)) {
     for (const prog of payload.programs.slice(0, 20)) {
-      if (!prog?.id) continue;
+      const safeProgId = sanitizeFirestoreDocId(prog?.id);
+      if (!safeProgId) continue;
       const { weeks, ...headerFields } = prog;
-      const progRef = userRef.collection("programs").doc(prog.id);
+      const progRef = userRef.collection("programs").doc(safeProgId);
       ops.push((batch) => {
         batch.set(
           progRef,
           stripUndefinedDeep({
             ...headerFields,
-            traineeId: uid,
+            id: safeProgId,
+            traineeId: safeUid,
             updatedAt: prog.updatedAt || new Date().toISOString(),
           }),
           { merge: true }
@@ -369,70 +410,78 @@ export async function saveUserSyncBatch(
 
   if (Array.isArray(payload.sessions)) {
     for (const sess of payload.sessions.slice(0, 200)) {
-      if (!sess?.id) continue;
-      const ref = userRef.collection("sessions").doc(sess.id);
+      const safeSessId = sanitizeFirestoreDocId(sess?.id);
+      if (!safeSessId) continue;
+      const ref = userRef.collection("sessions").doc(safeSessId);
       ops.push((batch) => {
-        batch.set(ref, sanitizeSessionForFirestore(sess, uid), { merge: true });
+        batch.set(ref, sanitizeSessionForFirestore({ ...sess, id: safeSessId }, safeUid), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.metrics)) {
-    for (const m of payload.metrics.slice(0, 365)) {
-      if (!m?.id) continue;
-      const ref = userRef.collection("metrics").doc(m.id);
+    // Keep most recent 365 entries (since store.metrics is sorted oldest-first)
+    for (const m of payload.metrics.slice(-365)) {
+      const safeMetricId = sanitizeFirestoreDocId(m?.id);
+      if (!safeMetricId) continue;
+      const ref = userRef.collection("metrics").doc(safeMetricId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep({ ...m, traineeId: uid }), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...m, id: safeMetricId, traineeId: safeUid }), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.supplementProtocols)) {
     for (const sp of payload.supplementProtocols.slice(0, 50)) {
-      if (!sp?.id) continue;
-      const ref = userRef.collection("supplementProtocols").doc(sp.id);
+      const safeSpId = sanitizeFirestoreDocId(sp?.id);
+      if (!safeSpId) continue;
+      const ref = userRef.collection("supplementProtocols").doc(safeSpId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep(sp), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...sp, id: safeSpId }), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.supplementLogs)) {
-    for (const sl of payload.supplementLogs.slice(0, 250)) {
-      if (!sl?.id) continue;
-      const ref = userRef.collection("supplementLogs").doc(sl.id);
+    for (const sl of payload.supplementLogs.slice(-250)) {
+      const safeSlId = sanitizeFirestoreDocId(sl?.id);
+      if (!safeSlId) continue;
+      const ref = userRef.collection("supplementLogs").doc(safeSlId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep({ ...sl, traineeId: uid }), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...sl, id: safeSlId, traineeId: safeUid }), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.hydrationGoals)) {
     for (const hg of payload.hydrationGoals.slice(0, 10)) {
-      if (!hg?.id) continue;
-      const ref = userRef.collection("hydrationGoals").doc(hg.id);
+      const safeHgId = sanitizeFirestoreDocId(hg?.id);
+      if (!safeHgId) continue;
+      const ref = userRef.collection("hydrationGoals").doc(safeHgId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep({ ...hg, traineeId: uid }), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...hg, id: safeHgId, traineeId: safeUid }), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.hydrationLogs)) {
-    for (const hl of payload.hydrationLogs.slice(0, 250)) {
-      if (!hl?.id) continue;
-      const ref = userRef.collection("hydrationLogs").doc(hl.id);
+    for (const hl of payload.hydrationLogs.slice(-250)) {
+      const safeHlId = sanitizeFirestoreDocId(hl?.id);
+      if (!safeHlId) continue;
+      const ref = userRef.collection("hydrationLogs").doc(safeHlId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep({ ...hl, traineeId: uid }), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...hl, id: safeHlId, traineeId: safeUid }), { merge: true });
       });
     }
   }
 
   if (Array.isArray(payload.readinessLogs)) {
     for (const rl of payload.readinessLogs.slice(0, 100)) {
-      if (!rl?.id) continue;
-      const ref = userRef.collection("readiness").doc(rl.id);
+      const safeRlId = sanitizeFirestoreDocId(rl?.id);
+      if (!safeRlId) continue;
+      const ref = userRef.collection("readiness").doc(safeRlId);
       ops.push((batch) => {
-        batch.set(ref, stripUndefinedDeep({ ...rl, traineeId: uid }), { merge: true });
+        batch.set(ref, stripUndefinedDeep({ ...rl, id: safeRlId, traineeId: safeUid }), { merge: true });
       });
     }
   }
@@ -447,18 +496,23 @@ export async function saveAthleticEventsToFirestore(
   dbInput?: Firestore
 ): Promise<number> {
   const db = dbInput || getFirestoreDb();
-  const userRef = db.collection("users").doc(uid);
+  const safeUid = sanitizeFirestoreDocId(uid);
+  if (!safeUid) return 0;
+
+  const userRef = db.collection("users").doc(safeUid);
   const ops: Array<(batch: WriteBatch) => void> = [];
 
   for (const evt of events.slice(0, 250)) {
-    if (!evt?.id || !evt?.type) continue;
-    const ref = userRef.collection("events").doc(String(evt.id).slice(0, 128));
+    const safeEvtId = sanitizeFirestoreDocId(evt?.id);
+    if (!safeEvtId || !evt?.type) continue;
+    const ref = userRef.collection("events").doc(safeEvtId);
     ops.push((batch) => {
       batch.set(
         ref,
         stripUndefinedDeep({
           ...evt,
-          traineeId: uid,
+          id: safeEvtId,
+          traineeId: safeUid,
           syncedToCloud: true,
           cloudSyncEpochMs: evt.cloudSyncEpochMs || Date.now(),
         }),
@@ -477,7 +531,9 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
     async upsertAthleteModelInDb(model: AthleteModel): Promise<boolean> {
       try {
         const db = getDb();
-        const userRef = db.collection("users").doc(model.traineeId);
+        const safeUid = sanitizeFirestoreDocId(model.traineeId);
+        if (!safeUid) return false;
+        const userRef = db.collection("users").doc(safeUid);
         const ops: Array<(batch: WriteBatch) => void> = [];
 
         ops.push((batch) => {
@@ -485,6 +541,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
             userRef.collection("athleteModels").doc("current"),
             stripUndefinedDeep({
               ...model,
+              traineeId: safeUid,
               lastUpdated: model.lastUpdated || new Date().toISOString(),
             }),
             { merge: true }
@@ -496,11 +553,12 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
           ...(model.resolvedExperiments || []),
         ];
         for (const exp of allExps) {
-          if (!exp?.id) continue;
+          const safeExpId = sanitizeFirestoreDocId(exp?.id);
+          if (!safeExpId) continue;
           ops.push((batch) => {
             batch.set(
-              userRef.collection("coachingExperiments").doc(exp.id),
-              stripUndefinedDeep({ ...exp, traineeId: model.traineeId }),
+              userRef.collection("coachingExperiments").doc(safeExpId),
+              stripUndefinedDeep({ ...exp, id: safeExpId, traineeId: safeUid }),
               { merge: true }
             );
           });
@@ -517,7 +575,9 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
     async loadAthleteModelFromDb(traineeId: string): Promise<AthleteModel | null> {
       try {
         const db = getDb();
-        const userRef = db.collection("users").doc(traineeId);
+        const safeUid = sanitizeFirestoreDocId(traineeId);
+        if (!safeUid) return null;
+        const userRef = db.collection("users").doc(safeUid);
         const [modelSnap, expSnap] = await Promise.all([
           userRef.collection("athleteModels").doc("current").get(),
           userRef.collection("coachingExperiments").get(),
@@ -540,12 +600,15 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
     async insertShadowLogInDb(entry: CoachShadowLogRecord): Promise<boolean> {
       try {
         const db = getDb();
+        const safeUid = sanitizeFirestoreDocId(entry.traineeId);
+        const safeId = sanitizeFirestoreDocId(entry.id);
+        if (!safeUid || !safeId) return false;
         await db
           .collection("users")
-          .doc(entry.traineeId)
+          .doc(safeUid)
           .collection("coachShadowLogs")
-          .doc(entry.id)
-          .set(stripUndefinedDeep(entry), { merge: true });
+          .doc(safeId)
+          .set(stripUndefinedDeep({ ...entry, id: safeId, traineeId: safeUid }), { merge: true });
         return true;
       } catch (err) {
         console.warn("[FirestoreCoachAdapter] insertShadowLogInDb error:", err);
@@ -555,11 +618,12 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
 
     async loadShadowLogsFromDb(traineeId?: string): Promise<CoachShadowLogRecord[]> {
       try {
-        if (!traineeId) return [];
+        const safeUid = sanitizeFirestoreDocId(traineeId);
+        if (!safeUid) return [];
         const db = getDb();
         const snap = await db
           .collection("users")
-          .doc(traineeId)
+          .doc(safeUid)
           .collection("coachShadowLogs")
           .get();
         return snap.docs
@@ -577,11 +641,12 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
       base64Snippet?: string;
     }): Promise<number> {
       try {
-        if (!params.traineeId) return 0;
+        const safeUid = sanitizeFirestoreDocId(params.traineeId);
+        if (!safeUid) return 0;
         const db = getDb();
         const snap = await db
           .collection("users")
-          .doc(params.traineeId)
+          .doc(safeUid)
           .collection("coachShadowLogs")
           .get();
 
@@ -604,7 +669,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
   };
 }
 
-let firestoreBridgeRegistered = false;
+let cachedFirestoreCoachAdapter: CoachDbPersistenceAdapter | null = null;
 
 /**
  * Registers the Firestore Coach persistence adapter into `coach-db-bridge.ts`
@@ -612,7 +677,9 @@ let firestoreBridgeRegistered = false;
  */
 export function ensureFirestoreCoachBridgeRegistered(): void {
   if (typeof window !== "undefined") return;
-  if (firestoreBridgeRegistered || process.env.DATABASE_URL) return;
-  registerCoachDbPersistence(createFirestoreCoachDbAdapter());
-  firestoreBridgeRegistered = true;
+  if (process.env.DATABASE_URL) return;
+  if (!cachedFirestoreCoachAdapter) {
+    cachedFirestoreCoachAdapter = createFirestoreCoachDbAdapter();
+  }
+  registerCoachDbPersistence(cachedFirestoreCoachAdapter);
 }

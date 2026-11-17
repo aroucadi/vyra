@@ -23,6 +23,7 @@ import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 export default function ProgressPage() {
   useVyraStoreVersion();
   const currentUser = appStore.getCurrentUser();
+  const activeProgram = appStore.getActiveProgramForTrainee(currentUser.id);
   const athleteModel = athleteModelStore.getAthleteModel(currentUser.id);
   const metrics = appStore.getMetrics(currentUser.id);
   const [, setLocalTick] = useState(0);
@@ -240,7 +241,23 @@ export default function ProgressPage() {
       )}
 
       {/* 2. Weekly Volume Dashboard & Biomechanical Architecture */}
-      <WeeklyVolumeDashboard />
+      {activeProgram ? (
+        <WeeklyVolumeDashboard />
+      ) : (
+        <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white font-editorial">
+              Volume & Postural Allocation
+            </h2>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              No active block
+            </span>
+          </div>
+          <p className="text-xs text-slate-400">
+            Create or activate a training block to view your weekly push-to-posture set allocation and muscle group breakdown.
+          </p>
+        </section>
+      )}
 
       {/* 3. Personal Records Trophy Cabinet */}
       <section className="bg-[#111622] rounded-2xl border border-[#1C2436] p-4 space-y-3">

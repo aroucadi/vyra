@@ -1,9 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appStore } from "@/lib/store";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
 import { visualProgressStore } from "@/lib/ai/visual-progress";
+import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
+import { clearClientStorage } from "@/lib/storage";
 import { anchorIdentityWithFirebase, clearAnchoredIdentity } from "@/lib/auth/identity";
 import {
   exchangeFirebaseIdTokenForSession,
@@ -54,8 +56,9 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
   const [isAlaa, setIsAlaa] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const inFlightBootstrapRef = useRef<Promise<boolean> | null>(null);
 
-  const applyBootstrap = async (): Promise<boolean> => {
+  const runBootstrapFetch = useCallback(async (): Promise<boolean> => {
     try {
       const res = await fetch("/api/me/bootstrap", {
         method: "GET",
@@ -71,19 +74,17 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.authenticated && data.bootstrap) {
         const boot = data.bootstrap;
-        const prevUid = appStore.getCurrentUser().id;
-        appStore.hydrateFromBootstrap(boot);
-        if (boot.athleteModel) {
-          athleteModelStore.setAthleteModelFromBootstrap(boot.athleteModel);
-        }
-        if (prevUid !== boot.user.id) {
-          visualProgressStore.clearForRealUser();
-        }
         await anchorIdentityWithFirebase({
           uid: boot.user.id,
           email: boot.user.email,
           displayName: boot.user.name,
         });
+        appStore.hydrateFromBootstrap(boot);
+        if (boot.athleteModel) {
+          athleteModelStore.setAthleteModelFromBootstrap(boot.athleteModel);
+        }
+        visualProgressStore.claimAnonymousSnapshots(boot.user.id);
+        sensoryMemoryStore.ingestFromSessionHistory(appStore.getSessions(boot.user.id));
         setIsAuthenticated(true);
         setIsAlaa(Boolean(data.isAlaa));
         setAuthEmail(boot.user.email || null);
@@ -99,7 +100,18 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("[VyraAuthProvider] Bootstrap error:", err);
       return false;
     }
-  };
+  }, []);
+
+  const applyBootstrap = useCallback(async (): Promise<boolean> => {
+    if (inFlightBootstrapRef.current) {
+      return inFlightBootstrapRef.current;
+    }
+    const p = runBootstrapFetch().finally(() => {
+      inFlightBootstrapRef.current = null;
+    });
+    inFlightBootstrapRef.current = p;
+    return p;
+  }, [runBootstrapFetch]);
 
   useEffect(() => {
     let active = true;
@@ -131,12 +143,15 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
       unsub();
     };
-  }, []);
+  }, [applyBootstrap]);
 
   const signOutAll = async () => {
     await signOutFirebaseAndServer();
     clearAnchoredIdentity();
-    visualProgressStore.clearForRealUser();
+    clearClientStorage();
+    visualProgressStore.clearInMemoryCache();
+    sensoryMemoryStore.clearForTesting();
+    athleteModelStore.clearSessionCache();
     appStore.signOutToEmpty();
     setIsAuthenticated(false);
     setIsAlaa(false);

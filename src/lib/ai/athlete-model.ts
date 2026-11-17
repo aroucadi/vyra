@@ -619,6 +619,18 @@ export class AthleteModelStore {
     this.persist();
   }
 
+  public clearSessionCache(): void {
+    this.models.clear();
+    this.hydrated = true;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   public clearForTesting() {
     this.models.clear();
     this.hydrated = false;

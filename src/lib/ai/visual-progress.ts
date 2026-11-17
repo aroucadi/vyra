@@ -3110,6 +3110,25 @@ export class VisualProgressStore {
     };
   }
 
+  public clearInMemoryCache(): void {
+    this.cachedComparisonReports.clear();
+  }
+
+  public claimAnonymousSnapshots(targetTraineeId: string): number {
+    this.hydrate();
+    let claimed = 0;
+    for (const snap of this.snapshots) {
+      if (snap.traineeId && snap.traineeId.startsWith("anon_") && snap.traineeId !== targetTraineeId) {
+        snap.traineeId = targetTraineeId;
+        claimed++;
+      }
+    }
+    if (claimed > 0) {
+      this.persist();
+    }
+    return claimed;
+  }
+
   public clearForRealUser(): void {
     this.snapshots = [];
     this.cachedComparisonReports.clear();

@@ -49,7 +49,10 @@ export default function YouPage() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            {currentUser.role === "trainer" ? "Head Performance Coach" : "16-Week Hypertrophy Architecture"}
+            {activeProgram?.title ||
+              (currentUser.role === "trainer"
+                ? "Head Performance Coach"
+                : "Personalized Training Architecture")}
           </p>
         </div>
       </header>

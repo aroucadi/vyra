@@ -14,9 +14,14 @@ import { __setMockFirebaseAdminForTesting } from "../../../src/lib/firebase/admi
 import {
   loadBootstrapForUser,
   createFirestoreCoachDbAdapter,
+  sanitizeFirestoreDocId,
+  buildEmptyUserProfile,
+  saveUserSyncBatch,
+  saveProgramToFirestore,
 } from "../../../src/lib/firebase/firestore-repository";
 import { seedAlaaToFirestore } from "../../../src/db/seed/seed-firestore-alaa";
 import { canTraineeUploadProgressPhotos } from "../../../src/lib/ai/visual-progress";
+import { gymVisionInventoryStore } from "../../../src/lib/ai/gym-vision-inventory";
 import {
   GET as getSessionRoute,
   POST as postSessionRoute,
@@ -30,10 +35,40 @@ import { POST as postAdaptDayRoute } from "../../../src/app/api/ai/adapt-day/rou
 import { POST as postEquipmentPhotoRoute } from "../../../src/app/api/upload/equipment-photo/route";
 import { POST as postPasskeyRoute } from "../../../src/app/api/auth/passkey/route";
 
+interface MockDocSnap {
+  id: string;
+  exists: boolean;
+  ref: MockDocRef;
+  data: () => Record<string, unknown> | undefined;
+}
+
+interface MockDocRef {
+  id: string;
+  path: string;
+  collection: (name: string) => MockColRef;
+  get: () => Promise<MockDocSnap>;
+  set: (data: Record<string, unknown>, opts?: { merge?: boolean }) => Promise<void>;
+  delete: () => Promise<void>;
+}
+
+interface MockColRef {
+  path: string;
+  doc: (id: string) => MockDocRef;
+  get: () => Promise<{ docs: MockDocSnap[]; empty: boolean; size: number }>;
+}
+
+interface MockDecodedToken {
+  uid: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  firebase?: { sign_in_provider?: string };
+}
+
 function createInMemoryFirestoreMock() {
   const docs = new Map<string, Record<string, unknown>>();
 
-  const makeSnap = (path: string) => {
+  const makeSnap = (path: string): MockDocSnap => {
     const data = docs.get(path);
     const id = path.split("/").pop() || "";
     return {
@@ -44,7 +79,7 @@ function createInMemoryFirestoreMock() {
     };
   };
 
-  const makeDocRef = (path: string): any => ({
+  const makeDocRef = (path: string): MockDocRef => ({
     id: path.split("/").pop() || "",
     path,
     collection: (name: string) => makeColRef(`${path}/${name}`),
@@ -61,7 +96,7 @@ function createInMemoryFirestoreMock() {
     },
   });
 
-  const makeColRef = (prefix: string): any => ({
+  const makeColRef = (prefix: string): MockColRef => ({
     path: prefix,
     doc: (id: string) => makeDocRef(`${prefix}/${id}`),
     get: async () => {
@@ -82,12 +117,12 @@ function createInMemoryFirestoreMock() {
     },
   });
 
-  const firestore: any = {
+  const firestore = {
     collection: (name: string) => makeColRef(name),
     batch: () => {
       const ops: Array<() => void> = [];
       return {
-        set: (ref: any, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
+        set: (ref: MockDocRef, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
           ops.push(() => {
             if (opts?.merge && docs.has(ref.path)) {
               docs.set(ref.path, { ...docs.get(ref.path)!, ...structuredClone(data) });
@@ -96,7 +131,7 @@ function createInMemoryFirestoreMock() {
             }
           });
         },
-        delete: (ref: any) => {
+        delete: (ref: MockDocRef) => {
           ops.push(() => {
             docs.delete(ref.path);
           });
@@ -113,7 +148,7 @@ function createInMemoryFirestoreMock() {
 
 describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
   let mockStore: ReturnType<typeof createInMemoryFirestoreMock>;
-  const tokenRegistry = new Map<string, any>();
+  const tokenRegistry = new Map<string, MockDecodedToken>();
 
   beforeEach(() => {
     mockStore = createInMemoryFirestoreMock();
@@ -459,5 +494,113 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
     const claimedMetrics = store.getMetrics("fb_stranger_99");
     assert.equal(claimedMetrics.length, 1);
     assert.equal(claimedMetrics[0].weightKg, 71.4);
+  });
+
+  it("8. /gstack-review regressions: blocks arbitrary non-anon UID spoofing, sanitizes path traversal IDs, keeps newest 365 metrics, cleans orphaned program weeks, and grants role=both to new users", async () => {
+    // A) Unauthenticated caller targeting a non-Alaa registered Firebase UID ("fb_stranger_99") is rejected (401)
+    const strangerSpoofRes = await postSyncEventsRoute(
+      new NextRequest("http://localhost:3000/api/sync/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        body: JSON.stringify({
+          traineeId: "fb_stranger_99",
+          events: [{ id: "ev_1", type: "WORKOUT_COMPLETED", timestampEpochMs: Date.now() }],
+        }),
+      })
+    );
+    assert.equal(strangerSpoofRes.status, 401);
+
+    // B) Malicious doc ID containing path traversal (`/` and `..`) is sanitized and cannot escape user collection
+    assert.equal(sanitizeFirestoreDocId("../../users/trainee_alaa/metrics/hack"), "users_trainee_alaa_metrics_hack");
+    assert.equal(sanitizeFirestoreDocId(".."), null);
+    await saveUserSyncBatch(
+      "fb_stranger_99",
+      {
+        metrics: [
+          {
+            id: "../trainee_alaa/metrics/injected",
+            traineeId: "fb_stranger_99",
+            date: "2026-11-23",
+            weightKg: 75,
+            source: "manual",
+          },
+        ],
+      },
+      mockStore.firestore
+    );
+    assert.equal(mockStore.docs.has("users/trainee_alaa/metrics/injected"), false);
+    assert.equal(
+      mockStore.docs.has("users/fb_stranger_99/metrics/trainee_alaa_metrics_injected"),
+      true
+    );
+
+    // C) Newly registered non-Alaa user gets role="both" so Coach Studio & Program Builder are unlocked
+    const emptyProfile = buildEmptyUserProfile({
+      uid: "fb_new_coach_athlete",
+      email: "newbie@example.com",
+    });
+    assert.equal(emptyProfile.role, "both");
+
+    // D) saveUserSyncBatch keeps the newest 365 metrics (not oldest 365)
+    const manyMetrics = Array.from({ length: 370 }, (_, i) => ({
+      id: `bm_day_${i + 1}`,
+      traineeId: "fb_stranger_99",
+      date: "2026-11-23",
+      weightKg: 60 + i * 0.1,
+      source: "manual" as const,
+    }));
+    await saveUserSyncBatch("fb_stranger_99", { metrics: manyMetrics }, mockStore.firestore);
+    assert.equal(mockStore.docs.has("users/fb_stranger_99/metrics/bm_day_370"), true);
+    assert.equal(mockStore.docs.has("users/fb_stranger_99/metrics/bm_day_1"), false);
+
+    // E) saveProgramToFirestore deletes orphaned week docs when a program is shortened
+    await saveProgramToFirestore(
+      "fb_stranger_99",
+      {
+        id: "prog_shorten_test",
+        trainerId: "fb_stranger_99",
+        traineeId: "fb_stranger_99",
+        title: "4-Week Test",
+        status: "published",
+        updatedAt: new Date().toISOString(),
+        weeks: [
+          { weekIndex: 1, days: [] },
+          { weekIndex: 2, days: [] },
+          { weekIndex: 3, days: [] },
+          { weekIndex: 4, days: [] },
+        ],
+      },
+      mockStore.firestore
+    );
+    assert.equal(mockStore.docs.has("users/fb_stranger_99/programs/prog_shorten_test/weeks/w04"), true);
+
+    await saveProgramToFirestore(
+      "fb_stranger_99",
+      {
+        id: "prog_shorten_test",
+        trainerId: "fb_stranger_99",
+        traineeId: "fb_stranger_99",
+        title: "2-Week Shortened",
+        status: "published",
+        updatedAt: new Date().toISOString(),
+        weeks: [
+          { weekIndex: 1, days: [] },
+          { weekIndex: 2, days: [] },
+        ],
+      },
+      mockStore.firestore
+    );
+    assert.equal(mockStore.docs.has("users/fb_stranger_99/programs/prog_shorten_test/weeks/w02"), true);
+    assert.equal(mockStore.docs.has("users/fb_stranger_99/programs/prog_shorten_test/weeks/w04"), false);
+
+    // F) GymVisionInventoryStore never leaks Alaa's gym name to non-Alaa athletes
+    assert.equal(
+      gymVisionInventoryStore.getInventoryForGym(undefined, undefined, "fb_stranger_99").gymName,
+      "Commercial Gym"
+    );
+    assert.equal(
+      gymVisionInventoryStore.getInventoryForGym(undefined, undefined, ALAA_CANONICAL_UID).gymName,
+      "Punch by Badr Hari Lissasfa"
+    );
   });
 });

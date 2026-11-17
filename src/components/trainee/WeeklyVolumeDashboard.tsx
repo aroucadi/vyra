@@ -9,8 +9,6 @@ import {
   Dumbbell,
   ChevronDown,
   Layers,
-  Flame,
-  ArrowUpRight,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -291,7 +289,7 @@ export function WeeklyVolumeDashboard({
               Seated computer work inevitably drives internal humeral rotation. By prescribing 12 total postural retractors against 6 anterior pressing sets, your shoulder joint is mechanically pulled back into anatomical equilibrium without losing pushing power.
             </p>
             <p>
-              <strong className="text-sky-400 font-semibold font-editorial">Punch Lissasfa Optimization:</strong>{" "}
+              <strong className="text-sky-400 font-semibold font-editorial">Station-Locked Superset Density:</strong>{" "}
               Wednesday pairs cable face pulls into a station-locked superset with zero transit delay. This enforces maximum athletic density for football decelerations while keeping total gym floor time strictly under 38 minutes.
             </p>
           </div>

@@ -64,9 +64,10 @@ export function DailyAiCoachAdapterCard({
   const [photoStatus, setPhotoStatus] = useState<string | null>(null);
   const photoInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const inventory = React.useMemo(
-    () => gymVisionInventoryStore.getInventoryForGym(gymId, gymName),
-    [gymId, gymName, photoStatus]
+  const inventory = gymVisionInventoryStore.getInventoryForGym(
+    gymId,
+    gymName,
+    traineeId
   );
 
   const handleRunAdaptation = async (customPrompt?: string) => {

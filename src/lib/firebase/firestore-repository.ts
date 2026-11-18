@@ -1,5 +1,5 @@
 import type { Firestore, WriteBatch } from "firebase-admin/firestore";
-import { getFirestoreDb } from "./admin";
+import { getFirestoreDb, isFirestoreRuntimeAvailable } from "./admin";
 import type {
   User,
   Program,
@@ -164,8 +164,15 @@ export async function ensureUserProfileDoc(params: {
   displayName?: string;
   db?: Firestore;
 }): Promise<User> {
-  const db = params.db || getFirestoreDb();
   const safeUid = sanitizeFirestoreDocId(params.uid) || "anon_visitor";
+  if (!isFirestoreRuntimeAvailable() && !params.db) {
+    return buildEmptyUserProfile({
+      uid: safeUid,
+      email: params.email,
+      displayName: params.displayName,
+    });
+  }
+  const db = params.db || getFirestoreDb();
   const userRef = db.collection("users").doc(safeUid);
   const snap = await userRef.get();
 
@@ -202,6 +209,7 @@ export async function saveProgramToFirestore(
   program: Program,
   dbInput?: Firestore
 ): Promise<void> {
+  if (!isFirestoreRuntimeAvailable() && !dbInput) return;
   const db = dbInput || getFirestoreDb();
   const safeUid = sanitizeFirestoreDocId(uid);
   const safeProgId = sanitizeFirestoreDocId(program?.id);
@@ -253,6 +261,7 @@ export async function loadProgramsFromFirestore(
   uid: string,
   dbInput?: Firestore
 ): Promise<Program[]> {
+  if (!isFirestoreRuntimeAvailable() && !dbInput) return [];
   const db = dbInput || getFirestoreDb();
   const progSnap = await db.collection("users").doc(uid).collection("programs").get();
   if (progSnap.empty) return [];
@@ -286,6 +295,27 @@ export async function loadBootstrapForUser(params: {
   displayName?: string;
   db?: Firestore;
 }): Promise<UserBootstrapPayload> {
+  const safeUid = sanitizeFirestoreDocId(params.uid) || "anon_visitor";
+  if (!isFirestoreRuntimeAvailable() && !params.db) {
+    const user = buildEmptyUserProfile({
+      uid: safeUid,
+      email: params.email,
+      displayName: params.displayName,
+    });
+    return {
+      user,
+      programs: [],
+      sessions: [],
+      metrics: [],
+      supplementProtocols: [],
+      supplementLogs: [],
+      hydrationGoals: [],
+      hydrationLogs: [],
+      readinessLogs: [],
+      athleteModel: null,
+      coachingExperiments: [],
+    };
+  }
   const db = params.db || getFirestoreDb();
   const user = await ensureUserProfileDoc(params);
   const userDoc = db.collection("users").doc(params.uid);
@@ -361,6 +391,7 @@ export async function saveUserSyncBatch(
   payload: UserSyncBatchInput,
   dbInput?: Firestore
 ): Promise<{ writtenDocs: number }> {
+  if (!isFirestoreRuntimeAvailable() && !dbInput) return { writtenDocs: 0 };
   const db = dbInput || getFirestoreDb();
   const safeUid = sanitizeFirestoreDocId(uid);
   if (!safeUid) return { writtenDocs: 0 };
@@ -498,6 +529,7 @@ export async function saveAthleticEventsToFirestore(
   events: EventEnvelope[],
   dbInput?: Firestore
 ): Promise<number> {
+  if (!isFirestoreRuntimeAvailable() && !dbInput) return 0;
   const db = dbInput || getFirestoreDb();
   const safeUid = sanitizeFirestoreDocId(uid);
   if (!safeUid) return 0;
@@ -528,12 +560,21 @@ export async function saveAthleticEventsToFirestore(
 }
 
 export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersistenceAdapter {
-  const getDb = () => dbInput || getFirestoreDb();
+  const getDb = (): Firestore | null => {
+    if (dbInput) return dbInput;
+    if (!isFirestoreRuntimeAvailable()) return null;
+    try {
+      return getFirestoreDb();
+    } catch {
+      return null;
+    }
+  };
 
   return {
     async upsertAthleteModelInDb(model: AthleteModel): Promise<boolean> {
       try {
         const db = getDb();
+        if (!db) return false;
         const safeUid = sanitizeFirestoreDocId(model.traineeId);
         if (!safeUid) return false;
         const userRef = db.collection("users").doc(safeUid);
@@ -578,6 +619,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
     async loadAthleteModelFromDb(traineeId: string): Promise<AthleteModel | null> {
       try {
         const db = getDb();
+        if (!db) return null;
         const safeUid = sanitizeFirestoreDocId(traineeId);
         if (!safeUid) return null;
         const userRef = db.collection("users").doc(safeUid);
@@ -603,6 +645,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
     async insertShadowLogInDb(entry: CoachShadowLogRecord): Promise<boolean> {
       try {
         const db = getDb();
+        if (!db) return false;
         const safeUid = sanitizeFirestoreDocId(entry.traineeId);
         const safeId = sanitizeFirestoreDocId(entry.id);
         if (!safeUid || !safeId) return false;
@@ -624,6 +667,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
         const safeUid = sanitizeFirestoreDocId(traineeId);
         if (!safeUid) return [];
         const db = getDb();
+        if (!db) return [];
         const snap = await db
           .collection("users")
           .doc(safeUid)
@@ -647,6 +691,7 @@ export function createFirestoreCoachDbAdapter(dbInput?: Firestore): CoachDbPersi
         const safeUid = sanitizeFirestoreDocId(params.traineeId);
         if (!safeUid) return 0;
         const db = getDb();
+        if (!db) return 0;
         const snap = await db
           .collection("users")
           .doc(safeUid)
@@ -698,7 +743,7 @@ export async function saveGymInventoryToFirestore(
 ): Promise<boolean> {
   const safeUid = sanitizeFirestoreDocId(uid);
   const safeGymId = sanitizeFirestoreDocId(inventory?.gymId);
-  if (!safeUid || !safeGymId) return false;
+  if (!safeUid || !safeGymId || (!isFirestoreRuntimeAvailable() && !dbInput)) return false;
   try {
     const db = dbInput || getFirestoreDb();
     await db
@@ -727,7 +772,7 @@ export async function loadGymInventoriesFromFirestore(
   dbInput?: Firestore
 ): Promise<LocationEquipmentInventory[]> {
   const safeUid = sanitizeFirestoreDocId(uid);
-  if (!safeUid) return [];
+  if (!safeUid || (!isFirestoreRuntimeAvailable() && !dbInput)) return [];
   try {
     const db = dbInput || getFirestoreDb();
     const snap = await db.collection("users").doc(safeUid).collection("gymInventories").get();
@@ -748,7 +793,7 @@ export async function saveSensoryEntryToFirestore(
 ): Promise<boolean> {
   const safeUid = sanitizeFirestoreDocId(uid);
   const safeId = sanitizeFirestoreDocId(entry?.id);
-  if (!safeUid || !safeId) return false;
+  if (!safeUid || !safeId || (!isFirestoreRuntimeAvailable() && !dbInput)) return false;
   try {
     const db = dbInput || getFirestoreDb();
     const MAX_INLINE_URI_LEN = 120_000;
@@ -790,7 +835,7 @@ export async function loadSensoryEntriesFromFirestore(
   dbInput?: Firestore
 ): Promise<SensoryFeedbackEntry[]> {
   const safeUid = sanitizeFirestoreDocId(uid);
-  if (!safeUid) return [];
+  if (!safeUid || (!isFirestoreRuntimeAvailable() && !dbInput)) return [];
   try {
     const db = dbInput || getFirestoreDb();
     const snap = await db.collection("users").doc(safeUid).collection("sensoryMemory").get();
@@ -811,7 +856,7 @@ export async function saveVisualSnapshotToFirestore(
 ): Promise<boolean> {
   const safeUid = sanitizeFirestoreDocId(uid);
   const safeSnapId = sanitizeFirestoreDocId(snapshot?.id);
-  if (!safeUid || !safeSnapId) return false;
+  if (!safeUid || !safeSnapId || (!isFirestoreRuntimeAvailable() && !dbInput)) return false;
 
   // Respect Firestore 1 MiB document size ceiling
   const MAX_SNAPSHOT_URI_CHARS = 750_000;
@@ -852,7 +897,7 @@ export async function loadVisualSnapshotsFromFirestore(
   dbInput?: Firestore
 ): Promise<VisualProgressSnapshot[]> {
   const safeUid = sanitizeFirestoreDocId(uid);
-  if (!safeUid) return [];
+  if (!safeUid || (!isFirestoreRuntimeAvailable() && !dbInput)) return [];
   try {
     const db = dbInput || getFirestoreDb();
     const snap = await db.collection("users").doc(safeUid).collection("visualSnapshots").get();
@@ -873,7 +918,7 @@ export async function deleteVisualSnapshotFromFirestore(
 ): Promise<boolean> {
   const safeUid = sanitizeFirestoreDocId(uid);
   const safeSnapId = sanitizeFirestoreDocId(snapshotId);
-  if (!safeUid || !safeSnapId) return false;
+  if (!safeUid || !safeSnapId || (!isFirestoreRuntimeAvailable() && !dbInput)) return false;
   try {
     const db = dbInput || getFirestoreDb();
     await db
@@ -940,7 +985,7 @@ export async function saveCoachInviteToFirestore(
 ): Promise<FirestoreCoachInviteRecord | null> {
   const safeInviteId = sanitizeFirestoreDocId(invite?.inviteId);
   const safeCoachId = sanitizeFirestoreDocId(invite?.coachId);
-  if (!safeInviteId || !safeCoachId) return null;
+  if (!safeInviteId || !safeCoachId || (!isFirestoreRuntimeAvailable() && !dbInput)) return null;
 
   try {
     const db = dbInput || getFirestoreDb();
@@ -972,7 +1017,7 @@ export async function loadCoachInviteFromFirestore(
   dbInput?: Firestore
 ): Promise<FirestoreCoachInviteRecord | null> {
   const safeInviteId = sanitizeFirestoreDocId(inviteId);
-  if (!safeInviteId) return null;
+  if (!safeInviteId || (!isFirestoreRuntimeAvailable() && !dbInput)) return null;
   try {
     const db = dbInput || getFirestoreDb();
     const snap = await db.collection("coachInvites").doc(safeInviteId).get();
@@ -995,7 +1040,7 @@ export async function acceptCoachInviteInFirestore(params: {
 }): Promise<FirestoreClientLinkRecord | null> {
   const safeTraineeId = sanitizeFirestoreDocId(params.traineeId);
   const safeCoachId = sanitizeFirestoreDocId(params.coachId);
-  if (!safeTraineeId || !safeCoachId) return null;
+  if (!safeTraineeId || !safeCoachId || (!isFirestoreRuntimeAvailable() && !params.db)) return null;
 
   try {
     const db = params.db || getFirestoreDb();
@@ -1076,7 +1121,7 @@ export async function loadCoachRosterFromFirestore(
   sentInvites: FirestoreCoachInviteRecord[];
 }> {
   const safeCoachId = sanitizeFirestoreDocId(coachId);
-  if (!safeCoachId) return { clients: [], sentInvites: [] };
+  if (!safeCoachId || (!isFirestoreRuntimeAvailable() && !dbInput)) return { clients: [], sentInvites: [] };
   try {
     const db = dbInput || getFirestoreDb();
     const coachRef = db.collection("users").doc(safeCoachId);

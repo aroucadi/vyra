@@ -36,6 +36,14 @@ export function getFirebaseAdminApp(): App {
     return existing[0];
   }
 
+  // In offline, unit-test, or CI environments without GCP credentials, avoid calling
+  // applicationDefault() which spawns unhandled background credential-lookup rejections.
+  if (!isFirestoreRuntimeAvailable()) {
+    return initializeApp({
+      projectId: DEFAULT_PROJECT_ID,
+    });
+  }
+
   return initializeApp({
     credential: applicationDefault(),
     projectId: DEFAULT_PROJECT_ID,

@@ -113,4 +113,18 @@ test.describe('Vyra World-Class End-to-End Critical User Journeys', () => {
     const backLink = page.getByRole('link', { name: 'Back to Roster' });
     await expect(backLink).toBeVisible();
   });
+
+  test('Flow 6: /you profile loads with PasskeySyncCard and sovereign cryptographic anchor', async ({ page }) => {
+    const pageErrors: Error[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err));
+
+    await page.goto('/you');
+    await page.waitForLoadState('domcontentloaded');
+
+    expect(pageErrors).toHaveLength(0);
+
+    // Verify Passkey Vault Card is visible
+    const passkeyHeading = page.locator('text=/Anchor Vault with Face ID|Passkey Vault|Local Passkey Bound/i').first();
+    await expect(passkeyHeading).toBeVisible();
+  });
 });

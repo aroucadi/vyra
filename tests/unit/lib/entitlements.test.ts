@@ -22,7 +22,7 @@ describe('Vyra Monetization & Entitlements Gate', () => {
 
     assert.throws(
       () => assertEntitlement('FREE', 'progression_engine'),
-      (err: any) => {
+      (err: unknown) => {
         assert.ok(err instanceof EntitlementError);
         assert.equal(err.code, 'ENTITLEMENT_REQUIRED');
         assert.equal(err.requiredTier, 'PRO');

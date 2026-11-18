@@ -31,7 +31,7 @@ interface ExerciseDetailSheetProps {
 
 function distillCue(raw: string): string {
   if (!raw) return "";
-  let clean = raw
+  const clean = raw
     .replace(/^(Lie flat|Stand upright|Sit firmly|Position yourself|Ensure your|Make sure your|Begin by)\s+/i, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -85,7 +85,14 @@ export function ExerciseDetailSheet({
   onSelectAsSubstitute,
 }: ExerciseDetailSheetProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"cues" | "steps" | "swaps">("cues");
+  const [tabState, setTabState] = useState<{
+    exerciseId?: string;
+    tab: "cues" | "steps" | "swaps";
+  }>({ exerciseId: exercise?.id, tab: "cues" });
+  const activeTab =
+    tabState.exerciseId === exercise?.id ? tabState.tab : "cues";
+  const setActiveTab = (tab: "cues" | "steps" | "swaps") =>
+    setTabState({ exerciseId: exercise?.id, tab });
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
 
@@ -123,13 +130,6 @@ export function ExerciseDetailSheet({
       active = false;
     };
   }, [exercise?.id, exercise?.name, exercise?.target, exercise?.equipment, isOpen]);
-
-  // Reset internal states on open
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab("cues");
-    }
-  }, [isOpen, exercise?.id]);
 
   if (!exercise) return null;
 

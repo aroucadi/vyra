@@ -88,48 +88,132 @@ describe("Cloud Storage Service & Feature Flag Gate (GCS / S3)", () => {
     assert.ok(parsed.buffer.length > 0, "Buffer must contain decoded bytes");
   });
 
-  test("when feature flag is activated, routes to configured GCS bucket with cloud URL", async () => {
-    // Dynamically activate feature flag
-    setCloudStorageConfig({
-      enabled: true,
-      provider: "gcs",
-      bucketName: "vyra-test-bucket",
-      publicUrlPrefix: "https://storage.googleapis.com/vyra-test-bucket",
-    });
+  test("when feature flag is activated with missing credentials, fails closed without fabricating cloud URLs", async () => {
+    const prevGcsToken = process.env.GCS_ACCESS_TOKEN;
+    const prevS3Url = process.env.S3_PRESIGNED_PUT_URL;
+    delete process.env.GCS_ACCESS_TOKEN;
+    delete process.env.S3_PRESIGNED_PUT_URL;
 
-    assert.strictEqual(isCloudStorageEnabled(), true);
+    try {
+      setCloudStorageConfig({
+        enabled: true,
+        provider: "gcs",
+        bucketName: "vyra-test-bucket",
+        publicUrlPrefix: "https://storage.googleapis.com/vyra-test-bucket",
+      });
 
-    const samplePng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-    const result = await uploadEquipmentPhoto(samplePng, {
-      traineeId: "trainee_alaa",
-      exerciseName: "glute bridge machine",
-    });
+      const samplePng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const gcsResult = await uploadEquipmentPhoto(samplePng, {
+        traineeId: "trainee_alaa",
+        exerciseName: "glute bridge machine",
+      });
+      assert.strictEqual(gcsResult.success, false);
+      assert.strictEqual(gcsResult.isCloud, false);
+      assert.strictEqual(gcsResult.provider, "local_fallback");
+      assert.match(gcsResult.error || "", /GCS_ACCESS_TOKEN|token/i);
 
-    assert.strictEqual(result.success, true);
-    assert.strictEqual(result.isCloud, true, "Must be marked as cloud when flag is active");
-    assert.strictEqual(result.provider, "gcs");
-    assert.ok(result.url.startsWith("https://storage.googleapis.com/vyra-test-bucket/equipment-photos/trainee_alaa/"));
-    assert.ok(result.url.endsWith(".png"));
+      setCloudStorageConfig({ enabled: true, provider: "s3", bucketName: "vyra-s3-bucket" });
+      const s3Result = await uploadEquipmentPhoto(samplePng, {
+        traineeId: "trainee_alaa",
+        exerciseName: "glute bridge machine",
+      });
+      assert.strictEqual(s3Result.success, false);
+      assert.strictEqual(s3Result.isCloud, false);
+      assert.match(s3Result.error || "", /S3_PRESIGNED_PUT_URL/i);
+    } finally {
+      if (prevGcsToken !== undefined) process.env.GCS_ACCESS_TOKEN = prevGcsToken;
+      if (prevS3Url !== undefined) process.env.S3_PRESIGNED_PUT_URL = prevS3Url;
+    }
   });
 
-  test("when feature flag is activated for S3, routes to S3 endpoint", async () => {
-    setCloudStorageConfig({
-      enabled: true,
-      provider: "s3",
-      bucketName: "vyra-s3-bucket",
-      region: "eu-west-1",
-    });
+  test("when feature flag is activated with credentials, executes GCS upload and returns cloud URL", async () => {
+    const prevToken = process.env.GCS_ACCESS_TOKEN;
+    process.env.GCS_ACCESS_TOKEN = "mock_gcs_token_123";
+    const calls: Array<{ url: string; method?: string; auth?: string }> = [];
 
-    const sampleJpeg = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
-    const result = await uploadEquipmentPhoto(sampleJpeg, {
-      traineeId: "trainee_alaa",
-      exerciseName: "lever seated hip abduction",
-    });
+    try {
+      setCloudStorageConfig({
+        enabled: true,
+        provider: "gcs",
+        bucketName: "vyra-test-bucket",
+        publicUrlPrefix: "https://storage.googleapis.com/vyra-test-bucket",
+      });
 
-    assert.strictEqual(result.success, true);
-    assert.strictEqual(result.isCloud, true);
-    assert.strictEqual(result.provider, "s3");
-    assert.ok(result.url.includes("vyra-s3-bucket.s3.eu-west-1.amazonaws.com"));
+      assert.strictEqual(isCloudStorageEnabled(), true);
+
+      const samplePng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const result = await uploadEquipmentPhoto(
+        samplePng,
+        {
+          traineeId: "trainee_alaa",
+          exerciseName: "glute bridge machine",
+        },
+        {
+          fetchImpl: async (input, init) => {
+            calls.push({
+              url: typeof input === "string" ? input : input.toString(),
+              method: init?.method,
+              auth: (init?.headers as Record<string, string>)?.Authorization,
+            });
+            return new Response(JSON.stringify({ name: "ok" }), { status: 200 });
+          },
+        }
+      );
+
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].method, "POST");
+      assert.strictEqual(calls[0].auth, "Bearer mock_gcs_token_123");
+      assert.ok(calls[0].url.includes("vyra-test-bucket"));
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.isCloud, true, "Must be marked as cloud when upload succeeds");
+      assert.strictEqual(result.provider, "gcs");
+      assert.ok(result.url.startsWith("https://storage.googleapis.com/vyra-test-bucket/equipment-photos/trainee_alaa/"));
+      assert.ok(result.url.endsWith(".png"));
+    } finally {
+      if (prevToken === undefined) delete process.env.GCS_ACCESS_TOKEN;
+      else process.env.GCS_ACCESS_TOKEN = prevToken;
+    }
+  });
+
+  test("when feature flag is activated for S3 with presigned URL, executes PUT and returns S3 endpoint", async () => {
+    const prevS3 = process.env.S3_PRESIGNED_PUT_URL;
+    process.env.S3_PRESIGNED_PUT_URL = "https://vyra-s3-bucket.s3.eu-west-1.amazonaws.com/presigned?sig=1";
+    let putCalled = false;
+
+    try {
+      setCloudStorageConfig({
+        enabled: true,
+        provider: "s3",
+        bucketName: "vyra-s3-bucket",
+        region: "eu-west-1",
+      });
+
+      const sampleJpeg = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+      const result = await uploadEquipmentPhoto(
+        sampleJpeg,
+        {
+          traineeId: "trainee_alaa",
+          exerciseName: "lever seated hip abduction",
+        },
+        {
+          fetchImpl: async (input, init) => {
+            assert.strictEqual(init?.method, "PUT");
+            assert.ok(String(input).includes("presigned"));
+            putCalled = true;
+            return new Response("", { status: 200 });
+          },
+        }
+      );
+
+      assert.strictEqual(putCalled, true);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.isCloud, true);
+      assert.strictEqual(result.provider, "s3");
+      assert.ok(result.url.includes("vyra-s3-bucket.s3.eu-west-1.amazonaws.com"));
+    } finally {
+      if (prevS3 === undefined) delete process.env.S3_PRESIGNED_PUT_URL;
+      else process.env.S3_PRESIGNED_PUT_URL = prevS3;
+    }
   });
 
   test("rejects non-raster SVG data URIs when cloud storage upload is enabled", async () => {

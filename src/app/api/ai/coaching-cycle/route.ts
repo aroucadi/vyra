@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { checkDistributedRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
@@ -14,6 +13,7 @@ import {
   executeWeeklyMesoReview,
 } from "@/lib/ai/coaching-cycle";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
+import { logStructuredAiEvent } from "@/lib/observability";
 import { WorkoutSession, BodyMetricEntry } from "@/lib/types";
 
 export interface CoachingCycleRequestBody {
@@ -36,6 +36,8 @@ export interface CoachingCycleRequestBody {
  * - `executeWeeklyMesoReview` (Loop B, 7 days)
  */
 export async function POST(req: Request) {
+  const startedAtMs = Date.now();
+  let effectiveTenantForLog: string | null = null;
   let body: Partial<CoachingCycleRequestBody>;
   try {
     body = (await req.json()) as Partial<CoachingCycleRequestBody>;
@@ -64,8 +66,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const rl = checkRateLimit(
-      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-coaching-cycle"),
+    const rl = await checkDistributedRateLimit(
+      resolveRateLimitKey(req, "ai-coaching-cycle", tenant.effectiveTraineeId),
       { maxRequests: 60, windowMs: 60_000 }
     );
     if (!rl.allowed) {
@@ -77,6 +79,7 @@ export async function POST(req: Request) {
 
     ensureFirestoreCoachBridgeRegistered();
     const effectiveTraineeId = tenant.effectiveTraineeId;
+    effectiveTenantForLog = effectiveTraineeId;
 
     let sessions = Array.isArray(body.sessions) ? body.sessions : [];
     let metricEntries = Array.isArray(body.metricEntries) ? body.metricEntries : [];
@@ -107,6 +110,17 @@ export async function POST(req: Request) {
         currentDate: body.currentDate,
       });
       if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
+      logStructuredAiEvent({
+        route: "/api/ai/coaching-cycle",
+        modelRequested: "deterministic_lifecycle_engine",
+        modelUsed: "deterministic_lifecycle_engine",
+        fallbackTriggered: false,
+        authMode: tenant.session ? "firebase_session" : "anon",
+        latencyMs: Date.now() - startedAtMs,
+        status: 200,
+        tenantId: effectiveTraineeId,
+        detail: "action=evaluate_experiments",
+      });
       return NextResponse.json({ ok: true, evaluatedExperiments: evaluated }, { status: 200 });
     }
 
@@ -119,6 +133,17 @@ export async function POST(req: Request) {
       });
       const macroBlockPlan = executeMacroBlockReview(caseFile);
       if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
+      logStructuredAiEvent({
+        route: "/api/ai/coaching-cycle",
+        modelRequested: "deterministic_lifecycle_engine",
+        modelUsed: "deterministic_lifecycle_engine",
+        fallbackTriggered: false,
+        authMode: tenant.session ? "firebase_session" : "anon",
+        latencyMs: Date.now() - startedAtMs,
+        status: 200,
+        tenantId: effectiveTraineeId,
+        detail: "action=macro_review",
+      });
       return NextResponse.json({ ok: true, macroBlockPlan }, { status: 200 });
     }
 
@@ -139,6 +164,17 @@ export async function POST(req: Request) {
         hasNewEvidence: sessions.length > 0 || metricEntries.length > 0,
       });
       if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
+      logStructuredAiEvent({
+        route: "/api/ai/coaching-cycle",
+        modelRequested: "deterministic_lifecycle_engine",
+        modelUsed: "deterministic_lifecycle_engine",
+        fallbackTriggered: false,
+        authMode: tenant.session ? "firebase_session" : "anon",
+        latencyMs: Date.now() - startedAtMs,
+        status: 200,
+        tenantId: effectiveTraineeId,
+        detail: "action=weekly_review",
+      });
       return NextResponse.json(
         { ok: true, evaluatedExperiments: evaluated, weeklyReview },
         { status: 200 }
@@ -155,13 +191,37 @@ export async function POST(req: Request) {
       forceWeeklyReview: body.forceWeeklyReview,
     });
     if (tenant.session) await athleteModelStore.syncToDatabase(effectiveTraineeId);
+    logStructuredAiEvent({
+      route: "/api/ai/coaching-cycle",
+      modelRequested: "deterministic_lifecycle_engine",
+      modelUsed: "deterministic_lifecycle_engine",
+      fallbackTriggered: false,
+      authMode: tenant.session ? "firebase_session" : "anon",
+      latencyMs: Date.now() - startedAtMs,
+      status: 200,
+      tenantId: effectiveTraineeId,
+      detail: "action=lifecycle_check",
+    });
 
     return NextResponse.json({ ok: true, ...lifecycle }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to execute autonomous coaching cycle.";
+    logStructuredAiEvent({
+      route: "/api/ai/coaching-cycle",
+      modelRequested: "deterministic_lifecycle_engine",
+      modelUsed: "deterministic_lifecycle_engine",
+      fallbackTriggered: true,
+      authMode: "error",
+      latencyMs: Date.now() - startedAtMs,
+      status: 500,
+      tenantId: effectiveTenantForLog,
+      severity: "ERROR",
+      detail: msg,
+    });
     return NextResponse.json(
       {
         ok: false,
-        error: err?.message || "Failed to execute autonomous coaching cycle.",
+        error: msg,
       },
       { status: 500 }
     );

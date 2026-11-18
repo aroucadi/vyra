@@ -4,6 +4,8 @@
  * Implements deterministic pre-filtering (equipment, injury safety) and anatomical scoring.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { RagExercise, ExerciseQueryConstraints } from '@/types/exercise-rag';
 
 // Normalize strings for matching
@@ -137,11 +139,6 @@ export function getCompiledCatalogue(): RagExercise[] {
   }
 
   try {
-    // Dynamic require in Node environment
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('node:fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require('node:path');
     const filePath = path.resolve(process.cwd(), 'public', 'data', 'exercise-catalogue.json');
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));

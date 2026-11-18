@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { clsx } from "clsx";
 
 export type MuscleRegion =
@@ -63,11 +63,19 @@ export function AnatomicalTensionSpotlight({
     primaryRegion && ["lats", "hamstrings", "glutes", "triceps"].includes(primaryRegion)
   );
 
-  const [view, setView] = useState<"front" | "back">(isPosteriorDominant ? "back" : "front");
-
-  useEffect(() => {
-    setView(isPosteriorDominant ? "back" : "front");
-  }, [primaryMuscle, isPosteriorDominant]);
+  const [viewOverride, setViewOverride] = useState<{
+    key: string;
+    view: "front" | "back";
+  } | null>(null);
+  const muscleKey = primaryMuscle ?? "";
+  const view: "front" | "back" =
+    viewOverride?.key === muscleKey
+      ? viewOverride.view
+      : isPosteriorDominant
+      ? "back"
+      : "front";
+  const setView = (nextView: "front" | "back") =>
+    setViewOverride({ key: muscleKey, view: nextView });
 
   const getRegionState = (region: MuscleRegion): "primary" | "secondary" | "inactive" => {
     if (primaryRegion === region) return "primary";

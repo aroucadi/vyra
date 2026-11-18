@@ -1,6 +1,8 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { __setMockFirebaseAdminForTesting } from "../../../src/lib/firebase/admin";
+import { ALAA_CANONICAL_EMAIL } from "../../../src/lib/auth/server-session";
 import {
   STANDARDIZED_POSE_GUIDES,
   detectStandardizedFaceBoundingBox,
@@ -60,6 +62,36 @@ function createTestSession(
 describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization & Workout Correlation Suite", () => {
   beforeEach(() => {
     visualProgressStore.resetForTesting("trainee_alaa");
+    __setMockFirebaseAdminForTesting({
+      auth: {
+        verifyIdToken: async (token: string) => {
+          if (token === "tok_alaa_visual") {
+            return {
+              uid: "fb_alaa_visual",
+              email: ALAA_CANONICAL_EMAIL,
+              email_verified: true,
+              firebase: { identities: {}, sign_in_provider: "password" },
+            };
+          }
+          if (token === "tok_omar_visual") {
+            return {
+              uid: "trainee_friend_omar",
+              email: "omar@example.com",
+              email_verified: true,
+              firebase: { identities: {}, sign_in_provider: "password" },
+            };
+          }
+          throw new Error("Invalid token");
+        },
+        verifySessionCookie: async () => {
+          throw new Error("Invalid cookie");
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    __setMockFirebaseAdminForTesting(null);
   });
 
   it("1. defines all 4 standardized posture guides and supports cadence intervals (weekly, biweekly, monthly)", () => {
@@ -247,7 +279,8 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
 
   it("5. exposes GET and POST /api/ai/visual-progress routes for timeline retrieval, anonymized capture, and milestone comparison", async () => {
     const getReq = new NextRequest(
-      "http://localhost:3000/api/ai/visual-progress?traineeId=trainee_alaa&poseId=front_relaxed"
+      "http://localhost:3000/api/ai/visual-progress?traineeId=trainee_alaa&poseId=front_relaxed",
+      { headers: { Authorization: "Bearer tok_alaa_visual" } }
     );
     const getRes = await getVisualProgressRoute(getReq);
     assert.equal(getRes.status, 200);
@@ -261,7 +294,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
     // Test POST action="capture" with raw image -> verifies automatic anonymization
     const captureReq = new Request("http://localhost:3000/api/ai/visual-progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_visual",
+      },
       body: JSON.stringify({
         action: "capture",
         traineeId: "trainee_alaa",
@@ -348,7 +384,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
     // Verify POST /api/ai/visual-progress with action="extract_metadata"
     const metaReq = new Request("http://localhost:3000/api/ai/visual-progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_visual",
+      },
       body: JSON.stringify({
         action: "extract_metadata",
         traineeId: "trainee_alaa",
@@ -369,7 +408,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
     // Verify uploading a past photo with EXIF auto-populates date/weight/week, anonymizes face, and sorts chronologically
     const pastExifCaptureReq = new Request("http://localhost:3000/api/ai/visual-progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_visual",
+      },
       body: JSON.stringify({
         action: "capture",
         traineeId: "trainee_alaa",
@@ -659,7 +701,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
 
     const delReq = new Request("http://localhost:3000/api/ai/visual-progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_visual",
+      },
       body: JSON.stringify({
         action: "delete",
         traineeId: "trainee_alaa",
@@ -680,7 +725,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
     // 0. Non-owner photo uploads via POST /api/ai/visual-progress must be blocked with HTTP 403 until MediaPipe is verified on 10-20 real photos
     const friendUploadReq = new Request("http://localhost:3000/api/ai/visual-progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_omar_visual",
+      },
       body: JSON.stringify({
         action: "capture",
         traineeId: "trainee_friend_omar",
@@ -800,7 +848,10 @@ describe("AI-Powered Visual Progress Tracking, Privacy-First Face Anonymization 
 
     const deleteHttpReq = new NextRequest(
       `http://localhost:3000/api/ai/visual-progress?traineeId=trainee_alaa&snapshotId=${snapA.id}`,
-      { method: "DELETE" }
+      {
+        method: "DELETE",
+        headers: { Authorization: "Bearer tok_alaa_visual" },
+      }
     );
     const deleteHttpRes = await deleteVisualProgressRoute(deleteHttpReq);
     assert.equal(deleteHttpRes.status, 200);

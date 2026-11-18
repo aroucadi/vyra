@@ -57,3 +57,20 @@ export function getFirestoreDb(): Firestore {
   }
   return getFirestore(getFirebaseAdminApp());
 }
+
+/**
+ * Returns true only when Firestore is explicitly available either via a unit-test mock,
+ * Firestore emulator, explicit credentials, or GCP Cloud Run runtime (`K_SERVICE`).
+ * Prevents unit tests from hanging on GCE metadata fetches when no mock is installed.
+ */
+export function isFirestoreRuntimeAvailable(): boolean {
+  const mock = getMockAdmin();
+  if (mock?.firestore) return true;
+  if (typeof window !== "undefined") return false;
+  return Boolean(
+    process.env.K_SERVICE ||
+      process.env.CLOUD_RUN_JOB ||
+      process.env.FIRESTORE_EMULATOR_HOST ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS
+  );
+}

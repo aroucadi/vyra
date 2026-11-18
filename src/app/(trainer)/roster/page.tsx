@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -16,12 +16,18 @@ import {
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { generateCoachInviteUrl } from "@/lib/trainer-invite";
-import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import {
+  useIsClientHydrated,
+  useVyraAuth,
+  useVyraStoreVersion,
+} from "@/components/auth/VyraAuthProvider";
+import type { FirestoreClientLinkRecord } from "@/lib/firebase/firestore-repository";
 
 export default function TrainerRosterPage() {
   const isHydrated = useIsClientHydrated();
-  useVyraStoreVersion();
-  const rosterItems = isHydrated ? appStore.getRoster() : [];
+  const { isAuthenticated } = useVyraAuth();
+  const storeVersion = useVyraStoreVersion();
+  const [cloudClients, setCloudClients] = useState<FirestoreClientLinkRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -29,14 +35,80 @@ export default function TrainerRosterPage() {
   const [inviteSent, setInviteSent] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const currentUser = appStore.getCurrentUser();
+  const coachId = currentUser.role === "trainer" || currentUser.role === "both" ? currentUser.id : "coach_1";
+  const coachName = (isHydrated && currentUser.name) || "Coach Marcus";
+
+  useEffect(() => {
+    if (!isHydrated || !isAuthenticated) return;
+    let active = true;
+    fetch(`/api/invites?coachId=${encodeURIComponent(coachId)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { ok?: boolean; clients?: FirestoreClientLinkRecord[] } | null) => {
+        if (active && data?.ok && Array.isArray(data.clients)) {
+          setCloudClients(data.clients);
+        }
+      })
+      .catch(() => {
+        // Non-fatal fallback to local roster
+      });
+    return () => {
+      active = false;
+    };
+  }, [isHydrated, isAuthenticated, coachId]);
+
+  const rosterItems = useMemo(() => {
+    void storeVersion;
+    if (!isHydrated) return [];
+    const localRoster = appStore.getRoster();
+    const seenIds = new Set(localRoster.map((r) => r.trainee.id));
+    const merged = [...localRoster];
+
+    for (const cloudClient of cloudClients) {
+      if (!seenIds.has(cloudClient.traineeId)) {
+        seenIds.add(cloudClient.traineeId);
+        merged.push({
+          trainee: {
+            id: cloudClient.traineeId,
+            name: cloudClient.name,
+            email: cloudClient.email || `${cloudClient.traineeId}@app.vyra.fit`,
+            role: "trainee",
+            injuries: [],
+            goals: ["Strength & Hypertrophy"],
+          },
+          activeProgram: cloudClient.programId
+            ? {
+                id: cloudClient.programId,
+                trainerId: cloudClient.coachId,
+                traineeId: cloudClient.traineeId,
+                title: cloudClient.programTitle || "16-Week Recomposition & Structural Balance",
+                startDate: cloudClient.joinedAt.split("T")[0],
+                endDate: cloudClient.joinedAt.split("T")[0],
+                durationWeeks: cloudClient.weeks || 16,
+                status: "published",
+                version: 1,
+                createdAt: cloudClient.joinedAt,
+                updatedAt: cloudClient.joinedAt,
+                weeks: [],
+              }
+            : undefined,
+          adherencePercentage: cloudClient.adherencePercentage ?? 100,
+          supplementAdherencePercentage: 100,
+          hydrationAdherencePercentage: 100,
+          currentWeekIndex: 1,
+          lastSessionDate: cloudClient.lastSessionDate,
+          totalVolumeKg: 0,
+          alerts: [{ type: "optimal", message: "Cloud Synced Athlete" }],
+        });
+      }
+    }
+    return merged;
+  }, [isHydrated, cloudClients, storeVersion]);
+
   const filteredRoster = rosterItems.filter((item) =>
     item.trainee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.activeProgram && item.activeProgram.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-
-  const currentUser = appStore.getCurrentUser();
-  const coachId = currentUser.role === "trainer" || currentUser.role === "both" ? currentUser.id : "coach_1";
-  const coachName = (isHydrated && currentUser.name) || "Coach Marcus";
 
   const inviteUrl =
     isHydrated && typeof window !== "undefined"
@@ -63,20 +135,46 @@ export default function TrainerRosterPage() {
     }
   };
 
-  const handleSendInvite = (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName) return;
 
-    // Create trainee in appStore
+    // Create trainee in local appStore + persist server invite in Firestore
     const newTraineeId = `trainee_${Date.now()}`;
+    const resolvedEmail =
+      inviteEmail || `${inviteName.toLowerCase().replace(/\s+/g, ".")}@example.com`;
     appStore.addUser({
       id: newTraineeId,
       name: inviteName,
-      email: inviteEmail || `${inviteName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+      email: resolvedEmail,
       role: "trainee",
       injuries: [],
       goals: ["Strength & Hypertrophy"],
     });
+
+    try {
+      await fetch("/api/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          coachId,
+          traineeName: inviteName,
+          traineeEmail: resolvedEmail,
+          invite: {
+            coachId,
+            coachName,
+            programTitle: "16-Week Recomposition & Structural Balance",
+            weeks: 16,
+            anchorLift: "barbell_bench",
+            startingBenchKg: 80,
+            unit: "kg",
+          },
+        }),
+      });
+    } catch {
+      // Local enrollment remains active offline
+    }
 
     setInviteSent(true);
     setTimeout(() => {

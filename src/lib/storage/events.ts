@@ -31,7 +31,7 @@ export type AthleticEventType =
   | "GYM_SELECTED"
   | "PROGRAM_EVOLVED";
 
-export interface EventEnvelope<T = any> {
+export interface EventEnvelope<T = unknown> {
   id: string;                    // UUID for idempotency
   streamId: string;              // e.g. "session_1794028800" or "trainee_alaa"
   traineeId: string;

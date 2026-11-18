@@ -327,7 +327,7 @@ export interface Program {
     sunday?: string;
   };
   blindExecutionRules?: string[];
-  dailyNutritionAndSupplementProtocol?: Record<string, any>;
+  dailyNutritionAndSupplementProtocol?: Record<string, unknown>;
   weeks: ProgramWeek[];
   supplementProtocols?: SupplementProtocol[];
   hydrationGoal?: HydrationGoal;

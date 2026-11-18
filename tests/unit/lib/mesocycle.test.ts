@@ -86,7 +86,7 @@ describe("Spec 027: Post-Session 1 Adaptive 16-Week Mesocycle Architect", () => 
     assert.equal(extremePlan.benchmark1RmKg, 500, "Extreme benchmark must be clamped to safe ceiling");
 
     // Invalid frequency fallback
-    const fallbackPlan = resolveMesocyclePlan(7 as any, "strength", 100);
+    const fallbackPlan = resolveMesocyclePlan(7 as unknown as Parameters<typeof resolveMesocyclePlan>[0], "strength", 100);
     assert.equal(fallbackPlan.frequency, 4, "Invalid frequency must fallback to 4 days");
   });
 
@@ -94,7 +94,7 @@ describe("Spec 027: Post-Session 1 Adaptive 16-Week Mesocycle Architect", () => 
     const res = saveUserMesocyclePreference("trainee_1", 4, "hypertrophy");
     assert.equal(res.success, true);
 
-    const invalidRes = saveUserMesocyclePreference("trainee_1", 9 as any, "strength");
+    const invalidRes = saveUserMesocyclePreference("trainee_1", 9 as unknown as Parameters<typeof saveUserMesocyclePreference>[1], "strength");
     assert.equal(invalidRes.success, true);
 
     telemetry.clear();

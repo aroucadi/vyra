@@ -40,7 +40,10 @@ export function PasskeySyncCard({
       if (res.success && res.credentialId) {
         setSavedPasskey(userId, res.credentialId);
         await anchorIdentityWithPasskey(res.credentialId, userName);
-        const syncRes = await syncLocalDataToCloud(userId, res.credentialId, sessionsCount);
+        const syncRes = await syncLocalDataToCloud(userId, res.credentialId, sessionsCount, {
+          challengeId: res.challengeId,
+          attestation: res.attestation,
+        });
         setNewlySavedCloud(Boolean(syncRes.persistedToCloud));
         telemetry.track("passkey_registered", { userId, isMock: res.isMock }, userId);
         onRegistered?.();

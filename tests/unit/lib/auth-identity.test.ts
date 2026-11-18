@@ -12,13 +12,22 @@ import {
 test("Phase 0: Athlete Identity & Late-Binding Sovereignty Engine", async (t) => {
   // Mock localStorage for test environment
   const storageMap = new Map<string, string>();
-  const originalLocalStorage = (globalThis as any).localStorage;
-  const originalWindow = (globalThis as any).window;
+  const globalMock = globalThis as unknown as {
+    window?: unknown;
+    localStorage?: {
+      getItem: (key: string) => string | null;
+      setItem: (key: string, val: string) => unknown;
+      removeItem: (key: string) => void;
+      clear: () => void;
+    };
+  };
+  const originalLocalStorage = globalMock.localStorage;
+  const originalWindow = globalMock.window;
 
   t.beforeEach(() => {
     storageMap.clear();
-    (globalThis as any).window = {};
-    (globalThis as any).localStorage = {
+    globalMock.window = {};
+    globalMock.localStorage = {
       getItem: (key: string) => storageMap.get(key) || null,
       setItem: (key: string, val: string) => storageMap.set(key, val),
       removeItem: (key: string) => storageMap.delete(key),
@@ -27,8 +36,8 @@ test("Phase 0: Athlete Identity & Late-Binding Sovereignty Engine", async (t) =>
   });
 
   t.afterEach(() => {
-    (globalThis as any).localStorage = originalLocalStorage;
-    (globalThis as any).window = originalWindow;
+    globalMock.localStorage = originalLocalStorage;
+    globalMock.window = originalWindow;
   });
 
   await t.test("getAthleteIdentity returns isolated anonymous sovereign identity on clean first boot", () => {

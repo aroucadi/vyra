@@ -4,8 +4,20 @@
  * Keeps phone screen awake during active gym workouts so timers and weights stay visible.
  */
 
+interface WakeLockSentinelLike {
+  released?: boolean;
+  addEventListener(type: "release", listener: () => void): void;
+  release(): Promise<void>;
+}
+
+interface NavigatorWithWakeLock {
+  wakeLock: {
+    request(type: "screen"): Promise<WakeLockSentinelLike>;
+  };
+}
+
 class ScreenWakeLockService {
-  private sentinel: any = null;
+  private sentinel: WakeLockSentinelLike | null = null;
   private isActive: boolean = false;
 
   public async acquire(): Promise<boolean> {
@@ -14,7 +26,7 @@ class ScreenWakeLockService {
     }
 
     try {
-      this.sentinel = await (navigator as any).wakeLock.request("screen");
+      this.sentinel = await (navigator as unknown as NavigatorWithWakeLock).wakeLock.request("screen");
       this.isActive = true;
 
       this.sentinel.addEventListener("release", () => {

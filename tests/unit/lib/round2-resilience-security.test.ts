@@ -6,7 +6,8 @@ import { parseGeminiJson } from "@/lib/gemini";
 import { runVertexAgenticCoachLoop } from "@/lib/ai/vertex-agent-loop";
 import { extractStructuredSymptomsViaLlm } from "@/lib/ai/symptom-nlu";
 import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
-import { clearRateLimitBucketsForTesting } from "@/lib/auth/rate-limit";
+import { clearRateLimitBucketsForTesting, checkDistributedRateLimit } from "@/lib/auth/rate-limit";
+import { __setMockFirebaseAdminForTesting } from "@/lib/firebase/admin";
 import { resetCloudStorageConfig } from "@/lib/cloud-storage";
 import { acceptCoachInvite } from "@/lib/trainer-invite";
 import { appStore } from "@/lib/store";
@@ -349,5 +350,63 @@ describe("Round-2 Resilience, Failover, Multi-Tenant Isolation & Security", () =
     assert.ok(prog);
     assert.equal(prog.weeks.length, 8);
     assert.ok((prog.weeks[0]?.days.length ?? 0) > 0);
+  });
+
+  it("checkDistributedRateLimit enforces Firestore L2 limit across cold L1 instances", async () => {
+    const l2Docs = new Map<string, Record<string, unknown>>();
+    const mockFirestore = {
+      collection: (col: string) => ({
+        doc: (id: string) => {
+          const path = `${col}/${id}`;
+          return {
+            path,
+            get: async () => ({
+              exists: l2Docs.has(path),
+              data: () => l2Docs.get(path),
+            }),
+          };
+        },
+      }),
+      runTransaction: async <T>(fn: (tx: {
+        get: (ref: { path: string }) => Promise<{ exists: boolean; data: () => Record<string, unknown> | undefined }>;
+        set: (ref: { path: string }, data: Record<string, unknown>, opts?: { merge?: boolean }) => void;
+      }) => Promise<T>) => {
+        const tx = {
+          get: async (ref: { path: string }) => ({
+            exists: l2Docs.has(ref.path),
+            data: () => l2Docs.get(ref.path),
+          }),
+          set: (ref: { path: string }, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
+            if (opts?.merge && l2Docs.has(ref.path)) {
+              l2Docs.set(ref.path, { ...l2Docs.get(ref.path)!, ...data });
+            } else {
+              l2Docs.set(ref.path, { ...data });
+            }
+          },
+        };
+        return fn(tx);
+      },
+    };
+
+    __setMockFirebaseAdminForTesting({ firestore: mockFirestore as never });
+    try {
+      const cfg = { maxRequests: 2, windowMs: 60_000 };
+      const now = Date.now();
+      // Simulate instance 1 hitting twice
+      const r1 = await checkDistributedRateLimit("scope:shared_user", cfg, now);
+      const r2 = await checkDistributedRateLimit("scope:shared_user", cfg, now + 10);
+      assert.equal(r1.allowed, true);
+      assert.equal(r1.layer, "firestore_l2");
+      assert.equal(r2.allowed, true);
+
+      // Clear L1 memory (simulating a cold Cloud Run instance 2) -> L2 still blocks 3rd request!
+      clearRateLimitBucketsForTesting();
+      const r3 = await checkDistributedRateLimit("scope:shared_user", cfg, now + 20);
+      assert.equal(r3.allowed, false);
+      assert.equal(r3.layer, "firestore_l2");
+      assert.equal(r3.remaining, 0);
+    } finally {
+      __setMockFirebaseAdminForTesting(null);
+    }
   });
 });

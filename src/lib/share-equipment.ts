@@ -67,8 +67,8 @@ export async function shareEquipmentPhotoWithGemini(
       });
       return { shared: true, method: "native_share" };
     }
-  } catch (err: any) {
-    if (err?.name === "AbortError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
       // User tapped cancel on share tray
       return { shared: false, method: "native_share", message: "Share cancelled" };
     }
@@ -169,8 +169,8 @@ export async function shareAudioNoteWithGemini(
       });
       return { shared: true, method: "native_share" };
     }
-  } catch (err: any) {
-    if (err?.name === "AbortError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
       return { shared: false, method: "native_share", message: "Share cancelled" };
     }
     console.warn("Native audio share failed, trying download fallback:", err);

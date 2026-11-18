@@ -14,6 +14,9 @@ import type {
 } from "@/lib/types";
 import type { EventEnvelope } from "@/lib/storage/events";
 import type { AthleteModel, CoachingExperiment } from "@/lib/ai/athlete-model";
+import type { LocationEquipmentInventory } from "@/lib/ai/gym-vision-inventory";
+import type { SensoryFeedbackEntry } from "@/lib/ai/sensory-memory";
+import type { VisualProgressSnapshot } from "@/lib/ai/visual-progress";
 import {
   registerCoachDbPersistence,
   CoachDbPersistenceAdapter,
@@ -682,4 +685,432 @@ export function ensureFirestoreCoachBridgeRegistered(): void {
     cachedFirestoreCoachAdapter = createFirestoreCoachDbAdapter();
   }
   registerCoachDbPersistence(cachedFirestoreCoachAdapter);
+}
+
+// ============================================================================
+// Gap #1: Firestore Persistence for Gym Inventories, Sensory Memory & Visual Snapshots
+// ============================================================================
+
+export async function saveGymInventoryToFirestore(
+  uid: string,
+  inventory: LocationEquipmentInventory,
+  dbInput?: Firestore
+): Promise<boolean> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  const safeGymId = sanitizeFirestoreDocId(inventory?.gymId);
+  if (!safeUid || !safeGymId) return false;
+  try {
+    const db = dbInput || getFirestoreDb();
+    await db
+      .collection("users")
+      .doc(safeUid)
+      .collection("gymInventories")
+      .doc(safeGymId)
+      .set(
+        stripUndefinedDeep({
+          ...inventory,
+          gymId: safeGymId,
+          traineeId: safeUid,
+          lastUpdated: inventory.lastUpdated || new Date().toISOString(),
+        }),
+        { merge: true }
+      );
+    return true;
+  } catch (err) {
+    console.warn("[Firestore] saveGymInventoryToFirestore error:", err);
+    return false;
+  }
+}
+
+export async function loadGymInventoriesFromFirestore(
+  uid: string,
+  dbInput?: Firestore
+): Promise<LocationEquipmentInventory[]> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  if (!safeUid) return [];
+  try {
+    const db = dbInput || getFirestoreDb();
+    const snap = await db.collection("users").doc(safeUid).collection("gymInventories").get();
+    return snap.docs.map((d) => ({
+      ...(d.data() as LocationEquipmentInventory),
+      traineeId: safeUid,
+    }));
+  } catch (err) {
+    console.warn("[Firestore] loadGymInventoriesFromFirestore error:", err);
+    return [];
+  }
+}
+
+export async function saveSensoryEntryToFirestore(
+  uid: string,
+  entry: SensoryFeedbackEntry,
+  dbInput?: Firestore
+): Promise<boolean> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  const safeId = sanitizeFirestoreDocId(entry?.id);
+  if (!safeUid || !safeId) return false;
+  try {
+    const db = dbInput || getFirestoreDb();
+    const MAX_INLINE_URI_LEN = 120_000;
+    const cleanedAudio =
+      entry.audioNoteUrl && entry.audioNoteUrl.startsWith("data:") && entry.audioNoteUrl.length > MAX_INLINE_URI_LEN
+        ? undefined
+        : entry.audioNoteUrl;
+    const cleanedPhoto =
+      entry.equipmentPhotoUrl &&
+      entry.equipmentPhotoUrl.startsWith("data:") &&
+      entry.equipmentPhotoUrl.length > MAX_INLINE_URI_LEN
+        ? undefined
+        : entry.equipmentPhotoUrl;
+
+    await db
+      .collection("users")
+      .doc(safeUid)
+      .collection("sensoryMemory")
+      .doc(safeId)
+      .set(
+        stripUndefinedDeep({
+          ...entry,
+          id: safeId,
+          traineeId: safeUid,
+          audioNoteUrl: cleanedAudio,
+          equipmentPhotoUrl: cleanedPhoto,
+        }),
+        { merge: true }
+      );
+    return true;
+  } catch (err) {
+    console.warn("[Firestore] saveSensoryEntryToFirestore error:", err);
+    return false;
+  }
+}
+
+export async function loadSensoryEntriesFromFirestore(
+  uid: string,
+  dbInput?: Firestore
+): Promise<SensoryFeedbackEntry[]> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  if (!safeUid) return [];
+  try {
+    const db = dbInput || getFirestoreDb();
+    const snap = await db.collection("users").doc(safeUid).collection("sensoryMemory").get();
+    return snap.docs
+      .map((d) => ({ ...(d.data() as SensoryFeedbackEntry), traineeId: safeUid }))
+      .sort((a, b) => (a.epochMs || 0) - (b.epochMs || 0))
+      .slice(-200);
+  } catch (err) {
+    console.warn("[Firestore] loadSensoryEntriesFromFirestore error:", err);
+    return [];
+  }
+}
+
+export async function saveVisualSnapshotToFirestore(
+  uid: string,
+  snapshot: VisualProgressSnapshot,
+  dbInput?: Firestore
+): Promise<boolean> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  const safeSnapId = sanitizeFirestoreDocId(snapshot?.id);
+  if (!safeUid || !safeSnapId) return false;
+
+  // Respect Firestore 1 MiB document size ceiling
+  const MAX_SNAPSHOT_URI_CHARS = 750_000;
+  if (
+    typeof snapshot.anonymizedImageUrl === "string" &&
+    snapshot.anonymizedImageUrl.length > MAX_SNAPSHOT_URI_CHARS
+  ) {
+    console.warn(
+      `[Firestore] Visual snapshot ${safeSnapId} exceeds safe document size (${snapshot.anonymizedImageUrl.length} chars); skipping inline cloud persistence.`
+    );
+    return false;
+  }
+
+  try {
+    const db = dbInput || getFirestoreDb();
+    await db
+      .collection("users")
+      .doc(safeUid)
+      .collection("visualSnapshots")
+      .doc(safeSnapId)
+      .set(
+        stripUndefinedDeep({
+          ...snapshot,
+          id: safeSnapId,
+          traineeId: safeUid,
+        }),
+        { merge: true }
+      );
+    return true;
+  } catch (err) {
+    console.warn("[Firestore] saveVisualSnapshotToFirestore error:", err);
+    return false;
+  }
+}
+
+export async function loadVisualSnapshotsFromFirestore(
+  uid: string,
+  dbInput?: Firestore
+): Promise<VisualProgressSnapshot[]> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  if (!safeUid) return [];
+  try {
+    const db = dbInput || getFirestoreDb();
+    const snap = await db.collection("users").doc(safeUid).collection("visualSnapshots").get();
+    return snap.docs
+      .map((d) => ({ ...(d.data() as VisualProgressSnapshot), traineeId: safeUid }))
+      .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  } catch (err) {
+    console.warn("[Firestore] loadVisualSnapshotsFromFirestore error:", err);
+    return [];
+  }
+}
+
+export async function deleteVisualSnapshotFromFirestore(
+  uid: string,
+  snapshotId: string,
+  base64Snippet?: string,
+  dbInput?: Firestore
+): Promise<boolean> {
+  const safeUid = sanitizeFirestoreDocId(uid);
+  const safeSnapId = sanitizeFirestoreDocId(snapshotId);
+  if (!safeUid || !safeSnapId) return false;
+  try {
+    const db = dbInput || getFirestoreDb();
+    await db
+      .collection("users")
+      .doc(safeUid)
+      .collection("visualSnapshots")
+      .doc(safeSnapId)
+      .delete();
+
+    const adapter = createFirestoreCoachDbAdapter(db);
+    await adapter.deleteShadowLogsMatchingSnapshotFromDb({
+      snapshotId: safeSnapId,
+      traineeId: safeUid,
+      base64Snippet,
+    });
+    return true;
+  } catch (err) {
+    console.warn("[Firestore] deleteVisualSnapshotFromFirestore error:", err);
+    return false;
+  }
+}
+
+// ============================================================================
+// Gap #7: Server-Backed B2B2C Coach Invites & Client Roster Persistence
+// ============================================================================
+
+export interface FirestoreCoachInviteRecord {
+  inviteId: string;
+  coachId: string;
+  coachName: string;
+  programTitle: string;
+  weeks: number;
+  anchorLift: "barbell_bench" | "dumbbell_bench";
+  startingBenchKg: number;
+  unit: "kg" | "lb";
+  customNote?: string;
+  traineeName?: string;
+  traineeEmail?: string;
+  status: "pending" | "accepted";
+  createdAt: string;
+  acceptedAt?: string;
+  acceptedByUid?: string;
+}
+
+export interface FirestoreClientLinkRecord {
+  traineeId: string;
+  coachId: string;
+  coachName?: string;
+  name: string;
+  email?: string;
+  programId?: string;
+  programTitle?: string;
+  weeks?: number;
+  status: "active" | "invited";
+  joinedAt: string;
+  adherencePercentage?: number;
+  lastSessionDate?: string;
+  sessionsCount?: number;
+}
+
+export async function saveCoachInviteToFirestore(
+  invite: FirestoreCoachInviteRecord,
+  dbInput?: Firestore
+): Promise<FirestoreCoachInviteRecord | null> {
+  const safeInviteId = sanitizeFirestoreDocId(invite?.inviteId);
+  const safeCoachId = sanitizeFirestoreDocId(invite?.coachId);
+  if (!safeInviteId || !safeCoachId) return null;
+
+  try {
+    const db = dbInput || getFirestoreDb();
+    const record: FirestoreCoachInviteRecord = stripUndefinedDeep({
+      ...invite,
+      inviteId: safeInviteId,
+      coachId: safeCoachId,
+      createdAt: invite.createdAt || new Date().toISOString(),
+    });
+    const ops: Array<(batch: WriteBatch) => void> = [
+      (batch) => batch.set(db.collection("coachInvites").doc(safeInviteId), record, { merge: true }),
+      (batch) =>
+        batch.set(
+          db.collection("users").doc(safeCoachId).collection("sentInvites").doc(safeInviteId),
+          record,
+          { merge: true }
+        ),
+    ];
+    await commitFirestoreOperationsInChunks(db, ops);
+    return record;
+  } catch (err) {
+    console.warn("[Firestore] saveCoachInviteToFirestore error:", err);
+    return null;
+  }
+}
+
+export async function loadCoachInviteFromFirestore(
+  inviteId: string,
+  dbInput?: Firestore
+): Promise<FirestoreCoachInviteRecord | null> {
+  const safeInviteId = sanitizeFirestoreDocId(inviteId);
+  if (!safeInviteId) return null;
+  try {
+    const db = dbInput || getFirestoreDb();
+    const snap = await db.collection("coachInvites").doc(safeInviteId).get();
+    return snap.exists ? (snap.data() as FirestoreCoachInviteRecord) : null;
+  } catch (err) {
+    console.warn("[Firestore] loadCoachInviteFromFirestore error:", err);
+    return null;
+  }
+}
+
+export async function acceptCoachInviteInFirestore(params: {
+  traineeId: string;
+  traineeName?: string;
+  traineeEmail?: string;
+  coachId: string;
+  coachName: string;
+  program: Program;
+  inviteId?: string;
+  db?: Firestore;
+}): Promise<FirestoreClientLinkRecord | null> {
+  const safeTraineeId = sanitizeFirestoreDocId(params.traineeId);
+  const safeCoachId = sanitizeFirestoreDocId(params.coachId);
+  if (!safeTraineeId || !safeCoachId) return null;
+
+  try {
+    const db = params.db || getFirestoreDb();
+    await ensureUserProfileDoc({
+      uid: safeTraineeId,
+      email: params.traineeEmail,
+      displayName: params.traineeName,
+      db,
+    });
+    await saveProgramToFirestore(safeTraineeId, { ...params.program, traineeId: safeTraineeId }, db);
+
+    const nowIso = new Date().toISOString();
+    const clientLink: FirestoreClientLinkRecord = stripUndefinedDeep({
+      traineeId: safeTraineeId,
+      coachId: safeCoachId,
+      coachName: params.coachName,
+      name: params.traineeName?.trim() || "New Athlete",
+      email: params.traineeEmail?.trim().toLowerCase() || undefined,
+      programId: params.program.id,
+      programTitle: params.program.title,
+      weeks: params.program.durationWeeks,
+      status: "active",
+      joinedAt: nowIso,
+    });
+
+    const ops: Array<(batch: WriteBatch) => void> = [
+      (batch) =>
+        batch.set(
+          db.collection("users").doc(safeTraineeId),
+          stripUndefinedDeep({
+            id: safeTraineeId,
+            trainerId: safeCoachId,
+            updatedAt: nowIso,
+          }),
+          { merge: true }
+        ),
+      (batch) =>
+        batch.set(
+          db.collection("users").doc(safeCoachId).collection("clients").doc(safeTraineeId),
+          clientLink,
+          { merge: true }
+        ),
+    ];
+
+    if (params.inviteId) {
+      const safeInviteId = sanitizeFirestoreDocId(params.inviteId);
+      if (safeInviteId) {
+        const patch = stripUndefinedDeep({
+          status: "accepted",
+          acceptedAt: nowIso,
+          acceptedByUid: safeTraineeId,
+        });
+        ops.push(
+          (batch) => batch.set(db.collection("coachInvites").doc(safeInviteId), patch, { merge: true }),
+          (batch) =>
+            batch.set(
+              db.collection("users").doc(safeCoachId).collection("sentInvites").doc(safeInviteId),
+              patch,
+              { merge: true }
+            )
+        );
+      }
+    }
+
+    await commitFirestoreOperationsInChunks(db, ops);
+    return clientLink;
+  } catch (err) {
+    console.warn("[Firestore] acceptCoachInviteInFirestore error:", err);
+    return null;
+  }
+}
+
+export async function loadCoachRosterFromFirestore(
+  coachId: string,
+  dbInput?: Firestore
+): Promise<{
+  clients: FirestoreClientLinkRecord[];
+  sentInvites: FirestoreCoachInviteRecord[];
+}> {
+  const safeCoachId = sanitizeFirestoreDocId(coachId);
+  if (!safeCoachId) return { clients: [], sentInvites: [] };
+  try {
+    const db = dbInput || getFirestoreDb();
+    const coachRef = db.collection("users").doc(safeCoachId);
+    const [clientsSnap, invitesSnap] = await Promise.all([
+      coachRef.collection("clients").get(),
+      coachRef.collection("sentInvites").get(),
+    ]);
+
+    const clients: FirestoreClientLinkRecord[] = [];
+    for (const doc of clientsSnap.docs) {
+      const record = doc.data() as FirestoreClientLinkRecord;
+      // Enrich with latest session stats if client profile exists
+      try {
+        const sessSnap = await db.collection("users").doc(record.traineeId).collection("sessions").get();
+        const sessions = sessSnap.docs
+          .map((d) => d.data() as WorkoutSession)
+          .sort((a, b) => (b.startedAt || b.date || "").localeCompare(a.startedAt || a.date || ""));
+        record.sessionsCount = sessions.length;
+        if (sessions[0]) {
+          record.lastSessionDate = sessions[0].date || sessions[0].startedAt?.split("T")[0];
+        }
+      } catch {
+        // Non-fatal
+      }
+      clients.push(record);
+    }
+
+    const sentInvites = invitesSnap.docs
+      .map((d) => d.data() as FirestoreCoachInviteRecord)
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+    return { clients, sentInvites };
+  } catch (err) {
+    console.warn("[Firestore] loadCoachRosterFromFirestore error:", err);
+    return { clients: [], sentInvites: [] };
+  }
 }

@@ -1,13 +1,22 @@
 /**
  * @file passkey.ts
  * @description Spec 021: Post-Session 1 Passkey Registration & Cloud Sync Handoff.
- * WebAuthn / FIDO2 Passkey helper enabling seamless multi-device sync without passwords
- * or upfront account walls. Safely falls back in headless and non-supported test environments.
+ * WebAuthn / FIDO2 Passkey helper using server-issued challenges & attestation verification,
+ * with explicit headless fallback when browser PublicKeyCredential is unavailable.
  */
+
+export interface PasskeyAttestationBundle {
+  clientDataJSON: string;
+  attestationObject: string;
+  rpId?: string;
+  spkiPublicKey?: string;
+}
 
 export interface PasskeyRegistrationResult {
   success: boolean;
   credentialId?: string;
+  challengeId?: string;
+  attestation?: PasskeyAttestationBundle;
   error?: string;
   isMock?: boolean;
 }
@@ -15,8 +24,31 @@ export interface PasskeyRegistrationResult {
 export interface CloudSyncPayload {
   userId: string;
   credentialId: string;
+  challengeId?: string;
+  attestation?: PasskeyAttestationBundle;
   syncedAt: string;
   sessionsCount: number;
+}
+
+function bytesToBase64Url(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const padded = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const mod = padded.length % 4;
+  const normalized = mod === 0 ? padded : padded + "=".repeat(4 - mod);
+  const binary = atob(normalized);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    out[i] = binary.charCodeAt(i);
+  }
+  return out;
 }
 
 /**
@@ -45,13 +77,15 @@ export function setSavedPasskey(userId: string, credentialId: string): void {
 }
 
 /**
- * Triggers native WebAuthn navigator.credentials.create() or deterministic headless mock.
+ * Requests a server-issued challenge from `/api/auth/passkey` and runs native WebAuthn
+ * `navigator.credentials.create()`. Falls back cleanly to a local headless mock when WebAuthn
+ * is unsupported (e.g. Node.js tests or legacy browsers).
  */
 export async function registerPasskey(
   username: string,
   displayName: string = "Vyra Athlete"
 ): Promise<PasskeyRegistrationResult> {
-  // If not supported or running in headless/Node test environment, provide deterministic mock
+  // If not supported or running in headless/Node test environment, provide deterministic local mock
   if (!isPasskeySupported()) {
     const mockCredentialId = `mock_passkey_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     return {
@@ -62,18 +96,36 @@ export async function registerPasskey(
   }
 
   try {
-    const challenge = new Uint8Array(32);
-    if (typeof window !== "undefined" && window.crypto) {
-      window.crypto.getRandomValues(challenge);
+    const challengeRes = await fetch(
+      `/api/auth/passkey?userId=${encodeURIComponent(username)}`,
+      { method: "GET" }
+    );
+    if (!challengeRes.ok) {
+      const errJson = (await challengeRes.json().catch(() => ({}))) as { error?: string };
+      return {
+        success: false,
+        error: errJson.error || "Failed to obtain server passkey challenge.",
+      };
     }
 
+    const challengeData = (await challengeRes.json()) as {
+      challengeId: string;
+      challenge: string;
+    };
+    const challengeBytes = base64UrlToUint8Array(challengeData.challenge);
+    const challengeBuffer = challengeBytes.buffer.slice(
+      challengeBytes.byteOffset,
+      challengeBytes.byteOffset + challengeBytes.byteLength
+    ) as ArrayBuffer;
+
+    const rpId = window.location.hostname || "app.vyra.fit";
     const userIdBytes = new TextEncoder().encode(username);
 
     const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
-      challenge,
+      challenge: challengeBuffer,
       rp: {
         name: "Vyra Performance Engine",
-        id: window.location.hostname || "app.vyra.fit",
+        id: rpId,
       },
       user: {
         id: userIdBytes,
@@ -104,9 +156,19 @@ export async function registerPasskey(
       };
     }
 
+    const attResponse = credential.response as AuthenticatorAttestationResponse;
+    const rawSpki = typeof attResponse.getPublicKey === "function" ? attResponse.getPublicKey() : null;
+
     return {
       success: true,
       credentialId: credential.id,
+      challengeId: challengeData.challengeId,
+      attestation: {
+        clientDataJSON: bytesToBase64Url(attResponse.clientDataJSON),
+        attestationObject: bytesToBase64Url(attResponse.attestationObject),
+        rpId,
+        spkiPublicKey: rawSpki ? bytesToBase64Url(rawSpki) : undefined,
+      },
       isMock: false,
     };
   } catch (err: unknown) {
@@ -119,14 +181,25 @@ export async function registerPasskey(
 }
 
 /**
- * Syncs local session data to cloud endpoint with passkey authorization.
+ * Verifies the registered WebAuthn passkey attestation with `/api/auth/passkey`
+ * and transitions cloud vault binding when server verification succeeds.
  */
 export async function syncLocalDataToCloud(
   userId: string,
   credentialId: string,
-  sessionsCount: number
+  sessionsCount: number,
+  verification?: {
+    challengeId?: string;
+    attestation?: PasskeyAttestationBundle;
+  }
 ): Promise<{ success: boolean; syncedAt: string; persistedToCloud?: boolean }> {
   const syncedAt = new Date().toISOString();
+
+  // Headless/mock mode binds locally without claiming server-verified WebAuthn cloud attestation
+  if (!verification?.challengeId || !verification?.attestation) {
+    return { success: true, syncedAt, persistedToCloud: false };
+  }
+
   try {
     const res = await fetch("/api/auth/passkey", {
       method: "POST",
@@ -134,27 +207,28 @@ export async function syncLocalDataToCloud(
       body: JSON.stringify({
         userId,
         credentialId,
+        challengeId: verification.challengeId,
+        attestation: verification.attestation,
         syncedAt,
         sessionsCount,
       }),
     });
 
     if (!res.ok) {
-      // In offline or local fallback mode, record local passkey binding cleanly without claiming cloud sync
       return { success: true, syncedAt, persistedToCloud: false };
     }
 
     const json = (await res.json()) as {
       success?: boolean;
+      verifiedWebAuthn?: boolean;
       syncedAt?: string;
     };
     return {
       success: Boolean(json.success ?? true),
       syncedAt: json.syncedAt || syncedAt,
-      persistedToCloud: true,
+      persistedToCloud: Boolean(json.verifiedWebAuthn ?? true),
     };
   } catch {
-    // Offline resilience: always succeed locally so trainee is never blocked
     return { success: true, syncedAt, persistedToCloud: false };
   }
 }

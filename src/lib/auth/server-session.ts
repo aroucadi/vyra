@@ -177,21 +177,7 @@ export async function resolveRouteTenantContext(
     };
   }
 
-  // Legacy unit-test runner compatibility unless `x-vyra-enforce-auth` header explicitly tests auth enforcement.
-  const isNodeTestRunner =
-    typeof process !== "undefined" &&
-    (Boolean(process.env.NODE_TEST_CONTEXT) || process.env.VITEST === "true") &&
-    req.headers.get("x-vyra-enforce-auth") !== "true";
-
-  if (isNodeTestRunner && cleanedRequested) {
-    return {
-      session: null,
-      effectiveTraineeId: cleanedRequested,
-      isAllowed: true,
-    };
-  }
-
-  // In production / Cloud Run runtime, unauthenticated callers cannot target Alaa or any registered non-anonymous UID
+  // Unauthenticated callers cannot target Alaa or any registered non-anonymous UID
   if (cleanedRequested && !isAnonymousTraineeId(cleanedRequested)) {
     return {
       session: null,

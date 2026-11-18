@@ -372,8 +372,13 @@ export class AthleteModelStore {
     const targetPath = explicitPath || this.durableFilePath;
     if (!targetPath || typeof window !== "undefined") return false;
     try {
-      const fs = require("node:fs");
-      const path = require("node:path");
+      type ProcessWithBuiltin = NodeJS.Process & {
+        getBuiltinModule?: <T = unknown>(id: string) => T | undefined;
+      };
+      const getBuiltin = (process as ProcessWithBuiltin).getBuiltinModule;
+      const fs = getBuiltin?.<typeof import("node:fs")>("node:fs");
+      const path = getBuiltin?.<typeof import("node:path")>("node:path");
+      if (!fs || !path) return false;
       const dir = path.dirname(targetPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -393,8 +398,12 @@ export class AthleteModelStore {
     const targetPath = explicitPath || this.durableFilePath;
     if (!targetPath || typeof window !== "undefined") return false;
     try {
-      const fs = require("node:fs");
-      if (!fs.existsSync(targetPath)) return false;
+      type ProcessWithBuiltin = NodeJS.Process & {
+        getBuiltinModule?: <T = unknown>(id: string) => T | undefined;
+      };
+      const getBuiltin = (process as ProcessWithBuiltin).getBuiltinModule;
+      const fs = getBuiltin?.<typeof import("node:fs")>("node:fs");
+      if (!fs || !fs.existsSync(targetPath)) return false;
       const raw = fs.readFileSync(targetPath, "utf8");
       const parsed = JSON.parse(raw);
       if (typeof parsed === "object" && parsed !== null) {

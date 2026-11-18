@@ -18,10 +18,18 @@ import {
   buildEmptyUserProfile,
   saveUserSyncBatch,
   saveProgramToFirestore,
+  loadGymInventoriesFromFirestore,
+  loadSensoryEntriesFromFirestore,
+  saveVisualSnapshotToFirestore,
+  loadVisualSnapshotsFromFirestore,
 } from "../../../src/lib/firebase/firestore-repository";
 import { seedAlaaToFirestore } from "../../../src/db/seed/seed-firestore-alaa";
-import { canTraineeUploadProgressPhotos } from "../../../src/lib/ai/visual-progress";
+import {
+  canTraineeUploadProgressPhotos,
+  visualProgressStore,
+} from "../../../src/lib/ai/visual-progress";
 import { gymVisionInventoryStore } from "../../../src/lib/ai/gym-vision-inventory";
+import { sensoryMemoryStore } from "../../../src/lib/ai/sensory-memory";
 import {
   GET as getSessionRoute,
   POST as postSessionRoute,
@@ -30,10 +38,19 @@ import {
 import { GET as getBootstrapRoute } from "../../../src/app/api/me/bootstrap/route";
 import { POST as postSyncRoute } from "../../../src/app/api/me/sync/route";
 import { POST as postSyncEventsRoute } from "../../../src/app/api/sync/events/route";
-import { POST as postVisualProgressRoute } from "../../../src/app/api/ai/visual-progress/route";
+import {
+  GET as getVisualProgressRoute,
+  POST as postVisualProgressRoute,
+  DELETE as deleteVisualProgressRoute,
+} from "../../../src/app/api/ai/visual-progress/route";
 import { POST as postAdaptDayRoute } from "../../../src/app/api/ai/adapt-day/route";
+import { POST as postEvolveRoute } from "../../../src/app/api/ai/evolve/route";
 import { POST as postEquipmentPhotoRoute } from "../../../src/app/api/upload/equipment-photo/route";
 import { POST as postPasskeyRoute } from "../../../src/app/api/auth/passkey/route";
+import {
+  GET as getInvitesRoute,
+  POST as postInvitesRoute,
+} from "../../../src/app/api/invites/route";
 
 interface MockDocSnap {
   id: string;
@@ -399,7 +416,6 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-vyra-enforce-auth": "true",
         },
         body: JSON.stringify({
           traineeId: ALAA_CANONICAL_UID,
@@ -414,7 +430,6 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-vyra-enforce-auth": "true",
           Authorization: "Bearer tok_stranger",
         },
         body: JSON.stringify({
@@ -452,7 +467,7 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
     const adaptSpoof = await postAdaptDayRoute(
       new NextRequest("http://localhost:3000/api/ai/adapt-day", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ traineeId: ALAA_CANONICAL_UID, exercises: [] }),
       })
     );
@@ -461,7 +476,7 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
     const equipSpoof = await postEquipmentPhotoRoute(
       new NextRequest("http://localhost:3000/api/upload/equipment-photo", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ traineeId: ALAA_CANONICAL_UID, imageBase64: "data:image/png;base64,iVBORw0KGgo=" }),
       })
     );
@@ -472,7 +487,6 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-vyra-enforce-auth": "true",
           Authorization: "Bearer tok_stranger",
         },
         body: JSON.stringify({ userId: ALAA_CANONICAL_UID, credentialId: "cred_123" }),
@@ -501,7 +515,7 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
     const strangerSpoofRes = await postSyncEventsRoute(
       new NextRequest("http://localhost:3000/api/sync/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-vyra-enforce-auth": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           traineeId: "fb_stranger_99",
           events: [{ id: "ev_1", type: "WORKOUT_COMPLETED", timestampEpochMs: Date.now() }],
@@ -602,5 +616,231 @@ describe("Multi-Tenant Firebase Auth & Firestore Isolation Suite", () => {
       gymVisionInventoryStore.getInventoryForGym(undefined, undefined, ALAA_CANONICAL_UID).gymName,
       "Punch by Badr Hari Lissasfa"
     );
+  });
+
+  it("9. Gap #1: Persists & rehydrates gym inventories, sensory memory, and visual snapshots in Firestore across container resets", async () => {
+    // A) /api/ai/adapt-day persists updated gym inventory to Firestore
+    const adaptRes = await postAdaptDayRoute(
+      new NextRequest("http://localhost:3000/api/ai/adapt-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_stranger",
+        },
+        body: JSON.stringify({
+          traineeId: "fb_stranger_99",
+          gymId: "gym_boutique_casa",
+          gymName: "Boutique Studio Casablanca",
+          overrideGymEquipment: ["dumbbell", "kettlebell", "bodyweight"],
+          voiceOrTextMessage: "Train using dumbbells only today",
+          exercises: [
+            {
+              id: "ex_1",
+              name: "Barbell Bench Press",
+              targetSets: 3,
+              repLow: 8,
+              repHigh: 10,
+              targetRir: 1,
+              restSeconds: 120,
+              currentWeight: 60,
+              equipment: "barbell",
+            },
+          ],
+        }),
+      })
+    );
+    assert.equal(adaptRes.status, 200);
+    const savedInventories = await loadGymInventoriesFromFirestore("fb_stranger_99", mockStore.firestore);
+    assert.equal(savedInventories.some((inv) => inv.gymId === "gym_boutique_casa"), true);
+
+    // Wipe in-memory store to simulate cold Cloud Run container start
+    gymVisionInventoryStore.clearForTesting();
+    assert.equal(
+      gymVisionInventoryStore.getInventoriesForTrainee("fb_stranger_99").length,
+      0
+    );
+
+    // B) /api/ai/evolve persists ingested sensory feedback and rehydrates cloud gym inventory
+    const evolveRes = await postEvolveRoute(
+      new NextRequest("http://localhost:3000/api/ai/evolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_stranger",
+        },
+        body: JSON.stringify({
+          traineeId: "fb_stranger_99",
+          exerciseName: "Barbell Bench Press",
+          currentWeightKg: 60,
+          targetSets: 3,
+          repLow: 8,
+          repHigh: 10,
+          gymId: "gym_boutique_casa",
+          feedbackToIngest: {
+            traineeId: "fb_stranger_99",
+            sessionId: "sess_fs_1",
+            date: "2026-11-17",
+            exerciseName: "Barbell Bench Press",
+            tags: ["optimal"],
+            freeTextNote: "Smooth tempo in studio today",
+          },
+        }),
+      })
+    );
+    assert.equal(evolveRes.status, 200);
+    // Gym inventory rehydrated back into singleton from Firestore!
+    assert.equal(
+      gymVisionInventoryStore.getInventoriesForTrainee("fb_stranger_99").some((g) => g.gymId === "gym_boutique_casa"),
+      true
+    );
+    const savedSensory = await loadSensoryEntriesFromFirestore("fb_stranger_99", mockStore.firestore);
+    assert.equal(savedSensory.length, 1);
+    assert.equal(savedSensory[0].exerciseName, "Barbell Bench Press");
+
+    // C) Visual snapshots persist, rehydrate across store wipe on GET, and purge cleanly from Firestore on DELETE
+    await saveVisualSnapshotToFirestore(
+      ALAA_CANONICAL_UID,
+      {
+        id: "snap_cloud_persist_1",
+        traineeId: ALAA_CANONICAL_UID,
+        date: "2026-11-17",
+        capturedAt: "2026-11-17T09:00:00.000Z",
+        poseId: "front_relaxed",
+        milestoneLabel: "Week 4 Check-In",
+        weekIndex: 4,
+        weightKg: 76.2,
+        anonymizedImageUrl: "data:image/svg+xml;utf8,%3Csvg%3E%3Crect/%3E%3C/svg%3E",
+        anonymization: {
+          isAnonymized: true,
+          method: "on_device_canvas_blur",
+          faceRegionRedacted: { x: 0.35, y: 0.05, width: 0.3, height: 0.25 },
+          scrubbedExif: true,
+          confidence: 0.99,
+          verifiedAt: "2026-11-17T09:00:00.000Z",
+        },
+        isSyntheticDemo: false,
+      },
+      mockStore.firestore
+    );
+    visualProgressStore.clearForRealUser();
+    assert.equal(visualProgressStore.getSnapshots(ALAA_CANONICAL_UID).length, 0);
+
+    const getVisualRes = await getVisualProgressRoute(
+      new NextRequest(
+        `http://localhost:3000/api/ai/visual-progress?traineeId=${ALAA_CANONICAL_UID}&poseId=front_relaxed`,
+        {
+          headers: { Authorization: "Bearer tok_alaa_verified" },
+        }
+      )
+    );
+    assert.equal(getVisualRes.status, 200);
+    const getVisualJson = await getVisualRes.json();
+    assert.equal(getVisualJson.snapshots.some((s: { id: string }) => s.id === "snap_cloud_persist_1"), true);
+
+    const delVisualRes = await deleteVisualProgressRoute(
+      new NextRequest(
+        `http://localhost:3000/api/ai/visual-progress?traineeId=${ALAA_CANONICAL_UID}&snapshotId=snap_cloud_persist_1`,
+        {
+          method: "DELETE",
+          headers: { Authorization: "Bearer tok_alaa_verified" },
+        }
+      )
+    );
+    assert.equal(delVisualRes.status, 200);
+    const delVisualJson = await delVisualRes.json();
+    assert.equal(delVisualJson.receipt.purgedFromFirestore, true);
+    const afterDeleteCloud = await loadVisualSnapshotsFromFirestore(ALAA_CANONICAL_UID, mockStore.firestore);
+    assert.equal(afterDeleteCloud.length, 0);
+
+    sensoryMemoryStore.clearForTesting();
+    visualProgressStore.clearForRealUser();
+  });
+
+  it("10. Gap #7: Server-backed B2B2C /api/invites creates invites, enrolls calibrated 16-week clients to Firestore, and isolates coach rosters", async () => {
+    // 1. Authenticated coach creates invite
+    const createRes = await postInvitesRoute(
+      new NextRequest("http://localhost:3000/api/invites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_alaa_verified",
+        },
+        body: JSON.stringify({
+          action: "create",
+          coachId: ALAA_CANONICAL_UID,
+          inviteId: "inv_test_casa_1",
+          traineeName: "Jordan Lee",
+          invite: {
+            coachName: "Coach Alaa",
+            programTitle: "16-Week Hypertrophy Foundation",
+            weeks: 16,
+            anchorLift: "barbell_bench",
+            startingBenchKg: 85,
+            unit: "kg",
+          },
+        }),
+      })
+    );
+    assert.equal(createRes.status, 200);
+    const createJson = await createRes.json();
+    assert.equal(createJson.persistedToCloud, true);
+    assert.equal(mockStore.docs.has("coachInvites/inv_test_casa_1"), true);
+
+    // 2. Public invite lookup returns non-PII metadata
+    const lookupRes = await getInvitesRoute(
+      new NextRequest("http://localhost:3000/api/invites?inviteId=inv_test_casa_1")
+    );
+    assert.equal(lookupRes.status, 200);
+    const lookupJson = await lookupRes.json();
+    assert.equal(lookupJson.invite.programTitle, "16-Week Hypertrophy Foundation");
+
+    // 3. Stranger accepts invite -> persists calibrated 16-week program + coach client link
+    const acceptRes = await postInvitesRoute(
+      new NextRequest("http://localhost:3000/api/invites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_stranger",
+        },
+        body: JSON.stringify({
+          action: "accept",
+          inviteId: "inv_test_casa_1",
+          coachId: ALAA_CANONICAL_UID,
+          traineeId: "fb_stranger_99",
+          traineeName: "New Client",
+          invite: {
+            coachId: ALAA_CANONICAL_UID,
+            coachName: "Coach Alaa",
+            programTitle: "16-Week Hypertrophy Foundation",
+            weeks: 16,
+            anchorLift: "barbell_bench",
+            startingBenchKg: 85,
+            unit: "kg",
+          },
+        }),
+      })
+    );
+    assert.equal(acceptRes.status, 200);
+    const acceptJson = await acceptRes.json();
+    assert.equal(acceptJson.persistedToCloud, true);
+    assert.equal(acceptJson.program.weeks.length, 16);
+    assert.equal(mockStore.docs.has(`users/${ALAA_CANONICAL_UID}/clients/fb_stranger_99`), true);
+
+    // 4. Coach loads roster cleanly; stranger trying to read Coach Alaa's roster gets 403
+    const coachRosterRes = await getInvitesRoute(
+      new NextRequest(`http://localhost:3000/api/invites?coachId=${ALAA_CANONICAL_UID}`, {
+        headers: { Authorization: "Bearer tok_alaa_verified" },
+      })
+    );
+    assert.equal(coachRosterRes.status, 200);
+    const coachRosterJson = await coachRosterRes.json();
+    assert.equal(coachRosterJson.clients.some((c: { traineeId: string }) => c.traineeId === "fb_stranger_99"), true);
+
+    const crossCoachBlocked = await getInvitesRoute(
+      new NextRequest(`http://localhost:3000/api/invites?coachId=${ALAA_CANONICAL_UID}`, {
+        headers: { Authorization: "Bearer tok_stranger" },
+      })
+    );
+    assert.equal(crossCoachBlocked.status, 403);
   });
 });

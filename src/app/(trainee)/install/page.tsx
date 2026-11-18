@@ -1,41 +1,29 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { Share, PlusSquare, Smartphone, CheckCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { telemetry } from "@/lib/telemetry";
 
-export default function InstallPage() {
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+import { useIsClientHydrated } from "@/components/auth/VyraAuthProvider";
 
-  const [isChromeIOS, setIsChromeIOS] = useState(false);
+export default function InstallPage() {
+  const isHydrated = useIsClientHydrated();
+
+  const isStandalone =
+    isHydrated &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true);
+  const ua = isHydrated ? window.navigator.userAgent.toLowerCase() : "";
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isChromeIOS = /crios/.test(ua);
+  const isInAppBrowser = /fban|fbav|instagram|whatsapp|line|micromessenger/.test(ua);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const standalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-      setIsStandalone(standalone);
-
-      if (standalone) {
-        telemetry.track("install_detected", { mode: "standalone", platform: "ios_pwa" });
-      }
-
-      const ua = window.navigator.userAgent.toLowerCase();
-      const iosDevice = /iphone|ipad|ipod/.test(ua);
-      setIsIOS(iosDevice);
-
-      // Detect Chrome on iOS (uses CriOS in userAgent)
-      const chromeOnIOS = /crios/.test(ua);
-      setIsChromeIOS(chromeOnIOS);
-
-      // Detect in-app browsers like Instagram, WhatsApp, Messenger
-      const inApp = /fban|fbav|instagram|whatsapp|line|micromessenger/.test(ua);
-      setIsInAppBrowser(inApp);
+    if (isStandalone) {
+      telemetry.track("install_detected", { mode: "standalone", platform: "ios_pwa" });
     }
-  }, []);
+  }, [isStandalone]);
 
   return (
     <div className="flex-1 pb-16 px-4 pt-8 max-w-[480px] mx-auto w-full space-y-6 animate-in fade-in duration-300">

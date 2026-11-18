@@ -39,7 +39,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
         ],
       };
 
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const benchResult = results.find((r) => r.roleId === 'bench');
       assert.ok(benchResult);
       assert.equal(benchResult.status, BALANCE_STATUSES.BALANCED);
@@ -59,7 +59,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
           { d: '2026-01-02', entries: [{ id: '0025', sets: [{ done: true, w: 71, r: 1 }] }] }, // 71% vs 75%
         ],
       };
-      const rBorderline = computeBalance(sBorderline as any, template).find((r) => r.roleId === 'bench');
+      const rBorderline = computeBalance(sBorderline, template).find((r) => r.roleId === 'bench');
       assert.equal(rBorderline?.status, BALANCE_STATUSES.BORDERLINE);
 
       const sWeak = {
@@ -69,7 +69,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
           { d: '2026-01-02', entries: [{ id: '0025', sets: [{ done: true, w: 60, r: 1 }] }] }, // 60% vs 75%
         ],
       };
-      const rWeak = computeBalance(sWeak as any, template).find((r) => r.roleId === 'bench');
+      const rWeak = computeBalance(sWeak, template).find((r) => r.roleId === 'bench');
       assert.equal(rWeak?.status, BALANCE_STATUSES.WEAK);
     });
   });
@@ -88,7 +88,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
         ],
       };
 
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const dlResult = results.find((r) => r.roleId === 'deadlift');
       assert.ok(dlResult);
       assert.equal(dlResult.status, BALANCE_STATUSES.BALANCED);
@@ -104,7 +104,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
         ],
       };
 
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const incResult = results.find((r) => r.roleId === 'inclineBench');
       assert.ok(incResult);
       assert.equal(incResult.status, BALANCE_STATUSES.BALANCED);
@@ -125,7 +125,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
         ],
       };
 
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const rdl = results.find((r) => r.roleId === 'romanianDeadlift');
       assert.ok(rdl);
       assert.equal(rdl.status, BALANCE_STATUSES.BALANCED);
@@ -142,7 +142,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
         ],
       };
 
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const rdl = results.find((r) => r.roleId === 'romanianDeadlift');
       assert.ok(rdl);
       assert.equal(rdl.targetPct, 80);
@@ -177,7 +177,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
           { d: '2026-01-01', entries: [{ id: '0032', sets: [{ done: true, w: 140, r: 5 }] }] },
         ],
       };
-      const results = computeBalance(S as any, template);
+      const results = computeBalance(S, template);
       const dl = results.find((r) => r.roleId === 'deadlift');
       assert.ok(dl);
       assert.equal(dl.status, BALANCE_STATUSES.NO_DATA);
@@ -193,7 +193,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
           { d: '2026-01-01', entries: [{ id: '0085', sets: [{ done: true, w: 80, r: 12 }] }] },
         ],
       };
-      const results = computeBalance(S as any, atgTemplate);
+      const results = computeBalance(S, atgTemplate);
       const rdl = results.find((r) => r.roleId === 'romanianDeadlift');
       assert.ok(rdl);
       assert.equal(rdl.needsBodyweight, true);
@@ -208,7 +208,7 @@ describe('Biomechanical Structural Balance Suite (Ported from OpenGym)', () => {
           { d: '2026-01-01', entries: [{ id: '0652', sets: [{ done: true, w: 0, r: 10 }] }] },
         ],
       };
-      const results = computeBalance(S as any, atgTemplate);
+      const results = computeBalance(S, atgTemplate);
       const pullups = results.find((r) => r.roleId === 'pullups');
       assert.ok(pullups);
       assert.equal(pullups.status, BALANCE_STATUSES.BALANCED);

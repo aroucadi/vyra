@@ -52,8 +52,18 @@ export function VisualProgressStudio() {
     visualProgressStore.getSnapshots(currentUser.id, "front_relaxed")
   );
 
-  const [selectedIdA, setSelectedIdA] = useState<string>("");
-  const [selectedIdB, setSelectedIdB] = useState<string>("");
+  const [selectedIdA, setSelectedIdA] = useState<string>(
+    () =>
+      visualProgressStore.getSnapshots(currentUser.id, "front_relaxed")[0]?.id ||
+      ""
+  );
+  const [selectedIdB, setSelectedIdB] = useState<string>(() => {
+    const initial = visualProgressStore.getSnapshots(
+      currentUser.id,
+      "front_relaxed"
+    );
+    return initial[initial.length - 1]?.id || "";
+  });
   const [report, setReport] = useState<VisualProgressComparisonReport | null>(null);
   const [activeTab, setActiveTab] = useState<"insights" | "workout_bridge" | "actions">(
     "insights"
@@ -84,9 +94,10 @@ export function VisualProgressStudio() {
   const [appliedAdjustmentIds, setAppliedAdjustmentIds] = useState<Record<string, boolean>>({});
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
-  // Refresh snapshots when pose changes
-  useEffect(() => {
-    const poseSnaps = visualProgressStore.getSnapshots(currentUser.id, activePose);
+  // Switch pose cleanly without setState inside useEffect
+  const handleSelectPose = (nextPose: VisualPoseId) => {
+    setActivePose(nextPose);
+    const poseSnaps = visualProgressStore.getSnapshots(currentUser.id, nextPose);
     setSnapshots(poseSnaps);
     if (poseSnaps.length >= 2) {
       setSelectedIdA(poseSnaps[0].id);
@@ -94,8 +105,11 @@ export function VisualProgressStudio() {
     } else if (poseSnaps.length === 1) {
       setSelectedIdA(poseSnaps[0].id);
       setSelectedIdB(poseSnaps[0].id);
+    } else {
+      setSelectedIdA("");
+      setSelectedIdB("");
     }
-  }, [activePose, currentUser.id]);
+  };
 
   const snapshotA = useMemo(
     () => snapshots.find((s) => s.id === selectedIdA) || snapshots[0],
@@ -296,10 +310,12 @@ export function VisualProgressStudio() {
           : `Saved "${created.milestoneLabel}" (${created.date}) with Verified Face Redaction & EXIF Scrubbing.`
       );
       setTimeout(() => setStatusBanner(null), 4500);
-    } catch (err: any) {
-      setStatusBanner(
-        err?.message || "Face detection failed closed. Please retake the photo in clear lighting."
-      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Face detection failed closed. Please retake the photo in clear lighting.";
+      setStatusBanner(message);
     } finally {
       setIsCapturing(false);
     }
@@ -599,7 +615,7 @@ export function VisualProgressStudio() {
               <button
                 key={poseKey}
                 type="button"
-                onClick={() => setActivePose(poseKey)}
+                onClick={() => handleSelectPose(poseKey)}
                 className={clsx(
                   "px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border cursor-pointer",
                   isSelected
@@ -817,7 +833,9 @@ export function VisualProgressStudio() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setActiveTab(t.id as any)}
+                  onClick={() =>
+                    setActiveTab(t.id as "insights" | "workout_bridge" | "actions")
+                  }
                   className={clsx(
                     "py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer",
                     isTabActive

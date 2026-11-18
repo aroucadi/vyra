@@ -710,8 +710,8 @@ function buildDynamicFallbackGuide(
   }
 
   let gripType: GripType = "overhand";
-  let gripWidth: GripWidth = "shoulder_width";
-  let wristCue = "Keep wrists neutral and aligned with forearms; never allow wrists to bend backward.";
+  const gripWidth: GripWidth = "shoulder_width";
+  const wristCue = "Keep wrists neutral and aligned with forearms; never allow wrists to bend backward.";
   let threeCues: [string, string, string] = [
     "Pack shoulders down and back.",
     "Control 3-second lowering phase.",
@@ -721,7 +721,7 @@ function buildDynamicFallbackGuide(
 
   let primaryMuscle = "Target Muscle Group";
   let targetFeel = "By rep 8–10: intense deep burn and muscle pump in target region.";
-  let normalSensations = ["Secondary stabilizing muscles will fatigue as supporting structure."];
+  const normalSensations = ["Secondary stabilizing muscles will fatigue as supporting structure."];
   let redFlagStop = "Sharp joint pain, bone pinching, or loss of spinal control: STOP immediately.";
 
   if (isPress) {

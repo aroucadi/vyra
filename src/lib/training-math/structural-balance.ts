@@ -5,16 +5,7 @@
  */
 
 import { estimate1RM, FORMULAS, DEFAULT_FORMULA } from './onerm';
-
-function safeGetExerciseById(id: string) {
-  if (typeof window !== 'undefined') return null;
-  try {
-    const { getExerciseById } = require('../rag/catalogue-loader');
-    return getExerciseById(id);
-  } catch {
-    return null;
-  }
-}
+import { safeGetExerciseById } from '../rag/safe-exercise-lookup';
 
 export * from './structural-balance-types';
 import {
@@ -287,42 +278,87 @@ export function withOverride(
 const LIFTER_MOVEMENT = /\b(pull[- ]?ups?|chin[- ]?ups?|muscle[- ]?ups?|dips?)\b/i;
 const BENCH_DIP_IDS = new Set(['1755']);
 
-const isWarmupRow = (set: any): boolean => {
+export interface BalanceSideSetInput {
+  w?: number | string;
+  r?: number | string;
+  done?: boolean;
+}
+
+export interface BalanceSetInput extends BalanceSideSetInput {
+  warmup?: boolean;
+  phase?: string;
+  sides?: {
+    L?: BalanceSideSetInput;
+    R?: BalanceSideSetInput;
+  };
+}
+
+export interface BalanceTargetInput {
+  bodyweight?: boolean;
+  assisted?: boolean;
+}
+
+export interface BalanceEntryInput {
+  id?: string;
+  bodyweight?: boolean;
+  assisted?: boolean;
+  target?: BalanceTargetInput;
+  sets?: BalanceSetInput[];
+}
+
+export interface BalanceWorkoutInput {
+  d: string;
+  start?: number;
+  bw?: number;
+  entries?: BalanceEntryInput[];
+}
+
+export interface BalanceStateInput {
+  unit?: string;
+  body?: string;
+  bodyweight?: { d: string; w: number }[];
+  balanceOverrides?: Record<string, unknown>;
+  workouts?: BalanceWorkoutInput[];
+}
+
+const isWarmupRow = (set?: BalanceSetInput | null): boolean => {
   if (!set) return false;
   if (set.warmup === true) return true;
   const phase = typeof set.phase === 'string' ? set.phase.trim().toLowerCase() : '';
   return phase === 'warmup' || phase === 'warm-up' || phase === 'warm_up';
 };
 
-const isSideSet = (set: any): boolean => Boolean(set && set.sides && (set.sides.L || set.sides.R));
-const liftsOf = (set: any): any[] => {
+const isSideSet = (set?: BalanceSetInput | null): boolean =>
+  Boolean(set && set.sides && (set.sides.L || set.sides.R));
+
+const liftsOf = (set: BalanceSetInput): BalanceSideSetInput[] => {
   if (isSideSet(set)) {
-    const sides: any[] = [];
-    if (set.sides.L) sides.push(set.sides.L);
-    if (set.sides.R) sides.push(set.sides.R);
+    const sides: BalanceSideSetInput[] = [];
+    if (set.sides?.L) sides.push(set.sides.L);
+    if (set.sides?.R) sides.push(set.sides.R);
     return sides;
   }
   return [set];
 };
 
-const isBw = (cfgOrId?: any): boolean => {
+const isBw = (cfgOrId?: string | BalanceEntryInput | null): boolean => {
   if (!cfgOrId) return false;
   if (typeof cfgOrId === 'object' && typeof cfgOrId.bodyweight === 'boolean') return cfgOrId.bodyweight;
   const id = typeof cfgOrId === 'string' ? cfgOrId : cfgOrId.id;
   if (!id) return false;
   const ex = safeGetExerciseById(id);
-  return Boolean(ex && (ex.equipment === 'body weight' || (ex as any).eq === 'body weight'));
+  return Boolean(ex && (ex.equipment === 'body weight' || ex.eq === 'body weight'));
 };
 
 const beltOnLifter = (id?: string | null): boolean => {
   if (!id) return false;
   const ex = safeGetExerciseById(id);
-  const eq = ex?.equipment || (ex as any)?.eq;
-  const n = ex?.name || (ex as any)?.n || '';
+  const eq = ex?.equipment || ex?.eq;
+  const n = ex?.name || ex?.n || '';
   return eq === 'weighted' && LIFTER_MOVEMENT.test(n) && !/\bbench/i.test(n) && !BENCH_DIP_IDS.has(id);
 };
 
-export const isAssistedEntry = (entry?: any): boolean => {
+export const isAssistedEntry = (entry?: BalanceEntryInput | null): boolean => {
   if (!entry) return false;
   if (typeof entry.assisted === 'boolean') return entry.assisted;
   if (typeof entry.target?.assisted === 'boolean') return entry.target.assisted;
@@ -330,12 +366,12 @@ export const isAssistedEntry = (entry?: any): boolean => {
   if (!id) return false;
   const ex = safeGetExerciseById(id);
   if (!ex) return false;
-  const eq = ex.equipment || (ex as any).eq;
-  const name = ex.name || (ex as any).n || '';
+  const eq = ex.equipment || ex.eq;
+  const name = ex.name || ex.n || '';
   return eq === 'leverage machine' && /\bassist(ed)?\b/i.test(name);
 };
 
-const onLifter = (entry: any): boolean => {
+const onLifter = (entry: BalanceEntryInput): boolean => {
   const bodyweight = entry.target?.bodyweight ?? entry.bodyweight;
   return bodyweight == null ? isBw(entry) || beltOnLifter(entry.id) : Boolean(bodyweight);
 };
@@ -343,8 +379,8 @@ const onLifter = (entry: any): boolean => {
 function setLoadKg(
   S: { unit?: string } | undefined,
   workout: { bw?: number } | undefined,
-  entry: any,
-  set: any,
+  entry: BalanceEntryInput,
+  set: BalanceSideSetInput,
   bodyweightKg: number | null
 ): number | null {
   const logged = kgOf(set.w || 0, S?.unit);
@@ -360,10 +396,10 @@ function setLoadKg(
 }
 
 function waitsOnBodyweight(
-  S: any,
+  S: BalanceStateInput | undefined,
   role: RoleDefinition,
   exerciseIds: string[],
-  current: any,
+  current: ResolvedCurrentLift | null,
   bodyweightKg: number | null
 ): boolean {
   if ((bodyweightKg && bodyweightKg > 0) || role.evaluationMode === EVALUATION_MODES.REP_COUNT) {
@@ -372,15 +408,15 @@ function waitsOnBodyweight(
   if (current) {
     return role.evaluationMode === EVALUATION_MODES.BODYWEIGHT_RATIO;
   }
-  return (S?.workouts || []).some((workout: any) =>
+  return (S?.workouts || []).some((workout) =>
     !(workout?.bw && Number(workout.bw) > 0) &&
     (workout.entries || []).some(
-      (entry: any) =>
-        exerciseIds.includes(entry.id) &&
+      (entry) =>
+        Boolean(entry.id && exerciseIds.includes(entry.id)) &&
         (isAssistedEntry(entry) || onLifter(entry)) &&
         (entry.sets || []).some(
-          (set: any) =>
-            set.done &&
+          (set) =>
+            Boolean(set.done) &&
             !isWarmupRow(set) &&
             (!isAssistedEntry(entry) || kgOf(set.w || 0, S?.unit) > 0)
         )
@@ -389,20 +425,7 @@ function waitsOnBodyweight(
 }
 
 export function resolveCurrent(
-  S: {
-    unit?: string;
-    workouts?: {
-      d: string;
-      start?: number;
-      bw?: number;
-      entries?: {
-        id?: string;
-        target?: any;
-        bodyweight?: boolean;
-        sets?: any[];
-      }[];
-    }[];
-  },
+  S: BalanceStateInput,
   exerciseIds: string[],
   bodyweightKg?: number | null,
   reps: number | null = null
@@ -445,16 +468,7 @@ export function resolveCurrent(
 }
 
 export function resolveCurrentReps(
-  S: {
-    workouts?: {
-      d: string;
-      start?: number;
-      entries?: {
-        id?: string;
-        sets?: any[];
-      }[];
-    }[];
-  },
+  S: BalanceStateInput,
   exerciseIds: string[]
 ): ResolvedCurrentLift | null {
   let best: ResolvedCurrentLift | null = null;
@@ -506,13 +520,7 @@ export function ratioFor(
 }
 
 export function computeBalance(
-  S: {
-    unit?: string;
-    body?: string;
-    bodyweight?: { d: string; w: number }[];
-    balanceOverrides?: Record<string, unknown>;
-    workouts?: { d: string; start?: number; bw?: number; entries?: { id?: string; sets?: any[] }[] }[];
-  },
+  S: BalanceStateInput,
   template: TemplateDefinition
 ): RoleEvaluationResult[] {
   const bodyweightKg = bodyweightKgOf(S);

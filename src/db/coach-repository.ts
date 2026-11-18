@@ -352,15 +352,15 @@ export function createInMemoryPostgresPoolForTesting(): {
   pool: Pool;
   executedQueries: Array<{ sql: string; params: unknown[] }>;
   tables: {
-    athleteModels: Map<string, any[]>;
-    coachingExperiments: Map<string, any[]>;
-    coachShadowLogs: Map<string, any[]>;
+    athleteModels: Map<string, unknown[]>;
+    coachingExperiments: Map<string, unknown[]>;
+    coachShadowLogs: Map<string, unknown[]>;
   };
 } {
   const executedQueries: Array<{ sql: string; params: unknown[] }> = [];
-  const athleteModelsTable = new Map<string, any[]>();
-  const coachingExperimentsTable = new Map<string, any[]>();
-  const coachShadowLogsTable = new Map<string, any[]>();
+  const athleteModelsTable = new Map<string, unknown[]>();
+  const coachingExperimentsTable = new Map<string, unknown[]>();
+  const coachShadowLogsTable = new Map<string, unknown[]>();
 
   const parseJsonParam = (val: unknown) => {
     if (typeof val === "string") {
@@ -415,7 +415,7 @@ export function createInMemoryPostgresPoolForTesting(): {
       // 3. SELECT FROM "athlete_models"
       if (/^select .* from "athlete_models"/i.test(normSql)) {
         const filterTraineeId = params.length > 0 ? String(params[0]) : undefined;
-        const rows: any[][] = [];
+        const rows: unknown[][] = [];
         if (filterTraineeId) {
           const found = athleteModelsTable.get(filterTraineeId);
           if (found) rows.push(found);
@@ -452,7 +452,7 @@ export function createInMemoryPostgresPoolForTesting(): {
       // 5. SELECT FROM "coaching_experiments"
       if (/^select .* from "coaching_experiments"/i.test(normSql)) {
         const filterTraineeId = params.length > 0 ? String(params[0]) : undefined;
-        const rows: any[][] = [];
+        const rows: unknown[][] = [];
         for (const r of coachingExperimentsTable.values()) {
           if (!filterTraineeId || r[1] === filterTraineeId) {
             rows.push(r);
@@ -483,7 +483,7 @@ export function createInMemoryPostgresPoolForTesting(): {
       // 7. SELECT FROM "coach_shadow_logs"
       if (/^select .* from "coach_shadow_logs"/i.test(normSql)) {
         const filterTraineeId = params.length > 0 ? String(params[0]) : undefined;
-        const rows: any[][] = [];
+        const rows: unknown[][] = [];
         for (const r of coachShadowLogsTable.values()) {
           if (!filterTraineeId || r[1] === filterTraineeId) {
             rows.push(r);

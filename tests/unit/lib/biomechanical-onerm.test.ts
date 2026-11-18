@@ -211,7 +211,7 @@ describe('Biomechanical 1RM Calculation Suite (Ported from OpenGym)', () => {
           },
         ],
       };
-      assert.deepEqual(bestSetOf(sides as any), { est: 116.7, w: 100, r: 5 });
+      assert.deepEqual(bestSetOf(sides), { est: 116.7, w: 100, r: 5 });
     });
 
     it('estimates only from activation weight, ignoring lighter dropsets', () => {
@@ -230,7 +230,7 @@ describe('Biomechanical 1RM Calculation Suite (Ported from OpenGym)', () => {
           },
         ],
       };
-      assert.deepEqual(bestSetOf(entry as any), bestSetOf({ id: 'x', sets: [{ w: 100, r: 5, done: true }] } as any));
+      assert.deepEqual(bestSetOf(entry), bestSetOf({ id: 'x', sets: [{ w: 100, r: 5, done: true }] }));
     });
 
     it('does not let a ticked-off warm-up set raise the estimated 1RM', () => {
@@ -242,7 +242,7 @@ describe('Biomechanical 1RM Calculation Suite (Ported from OpenGym)', () => {
         ],
       };
       const working = { id: 'warm-test', sets: [{ w: 80, r: 5, done: true }] };
-      assert.deepEqual(bestSetOf(entry as any), bestSetOf(working as any));
+      assert.deepEqual(bestSetOf(entry), bestSetOf(working));
     });
   });
 
@@ -254,7 +254,7 @@ describe('Biomechanical 1RM Calculation Suite (Ported from OpenGym)', () => {
 
     it('ignores negative or non-numeric RIR', () => {
       assert.equal(estimate1RM(100, 5, 'weighted', -1), estimate1RM(100, 5, 'weighted'));
-      assert.equal(estimate1RM(100, 5, 'weighted', 'abc' as any), estimate1RM(100, 5, 'weighted'));
+      assert.equal(estimate1RM(100, 5, 'weighted', 'abc' as unknown as number), estimate1RM(100, 5, 'weighted'));
     });
 
     it('accepts reps above REP_CAP but within WEIGHTED_REP_CAP for weighted formula', () => {

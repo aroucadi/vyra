@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { EventEnvelope } from "@/lib/storage/events";
+import { EventEnvelope, WorkoutCompletedPayload } from "@/lib/storage/events";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
 import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       // Asymmetric Coach Debrief dispatch trigger:
       // When a completed workout arrives, synthesize the 3-bullet debrief
       if (evt.type === "WORKOUT_COMPLETED" && evt.payload) {
-        const p = evt.payload;
+        const p = evt.payload as Partial<WorkoutCompletedPayload>;
         debriefSummaries.push({
           sessionId: p.sessionId || cleanId,
           gymName: p.gymName || "Gym Floor",

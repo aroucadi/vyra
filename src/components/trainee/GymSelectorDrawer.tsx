@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,7 @@ export function GymSelectorDrawer({
   title = "Select Salle de Sport",
   subtitle = "Choose or register your training facility for accurate equipment & biomechanics tracking",
 }: GymSelectorDrawerProps) {
-  const [gyms, setGyms] = useState<GymLocation[]>([]);
+  const [gymsRevision, setGymsRevision] = useState(0);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
@@ -37,24 +37,29 @@ export function GymSelectorDrawer({
   const [newIsDefault, setNewIsDefault] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Refresh gyms whenever drawer opens
-  useEffect(() => {
-    if (isOpen) {
-      setGyms(appStore.getUserGymLocations());
+  const gyms = useMemo(() => {
+    if (!isOpen && gymsRevision < 0) return [];
+    return appStore.getUserGymLocations();
+  }, [isOpen, gymsRevision]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
       setIsAddingNew(false);
       setErrorMsg(null);
+      setGymsRevision((r) => r + 1);
     }
-  }, [isOpen]);
+    onOpenChange(open);
+  };
 
   const handleSelect = (gym: GymLocation) => {
     onSelectGym(gym);
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const handleSetDefault = (e: React.MouseEvent, gymId: string) => {
     e.stopPropagation();
     appStore.setDefaultGymLocation(gymId);
-    setGyms([...appStore.getUserGymLocations()]);
+    setGymsRevision((r) => r + 1);
   };
 
   const handleDelete = (e: React.MouseEvent, gymId: string) => {
@@ -65,7 +70,7 @@ export function GymSelectorDrawer({
     }
     appStore.deleteGymLocation(gymId);
     const updated = appStore.getUserGymLocations();
-    setGyms([...updated]);
+    setGymsRevision((r) => r + 1);
     if (selectedGymId === gymId && updated.length > 0) {
       onSelectGym(updated[0]);
     }
@@ -85,7 +90,7 @@ export function GymSelectorDrawer({
       isDefault: newIsDefault,
     });
 
-    setGyms([...appStore.getUserGymLocations()]);
+    setGymsRevision((r) => r + 1);
     setNewName("");
     setNewAddress("");
     setNewNotes("");
@@ -98,7 +103,7 @@ export function GymSelectorDrawer({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
         className="max-w-md mx-auto max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#0B0F17] border-[#1C2436] p-6 space-y-5 shadow-2xl font-body"

@@ -39,13 +39,18 @@ describe('Spec 018: Offline Sync & Resilience Hardening Suite', () => {
 
   describe('Session Draft Journaling (In-Memory Browser Simulation)', () => {
     let mockStorage: Record<string, string> = {};
+    const globalMock = globalThis as unknown as {
+      window?: unknown;
+      navigator?: unknown;
+      localStorage?: unknown;
+    };
 
     beforeEach(() => {
       mockStorage = {};
       // Mock window and localStorage
-      (global as any).window = {};
-      (global as any).navigator = { onLine: true };
-      (global as any).localStorage = {
+      globalMock.window = {};
+      globalMock.navigator = { onLine: true };
+      globalMock.localStorage = {
         getItem: (k: string) => mockStorage[k] || null,
         setItem: (k: string, v: string) => {
           mockStorage[k] = v;
@@ -60,9 +65,9 @@ describe('Spec 018: Offline Sync & Resilience Hardening Suite', () => {
     });
 
     afterEach(() => {
-      delete (global as any).window;
-      delete (global as any).navigator;
-      delete (global as any).localStorage;
+      delete globalMock.window;
+      delete globalMock.navigator;
+      delete globalMock.localStorage;
     });
 
     it('executes set draft save in sub-5ms latency', async () => {
@@ -128,12 +133,17 @@ describe('Spec 018: Offline Sync & Resilience Hardening Suite', () => {
 
   describe('Offline Replay Mutation Queue', () => {
     let mockStorage: Record<string, string> = {};
+    const globalMock = globalThis as unknown as {
+      window?: unknown;
+      navigator?: unknown;
+      localStorage?: unknown;
+    };
 
     beforeEach(() => {
       mockStorage = {};
-      (global as any).window = {};
-      (global as any).navigator = { onLine: true };
-      (global as any).localStorage = {
+      globalMock.window = {};
+      globalMock.navigator = { onLine: true };
+      globalMock.localStorage = {
         getItem: (k: string) => mockStorage[k] || null,
         setItem: (k: string, v: string) => {
           mockStorage[k] = v;
@@ -148,9 +158,9 @@ describe('Spec 018: Offline Sync & Resilience Hardening Suite', () => {
     });
 
     afterEach(() => {
-      delete (global as any).window;
-      delete (global as any).navigator;
-      delete (global as any).localStorage;
+      delete globalMock.window;
+      delete globalMock.navigator;
+      delete globalMock.localStorage;
     });
 
     it('enqueues failed mutations and drains them on successful replay', async () => {

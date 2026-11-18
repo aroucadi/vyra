@@ -56,10 +56,10 @@ describe('Biomechanical Plate Math Suite (Ported from OpenGym)', () => {
       const state = { unit: 'lb', plates: {} };
       const updated = withPlatePairs(state, 45, 2, 1000);
       const nextState = { unit: 'lb', plates: updated };
-      assert.ok(ownsPlates(nextState as any));
+      assert.ok(ownsPlates(nextState));
 
-      const reset = withStandardPlates(nextState as any, 2000);
-      assert.equal(ownsPlates({ unit: 'lb', plates: reset } as any), false);
+      const reset = withStandardPlates(nextState, 2000);
+      assert.equal(ownsPlates({ unit: 'lb', plates: reset }), false);
     });
   });
 
@@ -205,7 +205,7 @@ describe('Biomechanical Plate Math Suite (Ported from OpenGym)', () => {
 
     it('dropGrid snaps to loads counted plates can make', () => {
       const S = { unit: 'kg', plates: { kg: { 10: 2, 5: 1, _ts: 1 } } };
-      const snap = dropGrid(S as any, { id: '0032' });
+      const snap = dropGrid(S, { id: '0032' });
       assert.equal(typeof snap, 'function');
       if (typeof snap === 'function') {
         assert.equal(snap(48), 40);
@@ -264,19 +264,19 @@ describe('Biomechanical Plate Math Suite (Ported from OpenGym)', () => {
         },
       };
 
-      assert.equal(barWeightFor(S as any, '0032'), 25);
-      assert.equal(barWeightFor(S as any, '0746'), 0);
-      assert.equal(isNoBar(S as any, '0746'), true);
-      assert.equal(hasBarOverride(S as any, '0746'), true);
-      assert.equal(hasBarOverride(S as any, '0032'), true);
-      assert.equal(hasBarOverride(S as any, '0043'), false);
+      assert.equal(barWeightFor(S, '0032'), 25);
+      assert.equal(barWeightFor(S, '0746'), 0);
+      assert.equal(isNoBar(S, '0746'), true);
+      assert.equal(hasBarOverride(S, '0746'), true);
+      assert.equal(hasBarOverride(S, '0032'), true);
+      assert.equal(hasBarOverride(S, '0043'), false);
 
       // Default bar weight without override
-      assert.equal(barWeightFor({ unit: 'kg' } as any, '0746'), 9); // default 9kg smith machine carriage
-      assert.equal(barWeightFor({ unit: 'kg' } as any, '0043'), 20); // default 20kg barbell
+      assert.equal(barWeightFor({ unit: 'kg' }, '0746'), 9); // default 9kg smith machine carriage
+      assert.equal(barWeightFor({ unit: 'kg' }, '0043'), 20); // default 20kg barbell
 
       // Non-bar exercise returns null
-      assert.equal(barWeightFor(S as any, { eq: 'dumbbell' }), null);
+      assert.equal(barWeightFor(S, { eq: 'dumbbell' }), null);
     });
   });
 });

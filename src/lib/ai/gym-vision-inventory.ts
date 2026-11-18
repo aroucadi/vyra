@@ -1161,6 +1161,40 @@ export class GymVisionInventoryStore {
       .join(" ");
   }
 
+  public getInventoriesForTrainee(traineeId: string): LocationEquipmentInventory[] {
+    this.hydrate();
+    const prefix = `${traineeId}::`;
+    return Object.entries(this.inventories)
+      .filter(([key, inv]) => key.startsWith(prefix) || inv.traineeId === traineeId)
+      .map(([, inv]) => this.ensureInventoryShape(inv));
+  }
+
+  public hydrateFromFirestoreRecords(
+    traineeId: string,
+    records: LocationEquipmentInventory[]
+  ): number {
+    this.hydrate();
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    let merged = 0;
+    for (const rawInv of records) {
+      if (!rawInv || !rawInv.gymId) continue;
+      const scopedKey = this.getScopedKey(rawInv.gymId, traineeId);
+      const existing = this.inventories[scopedKey];
+      const normalized = this.ensureInventoryShape({
+        ...rawInv,
+        traineeId,
+      });
+      if (!existing || (normalized.lastUpdated || "") >= (existing.lastUpdated || "")) {
+        this.inventories[scopedKey] = normalized;
+        merged++;
+      }
+    }
+    if (merged > 0) {
+      this.persist();
+    }
+    return merged;
+  }
+
   public clearForTesting() {
     this.inventories = { ...DEFAULT_GYM_INVENTORIES };
     this.hydrated = true;

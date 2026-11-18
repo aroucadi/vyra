@@ -15,12 +15,23 @@ export function RestIntervalBar({
   onComplete,
   onDismiss,
 }: RestIntervalBarProps) {
+  return (
+    <RestIntervalBarInner
+      key={initialSeconds}
+      initialSeconds={initialSeconds}
+      onComplete={onComplete}
+      onDismiss={onDismiss}
+    />
+  );
+}
+
+function RestIntervalBarInner({
+  initialSeconds = 90,
+  onComplete,
+  onDismiss,
+}: RestIntervalBarProps) {
   const [secondsRemaining, setSecondsRemaining] = useState(initialSeconds);
   const [isMuted, setIsMuted] = useState(soundService.getIsMuted());
-
-  useEffect(() => {
-    setSecondsRemaining(initialSeconds);
-  }, [initialSeconds]);
 
   useEffect(() => {
     if (secondsRemaining <= 0) {

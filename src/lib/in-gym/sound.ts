@@ -4,6 +4,10 @@
  * Plays clean, high-clarity dual-tone rest completion chimes without external mp3 downloads.
  */
 
+interface WebkitAudioWindow extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 class SoundSynthesizer {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
@@ -11,7 +15,8 @@ class SoundSynthesizer {
   private getAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }

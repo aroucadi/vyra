@@ -181,7 +181,8 @@ export function calculateE1RMTrends(
 
     let bestSetE1RM = 0;
     for (const l of logs) {
-      const e = estimateSet1RM(l.weightKg, l.reps, l.rirAchieved ?? (l as any).rir ?? 1);
+      const legacyRir = "rir" in l ? (l as { rir?: number }).rir : undefined;
+      const e = estimateSet1RM(l.weightKg, l.reps, l.rirAchieved ?? legacyRir ?? 1);
       if (e > bestSetE1RM) bestSetE1RM = e;
     }
     sessionE1RMs.push({ date: s.date, maxE1RM: bestSetE1RM });

@@ -440,7 +440,7 @@ export function buildFullTraineeExportPayload(
 
   const clientStored = getClientStoredData();
   const clientSessions = (clientStored.sessions || []).filter(
-    (s: any) => !s?.traineeId || s.traineeId === traineeId
+    (s) => !s?.traineeId || s.traineeId === traineeId
   );
 
   const activeProgramRaw = appStore.getActiveProgramForTrainee(traineeId) || null;
@@ -456,13 +456,13 @@ export function buildFullTraineeExportPayload(
 
   const storeMetrics = appStore.getMetrics(traineeId);
   const clientMetrics = (clientStored.metrics || []).filter(
-    (m: any) => !m?.traineeId || m.traineeId === traineeId
+    (m) => !m?.traineeId || m.traineeId === traineeId
   );
   const metrics = cloneJson(mergeById<BodyMetricEntry>(storeMetrics, clientMetrics));
 
   const storeReadiness = appStore.getWearableBiometricsHistory(traineeId);
   const clientReadiness = (clientStored.readinessLogs || []).filter(
-    (r: any) => !r?.traineeId || r.traineeId === traineeId
+    (r) => !r?.traineeId || r.traineeId === traineeId
   );
   const readinessLogs = cloneJson(
     mergeById<WearableBiometricSnapshot>(storeReadiness, clientReadiness)
@@ -482,7 +482,7 @@ export function buildFullTraineeExportPayload(
 
   const storeSuppLogs = appStore.getAllSupplementLogs(traineeId);
   const clientSuppLogs = (clientStored.supplementLogs || []).filter(
-    (l: any) => !l?.traineeId || l.traineeId === traineeId
+    (l) => !l?.traineeId || l.traineeId === traineeId
   );
   const supplementLogs = cloneJson(mergeById<SupplementLog>(storeSuppLogs, clientSuppLogs));
 

@@ -62,7 +62,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 100, goal: 5, ok: false },
         { weight: 100, goal: 5, ok: false },
       ];
-      assert.equal(stallCount(sessions as any, 'linear'), 2);
+      assert.equal(stallCount(sessions, 'linear'), 2);
     });
 
     it('ends stall streak when weight changes', () => {
@@ -71,7 +71,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 105, goal: 5, ok: false },
         { weight: 100, goal: 5, ok: false }, // weight changed here
       ];
-      assert.equal(stallCount(sessions as any, 'linear'), 1);
+      assert.equal(stallCount(sessions, 'linear'), 1);
     });
 
     it('ends stall streak under double progression if session beats previous best reps', () => {
@@ -80,7 +80,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 100, goal: 10, low: 7, ok: false },
         { weight: 100, goal: 10, low: 8, ok: false }, // progressing reps (8 > 7 > 6)
       ];
-      assert.equal(stallCount(sessions as any, 'double'), 0);
+      assert.equal(stallCount(sessions, 'double'), 0);
     });
   });
 
@@ -91,7 +91,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 100, goal: 5, reps: [5, 5, 5], ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 102.5);
     });
@@ -100,7 +100,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 100, goal: 5, reps: [5, 4, 3], ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'hold');
       assert.equal(next.weight, 100);
     });
@@ -111,7 +111,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 100, goal: 5, reps: [5, 4, 4], ok: false },
         { weight: 100, goal: 5, reps: [4, 4, 3], ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'deload');
       assert.equal(next.weight, 90); // 100 * 0.9 = 90
     });
@@ -124,7 +124,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 60, goal: 5, amrap: 6, ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 62.5);
     });
@@ -133,7 +133,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 60, goal: 5, amrap: 11, ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 65); // 60 + (2.5 * 2) = 65
     });
@@ -142,7 +142,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 60, goal: 5, amrap: 4, ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'deload');
       assert.ok(next.weight! < 60);
     });
@@ -163,7 +163,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 30, goal: 8, low: 8, ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'hold');
       assert.equal(next.weight, 30);
       assert.equal(next.reps, 9);
@@ -173,7 +173,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 30, goal: 12, low: 12, ok: true }, // hit ceiling 12 on all sets
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 32); // 30 + 2
       assert.equal(next.reps, 8); // reset to bottom of range
@@ -185,7 +185,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 30, goal: 10, low: 8, ok: false },
         { weight: 30, goal: 10, low: 8, ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'deload');
       assert.equal(next.reps, 8);
     });
@@ -207,7 +207,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 20, goal: 12, low: 12, reps: [12, 12, 12], ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 20); // weight holds
       assert.equal(next.sets, 4); // set added
@@ -218,7 +218,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 20, goal: 12, low: 12, reps: [12, 12, 12, 12, 12], ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.weight, 22.5); // weight advances!
       assert.equal(next.sets, 3); // sets reset to base sets
@@ -233,7 +233,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
       const sessions = [
         { weight: 0, goal: 60, held: [60, 60], ok: true },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'up');
       assert.equal(next.sec, 65);
     });
@@ -300,7 +300,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 60, goal: 5, reps: [4, 4, 4], ok: false },
         { weight: 60, goal: 5, reps: [4, 4, 4], ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'deload');
       assert.equal(next.deloadFactor, 0.8);
       assert.equal(next.target1RM, 56);
@@ -314,7 +314,7 @@ describe('Biomechanical Progression & Deload Engine (Ported from OpenGym)', () =
         { weight: 1, goal: 5, reps: [1, 1, 1], ok: false },
         { weight: 1, goal: 5, reps: [1, 1, 1], ok: false },
       ];
-      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions as any);
+      const next = nextPrescription({ unit: 'kg' }, cfg, null, sessions);
       assert.equal(next.kind, 'deload');
       assert.equal(next.weight, 1);
       assert.ok(String(next.why?.[0]).toLowerCase().includes('hold'));

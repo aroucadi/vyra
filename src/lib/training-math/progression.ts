@@ -82,15 +82,7 @@ export function deloadTarget1RM(
   return base == null ? null : round1(base * f);
 }
 
-function safeGetExerciseById(id: string) {
-  if (typeof window !== 'undefined') return null;
-  try {
-    const { getExerciseById } = require('../rag/catalogue-loader');
-    return getExerciseById(id);
-  } catch {
-    return null;
-  }
-}
+import { safeGetExerciseById } from '../rag/safe-exercise-lookup';
 
 export function defaultIncrement(exId?: string | null, unit: string = 'kg'): number {
   let isHeavy = false;
@@ -335,28 +327,69 @@ export interface SessionRecord {
   };
 }
 
-const isWarmupRow = (s: any): boolean =>
+export interface ProgressionSetInput {
+  w?: number | string;
+  r?: number | string;
+  sec?: number | string;
+  done?: boolean;
+  warmup?: boolean;
+  phase?: string;
+}
+
+export interface ProgressionTargetInput {
+  id?: string;
+  mode?: string;
+  sets?: number;
+  reps?: number;
+  repsMin?: number;
+  sec?: number;
+  weight?: number;
+  side?: boolean;
+  perSide?: boolean;
+  rowReps?: number[];
+  routineId?: string;
+}
+
+export interface ProgressionEntryInput {
+  id?: string;
+  routineId?: string;
+  noProg?: boolean;
+  planned?: ProgressionTargetInput;
+  target?: ProgressionTargetInput;
+  sets?: ProgressionSetInput[];
+}
+
+export interface ProgressionWorkoutInput {
+  d?: string;
+  excludeFromProgression?: boolean;
+  entries?: ProgressionEntryInput[];
+}
+
+const isWarmupRow = (s?: ProgressionSetInput | null): boolean =>
   Boolean(s && (s.warmup === true || s.phase === 'warmup' || s.phase === 'warm-up' || s.phase === 'warm_up'));
 
-function modeOf(targetOrEntry: any): string {
+function modeOf(targetOrEntry?: ProgressionTargetInput | null): string {
   if (targetOrEntry?.mode) return targetOrEntry.mode;
   if (targetOrEntry?.sec != null && targetOrEntry.sec > 0) return 'time';
   return 'reps';
 }
 
-function loadOf(entry: any, sets: any[]): number {
+function loadOf(entry: ProgressionEntryInput | null | undefined, sets: ProgressionSetInput[]): number {
   const done = sets.filter((s) => s && s.done).map((s) => Number(s.w) || 0);
   return done.length ? Math.max(0, ...done) : 0;
 }
 
-export function readSession(entry: any, fallback?: any): SessionRecord {
-  const target = entry?.target || fallback || {};
+export function readSession(
+  entry?: ProgressionEntryInput | null,
+  fallback?: ProgressionTargetInput | null
+): SessionRecord {
+  const target: ProgressionTargetInput = entry?.target || fallback || {};
   const mode = modeOf({ ...target, id: entry?.id });
-  const logged = ((entry && entry.sets) || []).filter((s: any) => !isWarmupRow(s));
+  const logged = ((entry && entry.sets) || []).filter((s) => !isWarmupRow(s));
 
   const rowGoals =
     mode === 'reps' && entry?.target && Array.isArray(target.rowReps) && target.rowReps.length
-      ? target.rowReps.map((r: any) => Math.max(0, Number(r) || 0))
+      ? target.rowReps.map((r) => Math.max(0, Number(r) || 0))
       : null;
   const plannedRows = rowGoals ? rowGoals.length : target.sets || logged.length;
   const planned = mode === 'time' && (target.side || target.perSide) ? plannedRows * 2 : plannedRows;
@@ -365,26 +398,26 @@ export function readSession(entry: any, fallback?: any): SessionRecord {
 
   if (mode === 'time') {
     const goal = Number(target.sec) || 0;
-    const held = sets.map((s: any) => (s.done ? Number(s.sec) || 0 : 0));
+    const held = sets.map((s) => (s.done ? Number(s.sec) || 0 : 0));
     return {
       mode,
       target,
       goal,
       held,
       weight: loadOf(entry, sets),
-      ok: goal > 0 && enough && held.length > 0 && held.every((h: number) => h >= goal),
+      ok: goal > 0 && enough && held.length > 0 && held.every((h) => h >= goal),
     };
   }
 
   const goal = rowGoals ? Math.max(...rowGoals) : Number(target.reps) || 0;
-  const reps = sets.map((s: any) => (s.done ? Number(s.r) || 0 : 0));
+  const reps = sets.map((s) => (s.done ? Number(s.r) || 0 : 0));
   const low = reps.length ? Math.min(...reps) : 0;
   const amrap = reps.length ? reps[reps.length - 1] : 0;
   const ok =
     goal > 0 &&
     enough &&
     reps.length > 0 &&
-    reps.every((r: number, k: number) => r >= (rowGoals ? rowGoals[k] ?? goal : goal));
+    reps.every((r, k) => r >= (rowGoals ? rowGoals[k] ?? goal : goal));
 
   return {
     mode,
@@ -399,17 +432,22 @@ export function readSession(entry: any, fallback?: any): SessionRecord {
   };
 }
 
-export function sessionsFor(S: any, exId?: string | null, fallback?: any, rid?: string | null): SessionRecord[] {
+export function sessionsFor(
+  S: { workouts?: ProgressionWorkoutInput[] } | null | undefined,
+  exId?: string | null,
+  fallback?: ProgressionTargetInput | null,
+  rid?: string | null
+): SessionRecord[] {
   if (!S || !Array.isArray(S.workouts) || !exId) return [];
   const out: SessionRecord[] = [];
 
   for (const w of S.workouts) {
     const entry = (w.entries || []).find(
-      (e: any) => e && e.id === exId && (!rid || e.routineId === rid || (e.planned && e.planned.routineId === rid))
+      (e) => e && e.id === exId && (!rid || e.routineId === rid || (e.planned && e.planned.routineId === rid))
     );
     if (!entry) continue;
     if (w.excludeFromProgression || entry.noProg) continue;
-    if (!(entry.sets || []).some((s: any) => s.done && !isWarmupRow(s))) continue;
+    if (!(entry.sets || []).some((s) => s.done && !isWarmupRow(s))) continue;
 
     out.push({
       d: w.d,
@@ -486,6 +524,8 @@ export interface ExercisePlanConfig {
   prog?: ProgressionPolicy;
   deloadFactor?: number;
   setsMax?: number;
+  side?: boolean;
+  perSide?: boolean;
 }
 
 export interface PrescriptionResult {
@@ -501,7 +541,14 @@ export interface PrescriptionResult {
   why?: (string | number)[];
 }
 
-export function applyPrescription(sets: any[], p: PrescriptionResult, step = 2.5, floor = 0): any[] {
+export function applyPrescription(
+  sets: ProgressionSetInput[],
+  p: PrescriptionResult,
+  _step = 2.5,
+  _floor = 0
+): ProgressionSetInput[] {
+  void _step;
+  void _floor;
   if (!p || p.kind === 'off' || (p.kind === 'first' && !p.rowReps)) return sets;
   return sets.map((s) => {
     if (s.done) return s;
@@ -528,7 +575,7 @@ export function tripleSetsOf(cfg?: ExercisePlanConfig | null): { setsMin: number
  * Computes the next prescribed training target based on session history and policy.
  */
 export function nextPrescription(
-  S: { unit?: string; workouts?: any[] } | undefined,
+  S: { unit?: string; workouts?: ProgressionWorkoutInput[] } | undefined,
   cfg: ExercisePlanConfig,
   routine?: { id?: string; prog?: ProgressionPolicy } | null,
   passedSessions?: SessionRecord[]
@@ -596,7 +643,7 @@ export function nextPrescription(
       factor,
       reps: Number(cfg.reps ?? targetReps),
       repsMin: policy === 'double' ? (cfg.repsMin != null ? Number(cfg.repsMin) : undefined) : undefined,
-      perSide: Boolean(last.target?.side || (cfg as any)?.side || (cfg as any)?.perSide),
+      perSide: Boolean(last.target?.side || cfg?.side || cfg?.perSide),
     });
 
     if (!candidate) return null;

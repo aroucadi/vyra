@@ -50,10 +50,21 @@ export async function getCoachDbPersistence(): Promise<CoachDbPersistenceAdapter
     return existing;
   }
 
-  // Fallback lazy load for Node.js scripts & unit tests that invoke store DB sync
-  // directly without first importing an API route. Computed path prevents bundler tracing
-  // into browser chunks.
+  // Primary Cloud Firestore persistence (zero extra infra cost), or legacy pg/drizzle when DATABASE_URL is explicitly set.
+  // Computed path prevents Next.js bundler tracing server-only drivers into browser chunks.
   try {
+    if (!process.env.DATABASE_URL) {
+      const fsSegs = ["..", "firebase", "firestore-repository"];
+      const fsMod = (await import(fsSegs.join("/"))) as {
+        createFirestoreCoachDbAdapter?: () => CoachDbPersistenceAdapter;
+      };
+      if (typeof fsMod.createFirestoreCoachDbAdapter === "function") {
+        const adapter = fsMod.createFirestoreCoachDbAdapter();
+        g[BRIDGE_GLOBAL_KEY] = adapter;
+        return adapter;
+      }
+    }
+
     const segs = ["..", "..", "db", "coach-repository"];
     const mod = (await import(segs.join("/"))) as Partial<CoachDbPersistenceAdapter>;
     if (typeof mod.upsertAthleteModelInDb === "function") {

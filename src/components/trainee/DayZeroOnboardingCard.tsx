@@ -53,21 +53,58 @@ interface DayZeroOnboardingCardProps {
   onCalibrated?: () => void;
 }
 
+function readInitialUrlCalibration() {
+  if (typeof window === "undefined") return null;
+  const search = window.location.search;
+  return {
+    deepLink: parseDeepLinkParams(search),
+    handoff: parseHandoffQueryUrl(search),
+  };
+}
+
 export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardingCardProps) {
   const router = useRouter();
   const isHydrated = useIsClientHydrated();
   const storeVersion = useVyraStoreVersion();
 
+  const [initialUrlData] = useState(() => readInitialUrlCalibration());
+
   // Core calibration state
-  const [unit, setUnit] = useState<WeightUnit>("kg");
-  const [anchorLift, setAnchorLift] = useState<AnchorLiftId>("barbell_bench");
-  const [inputWeight, setInputWeight] = useState<number>(80);
-  const [inputReps, setInputReps] = useState<number>(8);
-  const [sleepMode, setSleepMode] = useState<SleepWhatIfMode>("normal");
-  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>("uncalibrated");
-  const [goal, setGoal] = useState<TrainingGoal>("hypertrophy");
+  const [unit, setUnit] = useState<WeightUnit>(
+    () =>
+      initialUrlData?.handoff?.unit ??
+      initialUrlData?.deepLink.unit ??
+      "kg"
+  );
+  const [anchorLift, setAnchorLift] = useState<AnchorLiftId>(
+    () => initialUrlData?.handoff?.anchorLift ?? "barbell_bench"
+  );
+  const [inputWeight, setInputWeight] = useState<number>(
+    () =>
+      initialUrlData?.handoff?.weight ??
+      initialUrlData?.deepLink.anchorWeight ??
+      80
+  );
+  const [inputReps, setInputReps] = useState<number>(
+    () => initialUrlData?.handoff?.reps ?? 8
+  );
+  const [sleepMode, setSleepMode] = useState<SleepWhatIfMode>(
+    () => initialUrlData?.handoff?.sleepMode ?? "normal"
+  );
+  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>(() =>
+    initialUrlData?.handoff
+      ? initialUrlData.handoff.mode || "calibrated"
+      : initialUrlData?.deepLink.anchorWeight
+      ? "calibrated"
+      : "uncalibrated"
+  );
+  const [goal, setGoal] = useState<TrainingGoal>(
+    () => initialUrlData?.handoff?.goal ?? "hypertrophy"
+  );
   const [hasInteractedWithGoal, setHasInteractedWithGoal] = useState<boolean>(false);
-  const [equipment, setEquipment] = useState<PreferredEquipmentMode>("dumbbell");
+  const [equipment, setEquipment] = useState<PreferredEquipmentMode>(
+    () => initialUrlData?.handoff?.equipment ?? "dumbbell"
+  );
 
   // Progressive disclosure sheets & popovers
   const [isGoalSheetOpen, setIsGoalSheetOpen] = useState(false);
@@ -77,7 +114,8 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
   const [isGymReadySheetOpen, setIsGymReadySheetOpen] = useState(false);
   const [offlineVerified, setOfflineVerified] = useState(false);
   const [copiedHandoff, setCopiedHandoff] = useState(false);
-  const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkLiftConfig | null>(null);
+  const deepLinkConfig: DeepLinkLiftConfig | null =
+    initialUrlData?.deepLink.liftConfig ?? null;
 
   const webViewStatus = useMemo(
     () =>
@@ -95,7 +133,7 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
     [isHydrated, userId, storeVersion]
   );
 
-  // Hydrate from URL query params (?anchor=80x8&unit=kg) or deep link (?lift=incline_db_press)
+  // Side-effect attribution & telemetry on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     telemetry.track("onboarding_step_viewed", { step: "step_1_see_day_one" }, userId);
@@ -108,30 +146,9 @@ export function DayZeroOnboardingCard({ userId, onCalibrated }: DayZeroOnboardin
       );
     }
 
-    // Spec 022: Source-aware deep-link attribution & lift matching
     const deepLink = parseDeepLinkParams(window.location.search);
     if (deepLink.liftConfig) {
-      setDeepLinkConfig(deepLink.liftConfig);
       recordDeepLinkAttribution(deepLink, userId);
-      if (deepLink.anchorWeight) {
-        setInputWeight(deepLink.anchorWeight);
-        setCalibrationMode("calibrated");
-      }
-      if (deepLink.unit) {
-        setUnit(deepLink.unit);
-      }
-    }
-
-    const parsed = parseHandoffQueryUrl(window.location.search);
-    if (parsed) {
-      setAnchorLift(parsed.anchorLift);
-      setInputWeight(parsed.weight);
-      setInputReps(parsed.reps);
-      setUnit(parsed.unit);
-      if (parsed.sleepMode) setSleepMode(parsed.sleepMode);
-      if (parsed.goal) setGoal(parsed.goal);
-      if (parsed.equipment) setEquipment(parsed.equipment);
-      setCalibrationMode(parsed.mode || "calibrated");
     }
   }, [userId, webViewStatus.isInAppWebView, webViewStatus.recommendedBrowser, webViewStatus.sourceApp]);
 

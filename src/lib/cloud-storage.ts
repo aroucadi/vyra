@@ -161,32 +161,24 @@ async function uploadToGcs(
   buffer: Buffer,
   destinationPath: string,
   contentType: string,
-  config: CloudStorageConfig
+  config: CloudStorageConfig,
+  fetchImpl: typeof fetch = fetch
 ): Promise<StorageUploadResult> {
   const bucket = config.bucketName;
   const token = process.env.GCS_ACCESS_TOKEN || (await getGcpMetadataToken());
-
-  // If no auth token is available (e.g. local dev without GCP auth), generate formatted cloud path
   const publicUrl = `${config.publicUrlPrefix}/${destinationPath}`;
 
   if (!token) {
-    // In local development or dry-run, if credentials are missing but flag is ON:
-    return {
-      success: true,
-      url: publicUrl,
-      path: destinationPath,
-      isCloud: true,
-      provider: "gcs",
-      sizeBytes: buffer.length,
-      contentType,
-    };
+    throw new Error(
+      "GCS upload enabled but no GCP metadata token or GCS_ACCESS_TOKEN is available."
+    );
   }
 
   const uploadEndpoint = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(
     bucket
   )}/o?uploadType=media&name=${encodeURIComponent(destinationPath)}`;
 
-  const res = await fetch(uploadEndpoint, {
+  const res = await fetchImpl(uploadEndpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -219,21 +211,26 @@ async function uploadToS3(
   buffer: Buffer,
   destinationPath: string,
   contentType: string,
-  config: CloudStorageConfig
+  config: CloudStorageConfig,
+  fetchImpl: typeof fetch = fetch
 ): Promise<StorageUploadResult> {
   const baseUrl = config.endpoint || `https://${config.bucketName}.s3.${config.region || "us-east-1"}.amazonaws.com`;
   const uploadUrl = `${baseUrl}/${destinationPath}`;
+  const presignedUrl = process.env.S3_PRESIGNED_PUT_URL;
 
-  // If an S3 PUT URL or credentials are configured, execute upload
-  if (process.env.S3_PRESIGNED_PUT_URL) {
-    const res = await fetch(process.env.S3_PRESIGNED_PUT_URL, {
-      method: "PUT",
-      headers: { "Content-Type": contentType },
-      body: new Uint8Array(buffer),
-    });
-    if (!res.ok) {
-      throw new Error(`S3 Presigned Upload Failed [HTTP ${res.status}]`);
-    }
+  if (!presignedUrl) {
+    throw new Error(
+      "S3 upload enabled but S3_PRESIGNED_PUT_URL is not configured."
+    );
+  }
+
+  const res = await fetchImpl(presignedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: new Uint8Array(buffer),
+  });
+  if (!res.ok) {
+    throw new Error(`S3 Presigned Upload Failed [HTTP ${res.status}]`);
   }
 
   return {
@@ -295,7 +292,8 @@ function validateUploadImageInput(dataUriOrUrl: string): {
  */
 export async function uploadEquipmentPhoto(
   dataUriOrBase64: string,
-  metadata: UploadPhotoMetadata
+  metadata: UploadPhotoMetadata,
+  options?: { fetchImpl?: typeof fetch }
 ): Promise<StorageUploadResult> {
   // 0. Validate MIME type & payload bounds even in local fallback mode (blocks SVG/HTML XSS & >10MB DoS)
   const inputValidation = validateUploadImageInput(dataUriOrBase64);
@@ -369,10 +367,11 @@ export async function uploadEquipmentPhoto(
 
   // 3. Dispatch to Configured Provider
   try {
+    const fetchImpl = options?.fetchImpl ?? fetch;
     if (activeConfig.provider === "s3") {
-      return await uploadToS3(buffer, destinationPath, normalizedType, activeConfig);
+      return await uploadToS3(buffer, destinationPath, normalizedType, activeConfig, fetchImpl);
     } else {
-      return await uploadToGcs(buffer, destinationPath, normalizedType, activeConfig);
+      return await uploadToGcs(buffer, destinationPath, normalizedType, activeConfig, fetchImpl);
     }
   } catch (err: unknown) {
     const errMessage = err instanceof Error ? err.message : String(err);

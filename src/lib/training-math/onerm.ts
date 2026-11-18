@@ -182,6 +182,9 @@ export interface WorkoutSetRecord {
   r?: number | string;
   done?: boolean;
   warmup?: boolean;
+  phase?: string;
+  sec?: number | null;
+  min?: number | null;
   type?: string;
   rir?: number | null;
   sides?: {
@@ -193,8 +196,16 @@ export interface WorkoutSetRecord {
 export interface WorkoutEntryRecord {
   id?: string;
   topW?: number;
+  mode?: string;
   sets?: WorkoutSetRecord[];
   target?: { mode?: string; side?: boolean; assisted?: boolean };
+}
+
+interface ExerciseLookupLegacyCompat {
+  equipment?: string;
+  eq?: string;
+  name?: string;
+  n?: string;
 }
 
 export function isAssisted(
@@ -202,21 +213,21 @@ export function isAssisted(
 ): boolean {
   if (!idOrEx) return false;
   if (typeof idOrEx === 'string') {
-    const ex = getExerciseById(idOrEx);
+    const ex = getExerciseById(idOrEx) as ExerciseLookupLegacyCompat | null;
     return Boolean(
       ex &&
-        (ex.equipment === 'leverage machine' || (ex as any).eq === 'leverage machine') &&
-        /\bassist(ed)?\b/i.test(ex.name || (ex as any).n || '')
+        (ex.equipment === 'leverage machine' || ex.eq === 'leverage machine') &&
+        /\bassist(ed)?\b/i.test(ex.name || ex.n || '')
     );
   }
-  if (typeof (idOrEx as any).assisted === 'boolean') return (idOrEx as any).assisted;
+  if (typeof idOrEx.assisted === 'boolean') return idOrEx.assisted;
   if (typeof idOrEx.target?.assisted === 'boolean') return idOrEx.target.assisted;
   const id = idOrEx.id;
   if (!id) return false;
-  const ex = getExerciseById(id);
+  const ex = getExerciseById(id) as ExerciseLookupLegacyCompat | null;
   if (!ex) return false;
-  const eq = ex.equipment || (ex as any).eq;
-  const name = ex.name || (ex as any).n || '';
+  const eq = ex.equipment || ex.eq;
+  const name = ex.name || ex.n || '';
   return eq === 'leverage machine' && /\bassist(ed)?\b/i.test(name);
 }
 
@@ -230,7 +241,7 @@ export function bestSetOf(
   if (isAssisted(entry.id ? { id: entry.id } : entry)) return null;
 
   // Timed and cardio entries drop out of 1RM calculation
-  const targetMode = entry.target?.mode || (entry as any).mode;
+  const targetMode = entry.target?.mode || entry.mode;
   if (targetMode && targetMode !== 'reps') return null;
 
   let best: { est: number; w: number; r: number } | null = null;
@@ -238,15 +249,15 @@ export function bestSetOf(
   for (const set of entry.sets) {
     if (
       set.warmup === true ||
-      (set as any).phase === 'warmup' ||
-      (set as any).phase === 'warm-up' ||
-      (set as any).phase === 'warm_up'
+      set.phase === 'warmup' ||
+      set.phase === 'warm-up' ||
+      set.phase === 'warm_up'
     ) {
       continue;
     }
 
-    if ((set as any).sec != null && set.r == null) continue;
-    if ((set as any).min != null && set.r == null) continue;
+    if (set.sec != null && set.r == null) continue;
+    if (set.min != null && set.r == null) continue;
 
     const candidateSets: { w?: number | string; r?: number | string; rir?: number | null }[] = [];
     if (set.sides) {

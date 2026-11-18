@@ -1795,8 +1795,9 @@ export function toolSearchBiomechanicalIndex(params: {
     }
 
     // 4. Exercise Difficulty alignment
-    if (params.difficultyPreference && (ex as any).difficulty) {
-      const exDiff = String((ex as any).difficulty).toLowerCase();
+    const exDifficulty = "difficulty" in ex ? (ex as { difficulty?: string }).difficulty : undefined;
+    if (params.difficultyPreference && exDifficulty) {
+      const exDiff = String(exDifficulty).toLowerCase();
       const targetDiff = params.difficultyPreference.toLowerCase();
       if (exDiff === targetDiff) {
         composite += 12;

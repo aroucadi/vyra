@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { checkDistributedRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { isFirestoreRuntimeAvailable } from "@/lib/firebase/admin";
 import {
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
+  loadGymInventoriesFromFirestore,
+  loadSensoryEntriesFromFirestore,
 } from "@/lib/firebase/firestore-repository";
 import {
   CoachResponse,
@@ -19,6 +21,7 @@ import {
   resolveGeminiTransport,
 } from "@/lib/gemini";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
+import { logStructuredAiEvent } from "@/lib/observability";
 import { assembleAthleteCaseFile } from "@/lib/ai/coaching-cycle";
 import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
 import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
@@ -70,6 +73,7 @@ const COACH_RESPONSE_SCHEMA = {
  * - Gracefully degrades to `deterministic_local` when offline or unconfigured.
  */
 export async function POST(req: Request) {
+  const startedAtMs = Date.now();
   let body: Partial<CoachChatRequestBody>;
   try {
     body = (await req.json()) as Partial<CoachChatRequestBody>;
@@ -102,8 +106,8 @@ export async function POST(req: Request) {
   }
 
   const effectiveTraineeId = tenant.effectiveTraineeId;
-  const rl = checkRateLimit(
-    resolveRateLimitKey(req, effectiveTraineeId, "ai-coach"),
+  const rl = await checkDistributedRateLimit(
+    resolveRateLimitKey(req, "ai-coach", effectiveTraineeId),
     { maxRequests: 25, windowMs: 60_000 }
   );
   if (!rl.allowed) {
@@ -128,16 +132,30 @@ export async function POST(req: Request) {
   if (tenant.session) {
     try {
       await athleteModelStore.hydrateFromDatabase(effectiveTraineeId);
-      const boot = await loadBootstrapForUser({
-        uid: tenant.session.uid,
-        email: tenant.session.email,
-        displayName: tenant.session.name,
-      });
+      const [boot, cloudInventories, cloudSensory] = await Promise.all([
+        loadBootstrapForUser({
+          uid: tenant.session.uid,
+          email: tenant.session.email,
+          displayName: tenant.session.name,
+        }),
+        isFirestoreRuntimeAvailable()
+          ? loadGymInventoriesFromFirestore(effectiveTraineeId)
+          : Promise.resolve([]),
+        isFirestoreRuntimeAvailable()
+          ? loadSensoryEntriesFromFirestore(effectiveTraineeId)
+          : Promise.resolve([]),
+      ]);
       if (boot.sessions.length > 0) sessions = boot.sessions;
       if (boot.metrics.length > 0) metrics = boot.metrics;
       const bootProgram =
         boot.programs.find((p) => p.status === "published") || boot.programs[0];
       if (bootProgram && !activeProgram) activeProgram = bootProgram;
+      if (cloudInventories.length > 0) {
+        gymVisionInventoryStore.hydrateFromFirestoreRecords(effectiveTraineeId, cloudInventories);
+      }
+      if (cloudSensory.length > 0) {
+        sensoryMemoryStore.hydrateFromFirestoreRecords(effectiveTraineeId, cloudSensory);
+      }
     } catch {
       // Non-fatal fallback to in-memory / deterministic context
     }
@@ -155,6 +173,17 @@ export async function POST(req: Request) {
       modelUsed: model,
       authMode: "local_fallback",
     };
+    logStructuredAiEvent({
+      route: "/api/ai/coach",
+      modelRequested: model,
+      modelUsed: model,
+      fallbackTriggered: true,
+      authMode: "local_fallback",
+      latencyMs: Date.now() - startedAtMs,
+      status: 200,
+      tenantId: effectiveTraineeId,
+      detail: "transport_unavailable",
+    });
     return NextResponse.json({ ok: true, response: offlinePayload }, { status: 200 });
   }
 
@@ -359,6 +388,16 @@ STRICT TRUTHFULNESS RULES:
             modelUsed: candidateModel,
             authMode: activeTransport.authMode,
           };
+          logStructuredAiEvent({
+            route: "/api/ai/coach",
+            modelRequested: model,
+            modelUsed: candidateModel,
+            fallbackTriggered: candidateModel !== model,
+            authMode: activeTransport.authMode,
+            latencyMs: Date.now() - startedAtMs,
+            status: 200,
+            tenantId: effectiveTraineeId,
+          });
           return NextResponse.json({ ok: true, response: livePayload }, { status: 200 });
         }
       }
@@ -374,5 +413,16 @@ STRICT TRUTHFULNESS RULES:
     modelUsed: model,
     authMode: "local_fallback",
   };
+  logStructuredAiEvent({
+    route: "/api/ai/coach",
+    modelRequested: model,
+    modelUsed: model,
+    fallbackTriggered: true,
+    authMode: "local_fallback",
+    latencyMs: Date.now() - startedAtMs,
+    status: 200,
+    tenantId: effectiveTraineeId,
+    detail: "deterministic_fallback",
+  });
   return NextResponse.json({ ok: true, response: fallbackPayload }, { status: 200 });
 }

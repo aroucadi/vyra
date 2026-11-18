@@ -6,23 +6,47 @@
  * and readiness check-ins with zero data loss in basement gyms.
  */
 
+import type { ActiveExercise } from "@/components/trainee/session/types";
+import type {
+  BodyMetricEntry,
+  SupplementLog,
+  WearableBiometricSnapshot,
+  WorkoutSession,
+} from "./types";
+
 export const DB_NAME = "vyra_client_db";
 export const DB_VERSION = 3;
 
+export type StoredSessionRecord = WorkoutSession;
+export type StoredReadinessRecord = WearableBiometricSnapshot;
+export type StoredSupplementLogRecord = SupplementLog;
+export type StoredMetricRecord = BodyMetricEntry;
+
 export interface ClientStoredPayload {
   version: number;
-  sessions: any[];
-  readinessLogs: any[];
-  supplementLogs: any[];
-  metrics: any[];
+  sessions: StoredSessionRecord[];
+  readinessLogs: StoredReadinessRecord[];
+  supplementLogs: StoredSupplementLogRecord[];
+  metrics: StoredMetricRecord[];
   lastBackupAt?: string;
 }
+
+export type DraftExerciseSnapshot =
+  | ActiveExercise
+  | {
+      id?: string;
+      name?: string;
+      targetSets?: number;
+      currentWeight?: number;
+      currentReps?: number;
+      completedSets?: unknown[];
+    };
 
 export interface ActiveSessionDraft {
   traineeId: string;
   programDayId?: string;
   dayLabel?: string;
-  exercises: any[];
+  exercises: DraftExerciseSnapshot[];
   currentExIndex: number;
   currentExerciseIndex?: number;
   sessionDurationSec: number;
@@ -47,7 +71,7 @@ export interface ActiveSessionDraft {
 export interface QueuedMutation {
   id: string;
   type: "save_session" | "log_readiness" | "log_metric" | "SAVE_SESSION";
-  payload: any;
+  payload: WorkoutSession | Record<string, unknown>;
   attempts: number;
   maxAttempts: number;
   queuedAt: string;
@@ -58,11 +82,38 @@ const LOCAL_STORAGE_KEY = "vyra_offline_backup_v1";
 const SESSION_DRAFT_PREFIX = "vyra_active_draft_";
 const MUTATION_QUEUE_KEY = "vyra_mutation_queue_v1";
 
+interface LegacyReadinessInput {
+  id?: string;
+  traineeId?: string;
+  date?: string;
+  source?: string;
+  sleepHours?: number;
+  receivedAt?: string;
+  feeling?: string;
+  answer?: string;
+  reducedRecovery?: boolean;
+  cnsFatigueDetected?: boolean;
+  hrvMs?: number;
+  deepSleepMinutes?: number;
+  restingHeartRateBpm?: number;
+  readinessScore?: number;
+}
+
+interface LegacyStoredPayloadInput {
+  sessions?: StoredSessionRecord[];
+  metrics?: StoredMetricRecord[];
+  supplementLogs?: StoredSupplementLogRecord[];
+  readinessLogs?: LegacyReadinessInput[];
+  wearableBiometrics?: LegacyReadinessInput[];
+  lastBackupAt?: string;
+  exportedAt?: string;
+}
+
 /**
  * Migrates old/legacy storage format safely without data loss.
  */
-export function migrateLegacyStoredData(raw: any): ClientStoredPayload {
-  if (!raw || typeof raw !== "object") {
+export function migrateLegacyStoredData(rawInput: unknown): ClientStoredPayload {
+  if (!rawInput || typeof rawInput !== "object") {
     return {
       version: 1,
       sessions: [],
@@ -72,6 +123,7 @@ export function migrateLegacyStoredData(raw: any): ClientStoredPayload {
     };
   }
 
+  const raw = rawInput as LegacyStoredPayloadInput;
   const sessions = Array.isArray(raw.sessions) ? raw.sessions : [];
   const metrics = Array.isArray(raw.metrics) ? raw.metrics : [];
   const supplementLogs = Array.isArray(raw.supplementLogs) ? raw.supplementLogs : [];
@@ -81,34 +133,37 @@ export function migrateLegacyStoredData(raw: any): ClientStoredPayload {
     ? raw.wearableBiometrics
     : [];
 
-  const migratedReadiness = rawReadiness.map((entry: any) => {
-    const migrated: any = {
+  const migratedReadiness: StoredReadinessRecord[] = rawReadiness.map((entry) => {
+    const sleepHours = typeof entry.sleepHours === "number" ? entry.sleepHours : 7.0;
+    let answer: string;
+    if (entry.feeling) {
+      if (entry.feeling === "depleted") answer = "light";
+      else if (entry.feeling === "suboptimal") answer = "moderate";
+      else if (entry.feeling === "optimal") answer = "full";
+      else answer = entry.feeling;
+    } else if (entry.answer) {
+      answer = entry.answer;
+    } else {
+      answer = sleepHours < 6 ? "light" : sleepHours < 7.5 ? "moderate" : "full";
+    }
+
+    const reducedRecovery =
+      typeof entry.reducedRecovery === "boolean"
+        ? entry.reducedRecovery
+        : typeof entry.cnsFatigueDetected === "boolean"
+        ? entry.cnsFatigueDetected
+        : answer === "light" || answer === "moderate";
+
+    const migrated: StoredReadinessRecord = {
       id: entry.id || `readiness_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       traineeId: entry.traineeId || "unassigned_trainee",
       date: entry.date || new Date().toISOString().split("T")[0],
-      source: entry.source || "manual",
-      sleepHours: typeof entry.sleepHours === "number" ? entry.sleepHours : 7.0,
+      source: (entry.source || "manual") as WearableBiometricSnapshot["source"],
+      sleepHours,
+      answer,
+      reducedRecovery,
       receivedAt: entry.receivedAt || new Date().toISOString(),
     };
-
-    if (entry.feeling) {
-      if (entry.feeling === "depleted") migrated.answer = "light";
-      else if (entry.feeling === "suboptimal") migrated.answer = "moderate";
-      else if (entry.feeling === "optimal") migrated.answer = "full";
-      else migrated.answer = entry.feeling;
-    } else if (entry.answer) {
-      migrated.answer = entry.answer;
-    } else {
-      migrated.answer = migrated.sleepHours < 6 ? "light" : migrated.sleepHours < 7.5 ? "moderate" : "full";
-    }
-
-    if (typeof entry.reducedRecovery === "boolean") {
-      migrated.reducedRecovery = entry.reducedRecovery;
-    } else if (typeof entry.cnsFatigueDetected === "boolean") {
-      migrated.reducedRecovery = entry.cnsFatigueDetected;
-    } else {
-      migrated.reducedRecovery = migrated.answer === "light" || migrated.answer === "moderate";
-    }
 
     if (migrated.source !== "manual") {
       if (typeof entry.hrvMs === "number") migrated.hrvMs = entry.hrvMs;
@@ -215,7 +270,7 @@ export async function isStoragePersisted(): Promise<boolean> {
  */
 export async function saveSessionDraft(
   draftOrTraineeId: ActiveSessionDraft | string,
-  exercises?: any[],
+  exercises?: DraftExerciseSnapshot[],
   currentExIndex?: number,
   sessionDurationSec?: number,
   programDayId?: string
@@ -498,7 +553,7 @@ export async function drainMutationQueue(
 /**
  * Saves a completed session to client durable storage (IndexedDB + localStorage fallback).
  */
-export async function persistClientWorkoutSession(session: any): Promise<void> {
+export async function persistClientWorkoutSession(session: StoredSessionRecord): Promise<void> {
   if (typeof window === "undefined") return;
 
   // 1. Persist to localStorage buffer
@@ -512,7 +567,7 @@ export async function persistClientWorkoutSession(session: any): Promise<void> {
       metrics: [],
     };
 
-    const existingIdx = data.sessions.findIndex((s: any) => s.id === session.id);
+    const existingIdx = data.sessions.findIndex((s) => s.id === session.id);
     if (existingIdx >= 0) {
       data.sessions[existingIdx] = session;
     } else {
@@ -572,8 +627,8 @@ export function getClientStoredData(): ClientStoredPayload {
  * Loads and merges all client-stored workout sessions across IndexedDB and localStorage
  * so offline-only sessions never vanish from full backups.
  */
-export async function loadAllClientSessions(traineeId?: string): Promise<any[]> {
-  const merged = new Map<string, any>();
+export async function loadAllClientSessions(traineeId?: string): Promise<StoredSessionRecord[]> {
+  const merged = new Map<string, StoredSessionRecord>();
 
   const local = getClientStoredData().sessions || [];
   for (const s of local) {
@@ -585,7 +640,7 @@ export async function loadAllClientSessions(traineeId?: string): Promise<any[]> 
   if (typeof window !== "undefined") {
     try {
       const db = await openClientDatabase();
-      const idbSessions: any[] = await new Promise((resolve) => {
+      const idbSessions: StoredSessionRecord[] = await new Promise((resolve) => {
         try {
           const tx = db.transaction("sessions", "readonly");
           const req = tx.objectStore("sessions").getAll();
@@ -614,7 +669,7 @@ export async function loadAllClientSessions(traineeId?: string): Promise<any[]> 
  * when embedded Base64 photos or large payloads are present to prevent buffer bloat.
  */
 export function serializeBackupJson(
-  data: any,
+  data: unknown,
   options?: { compact?: boolean }
 ): string {
   const compactJson = JSON.stringify(data);
@@ -680,8 +735,8 @@ export async function clearClientStorage(): Promise<void> {
 /**
  * Downloads a complete JSON backup file and updates lastBackupAt.
  */
-export function triggerBackupDownload(
-  data: any,
+export function triggerBackupDownload<T extends object>(
+  data: T,
   fileName: string,
   options?: { compact?: boolean }
 ): string {

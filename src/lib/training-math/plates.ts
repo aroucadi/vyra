@@ -6,16 +6,7 @@
  */
 
 import { weightIncrement } from './progression';
-
-function safeGetExerciseById(id: string) {
-  if (typeof window !== 'undefined') return null;
-  try {
-    const { getExerciseById } = require('../rag/catalogue-loader');
-    return getExerciseById(id);
-  } catch {
-    return null;
-  }
-}
+import { safeGetExerciseById } from '../rag/safe-exercise-lookup';
 
 import type { WeightUnit } from '../types';
 export type { WeightUnit };
@@ -71,14 +62,14 @@ const unitOf = (S?: { unit?: string } | null): WeightUnit =>
 
 export interface PlateState {
   unit?: string;
-  plates?: Record<string, Record<string | number, number | string | undefined>>;
+  plates?: Record<string, unknown>;
   loadKind?: Record<string, string | { kind?: string | null; _ts?: number }>;
   barWeights?: Record<string, number>;
 }
 
-const sizesOf = (entry?: Record<string | number, unknown>): [string, unknown][] =>
+const sizesOf = (entry?: unknown): [string, unknown][] =>
   entry && typeof entry === 'object' && !Array.isArray(entry)
-    ? Object.entries(entry).filter(([k]) => num(k) > 0)
+    ? Object.entries(entry as Record<string, unknown>).filter(([k]) => num(k) > 0)
     : [];
 
 export const ownsPlates = (S?: PlateState | null): boolean =>

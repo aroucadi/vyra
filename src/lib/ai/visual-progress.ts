@@ -155,6 +155,7 @@ export interface DeletionAuditReceipt {
   purgedFromMemoryStore: boolean;
   purgedFromLocalStorage: boolean;
   purgedFromStorageBucket: boolean;
+  purgedFromFirestore?: boolean;
   purgedCachedReportsCount: number;
   purgedShadowLogsCount: number;
   deletedAt: string;
@@ -703,9 +704,24 @@ export async function detectFacesOnDevice(params: {
   }
 
   // Browser native FaceDetector API when available
-  if (typeof window !== "undefined" && typeof (window as any).FaceDetector === "function") {
+  type BrowserFaceDetectorCtor = new (opts?: {
+    fastMode?: boolean;
+    maxDetectedFaces?: number;
+  }) => {
+    detect: (img: HTMLImageElement) => Promise<
+      Array<{
+        boundingBox: { x: number; y: number; width: number; height: number };
+      }>
+    >;
+  };
+  const winWithFace =
+    typeof window !== "undefined"
+      ? (window as Window & { FaceDetector?: BrowserFaceDetectorCtor })
+      : null;
+
+  if (winWithFace && typeof winWithFace.FaceDetector === "function") {
     try {
-      const detector = new (window as any).FaceDetector({
+      const detector = new winWithFace.FaceDetector({
         fastMode: false,
         maxDetectedFaces: 5,
       });
@@ -720,7 +736,7 @@ export async function detectFacesOnDevice(params: {
       const detected = await detector.detect(img);
       if (Array.isArray(detected)) {
         return {
-          faces: detected.map((d: any) => ({
+          faces: detected.map((d) => ({
             boundingBox: {
               x: Math.max(0, Math.min(1, d.boundingBox.x / w)),
               y: Math.max(0, Math.min(1, d.boundingBox.y / h)),
@@ -2134,18 +2150,61 @@ AUTONOMOUS ANALYSIS & DECISION INSTRUCTIONS:
 - Return strictly valid JSON matching the required schema.`;
 }
 
+interface RawVisualObservationInput {
+  id?: string;
+  category?: string;
+  region?: string;
+  headline?: string;
+  observation?: string;
+  magnitude?: string;
+  linkedTrainingDriver?: string;
+  confidenceScore?: number;
+}
+
+interface RawCausalLinkInput {
+  visualOutcome?: string;
+  trainingEvidence?: string;
+  consistencyImpact?: string;
+}
+
+interface RawProgramAdjustmentInput {
+  id?: string;
+  title?: string;
+  targetMuscleOrPosture?: string;
+  rationale?: string;
+  actionType?: string;
+  currentExerciseName?: string;
+  recommendedExerciseName?: string;
+  prescribedSetsReps?: string;
+}
+
+interface RawAutonomousVisualPayload {
+  empatheticHeadline?: string;
+  executiveSummary?: string;
+  visualObservations?: RawVisualObservationInput[];
+  posturalEvolutionSummary?: {
+    pelvicTiltTrend?: string;
+    ribCageStackTrend?: string;
+    shoulderSymmetryTrend?: string;
+    alignmentScoreDelta?: number;
+  };
+  causalLinks?: RawCausalLinkInput[];
+  programAdjustments?: RawProgramAdjustmentInput[];
+}
+
 /**
  * Parses and validates the structured JSON returned by Gemini 4 Argon (`gemini-4-argon`).
  */
 export function parseAutonomousAiVisualSynthesis(
-  rawInput: string | Record<string, any>,
+  rawInput: string | Record<string, unknown>,
   defaultAlignmentDelta: number
 ): AutonomousVisualScanSynthesis | null {
   try {
-    const parsed =
+    const parsed = (
       typeof rawInput === "string"
         ? JSON.parse(rawInput.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim())
-        : rawInput;
+        : rawInput
+    ) as RawAutonomousVisualPayload | null;
 
     if (
       !parsed ||
@@ -2156,31 +2215,39 @@ export function parseAutonomousAiVisualSynthesis(
       return null;
     }
 
-    const validCategories = new Set([
+    const validCategories = new Set<VisualChangeObservation["category"]>([
       "muscle_development",
       "body_composition",
       "posture_alignment",
       "micro_win",
     ]);
-    const validMagnitudes = new Set(["major", "moderate", "subtle_micro"]);
-    const validActionTypes = new Set([
+    const validMagnitudes = new Set<VisualChangeObservation["magnitude"]>([
+      "major",
+      "moderate",
+      "subtle_micro",
+    ]);
+    const validActionTypes = new Set<ProgramAdjustmentSuggestion["actionType"]>([
       "swap_exercise",
       "add_corrective_sets",
       "modulate_volume",
     ]);
 
     const visualObservations: VisualChangeObservation[] = parsed.visualObservations.map(
-      (obs: any, idx: number) => ({
+      (obs, idx: number) => ({
         id: String(obs.id || `ai_obs_${idx + 1}`),
-        category: validCategories.has(obs.category)
-          ? obs.category
-          : "muscle_development",
+        category:
+          obs.category &&
+          validCategories.has(obs.category as VisualChangeObservation["category"])
+            ? (obs.category as VisualChangeObservation["category"])
+            : "muscle_development",
         region: String(obs.region || "Upper Torso & Frame"),
         headline: String(obs.headline || "Autonomous Scan Observation"),
         observation: String(obs.observation || ""),
-        magnitude: validMagnitudes.has(obs.magnitude)
-          ? obs.magnitude
-          : "moderate",
+        magnitude:
+          obs.magnitude &&
+          validMagnitudes.has(obs.magnitude as VisualChangeObservation["magnitude"])
+            ? (obs.magnitude as VisualChangeObservation["magnitude"])
+            : "moderate",
         linkedTrainingDriver: String(
           obs.linkedTrainingDriver || "Correlated with longitudinal training volume"
         ),
@@ -2214,7 +2281,7 @@ export function parseAutonomousAiVisualSynthesis(
 
     const causalLinks =
       Array.isArray(parsed.causalLinks) && parsed.causalLinks.length > 0
-        ? parsed.causalLinks.map((c: any) => ({
+        ? parsed.causalLinks.map((c) => ({
             visualOutcome: String(c.visualOutcome || ""),
             trainingEvidence: String(c.trainingEvidence || ""),
             consistencyImpact: String(c.consistencyImpact || ""),
@@ -2223,16 +2290,20 @@ export function parseAutonomousAiVisualSynthesis(
 
     const programAdjustments: ProgramAdjustmentSuggestion[] =
       Array.isArray(parsed.programAdjustments) && parsed.programAdjustments.length > 0
-        ? parsed.programAdjustments.map((adj: any, idx: number) => ({
+        ? parsed.programAdjustments.map((adj, idx: number) => ({
             id: String(adj.id || `ai_adj_${idx + 1}`),
             title: String(adj.title || "Autonomous Next-Block Optimization"),
             targetMuscleOrPosture: String(
               adj.targetMuscleOrPosture || "Target Hypertrophy & Alignment"
             ),
             rationale: String(adj.rationale || ""),
-            actionType: validActionTypes.has(adj.actionType)
-              ? adj.actionType
-              : "swap_exercise",
+            actionType:
+              adj.actionType &&
+              validActionTypes.has(
+                adj.actionType as ProgramAdjustmentSuggestion["actionType"]
+              )
+                ? (adj.actionType as ProgramAdjustmentSuggestion["actionType"])
+                : "swap_exercise",
             currentExerciseName: adj.currentExerciseName
               ? String(adj.currentExerciseName)
               : undefined,
@@ -2564,7 +2635,7 @@ export async function analyzeVisualProgressEvolution(params: {
     try {
       const rawOut = await params.visionAnalyzer(visionRequest);
       autonomousSynthesis = parseAutonomousAiVisualSynthesis(
-        rawOut as any,
+        rawOut as string | Record<string, unknown>,
         alignmentDelta
       );
       if (autonomousSynthesis) {
@@ -2932,6 +3003,29 @@ export class VisualProgressStore {
           (!options?.excludeSyntheticDemo || !isSyntheticDemoSnapshot(s))
       )
       .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  public hydrateFromFirestoreRecords(
+    traineeId: string,
+    records: VisualProgressSnapshot[]
+  ): number {
+    this.hydrate();
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const existingIds = new Set(this.snapshots.map((s) => s.id));
+    let added = 0;
+    for (const snap of records) {
+      if (!snap || !snap.id) continue;
+      if (!existingIds.has(snap.id)) {
+        this.snapshots.push({ ...snap, traineeId });
+        existingIds.add(snap.id);
+        added++;
+      }
+    }
+    if (added > 0) {
+      this.snapshots.sort((a, b) => a.date.localeCompare(b.date));
+      this.persist();
+    }
+    return added;
   }
 
   public cacheComparisonReport(report: VisualProgressComparisonReport): void {

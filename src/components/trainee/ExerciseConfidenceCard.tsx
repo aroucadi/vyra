@@ -245,7 +245,7 @@ export function ExerciseConfidenceCard({
             {/* Mental Movement Metaphor */}
             <div className="bg-gradient-to-r from-sky-500/10 to-transparent p-2.5 rounded border border-sky-500/30 text-[11px] text-sky-400 flex items-center gap-1.5">
               <span className="font-bold shrink-0">💡 Metaphor:</span>
-              <span className="italic text-slate-200 font-normal">"{guide.mechanics.mentalCue}"</span>
+              <span className="italic text-slate-200 font-normal">&ldquo;{guide.mechanics.mentalCue}&rdquo;</span>
             </div>
           </div>
 
@@ -253,7 +253,7 @@ export function ExerciseConfidenceCard({
           <div className="bg-[#111622] border border-[#1C2436] rounded-xl p-3.5 space-y-2.5">
             <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
               <Flame className="w-3.5 h-3.5 fill-amber-400" />
-              3. Sensory Calibration ("Feel It" Meter)
+              3. Sensory Calibration (&ldquo;Feel It&rdquo; Meter)
             </span>
 
             {/* Target Burn Heatmap */}

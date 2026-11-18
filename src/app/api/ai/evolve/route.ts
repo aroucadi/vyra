@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import "@/db/coach-repository";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { checkDistributedRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { isFirestoreRuntimeAvailable } from "@/lib/firebase/admin";
 import {
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
+  loadGymInventoriesFromFirestore,
+  loadSensoryEntriesFromFirestore,
+  saveSensoryEntryToFirestore,
 } from "@/lib/firebase/firestore-repository";
+import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
 import { runVertexAgenticCoachLoop } from "@/lib/ai/vertex-agent-loop";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
 import {
@@ -14,6 +18,8 @@ import {
   SensoryFeedbackEntry,
 } from "@/lib/ai/sensory-memory";
 import { EvaluateJitInput } from "@/lib/ai/coach-agent";
+import { getActiveGeminiModel } from "@/lib/gemini";
+import { logStructuredAiEvent } from "@/lib/observability";
 
 export interface EvolveRouteRequestBody extends EvaluateJitInput {
   feedbackToIngest?: IngestFeedbackInput;
@@ -33,6 +39,9 @@ export interface EvolveRouteRequestBody extends EvaluateJitInput {
  *    agent execution trace.
  */
 export async function POST(req: Request) {
+  const startedAtMs = Date.now();
+  const modelRequested = getActiveGeminiModel();
+  let effectiveTenantForLog: string | null = null;
   let body: Partial<EvolveRouteRequestBody>;
   try {
     body = (await req.json()) as Partial<EvolveRouteRequestBody>;
@@ -64,8 +73,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const rl = checkRateLimit(
-      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-evolve"),
+    const rl = await checkDistributedRateLimit(
+      resolveRateLimitKey(req, "ai-evolve", tenant.effectiveTraineeId),
       { maxRequests: 60, windowMs: 60_000 }
     );
     if (!rl.allowed) {
@@ -77,10 +86,27 @@ export async function POST(req: Request) {
 
     ensureFirestoreCoachBridgeRegistered();
     const effectiveTraineeId = tenant.effectiveTraineeId;
+    effectiveTenantForLog = effectiveTraineeId;
 
     let resolvedSessions = Array.isArray(body.sessions) ? body.sessions : [];
     if (tenant.session) {
       await athleteModelStore.hydrateFromDatabase(effectiveTraineeId);
+      if (isFirestoreRuntimeAvailable()) {
+        try {
+          const [cloudInventories, cloudSensory] = await Promise.all([
+            loadGymInventoriesFromFirestore(effectiveTraineeId),
+            loadSensoryEntriesFromFirestore(effectiveTraineeId),
+          ]);
+          if (cloudInventories.length > 0) {
+            gymVisionInventoryStore.hydrateFromFirestoreRecords(effectiveTraineeId, cloudInventories);
+          }
+          if (cloudSensory.length > 0) {
+            sensoryMemoryStore.hydrateFromFirestoreRecords(effectiveTraineeId, cloudSensory);
+          }
+        } catch {
+          // Non-fatal fallback
+        }
+      }
       if (resolvedSessions.length === 0) {
         try {
           const boot = await loadBootstrapForUser({
@@ -101,6 +127,9 @@ export async function POST(req: Request) {
         ...body.feedbackToIngest,
         traineeId: effectiveTraineeId,
       });
+      if (tenant.session && isFirestoreRuntimeAvailable()) {
+        await saveSensoryEntryToFirestore(effectiveTraineeId, ingestedSensoryNode);
+      }
     }
 
     const jitInput: EvaluateJitInput = {
@@ -127,6 +156,19 @@ export async function POST(req: Request) {
     if (tenant.session) {
       await athleteModelStore.syncToDatabase(effectiveTraineeId);
     }
+
+    const modelUsed = result.modelUsed || modelRequested;
+    logStructuredAiEvent({
+      route: "/api/ai/evolve",
+      modelRequested,
+      modelUsed,
+      fallbackTriggered: Boolean(result.degradedMode) || modelUsed !== modelRequested,
+      authMode: result.authMode || "unknown",
+      latencyMs: Date.now() - startedAtMs,
+      status: 200,
+      tenantId: effectiveTraineeId,
+      detail: result.degradedMode ? "degraded_mode" : "ok",
+    });
 
     return NextResponse.json(
       {
@@ -157,11 +199,24 @@ export async function POST(req: Request) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to execute Self-Evolving Program Agent loop.";
+    logStructuredAiEvent({
+      route: "/api/ai/evolve",
+      modelRequested,
+      modelUsed: modelRequested,
+      fallbackTriggered: true,
+      authMode: "error",
+      latencyMs: Date.now() - startedAtMs,
+      status: 500,
+      tenantId: effectiveTenantForLog,
+      severity: "ERROR",
+      detail: msg,
+    });
     return NextResponse.json(
       {
         ok: false,
-        error: err?.message || "Failed to execute Self-Evolving Program Agent loop.",
+        error: msg,
       },
       { status: 500 }
     );

@@ -3,8 +3,35 @@ import assert from "node:assert/strict";
 import { POST } from "../../../src/app/api/sync/events/route";
 import { NextRequest } from "next/server";
 import { EventEnvelope } from "../../../src/lib/storage/events";
+import { __setMockFirebaseAdminForTesting } from "../../../src/lib/firebase/admin";
+import { ALAA_CANONICAL_EMAIL } from "../../../src/lib/auth/server-session";
 
 test("Phase 2: Cloud Sync Events Route Contract", async (t) => {
+  t.beforeEach(() => {
+    __setMockFirebaseAdminForTesting({
+      auth: {
+        verifyIdToken: async (token: string) => {
+          if (token === "tok_alaa_sync") {
+            return {
+              uid: "fb_alaa_sync",
+              email: ALAA_CANONICAL_EMAIL,
+              email_verified: true,
+              firebase: { identities: {}, sign_in_provider: "password" },
+            };
+          }
+          throw new Error("Invalid token");
+        },
+        verifySessionCookie: async () => {
+          throw new Error("Invalid cookie");
+        },
+      },
+    });
+  });
+
+  t.afterEach(() => {
+    __setMockFirebaseAdminForTesting(null);
+  });
+
   await t.test("rejects request missing traineeId or events array", async () => {
     const req = new NextRequest("http://localhost:3000/api/sync/events", {
       method: "POST",
@@ -16,6 +43,31 @@ test("Phase 2: Cloud Sync Events Route Contract", async (t) => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.ok(body.error.includes("Invalid payload"));
+  });
+
+  await t.test("rejects unauthenticated requests targeting trainee_alaa (401)", async () => {
+    const req = new NextRequest("http://localhost:3000/api/sync/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        traineeId: "trainee_alaa",
+        events: [
+          {
+            id: "evt_unauth",
+            streamId: "sess_1",
+            traineeId: "trainee_alaa",
+            type: "WORKOUT_INITIALIZED",
+            payload: {},
+            epochMs: Date.now(),
+            recordedAt: new Date().toISOString(),
+            syncedToCloud: false,
+          },
+        ],
+      }),
+    });
+
+    const res = await POST(req);
+    assert.equal(res.status, 401);
   });
 
   await t.test("ingests batch of athletic events and returns synced IDs", async () => {
@@ -51,7 +103,10 @@ test("Phase 2: Cloud Sync Events Route Contract", async (t) => {
 
     const req = new NextRequest("http://localhost:3000/api/sync/events", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_sync",
+      },
       body: JSON.stringify({
         traineeId: "trainee_alaa",
         events,
@@ -90,7 +145,10 @@ test("Phase 2: Cloud Sync Events Route Contract", async (t) => {
 
     const req = new NextRequest("http://localhost:3000/api/sync/events", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer tok_alaa_sync",
+      },
       body: JSON.stringify({
         traineeId: "trainee_alaa",
         events,

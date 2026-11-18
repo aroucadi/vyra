@@ -10,7 +10,7 @@
  * - InMemoryStorageAdapter: SSR, Edge, and test environments.
  */
 
-import { WorkoutSession, BodyMetricEntry } from "../types";
+import { WorkoutSession, BodyMetricEntry, WearableBiometricSnapshot } from "../types";
 import {
   AthleticEventType,
   EventEnvelope,
@@ -20,6 +20,12 @@ import {
   ReadinessSubmittedPayload,
 } from "./events";
 import { openClientDatabase } from "../storage";
+
+export type ReadinessAdapterRecord = Pick<
+  WearableBiometricSnapshot,
+  "id" | "traineeId" | "sleepHours" | "answer" | "reducedRecovery" | "date"
+> &
+  Partial<WearableBiometricSnapshot>;
 
 export interface IStorageAdapter {
   appendEvent<T>(
@@ -39,8 +45,8 @@ export interface IStorageAdapter {
   saveMetric(metric: BodyMetricEntry): Promise<BodyMetricEntry>;
   getMetrics(traineeId: string): Promise<BodyMetricEntry[]>;
 
-  saveReadiness(entry: any): Promise<any>;
-  getReadinessHistory(traineeId: string): Promise<any[]>;
+  saveReadiness(entry: ReadinessAdapterRecord): Promise<ReadinessAdapterRecord>;
+  getReadinessHistory(traineeId: string): Promise<ReadinessAdapterRecord[]>;
 }
 
 /**
@@ -50,7 +56,7 @@ export class InMemoryStorageAdapter implements IStorageAdapter {
   private events: EventEnvelope[] = [];
   private sessions: WorkoutSession[] = [];
   private metrics: BodyMetricEntry[] = [];
-  private readiness: any[] = [];
+  private readiness: ReadinessAdapterRecord[] = [];
 
   async appendEvent<T>(
     traineeId: string,
@@ -155,7 +161,7 @@ export class InMemoryStorageAdapter implements IStorageAdapter {
     return this.metrics.filter((m) => m.traineeId === traineeId);
   }
 
-  async saveReadiness(entry: any): Promise<any> {
+  async saveReadiness(entry: ReadinessAdapterRecord): Promise<ReadinessAdapterRecord> {
     const idx = this.readiness.findIndex((r) => r.id === entry.id);
     if (idx >= 0) {
       this.readiness[idx] = entry;
@@ -170,7 +176,7 @@ export class InMemoryStorageAdapter implements IStorageAdapter {
       {
         readinessId: entry.id,
         sleepHours: entry.sleepHours,
-        answer: entry.answer,
+        answer: String(entry.answer || ""),
         reducedRecovery: Boolean(entry.reducedRecovery),
         date: entry.date,
       }
@@ -179,7 +185,7 @@ export class InMemoryStorageAdapter implements IStorageAdapter {
     return entry;
   }
 
-  async getReadinessHistory(traineeId: string): Promise<any[]> {
+  async getReadinessHistory(traineeId: string): Promise<ReadinessAdapterRecord[]> {
     return this.readiness.filter((r) => r.traineeId === traineeId);
   }
 }
@@ -375,7 +381,7 @@ export class LocalFirstStorageAdapter implements IStorageAdapter {
     return this.fallback.getMetrics(traineeId);
   }
 
-  async saveReadiness(entry: any): Promise<any> {
+  async saveReadiness(entry: ReadinessAdapterRecord): Promise<ReadinessAdapterRecord> {
     await this.appendEvent<ReadinessSubmittedPayload>(
       entry.traineeId,
       `readiness_${entry.id}`,
@@ -383,7 +389,7 @@ export class LocalFirstStorageAdapter implements IStorageAdapter {
       {
         readinessId: entry.id,
         sleepHours: entry.sleepHours,
-        answer: entry.answer,
+        answer: String(entry.answer || ""),
         reducedRecovery: Boolean(entry.reducedRecovery),
         date: entry.date,
       }
@@ -391,7 +397,7 @@ export class LocalFirstStorageAdapter implements IStorageAdapter {
     return this.fallback.saveReadiness(entry);
   }
 
-  async getReadinessHistory(traineeId: string): Promise<any[]> {
+  async getReadinessHistory(traineeId: string): Promise<ReadinessAdapterRecord[]> {
     return this.fallback.getReadinessHistory(traineeId);
   }
 }

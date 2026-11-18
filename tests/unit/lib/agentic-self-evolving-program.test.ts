@@ -35,6 +35,8 @@ import {
 } from "../../../src/lib/ai/gym-vision-inventory";
 import { POST as evolvePostRoute } from "../../../src/app/api/ai/evolve/route";
 import { POST as adaptDayPostRoute } from "../../../src/app/api/ai/adapt-day/route";
+import { __setMockFirebaseAdminForTesting } from "../../../src/lib/firebase/admin";
+import { ALAA_CANONICAL_EMAIL } from "../../../src/lib/auth/server-session";
 import { WorkoutSession, ExerciseBiofeedbackTag } from "../../../src/lib/types";
 
 function makeSession(
@@ -461,45 +463,71 @@ describe("Self-Evolving Athletic Program — Vector RAG, Multilingual French Ing
       makeSession("s3", "2026-10-24", "Dumbbell Lateral Raise", [{ weightKg: 14, reps: 9 }]),
     ];
 
-    const req = new Request("http://localhost:3000/api/ai/evolve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        traineeId: "trainee_alaa",
-        exerciseName: "Dumbbell Lateral Raise",
-        currentWeightKg: 14,
-        targetSets: 3,
-        repLow: 8,
-        repHigh: 12,
-        targetRir: 1,
-        equipment: "dumbbell",
-        gymId: "punch_lissasfa",
-        sessions,
-        feedbackToIngest: {
-          traineeId: "trainee_alaa",
-          sessionId: "s3",
-          date: "2026-10-24",
-          exerciseName: "Dumbbell Lateral Raise",
-          tags: ["joint_strain"],
-          audioTranscript:
-            "Pincement à l'épaule droite sur la descente, j'ai triché avec les trapèzes",
+    __setMockFirebaseAdminForTesting({
+      auth: {
+        verifyIdToken: async (token: string) => {
+          if (token === "tok_alaa_agentic") {
+            return {
+              uid: "fb_alaa_agentic",
+              email: ALAA_CANONICAL_EMAIL,
+              email_verified: true,
+              firebase: { identities: {}, sign_in_provider: "password" },
+            };
+          }
+          throw new Error("Invalid token");
         },
-      }),
+        verifySessionCookie: async () => {
+          throw new Error("Invalid cookie");
+        },
+      },
     });
 
-    const res = await evolvePostRoute(req);
-    assert.equal(res.status, 200);
-    const json = await res.json();
+    try {
+      const req = new Request("http://localhost:3000/api/ai/evolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_alaa_agentic",
+        },
+        body: JSON.stringify({
+          traineeId: "trainee_alaa",
+          exerciseName: "Dumbbell Lateral Raise",
+          currentWeightKg: 14,
+          targetSets: 3,
+          repLow: 8,
+          repHigh: 12,
+          targetRir: 1,
+          equipment: "dumbbell",
+          gymId: "punch_lissasfa",
+          sessions,
+          feedbackToIngest: {
+            traineeId: "trainee_alaa",
+            sessionId: "s3",
+            date: "2026-10-24",
+            exerciseName: "Dumbbell Lateral Raise",
+            tags: ["joint_strain"],
+            audioTranscript:
+              "Pincement à l'épaule droite sur la descente, j'ai triché avec les trapèzes",
+          },
+        }),
+      });
 
-    assert.equal(json.ok, true);
-    assert.ok(json.ingestedSensoryNode !== null);
-    assert.equal(json.ingestedSensoryNode.detectedLanguage, "fr");
-    assert.ok(json.ingestedSensoryNode.extractedSymptoms.includes("anterior_shoulder_pinch"));
-    assert.equal(json.ingestedSensoryNode.embeddingDimensions, 64);
-    assert.ok(json.proposition !== null);
-    assert.equal(json.proposition.tier, "tier_2_surgical_swap");
-    assert.ok(json.turnsExecuted >= 5);
-    assert.ok(json.toolCallsHistory.length >= 5);
+      const res = await evolvePostRoute(req);
+      assert.equal(res.status, 200);
+      const json = await res.json();
+
+      assert.equal(json.ok, true);
+      assert.ok(json.ingestedSensoryNode !== null);
+      assert.equal(json.ingestedSensoryNode.detectedLanguage, "fr");
+      assert.ok(json.ingestedSensoryNode.extractedSymptoms.includes("anterior_shoulder_pinch"));
+      assert.equal(json.ingestedSensoryNode.embeddingDimensions, 64);
+      assert.ok(json.proposition !== null);
+      assert.equal(json.proposition.tier, "tier_2_surgical_swap");
+      assert.ok(json.turnsExecuted >= 5);
+      assert.ok(json.toolCallsHistory.length >= 5);
+    } finally {
+      __setMockFirebaseAdminForTesting(null);
+    }
   });
 
   it("7. adapts today's workout ephemerally for Poor Recovery & Low Energy without modifying the long-term program", async () => {
@@ -574,40 +602,66 @@ describe("Self-Evolving Athletic Program — Vector RAG, Multilingual French Ing
   });
 
   it("10. recognizes gym equipment limitations from location/photo via POST /api/ai/adapt-day and substitutes missing cable/machine exercises", async () => {
-    const req = new Request("http://localhost:3000/api/ai/adapt-day", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        traineeId: "trainee_alaa",
-        voiceOrTextMessage:
-          "Training at hotel gym today, only dumbbells and a bench in the photo.",
-        gymId: "gym_hotel_express",
-        gymName: "Hotel Express Gym",
-        gymPhotoCaption: "only dumbbells and adjustable bench, no cables or machines",
-        exercises: SAMPLE_PLANNED_EXERCISES,
-      }),
+    __setMockFirebaseAdminForTesting({
+      auth: {
+        verifyIdToken: async (token: string) => {
+          if (token === "tok_alaa_agentic") {
+            return {
+              uid: "fb_alaa_agentic",
+              email: ALAA_CANONICAL_EMAIL,
+              email_verified: true,
+              firebase: { identities: {}, sign_in_provider: "password" },
+            };
+          }
+          throw new Error("Invalid token");
+        },
+        verifySessionCookie: async () => {
+          throw new Error("Invalid cookie");
+        },
+      },
     });
 
-    const res = await adaptDayPostRoute(req);
-    assert.equal(res.status, 200);
-    const json = await res.json();
+    try {
+      const req = new Request("http://localhost:3000/api/ai/adapt-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok_alaa_agentic",
+        },
+        body: JSON.stringify({
+          traineeId: "trainee_alaa",
+          voiceOrTextMessage:
+            "Training at hotel gym today, only dumbbells and a bench in the photo.",
+          gymId: "gym_hotel_express",
+          gymName: "Hotel Express Gym",
+          gymPhotoCaption: "only dumbbells and adjustable bench, no cables or machines",
+          exercises: SAMPLE_PLANNED_EXERCISES,
+        }),
+      });
 
-    assert.equal(json.ok, true);
-    const adaptation = json.adaptation;
-    assert.equal(adaptation.scope, "TODAY_SESSION_ONLY");
-    assert.equal(adaptation.longTermProgramModified, false);
-    assert.ok(
-      adaptation.gymInventoryUsed.availableCategories.includes("dumbbell")
-    );
-    assert.ok(
-      !adaptation.gymInventoryUsed.availableCategories.includes("cable")
-    );
+      const res = await adaptDayPostRoute(req);
+      assert.equal(res.status, 200);
+      const json = await res.json();
 
-    // Verify cable and machine exercises were replaced with available dumbbell equipment
-    for (const ex of adaptation.adaptedExercises) {
-      assert.notEqual(ex.equipment, "cable");
-      assert.notEqual(ex.equipment, "machine");
-      assert.notEqual(ex.equipment, "barbell");
+      assert.equal(json.ok, true);
+      const adaptation = json.adaptation;
+      assert.equal(adaptation.scope, "TODAY_SESSION_ONLY");
+      assert.equal(adaptation.longTermProgramModified, false);
+      assert.ok(
+        adaptation.gymInventoryUsed.availableCategories.includes("dumbbell")
+      );
+      assert.ok(
+        !adaptation.gymInventoryUsed.availableCategories.includes("cable")
+      );
+
+      // Verify cable and machine exercises were replaced with available dumbbell equipment
+      for (const ex of adaptation.adaptedExercises) {
+        assert.notEqual(ex.equipment, "cable");
+        assert.notEqual(ex.equipment, "machine");
+        assert.notEqual(ex.equipment, "barbell");
+      }
+    } finally {
+      __setMockFirebaseAdminForTesting(null);
     }
   });
 

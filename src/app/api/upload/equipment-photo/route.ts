@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { checkDistributedRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
 import {
   uploadEquipmentPhoto,
   isCloudStorageEnabled,
@@ -25,7 +25,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const rl = checkRateLimit(resolveRateLimitKey(req, "upload-equipment-photo"), {
+    const rl = await checkDistributedRateLimit(resolveRateLimitKey(req, "upload-equipment-photo"), {
       maxRequests: 30,
       windowMs: 60_000,
     });

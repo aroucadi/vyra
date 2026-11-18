@@ -1,6 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const sharp = require('sharp');
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 1. Master SVG Vector for VYRA Monogram / App Icon (512x512)
 const masterIconSvg = `<?xml version="1.0" encoding="UTF-8"?>
@@ -52,10 +56,6 @@ const masterIconSvg = `<?xml version="1.0" encoding="UTF-8"?>
   <!-- Subtle Microgrid Hairlines (Architectural Precision) -->
   <line x1="120" y1="256" x2="392" y2="256" stroke="#1C2436" stroke-width="1" stroke-dasharray="4 8" opacity="0.6"/>
   <line x1="256" y1="120" x2="256" y2="392" stroke="#1C2436" stroke-width="1" stroke-dasharray="4 8" opacity="0.6"/>
-
-  <!-- ============================================== -->
-  <!-- THE VYRA KINETIC VECTOR (V-MONOGRAM)           -->
-  <!-- ============================================== -->
 
   <!-- Left Stem: Basalt Foundation Pillar -->
   <path
@@ -137,66 +137,62 @@ const faviconSvg = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 async function main() {
-  const publicDir = path.resolve(__dirname, '../public');
-  const appDir = path.resolve(__dirname, '../src/app');
+  const publicDir = path.resolve(__dirname, "../public");
+  const appDir = path.resolve(__dirname, "../src/app");
 
-  console.log('1. Writing public/icon.svg...');
-  fs.writeFileSync(path.join(publicDir, 'icon.svg'), masterIconSvg, 'utf8');
+  console.log("1. Writing public/icon.svg...");
+  fs.writeFileSync(path.join(publicDir, "icon.svg"), masterIconSvg, "utf8");
 
-  console.log('2. Writing public/apple-touch-icon.svg...');
-  fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.svg'), masterIconSvg, 'utf8');
+  console.log("2. Writing public/apple-touch-icon.svg...");
+  fs.writeFileSync(
+    path.join(publicDir, "apple-touch-icon.svg"),
+    masterIconSvg,
+    "utf8"
+  );
 
-  console.log('3. Writing public/favicon.svg...');
-  fs.writeFileSync(path.join(publicDir, 'favicon.svg'), faviconSvg, 'utf8');
+  console.log("3. Writing public/favicon.svg...");
+  fs.writeFileSync(path.join(publicDir, "favicon.svg"), faviconSvg, "utf8");
 
-  console.log('4. Generating raster PNG icons...');
+  console.log("4. Generating raster PNG icons...");
   const masterBuffer = Buffer.from(masterIconSvg);
 
-  // 192x192 PNG
   await sharp(masterBuffer)
     .resize(192, 192)
     .png()
-    .toFile(path.join(publicDir, 'icon-192.png'));
-  console.log('✓ Generated icon-192.png');
+    .toFile(path.join(publicDir, "icon-192.png"));
+  console.log("✓ Generated icon-192.png");
 
-  // 512x512 PNG
   await sharp(masterBuffer)
     .resize(512, 512)
     .png()
-    .toFile(path.join(publicDir, 'icon-512.png'));
-  console.log('✓ Generated icon-512.png');
+    .toFile(path.join(publicDir, "icon-512.png"));
+  console.log("✓ Generated icon-512.png");
 
-  // 512x512 Maskable PNG
   await sharp(masterBuffer)
     .resize(512, 512)
     .png()
-    .toFile(path.join(publicDir, 'icon-maskable-512.png'));
-  console.log('✓ Generated icon-maskable-512.png');
+    .toFile(path.join(publicDir, "icon-maskable-512.png"));
+  console.log("✓ Generated icon-maskable-512.png");
 
-  // 180x180 Apple Touch Icon PNG
   await sharp(masterBuffer)
     .resize(180, 180)
     .png()
-    .toFile(path.join(publicDir, 'apple-touch-icon.png'));
-  console.log('✓ Generated apple-touch-icon.png');
+    .toFile(path.join(publicDir, "apple-touch-icon.png"));
+  console.log("✓ Generated apple-touch-icon.png");
 
-  // 32x32 Favicon PNG (Used to overwrite favicon.ico)
   const faviconBuffer = Buffer.from(faviconSvg);
-  const fav32 = await sharp(faviconBuffer)
-    .resize(32, 32)
-    .png()
-    .toBuffer();
+  const fav32 = await sharp(faviconBuffer).resize(32, 32).png().toBuffer();
 
-  // Next.js App Router serves src/app/favicon.ico
-  // Writing 32x32 PNG to src/app/favicon.ico (all modern browsers accept PNG-encoded favicons)
-  fs.writeFileSync(path.join(appDir, 'favicon.ico'), fav32);
-  fs.writeFileSync(path.join(publicDir, 'favicon.ico'), fav32);
-  console.log('✓ Overwritten src/app/favicon.ico and public/favicon.ico with Vyra Monogram!');
+  fs.writeFileSync(path.join(appDir, "favicon.ico"), fav32);
+  fs.writeFileSync(path.join(publicDir, "favicon.ico"), fav32);
+  console.log(
+    "✓ Overwritten src/app/favicon.ico and public/favicon.ico with Vyra Monogram!"
+  );
 
-  console.log('\nAll brand icon assets generated successfully!');
+  console.log("\nAll brand icon assets generated successfully!");
 }
 
 main().catch((err) => {
-  console.error('Error generating assets:', err);
+  console.error("Error generating assets:", err);
   process.exit(1);
 });

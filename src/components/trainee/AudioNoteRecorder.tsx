@@ -23,7 +23,37 @@ interface AudioNoteRecorderProps {
   compact?: boolean;
 }
 
-export function AudioNoteRecorder({
+interface SpeechRecognitionResultAlternativeLike {
+  transcript?: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0?: SpeechRecognitionResultAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+export function AudioNoteRecorder(props: AudioNoteRecorderProps) {
+  return <AudioNoteRecorderInner key={props.audioUrl || "empty"} {...props} />;
+}
+
+function AudioNoteRecorderInner({
   audioUrl,
   transcript,
   onSave,
@@ -42,7 +72,7 @@ export function AudioNoteRecorder({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const speechRecRef = useRef<any>(null);
+  const speechRecRef = useRef<SpeechRecognitionInstance | null>(null);
   const liveTranscriptRef = useRef<string>("");
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,16 +97,6 @@ export function AudioNoteRecorder({
     };
   }, []);
 
-  // Update playback state when audioUrl changes
-  useEffect(() => {
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current = null;
-    }
-    setIsPlaying(false);
-    setPlayProgress(0);
-  }, [audioUrl]);
-
   const startRecording = async () => {
     setErrorMessage(null);
     setLiveTranscript("");
@@ -91,8 +111,12 @@ export function AudioNoteRecorder({
 
       // Start browser SpeechRecognition in parallel to capture verbatim voice transcript
       try {
+        const speechWin = window as unknown as {
+          SpeechRecognition?: SpeechRecognitionConstructor;
+          webkitSpeechRecognition?: SpeechRecognitionConstructor;
+        };
         const SpeechRecognitionCtor =
-          (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+          speechWin.SpeechRecognition || speechWin.webkitSpeechRecognition;
         if (SpeechRecognitionCtor) {
           const recognition = new SpeechRecognitionCtor();
           recognition.continuous = true;
@@ -100,7 +124,7 @@ export function AudioNoteRecorder({
           recognition.lang = navigator.language || "fr-FR";
 
           let accumulatedFinal = "";
-          recognition.onresult = (event: any) => {
+          recognition.onresult = (event: SpeechRecognitionEventLike) => {
             let interim = "";
             for (let i = event.resultIndex; i < event.results.length; i++) {
               const seg = event.results[i][0]?.transcript || "";
@@ -212,8 +236,11 @@ export function AudioNoteRecorder({
       setIsRecording(true);
       setRecordDurationSec(0);
 
-      const startTime = Date.now();
+      let startTime: number | null = null;
       timerIntervalRef.current = setInterval(() => {
+        if (startTime === null) {
+          startTime = Date.now();
+        }
         const elapsed = Math.round((Date.now() - startTime) / 1000);
         setRecordDurationSec(elapsed);
 
@@ -222,12 +249,13 @@ export function AudioNoteRecorder({
           stopRecording();
         }
       }, 500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Microphone access failed:", err);
-      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+      const errObj = err as { name?: string; message?: string };
+      if (errObj?.name === "NotAllowedError" || errObj?.name === "PermissionDeniedError") {
         setErrorMessage("Microphone permission denied. Please allow microphone access in your browser settings.");
       } else {
-        setErrorMessage(err?.message || "Could not access microphone.");
+        setErrorMessage(errObj?.message || "Could not access microphone.");
       }
       setIsRecording(false);
     }

@@ -9,17 +9,47 @@ declare module 'pg' {
     connectionTimeoutMillis?: number;
   }
 
+  export interface QueryResultRow {
+    [column: string]: unknown;
+  }
+
+  export interface QueryConfig<I = unknown[]> {
+    name?: string;
+    text: string;
+    values?: I;
+    rowMode?: string;
+  }
+
+  export interface QueryResult<R extends QueryResultRow = QueryResultRow> {
+    rows: R[];
+    rowCount: number | null;
+  }
+
+  export interface PoolClient extends EventEmitter {
+    query<R extends QueryResultRow = QueryResultRow, I = unknown[]>(
+      queryTextOrConfig: string | QueryConfig<I>,
+      values?: I
+    ): Promise<QueryResult<R>>;
+    release(err?: Error | boolean): void;
+  }
+
   export class Pool extends EventEmitter {
     constructor(config?: PoolConfig);
-    connect(): Promise<any>;
-    query(queryTextOrConfig: string | any, values?: any[]): Promise<any>;
+    connect(): Promise<PoolClient>;
+    query<R extends QueryResultRow = QueryResultRow, I = unknown[]>(
+      queryTextOrConfig: string | QueryConfig<I>,
+      values?: I
+    ): Promise<QueryResult<R>>;
     end(): Promise<void>;
   }
 
   export class Client extends EventEmitter {
     constructor(config?: PoolConfig);
     connect(): Promise<void>;
-    query(queryTextOrConfig: string | any, values?: any[]): Promise<any>;
+    query<R extends QueryResultRow = QueryResultRow, I = unknown[]>(
+      queryTextOrConfig: string | QueryConfig<I>,
+      values?: I
+    ): Promise<QueryResult<R>>;
     end(): Promise<void>;
   }
 }

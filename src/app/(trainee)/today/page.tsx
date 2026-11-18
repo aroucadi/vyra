@@ -30,9 +30,23 @@ export default function TodayPage() {
   const currentUser = isHydrated
     ? rawUser
     : { ...rawUser, id: "anon_visitor", name: "Athlete", role: "both" as const };
-  const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState(false);
+  const [isSuppDrawerOpen, setIsSuppDrawerOpen] = useState<boolean>(
+    () =>
+      typeof window !== "undefined" &&
+      window.location.search.includes("supplements=open")
+  );
   const [isAdjustSheetOpen, setIsAdjustSheetOpen] = useState(false);
-  const [forceDayZero, setForceDayZero] = useState<boolean | undefined>(undefined);
+  const [forceDayZero, setForceDayZero] = useState<boolean | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const search = window.location.search;
+    if (search.includes("view=program") || search.includes("mode=program")) {
+      return false;
+    }
+    if (search.includes("onboarding=day0") || search.includes("anchor=")) {
+      return true;
+    }
+    return localStorage.getItem("vyra_user_view") === "program" ? false : undefined;
+  });
   const [tick, setTick] = useState(0);
   const [previewPrescription, setPreviewPrescription] = useState<ExercisePrescription | null>(null);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
@@ -60,20 +74,10 @@ export default function TodayPage() {
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const search = window.location.search;
-    if (search.includes("supplements=open")) {
-      setIsSuppDrawerOpen(true);
-    }
     if (search.includes("view=program") || search.includes("mode=program")) {
       localStorage.setItem("vyra_user_view", "program");
-      setForceDayZero(false);
     } else if (search.includes("onboarding=day0") || search.includes("anchor=")) {
       localStorage.setItem("vyra_user_view", "day0");
-      setForceDayZero(true);
-    } else {
-      const savedView = localStorage.getItem("vyra_user_view");
-      if (savedView === "program") {
-        setForceDayZero(false);
-      }
     }
   }, []);
 

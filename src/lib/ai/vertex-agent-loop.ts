@@ -370,7 +370,7 @@ export async function fetchWithRetryTimeoutAndCircuitBreaker(params: {
 
       breaker.recordFailure();
       throw new Error(`LLM HTTP failure (${res.status})`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       lastError = err instanceof Error ? err : new Error(String(err));
       const isTimeoutOrAbort =
         lastError.name === "TimeoutError" ||
@@ -953,7 +953,10 @@ export async function runVertexAgenticCoachLoop(
   }
 
   // Tool dispatch registry bound to the athlete's real session, AthleteModel, KnowledgeBase, & RAG state
-  const dispatchTool = (name: string, args: Record<string, any>): Record<string, any> => {
+  const dispatchTool = (
+    name: string,
+    args: Record<string, unknown>
+  ): unknown => {
     switch (name) {
       case "get_athlete_case_file": {
         const tId = String(args.traineeId || input.traineeId);

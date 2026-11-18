@@ -18,7 +18,7 @@ describe("Exercise Feedback Notes, Equipment Photos, & Reordering Logic", () => 
 
     // Simulate moving Exercise A down twice in preview mode:
     // Move 1: [B, A, C, D]
-    let copy = [...exercises];
+    const copy = [...exercises];
     let temp = copy[0 + 1];
     copy[0 + 1] = copy[0];
     copy[0] = temp;

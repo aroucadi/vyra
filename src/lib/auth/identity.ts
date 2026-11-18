@@ -234,7 +234,7 @@ export async function claimAnonymousVault(
         const req = store.getAll();
 
         req.onsuccess = () => {
-          const sessions = (req.result || []) as any[];
+          const sessions = (req.result || []) as Array<Record<string, unknown>>;
           for (const s of sessions) {
             if (s.traineeId === sourceUid) {
               s.traineeId = targetUid;
@@ -256,7 +256,7 @@ export async function claimAnonymousVault(
         const req = store.getAll();
 
         req.onsuccess = () => {
-          const events = (req.result || []) as any[];
+          const events = (req.result || []) as Array<Record<string, unknown>>;
           for (const e of events) {
             if (e.traineeId === sourceUid) {
               e.traineeId = targetUid;

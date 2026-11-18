@@ -1131,6 +1131,28 @@ export class SensoryMemoryStore {
     return this.entries.filter((e) => e.traineeId === traineeId);
   }
 
+  public hydrateFromFirestoreRecords(
+    traineeId: string,
+    records: SensoryFeedbackEntry[]
+  ): number {
+    this.hydrate();
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const existingIds = new Set(this.entries.map((e) => e.id));
+    let added = 0;
+    for (const rec of records) {
+      if (!rec || !rec.id) continue;
+      if (!existingIds.has(rec.id)) {
+        this.entries.push({ ...rec, traineeId });
+        existingIds.add(rec.id);
+        added++;
+      }
+    }
+    if (added > 0) {
+      this.persist();
+    }
+    return added;
+  }
+
   /**
    * Asynchronous Audio Voice Feedback Transcription & Canonical Ingestion Pipeline.
    * - Validates audio format & non-empty payload
@@ -1218,8 +1240,9 @@ export class SensoryMemoryStore {
           } else {
             lastError = "Transcription returned empty text";
           }
-        } catch (err: any) {
-          lastError = err?.message || "Transient audio transcription failure";
+        } catch (err: unknown) {
+          lastError =
+            err instanceof Error ? err.message : "Transient audio transcription failure";
         }
       }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -24,13 +24,34 @@ function CoachInviteContent() {
 
   const coachId = (params?.coachId as string) || "trainer_1";
   const token = searchParams.get("token") || "";
+  const inviteId = searchParams.get("inviteId") || "";
 
   const [accepted, setAccepted] = useState(false);
+  const [serverInvite, setServerInvite] = useState<TrainerInvitePayload | null>(null);
 
-  // Decode invite token or build default coach payload
+  useEffect(() => {
+    if (!inviteId || token) return;
+    let active = true;
+    fetch(`/api/invites?inviteId=${encodeURIComponent(inviteId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { ok?: boolean; invite?: TrainerInvitePayload } | null) => {
+        if (active && data?.ok && data.invite) {
+          setServerInvite(data.invite);
+        }
+      })
+      .catch(() => {
+        // Fallback to local/default payload cleanly
+      });
+    return () => {
+      active = false;
+    };
+  }, [inviteId, token]);
+
+  // Decode invite token, server lookup, or build default coach payload
   const invite: TrainerInvitePayload = useMemo(() => {
     const decoded = decodeTrainerInvite(token);
     if (decoded) return decoded;
+    if (serverInvite) return serverInvite;
 
     const coach = isHydrated ? appStore.getUser(coachId) : undefined;
     return {
@@ -43,9 +64,9 @@ function CoachInviteContent() {
       unit: "kg",
       customNote: "Your custom periodization program is calibrated and ready on your phone.",
     };
-  }, [coachId, token, isHydrated]);
+  }, [coachId, token, serverInvite, isHydrated]);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     const identity = getAthleteIdentity();
     const validAnonId =
       identity.uid && identity.uid !== "anon_visitor"
@@ -53,9 +74,25 @@ function CoachInviteContent() {
         : `anon_${typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID().replace(/-/g, "").slice(0, 12) : Date.now().toString(36)}`;
     acceptCoachInvite(validAnonId, invite);
     setAccepted(true);
+    try {
+      await fetch("/api/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "accept",
+          inviteId: inviteId || undefined,
+          coachId: invite.coachId,
+          traineeId: validAnonId,
+          traineeName: invite.traineeName,
+          invite,
+        }),
+      });
+    } catch {
+      // Offline / local fallback already persisted in appStore
+    }
     setTimeout(() => {
       router.push("/today");
-    }, 600);
+    }, 500);
   };
 
   return (

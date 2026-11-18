@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appStore } from "@/lib/store";
 import { resolveRouteTenantContext } from "@/lib/auth/server-session";
-import { checkRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { checkDistributedRateLimit, resolveRateLimitKey } from "@/lib/auth/rate-limit";
+import { isFirestoreRuntimeAvailable } from "@/lib/firebase/admin";
 import {
+  deleteVisualSnapshotFromFirestore,
   ensureFirestoreCoachBridgeRegistered,
   loadBootstrapForUser,
+  loadVisualSnapshotsFromFirestore,
+  saveVisualSnapshotToFirestore,
 } from "@/lib/firebase/firestore-repository";
 import {
   STANDARDIZED_POSE_GUIDES,
@@ -19,6 +23,8 @@ import {
   canTraineeUploadProgressPhotos,
 } from "@/lib/ai/visual-progress";
 import { WorkoutSession, BodyMetricEntry } from "@/lib/types";
+import { getActiveGeminiModel } from "@/lib/gemini";
+import { logStructuredAiEvent } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +49,17 @@ export async function GET(req: NextRequest) {
     const poseId: VisualPoseId = STANDARDIZED_POSE_GUIDES[poseParam]
       ? poseParam
       : "front_relaxed";
+
+    if (tenant.session && isFirestoreRuntimeAvailable()) {
+      try {
+        const cloudSnaps = await loadVisualSnapshotsFromFirestore(traineeId);
+        if (cloudSnaps.length > 0) {
+          visualProgressStore.hydrateFromFirestoreRecords(traineeId, cloudSnaps);
+        }
+      } catch {
+        // Non-fatal fallback
+      }
+    }
 
     const snapshots = visualProgressStore.getSnapshots(traineeId, poseId);
     let sessions = appStore.getSessions(traineeId);
@@ -88,11 +105,12 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load visual progress timeline.";
     return NextResponse.json(
       {
         ok: false,
-        error: err?.message || "Failed to load visual progress timeline.",
+        error: msg,
       },
       { status: 500 }
     );
@@ -130,6 +148,9 @@ export interface VisualProgressPostRequestBody {
 }
 
 export async function POST(req: Request) {
+  const startedAtMs = Date.now();
+  const modelRequested = getActiveGeminiModel();
+  let effectiveTenantForLog: string | null = null;
   let body: Partial<VisualProgressPostRequestBody>;
   try {
     body = (await req.json()) as Partial<VisualProgressPostRequestBody>;
@@ -153,8 +174,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const rl = checkRateLimit(
-      resolveRateLimitKey(req, tenant.effectiveTraineeId, "ai-visual-progress"),
+    const rl = await checkDistributedRateLimit(
+      resolveRateLimitKey(req, "ai-visual-progress", tenant.effectiveTraineeId),
       { maxRequests: 40, windowMs: 60_000 }
     );
     if (!rl.allowed) {
@@ -165,6 +186,7 @@ export async function POST(req: Request) {
     }
     ensureFirestoreCoachBridgeRegistered();
     const traineeId = tenant.effectiveTraineeId;
+    effectiveTenantForLog = traineeId;
     const poseParam = (body.poseId || "front_relaxed") as VisualPoseId;
     const poseId: VisualPoseId = STANDARDIZED_POSE_GUIDES[poseParam]
       ? poseParam
@@ -230,7 +252,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 0A. Handle Snapshot Deletion (removes from store, localStorage, storage bucket, cached reports, and shadow logs)
+    // 0A. Handle Snapshot Deletion (removes from store, localStorage, storage bucket, Firestore, cached reports, and shadow logs)
     if (body.action === "delete") {
       if (!body.snapshotId) {
         return NextResponse.json(
@@ -238,7 +260,17 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+      const existingSnap = visualProgressStore
+        .getSnapshots(traineeId)
+        .find((s) => s.id === body.snapshotId);
       const delResult = visualProgressStore.deleteSnapshot(body.snapshotId, traineeId);
+      if (tenant.session && isFirestoreRuntimeAvailable()) {
+        delResult.purgedFromFirestore = await deleteVisualSnapshotFromFirestore(
+          traineeId,
+          body.snapshotId,
+          existingSnap?.anonymizedImageUrl?.slice(-48)
+        );
+      }
       return NextResponse.json(
         {
           ok: true,
@@ -290,16 +322,22 @@ export async function POST(req: Request) {
           sessions,
           confirmNoFaceVisible: body.confirmNoFaceVisible,
         });
-      } catch (captureErr: any) {
+      } catch (captureErr: unknown) {
+        const captureMsg =
+          captureErr instanceof Error
+            ? captureErr.message
+            : "Face detection failed closed. Please retake the photo.";
         return NextResponse.json(
           {
             ok: false,
-            error:
-              captureErr?.message ||
-              "Face detection failed closed. Please retake the photo.",
+            error: captureMsg,
           },
           { status: 400 }
         );
+      }
+
+      if (tenant.session && isFirestoreRuntimeAvailable()) {
+        await saveVisualSnapshotToFirestore(traineeId, capturedSnapshot);
       }
 
       const allPoseSnapshots = visualProgressStore.getSnapshots(traineeId, poseId);
@@ -313,6 +351,21 @@ export async function POST(req: Request) {
         metrics,
         traineeGoals,
         cloudVisionConsentGranted: body.cloudVisionConsentGranted,
+      });
+
+      logStructuredAiEvent({
+        route: "/api/ai/visual-progress",
+        modelRequested,
+        modelUsed: report.modelUsed || modelRequested,
+        fallbackTriggered:
+          report.analysisEngine === "no_vision_analysis_available" ||
+          report.analysisEngine === "gemini_3_8_flash_live_multimodal" ||
+          (report.modelUsed || modelRequested) !== modelRequested,
+        authMode: report.authMode || "unknown",
+        latencyMs: Date.now() - startedAtMs,
+        status: 200,
+        tenantId: traineeId,
+        detail: `action=capture engine=${report.analysisEngine}`,
       });
 
       return NextResponse.json(
@@ -403,6 +456,21 @@ export async function POST(req: Request) {
       cloudVisionConsentGranted: body.cloudVisionConsentGranted,
     });
 
+    logStructuredAiEvent({
+      route: "/api/ai/visual-progress",
+      modelRequested,
+      modelUsed: comparisonReport.modelUsed || modelRequested,
+      fallbackTriggered:
+        comparisonReport.analysisEngine === "no_vision_analysis_available" ||
+        comparisonReport.analysisEngine === "gemini_3_8_flash_live_multimodal" ||
+        (comparisonReport.modelUsed || modelRequested) !== modelRequested,
+      authMode: comparisonReport.authMode || "unknown",
+      latencyMs: Date.now() - startedAtMs,
+      status: 200,
+      tenantId: traineeId,
+      detail: `action=compare engine=${comparisonReport.analysisEngine}`,
+    });
+
     return NextResponse.json(
       {
         ok: true,
@@ -411,7 +479,20 @@ export async function POST(req: Request) {
       },
       { status: 200 }
     );
-  } catch {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to analyze visual progress comparison.";
+    logStructuredAiEvent({
+      route: "/api/ai/visual-progress",
+      modelRequested,
+      modelUsed: modelRequested,
+      fallbackTriggered: true,
+      authMode: "error",
+      latencyMs: Date.now() - startedAtMs,
+      status: 500,
+      tenantId: effectiveTenantForLog,
+      severity: "ERROR",
+      detail: msg,
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -447,7 +528,17 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    const existingSnap = visualProgressStore
+      .getSnapshots(traineeId)
+      .find((s) => s.id === snapshotId);
     const delResult = visualProgressStore.deleteSnapshot(snapshotId, traineeId);
+    if (tenant.session && isFirestoreRuntimeAvailable()) {
+      delResult.purgedFromFirestore = await deleteVisualSnapshotFromFirestore(
+        traineeId,
+        snapshotId,
+        existingSnap?.anonymizedImageUrl?.slice(-48)
+      );
+    }
     return NextResponse.json(
       {
         ok: true,
@@ -458,9 +549,10 @@ export async function DELETE(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to delete snapshot.";
     return NextResponse.json(
-      { ok: false, error: err?.message || "Failed to delete snapshot." },
+      { ok: false, error: msg },
       { status: 500 }
     );
   }

@@ -198,9 +198,10 @@ export function loadEvalCasesFromDisk(
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       throw new EvalCaseValidationError(file, [
-        `Invalid JSON syntax: ${err?.message || String(err)}`,
+        `Invalid JSON syntax: ${errMsg}`,
       ]);
     }
     return validateEvalCaseJson(parsed, file);
@@ -689,7 +690,10 @@ export async function runLiveModelVarianceEval(options?: {
         {
           traineeId: c.athlete_profile.traineeId,
           exerciseName: c.unsafe_proposal_override?.exerciseName || "Barbell Bench Press",
-          equipment: (c.unsafe_proposal_override?.equipment as any) || "barbell",
+          equipment:
+            (c.unsafe_proposal_override?.equipment as Parameters<
+              typeof runVertexAgenticCoachLoop
+            >[0]["equipment"]) || "barbell",
           currentWeightKg: c.unsafe_proposal_override?.currentWeightKg || 40,
           targetSets: 3,
           repLow: 8,

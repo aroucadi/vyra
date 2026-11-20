@@ -47,6 +47,7 @@ export interface User {
   };
   defaultGymId?: string;
   gymLocations?: GymLocation[];
+  healthProfile?: Record<string, unknown>;
 }
 
 export interface TrainerLink {

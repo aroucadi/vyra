@@ -119,7 +119,7 @@ describe("Vyra Supplement & Hydration Tracking Module", () => {
   });
 
   it("tracks hydration goal, running-total logging, and quick-add increments", () => {
-    const testDate = "2026-11-20";
+    const testDate = "2026-12-01";
     const goal = appStore.getHydrationGoal(traineeId);
     assert.ok(goal);
     assert.equal(goal.dailyTargetMl, 3500); // 3.5 Liters target

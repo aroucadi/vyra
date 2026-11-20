@@ -78,10 +78,15 @@ export function buildAlaaSeedAthleteModel() {
   model.static.trainingAgeMonths = createVersionedField(6, 0.9, "measured", "Consistent multi-week VYRA tracking");
   model.static.regime = createVersionedField("novice", 0.9, "measured", "Linear + double progression novice/early-intermediate");
   model.static.structuralProfile.injuryHistory = createVersionedField(
-    [...userAlaa.injuries],
+    [
+      ...userAlaa.injuries,
+      "Liver ALAT Watch (41 U/L trending from 20 U/L): Hold Ashwagandha & Shilajit; favor almonds/walnuts over refined sweets; re-test in 8-12w after 48-72h lifting rest",
+      "Vitamin D3 Priority: Chronic 10.1 -> 10.2 -> 26.7 ng/mL insufficiency requires mandatory daily D3+K2 with fat-containing lunch (target 40-60 ng/mL)",
+      "Creatine & Renal Baseline: Baseline creatinine 8.2 mg/L, DFG 113 mL/min; expect benign 1.5-3.0 mg/L rise from 2.82g/day creatine in Jumbo Hardcore",
+    ],
     0.95,
     "measured",
-    "Verified biomechanical constraints from VYRA Master Profile"
+    "Verified 4-year biomarker history (6 panels 2022-2026)"
   );
   model.static.goals = createVersionedField(
     [

@@ -87,7 +87,7 @@ describe("VYRA Life OS Reinvention & Experience Engine", () => {
   });
 
   test("deriveDayTimeline correctly calculates moment status at 07:00, 12:15, and 18:30", () => {
-    const uncompletedDateStr = "2026-11-20";
+    const uncompletedDateStr = "2026-12-01";
     // Clock at 07:00 AM (Hour 7)
     const morningTimeline = deriveDayTimeline(alaaId, uncompletedDateStr, 7);
     const morningHydration = morningTimeline.moments.find((m) => m.id === "moment_hydration_morning");

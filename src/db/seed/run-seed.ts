@@ -39,7 +39,7 @@ export async function runSeed(customDbUrl?: string) {
   console.log(`✓ Biomechanics: 5-Day Split (Mon/Tue/Wed/Thu/Sat) • Zero Lower-Body Loading on Monday & Tuesday`);
   console.log(`✓ Nutrition Floor: 2,710 kcal | 173.6g P / 317.4g C / 72.2g F (4 Scoops Scitec Jumbo = 2.82g Creatine)`);
   console.log(`✓ Morning Alignment: Waking 5g L-Glutamine + Hollow-Body Scapular Drills (${week1.days[0].morningRoutine?.length || 4} Drills)`);
-  console.log(`✓ Supplement Stack: L-Glutamine (07:30) • Jumbo+Shilajit+Enzymes • Electrolytes • D3+K2/Omega-3 (13:00) • Mag+Ashwagandha (22:30)`);
+  console.log(`✓ Supplement Stack: L-Glutamine (07:30) • Jumbo+Enzymes [Shilajit PAUSED] • Electrolytes • D3+K2/Omega-3 (13:00) • Mag [Ashwagandha PAUSED] (22:30)`);
   console.log(`✓ Hydration Architecture: ${masterHydrationGoal.dailyTargetMl} ml Daily Base + ${masterHydrationGoal.workoutDayBonusMl} ml Workout Bonus`);
   console.log("------------------------------------------------------------");
 
@@ -89,15 +89,24 @@ export async function runSeed(customDbUrl?: string) {
           injuries: userAlaa.injuries,
           goals: userAlaa.goals,
           hideWeightFromTrainee: userAlaa.hideWeightFromTrainee,
+          baselineMetrics: userAlaa.baselineMetrics,
+          healthProfile: userAlaa.healthProfile,
         },
       ])
       .onConflictDoUpdate({
         target: schema.users.id,
         set: {
-          name: schema.users.name,
-          email: schema.users.email,
-          goals: schema.users.goals,
-          injuries: schema.users.injuries,
+          name: userAlaa.name,
+          email: userAlaa.email,
+          avatarUrl: userAlaa.avatarUrl,
+          dob: userAlaa.dob,
+          sex: userAlaa.sex,
+          heightCm: userAlaa.heightCm,
+          goals: userAlaa.goals,
+          injuries: userAlaa.injuries,
+          hideWeightFromTrainee: userAlaa.hideWeightFromTrainee,
+          baselineMetrics: userAlaa.baselineMetrics,
+          healthProfile: userAlaa.healthProfile,
         },
       });
 

@@ -7,6 +7,23 @@ export interface GymLocation {
   address?: string;
   isDefault?: boolean;
   notes?: string;
+  equipmentNotes?: string[];
+}
+
+export interface BaselineMetrics {
+  weightFloorKg: number;
+  fedBaselineWeightKg: number;
+  heightM: number;
+  ageYears: number;
+  tdeeFormulaKcal: number;
+  tdeeStairAdjustedKcal: number;
+  dailyTargetKcal: number;
+  dailyMacrosTarget: {
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    creatineElementalG: number;
+  };
 }
 
 export interface User {
@@ -48,6 +65,7 @@ export interface User {
   defaultGymId?: string;
   gymLocations?: GymLocation[];
   healthProfile?: Record<string, unknown>;
+  baselineMetrics?: BaselineMetrics;
 }
 
 export interface TrainerLink {

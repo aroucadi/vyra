@@ -75,10 +75,29 @@ export function isFirestoreRuntimeAvailable(): boolean {
   const mock = getMockAdmin();
   if (mock?.firestore) return true;
   if (typeof window !== "undefined") return false;
-  return Boolean(
+  if (
     process.env.K_SERVICE ||
-      process.env.CLOUD_RUN_JOB ||
-      process.env.FIRESTORE_EMULATOR_HOST ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS
-  );
+    process.env.CLOUD_RUN_JOB ||
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ) {
+    return true;
+  }
+  // Check standard Google Cloud ADC file paths on local dev machines
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path");
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    const appdata = process.env.APPDATA || "";
+    const winPath = appdata ? path.join(appdata, "gcloud", "application_default_credentials.json") : "";
+    const unixPath = home ? path.join(home, ".config", "gcloud", "application_default_credentials.json") : "";
+    if ((winPath && fs.existsSync(winPath)) || (unixPath && fs.existsSync(unixPath))) {
+      return true;
+    }
+  } catch {
+    // Ignore fs errors in constrained environments
+  }
+  return false;
 }

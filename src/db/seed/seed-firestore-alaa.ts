@@ -135,9 +135,11 @@ export async function seedAlaaToFirestore(options?: {
   let authUserUid = ALAA_CANONICAL_UID;
   let authCreated = false;
   if (auth) {
+    console.log(`[1/4] Ensuring Firebase Auth account for ${ALAA_CANONICAL_EMAIL}...`);
     const authRes = await ensureAlaaFirebaseAuthUser(auth);
     authUserUid = authRes.authUid;
     authCreated = authRes.created;
+    console.log(`  ✔ Auth ready (UID: ${authUserUid}, created: ${authCreated})`);
   }
 
   const masterProgram = generateMaster16WeekProgram();
@@ -147,6 +149,7 @@ export async function seedAlaaToFirestore(options?: {
   masterProgram.hydrationGoal = masterHydrationGoal;
 
   // 1. Write user profile doc explicitly preserving role: "both" & canonical email
+  console.log(`[2/4] Syncing user profile doc (${ALAA_CANONICAL_UID}) with verified v2.1.0 biomarkers...`);
   await db
     .collection("users")
     .doc(ALAA_CANONICAL_UID)
@@ -162,12 +165,16 @@ export async function seedAlaaToFirestore(options?: {
       }),
       { merge: true }
     );
+  console.log(`  ✔ User profile saved`);
 
   // 2. Write 16-week Nov 23 Master Program split across weeks/w01..w16 subcollection docs
+  console.log(`[3/4] Syncing 16-week Master Program (${masterProgram.id}) across subcollections...`);
   await saveProgramToFirestore(ALAA_CANONICAL_UID, masterProgram, db);
+  console.log(`  ✔ 16 weeks saved to subcollection`);
 
   // 3. Write supplement protocols, hydration goals, and bodyweight metrics idempotently
   //    (intentionally omits sessions so any live logged sessions remain untouched)
+  console.log(`[4/4] Syncing supplement protocols, hydration, metrics & AthleteModel...`);
   await saveUserSyncBatch(
     ALAA_CANONICAL_UID,
     {
@@ -181,6 +188,7 @@ export async function seedAlaaToFirestore(options?: {
   // 4. Write Alaa's seeded AthleteModel
   const coachAdapter = createFirestoreCoachDbAdapter(db);
   const athleteModelSynced = await coachAdapter.upsertAthleteModelInDb(buildAlaaSeedAthleteModel());
+  console.log(`  ✔ AthleteModel synchronized with safety rails`);
 
   return {
     success: true,

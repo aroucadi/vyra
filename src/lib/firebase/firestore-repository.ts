@@ -217,44 +217,47 @@ export async function saveProgramToFirestore(
 
   const progRef = db.collection("users").doc(safeUid).collection("programs").doc(safeProgId);
   const { weeks, ...headerFields } = program;
-  const ops: Array<(batch: WriteBatch) => void> = [];
 
-  ops.push((batch) => {
-    batch.set(
-      progRef,
-      stripUndefinedDeep({
-        ...headerFields,
-        id: safeProgId,
-        traineeId: safeUid,
-        updatedAt: program.updatedAt || new Date().toISOString(),
-      }),
-      { merge: true }
-    );
-  });
+  // 1. Write the program header document
+  await progRef.set(
+    stripUndefinedDeep({
+      ...headerFields,
+      id: safeProgId,
+      traineeId: safeUid,
+      updatedAt: program.updatedAt || new Date().toISOString(),
+    }),
+    { merge: true }
+  );
 
+  // 2. Write program weeks in controlled concurrent chunks rather than a single monolithic
+  //    WriteBatch. A full 16-week mesocycle is ~1.8 MB of deeply nested JSON. Committing all
+  //    weeks in one batch exceeds gRPC deadlines (60s) over WAN and triggers DEADLINE_EXCEEDED.
   const validWeekDocIds = new Set<string>();
   if (Array.isArray(weeks)) {
-    for (const week of weeks) {
-      const weekDocId = formatWeekDocId(week.weekIndex);
-      validWeekDocIds.add(weekDocId);
-      const weekRef = progRef.collection("weeks").doc(weekDocId);
-      ops.push((batch) => {
-        batch.set(weekRef, stripUndefinedDeep(week), { merge: true });
-      });
+    const CONCURRENCY = 2;
+    for (let i = 0; i < weeks.length; i += CONCURRENCY) {
+      const chunk = weeks.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map((week) => {
+          const weekDocId = formatWeekDocId(week.weekIndex);
+          validWeekDocIds.add(weekDocId);
+          const weekRef = progRef.collection("weeks").doc(weekDocId);
+          return weekRef.set(stripUndefinedDeep(week), { merge: true });
+        })
+      );
     }
     try {
       const existingWeeksSnap = await progRef.collection("weeks").get();
-      for (const existingDoc of existingWeeksSnap.docs) {
-        if (!validWeekDocIds.has(existingDoc.id)) {
-          ops.push((batch) => batch.delete(existingDoc.ref));
-        }
+      const deleteOps = existingWeeksSnap.docs
+        .filter((existingDoc) => !validWeekDocIds.has(existingDoc.id))
+        .map((existingDoc) => (batch: WriteBatch) => batch.delete(existingDoc.ref));
+      if (deleteOps.length > 0) {
+        await commitFirestoreOperationsInChunks(db, deleteOps, 100);
       }
     } catch {
       // Non-fatal if week subcollection listing is mocked or unavailable
     }
   }
-
-  await commitFirestoreOperationsInChunks(db, ops);
 }
 
 export async function loadProgramsFromFirestore(
@@ -415,30 +418,7 @@ export async function saveUserSyncBatch(
 
   if (Array.isArray(payload.programs)) {
     for (const prog of payload.programs.slice(0, 20)) {
-      const safeProgId = sanitizeFirestoreDocId(prog?.id);
-      if (!safeProgId) continue;
-      const { weeks, ...headerFields } = prog;
-      const progRef = userRef.collection("programs").doc(safeProgId);
-      ops.push((batch) => {
-        batch.set(
-          progRef,
-          stripUndefinedDeep({
-            ...headerFields,
-            id: safeProgId,
-            traineeId: safeUid,
-            updatedAt: prog.updatedAt || new Date().toISOString(),
-          }),
-          { merge: true }
-        );
-      });
-      if (Array.isArray(weeks)) {
-        for (const week of weeks.slice(0, 52)) {
-          const weekRef = progRef.collection("weeks").doc(formatWeekDocId(week.weekIndex));
-          ops.push((batch) => {
-            batch.set(weekRef, stripUndefinedDeep(week), { merge: true });
-          });
-        }
-      }
+      await saveProgramToFirestore(safeUid, prog, db);
     }
   }
 

@@ -5,7 +5,7 @@ import { appStore } from "@/lib/store";
 import { checkIsPersonalRecord } from "@/lib/utils";
 import { WorkoutSession } from "@/lib/types";
 
-describe("VYRA Life OS Reinvention & Experience Engine", () => {
+describe("Timeline & Daily Moments Engine", () => {
   const alaaId = "usr_trainee_alaa";
 
   test("deriveDayTimeline generates calm, structured chronological moments", () => {

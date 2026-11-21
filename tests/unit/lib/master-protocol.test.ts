@@ -207,4 +207,104 @@ describe('The Definitive 5-Day Custom 360° Hypertrophy Protocol Test Suite (Lau
     assert.ok(sleepStack);
     assert.strictEqual(sleepStack.phases[0].doses[0].targetTime, '22:30');
   });
+
+  it('verifies v2.1.0 baselineMetrics, corrected labRecordedAge (37), and equipmentNotes', () => {
+    // 1. baselineMetrics
+    assert.ok(userAlaa.baselineMetrics, 'Alaa profile must have baselineMetrics');
+    assert.strictEqual(userAlaa.baselineMetrics.weightFloorKg, 52.05);
+    assert.strictEqual(userAlaa.baselineMetrics.fedBaselineWeightKg, 52.45);
+    assert.strictEqual(userAlaa.baselineMetrics.heightM, 1.72);
+    assert.strictEqual(userAlaa.baselineMetrics.ageYears, 37);
+    assert.strictEqual(userAlaa.baselineMetrics.tdeeFormulaKcal, 2006);
+    assert.strictEqual(userAlaa.baselineMetrics.tdeeStairAdjustedKcal, 2180);
+    assert.strictEqual(userAlaa.baselineMetrics.dailyTargetKcal, 2710);
+    assert.strictEqual(userAlaa.baselineMetrics.dailyMacrosTarget.proteinG, 173.6);
+    assert.strictEqual(userAlaa.baselineMetrics.dailyMacrosTarget.carbsG, 317.4);
+    assert.strictEqual(userAlaa.baselineMetrics.dailyMacrosTarget.fatG, 72.2);
+    assert.strictEqual(userAlaa.baselineMetrics.dailyMacrosTarget.creatineElementalG, 2.82);
+
+    // 2. healthProfile.labRecordedAge corrected to 37
+    assert.ok(userAlaa.healthProfile, 'Alaa profile must have healthProfile');
+    assert.strictEqual(userAlaa.healthProfile.labRecordedAge, 37);
+
+    // 3. Punch gymLocation equipmentNotes
+    assert.ok(userAlaa.gymLocations, 'Alaa profile must have gymLocations');
+    const punch = userAlaa.gymLocations.find((g) => g.id === 'gym_punch_lissasfa');
+    assert.ok(punch, 'Punch gym location must exist');
+    assert.ok(punch.equipmentNotes, 'Punch gym must have equipmentNotes');
+    assert.strictEqual(punch.equipmentNotes.length, 3);
+    assert.ok(punch.equipmentNotes[0].includes('2:1 dual-pulley stack'));
+    assert.ok(punch.equipmentNotes[1].includes('Hip Thrust / Glute Bridge Machine'));
+    assert.ok(punch.equipmentNotes[2].includes('No seated ab crunch machine exists at Punch'));
+  });
+
+  it('verifies 5 Canonical Universal Blind Execution Rules and updated Schedule Overview', () => {
+    // 1. Blind Execution Rules
+    assert.ok(program.blindExecutionRules, 'Program must have blindExecutionRules');
+    assert.strictEqual(program.blindExecutionRules.length, 5);
+    assert.ok(program.blindExecutionRules[0].startsWith('RULE 1 (FLAT WORKING LOADS — NO EGO PYRAMIDS)'));
+    assert.ok(program.blindExecutionRules[1].startsWith('RULE 2 (LONG-LENGTH STRETCH PAUSE)'));
+    assert.ok(program.blindExecutionRules[2].startsWith('RULE 3 (SHOULDER SAFETY GUARDRAIL)'));
+    assert.ok(program.blindExecutionRules[3].startsWith('RULE 4 (ANTI-APT PELVIC & RIB LOCK)'));
+    assert.ok(program.blindExecutionRules[4].startsWith('RULE 5 (WEEKDAY 4A/4B & 5A/5B CLOCK LOCK)'));
+
+    // 2. Schedule Overview
+    assert.ok(program.scheduleOverview, 'Program must have scheduleOverview');
+    assert.strictEqual(
+      program.scheduleOverview.mondayToThursdayWindow,
+      '12:05–12:42 (5 min Warm-Up + 32 min Lifting = 37 min flat)'
+    );
+    assert.strictEqual(
+      program.scheduleOverview.friday,
+      'Rest / Active Recovery (Daily Office Stairs)'
+    );
+    assert.strictEqual(
+      program.scheduleOverview.saturdayWindow,
+      'Morning Unrushed (~5 min Warm-Up + 40–45 min Lifting before 15:00 Hammam)'
+    );
+    assert.strictEqual(
+      program.scheduleOverview.sunday,
+      'Full Rest & Meal Prep (2-Cup Avocado-Milk-Casein Batch)'
+    );
+  });
+
+  it('verifies 28 progression rules, setup cues, long-length stretch cues, and set prescriptions across standard and deload weeks', () => {
+    const allExercisesW1 = week1.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
+    assert.strictEqual(allExercisesW1.length, 28);
+
+    // Every exercise has progressionRule, setupCues, executionAndStretchCues, and setPrescriptions
+    allExercisesW1.forEach((ex) => {
+      assert.ok(ex.progressionRule && ex.progressionRule.length > 5, `Exercise ${ex.exerciseName} missing progressionRule`);
+      assert.ok(ex.setupCues && ex.setupCues.length >= 1, `Exercise ${ex.exerciseName} missing setupCues`);
+      assert.ok(
+        ex.executionAndStretchCues && ex.executionAndStretchCues.length >= 1,
+        `Exercise ${ex.exerciseName} missing executionAndStretchCues`
+      );
+      assert.ok(
+        ex.setPrescriptions && ex.setPrescriptions.length === ex.sets,
+        `Exercise ${ex.exerciseName} in week 1 must have set prescriptions matching sets (${ex.sets})`
+      );
+    });
+
+    const totalExecCues = allExercisesW1.reduce((acc, ex) => acc + (ex.executionAndStretchCues?.length || 0), 0);
+    assert.strictEqual(totalExecCues, 50, 'Must have exactly 50 execution and stretch cues across all 28 exercises');
+
+    const totalSetupCues = allExercisesW1.reduce((acc, ex) => acc + (ex.setupCues?.length || 0), 0);
+    assert.strictEqual(totalSetupCues, 44, 'Must have exactly 44 setup cues across all 28 exercises');
+
+    // Deload week (week 7) check
+    const allExercisesW7 = week7.days.flatMap((d) => d.blocks.flatMap((b) => b.exercises));
+    assert.strictEqual(allExercisesW7.length, 28);
+    allExercisesW7.forEach((ex) => {
+      assert.strictEqual(
+        ex.setPrescriptions?.length,
+        ex.sets,
+        `Exercise ${ex.exerciseName} in week 7 (deload) must have set prescriptions matching sets (${ex.sets})`
+      );
+      assert.ok(
+        ex.setPrescriptions?.every((s) => s.targetRir >= 3),
+        `Exercise ${ex.exerciseName} in week 7 must prescribe >= 3 RIR for deload`
+      );
+    });
+  });
 });

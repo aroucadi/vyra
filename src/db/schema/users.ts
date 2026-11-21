@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   injuries: text("injuries").array(),
   goals: text("goals").array(),
   hideWeightFromTrainee: boolean("hide_weight_from_trainee").default(false),
+  baselineMetrics: jsonb("baseline_metrics"),
+  healthProfile: jsonb("health_profile"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

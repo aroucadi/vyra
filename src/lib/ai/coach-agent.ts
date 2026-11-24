@@ -275,7 +275,7 @@ export const VERTEX_AGENT_TOOL_DECLARATIONS = [
         tier: {
           type: "STRING",
           description:
-            "tier1_progression | tier2_volume_optimization | tier3_exercise_swap | tier4_recovery_pivot | tier5_setup_calibration | tier0_medical_boundary",
+            "tier_1_micro_setup | tier_2_surgical_swap | tier_3_volume_prune | tier_4_overload_protocol | tier_5_macro_pivot",
         },
         headline: { type: "STRING" },
         prescribedWeightKg: { type: "NUMBER" },

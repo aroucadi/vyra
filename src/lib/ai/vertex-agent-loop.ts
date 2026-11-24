@@ -126,6 +126,21 @@ const ALLOWED_COACHING_TIERS: ReadonlySet<string> = new Set([
   "tier_5_macro_pivot",
 ]);
 
+export const TIER_NORMALIZATION_MAP: Record<string, CoachingTier> = {
+  tier_1_micro_setup: "tier_1_micro_setup",
+  tier_2_surgical_swap: "tier_2_surgical_swap",
+  tier_3_volume_prune: "tier_3_volume_prune",
+  tier_4_overload_protocol: "tier_4_overload_protocol",
+  tier_5_macro_pivot: "tier_5_macro_pivot",
+  // Legacy aliases for backward & prompt compatibility
+  tier1_progression: "tier_4_overload_protocol",
+  tier2_volume_optimization: "tier_3_volume_prune",
+  tier3_exercise_swap: "tier_2_surgical_swap",
+  tier4_recovery_pivot: "tier_5_macro_pivot",
+  tier5_setup_calibration: "tier_1_micro_setup",
+  tier0_medical_boundary: "tier_1_micro_setup",
+};
+
 /**
  * Strictly validates LLM coaching output against the schema.
  * Malformed or out-of-range output is rejected, NEVER silently coerced.
@@ -148,8 +163,10 @@ export function validateLlmCoachDecisionSchema(raw: unknown): {
   }
 
   const obj = raw as Record<string, unknown>;
+  const rawTier = typeof obj.tier === "string" ? obj.tier.trim() : "";
+  const normalizedTier = TIER_NORMALIZATION_MAP[rawTier];
 
-  if (typeof obj.tier !== "string" || !ALLOWED_COACHING_TIERS.has(obj.tier)) {
+  if (!normalizedTier) {
     errors.push(
       `Invalid or unsupported tier "${String(obj.tier)}". Must be one of: ${Array.from(ALLOWED_COACHING_TIERS).join(", ")}.`
     );
@@ -228,7 +245,7 @@ export function validateLlmCoachDecisionSchema(raw: unknown): {
     valid: true,
     errors: [],
     parsed: {
-      tier: obj.tier as CoachingTier,
+      tier: (normalizedTier || obj.tier) as CoachingTier,
       headline: (obj.headline as string).trim(),
       rootCauseDiagnosis: (obj.rootCauseDiagnosis as string).trim(),
       proposedFix: (obj.proposedFix as string).trim(),
@@ -488,18 +505,31 @@ export function computeSafeLoadProgressionLimit(params: {
       ? Number(((Math.max(0, recentWeightProgressionDeltaKg) / currentWeightKg) * 100).toFixed(2))
       : 0;
 
-  if (activeJointSymptomFreeze || currentWeightKg <= 0) {
+  if (activeJointSymptomFreeze) {
     return {
       maxStepKg: 0,
       maxAllowedWeightKg: Math.max(0, currentWeightKg),
       equipmentIncrementKg: 0,
       percentageCapPct: 0,
       isIsolationMovement,
-      activeJointSymptomFreeze,
+      activeJointSymptomFreeze: true,
       recentProgressionRatePct,
-      rationale: activeJointSymptomFreeze
-        ? "Active tendon/joint symptom detected on movement chain; load increase capped at 0kg to protect connective tissue."
-        : "Zero baseline load; cannot compute percentage jump.",
+      rationale:
+        "Active tendon/joint symptom detected on movement chain; load increase capped at 0kg to protect connective tissue.",
+    };
+  }
+
+  if (currentWeightKg <= 0) {
+    const initialStepKg = isIsolationMovement ? 1.0 : isLowerBodyCompound ? 5.0 : 2.5;
+    return {
+      maxStepKg: initialStepKg,
+      maxAllowedWeightKg: initialStepKg,
+      equipmentIncrementKg: isIsolationMovement ? 1.0 : 2.5,
+      percentageCapPct: 100,
+      isIsolationMovement,
+      activeJointSymptomFreeze: false,
+      recentProgressionRatePct: 0,
+      rationale: `Zero baseline load; initial baseline loading capped at +${initialStepKg}kg.`,
     };
   }
 

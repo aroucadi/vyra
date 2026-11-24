@@ -42,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local audit documents
+AI_AND_FITNESS_INTELLIGENCE_AUDIT.md

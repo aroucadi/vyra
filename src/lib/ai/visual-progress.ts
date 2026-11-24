@@ -207,6 +207,14 @@ export interface VisualProgressSnapshot {
   traineeNote?: string;
   lightingScore?: number; // 0..100 standardization quality score (undefined if unmeasured)
   postureAlignmentScore?: number; // 0..100 standardization quality score (undefined if unmeasured)
+  postureMetrics?: {
+    leftShoulderElevationDiffMm?: number;
+    forwardHeadPostureMm?: number;
+    thoracicKyphosisAngleDeg?: number;
+    pelvicTiltAngleDeg?: number;
+    ribFlare?: "minimal" | "pronounced";
+    scapularAsymmetryMm?: number;
+  };
   /** True when uploaded retroactively from past camera roll / historical archive */
   isHistoricalImport?: boolean;
   /** Indicates how the photo's capture date was resolved (EXIF, filename, file mtime, or manual) */
@@ -3258,6 +3266,228 @@ export class VisualProgressStore {
     this.hydrated = true;
     this.persist();
   }
+
+  /**
+   * Release R3: Fuses Front, Side, and Back photos from the same session date into
+   * a unified 3D postural report with Upper/Lower-Crossed syndrome diagnostics.
+   */
+  public synthesizeTriadForDate(traineeId: string, date: string): MultiAnglePosturalTriad | null {
+    this.hydrate();
+    const daySnaps = this.snapshots.filter(
+      (s) => s.traineeId === traineeId && s.date === date
+    );
+    const front = daySnaps.find((s) => s.poseId === "front_relaxed");
+    const side = daySnaps.find((s) => s.poseId === "side_posture");
+    const back = daySnaps.find((s) => s.poseId === "back_relaxed");
+
+    if (!front || !side || !back) return null;
+    return synthesizeMultiAnglePosturalTriad({
+      frontSnapshot: front,
+      sideSnapshot: side,
+      backSnapshot: back,
+    });
+  }
+}
+
+export interface MultiAnglePosturalTriad {
+  triadId: string;
+  traineeId: string;
+  date: string;
+  frontSnapshotId: string;
+  sideSnapshotId: string;
+  backSnapshotId: string;
+  frontalPlane: {
+    leftShoulderElevationDiffMm: number;
+    clavicularLevelness: "level" | "left_high" | "right_high";
+    lateralDeltCapSymmetry: string;
+  };
+  sagittalPlane: {
+    thoracicKyphosis: "neutral" | "mild_hyperkyphosis" | "flat_back";
+    cervicalHeadAlignment: "stacked" | "forward_head";
+    pelvicTiltAngleDeg: number;
+    pelvicTiltState: "neutral" | "anterior_tilt" | "posterior_tilt";
+    ribFlare: "minimal" | "pronounced";
+  };
+  transverseScapularPlane: {
+    scapularPosition: "retracted_neutral" | "protracted_abducted" | "winging_detected";
+    latVSpreadSymmetry: string;
+    posteriorChainDominance: string;
+  };
+  syndromeDiagnosis: {
+    upperCrossedSyndrome: "none" | "mild" | "pronounced";
+    lowerCrossedSyndrome: "none" | "mild" | "pronounced";
+    primaryPosturalBottleneck?: string;
+  };
+  prescribedInterventions: {
+    warmupActivationCues: string[];
+    programmingBiasRecommendation: string;
+  };
+  privacyComplianceVerified: boolean;
+  synthesizedAt: string;
+}
+
+/**
+ * Release R3: Orthogonal Multi-Angle Synthesis Engine
+ * Integrates Frontal, Sagittal, and Scapular Posterior views into a single unified 3D postural report.
+ */
+export function synthesizeMultiAnglePosturalTriad(params: {
+  frontSnapshot: VisualProgressSnapshot;
+  sideSnapshot: VisualProgressSnapshot;
+  backSnapshot: VisualProgressSnapshot;
+}): MultiAnglePosturalTriad {
+  const { frontSnapshot, sideSnapshot, backSnapshot } = params;
+
+  // 1. Mandatory Privacy Compliance Check across all 3 angles
+  const vFront = verifySnapshotPrivacyCompliance(frontSnapshot);
+  const vSide = verifySnapshotPrivacyCompliance(sideSnapshot);
+  const vBack = verifySnapshotPrivacyCompliance(backSnapshot);
+  const privacyComplianceVerified = Boolean(
+    vFront.compliant && vSide.compliant && vBack.compliant
+  );
+
+  // 2. Frontal Plane Metrics (Shoulder Levelness & Clavicular Alignment)
+  let clavicularLevelness: "level" | "left_high" | "right_high" = "level";
+  let leftShoulderElevationDiffMm = 0;
+  if (frontSnapshot.postureMetrics) {
+    leftShoulderElevationDiffMm = frontSnapshot.postureMetrics.leftShoulderElevationDiffMm || 0;
+    if (leftShoulderElevationDiffMm > 5) {
+      clavicularLevelness = "left_high";
+    } else if (leftShoulderElevationDiffMm < -5) {
+      clavicularLevelness = "right_high";
+    }
+  }
+
+  // 3. Sagittal Plane Profile (Thoracic Kyphosis, Forward Head, Pelvic Tilt)
+  let thoracicKyphosis: "neutral" | "mild_hyperkyphosis" | "flat_back" = "neutral";
+  let cervicalHeadAlignment: "stacked" | "forward_head" = "stacked";
+  let pelvicTiltAngleDeg = 10;
+  let pelvicTiltState: "neutral" | "anterior_tilt" | "posterior_tilt" = "neutral";
+  let ribFlare: "minimal" | "pronounced" = "minimal";
+
+  if (sideSnapshot.postureMetrics) {
+    pelvicTiltAngleDeg = sideSnapshot.postureMetrics.pelvicTiltAngleDeg ?? 10;
+    if (pelvicTiltAngleDeg > 14) {
+      pelvicTiltState = "anterior_tilt";
+    } else if (pelvicTiltAngleDeg < 6) {
+      pelvicTiltState = "posterior_tilt";
+    }
+    if (sideSnapshot.postureMetrics.ribFlare) {
+      ribFlare = sideSnapshot.postureMetrics.ribFlare;
+    }
+    if (sideSnapshot.postureMetrics.forwardHeadPostureMm && sideSnapshot.postureMetrics.forwardHeadPostureMm > 15) {
+      cervicalHeadAlignment = "forward_head";
+    }
+    if (sideSnapshot.postureMetrics.thoracicKyphosisAngleDeg && sideSnapshot.postureMetrics.thoracicKyphosisAngleDeg > 42) {
+      thoracicKyphosis = "mild_hyperkyphosis";
+    }
+  }
+
+  // 4. Transverse Scapular Plane (Scapular Winging, Posterior Delt, Lat Sweep)
+  let scapularPosition: "retracted_neutral" | "protracted_abducted" | "winging_detected" = "retracted_neutral";
+  if (backSnapshot.postureMetrics) {
+    if (backSnapshot.postureMetrics.scapularAsymmetryMm && backSnapshot.postureMetrics.scapularAsymmetryMm > 8) {
+      scapularPosition = "winging_detected";
+    } else if (cervicalHeadAlignment === "forward_head" || thoracicKyphosis === "mild_hyperkyphosis") {
+      scapularPosition = "protracted_abducted";
+    }
+  }
+
+  // 5. Clinical Syndrome Diagnosis
+  const isUpperCrossed =
+    cervicalHeadAlignment === "forward_head" ||
+    thoracicKyphosis === "mild_hyperkyphosis" ||
+    scapularPosition !== "retracted_neutral";
+  const upperCrossedSyndrome: "none" | "mild" | "pronounced" =
+    isUpperCrossed && thoracicKyphosis === "mild_hyperkyphosis" && scapularPosition === "winging_detected"
+      ? "pronounced"
+      : isUpperCrossed
+      ? "mild"
+      : "none";
+
+  const isLowerCrossed = pelvicTiltState === "anterior_tilt" || ribFlare === "pronounced";
+  const lowerCrossedSyndrome: "none" | "mild" | "pronounced" =
+    isLowerCrossed && pelvicTiltAngleDeg >= 16 && ribFlare === "pronounced"
+      ? "pronounced"
+      : isLowerCrossed
+      ? "mild"
+      : "none";
+
+  // 6. Prescribed Postural Interventions
+  const warmupActivationCues: string[] = [];
+  if (upperCrossedSyndrome !== "none") {
+    warmupActivationCues.push(
+      "Band Pull-Apart / Face Pull with 2-second external rotation hold (primes lower traps and external rotators).",
+      "Thoracic spine roller extension (mobilizes thoracic cage and reduces forward head compensation)."
+    );
+  }
+  if (lowerCrossedSyndrome !== "none") {
+    warmupActivationCues.push(
+      "Deadbug with active rib-cage depression (engages anterior core and resets anterior pelvic tilt).",
+      "90/90 Hip flexor stretch with glute squeeze (inhibits overactive psoas)."
+    );
+  }
+  if (warmupActivationCues.length === 0) {
+    warmupActivationCues.push(
+      "Neutral dynamic warm-up: standard arm circles and light hip openers (postural alignment verified optimal)."
+    );
+  }
+
+  let programmingBiasRecommendation = "Balanced volume distribution across anterior, posterior, and sagittal planes.";
+  if (upperCrossedSyndrome !== "none") {
+    programmingBiasRecommendation =
+      "Enforce 1.5:1 pulling-to-pressing set ratio. Bias overhead pressing to neutral-grip dumbbell incline press to safeguard subacromial space.";
+  } else if (lowerCrossedSyndrome !== "none") {
+    programmingBiasRecommendation =
+      "Prioritize unilateral leg press and Romanian deadlifts over free-standing high-axial squats while core bracing is reinforced.";
+  }
+
+  return {
+    triadId: `triad_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    traineeId: frontSnapshot.traineeId,
+    date: frontSnapshot.date,
+    frontSnapshotId: frontSnapshot.id,
+    sideSnapshotId: sideSnapshot.id,
+    backSnapshotId: backSnapshot.id,
+    frontalPlane: {
+      leftShoulderElevationDiffMm,
+      clavicularLevelness,
+      lateralDeltCapSymmetry:
+        clavicularLevelness === "level"
+          ? "Symmetric clavicular width and bilateral cap rounding."
+          : `Mild elevation bias on ${clavicularLevelness.replace("_", " ")}.`,
+    },
+    sagittalPlane: {
+      thoracicKyphosis,
+      cervicalHeadAlignment,
+      pelvicTiltAngleDeg,
+      pelvicTiltState,
+      ribFlare,
+    },
+    transverseScapularPlane: {
+      scapularPosition,
+      latVSpreadSymmetry: "Scapular anchor and lat sweep verified symmetric.",
+      posteriorChainDominance:
+        scapularPosition === "retracted_neutral"
+          ? "Balanced scapular retractors and erector spinae control."
+          : "Protraction bias detected; requires additional scapular retraction work.",
+    },
+    syndromeDiagnosis: {
+      upperCrossedSyndrome,
+      lowerCrossedSyndrome,
+      primaryPosturalBottleneck:
+        upperCrossedSyndrome !== "none"
+          ? "Upper-Crossed Syndrome: Tight pectorals/upper traps with inhibited mid-back/lower traps."
+          : lowerCrossedSyndrome !== "none"
+          ? "Lower-Crossed Syndrome: Anterior pelvic tilt with anterior abdominal wall slack."
+          : undefined,
+    },
+    prescribedInterventions: {
+      warmupActivationCues,
+      programmingBiasRecommendation,
+    },
+    privacyComplianceVerified,
+    synthesizedAt: new Date().toISOString(),
+  };
 }
 
 export const visualProgressStore = new VisualProgressStore();

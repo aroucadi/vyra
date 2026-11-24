@@ -35,6 +35,8 @@ export interface UserBootstrapPayload {
   readinessLogs: WearableBiometricSnapshot[];
   athleteModel: AthleteModel | null;
   coachingExperiments: CoachingExperiment[];
+  sensoryMemories?: SensoryFeedbackEntry[];
+  gymInventories?: LocationEquipmentInventory[];
 }
 
 export interface UserSyncBatchInput {
@@ -47,6 +49,9 @@ export interface UserSyncBatchInput {
   hydrationGoals?: HydrationGoal[];
   hydrationLogs?: HydrationLog[];
   readinessLogs?: WearableBiometricSnapshot[];
+  sensoryMemories?: SensoryFeedbackEntry[];
+  gymInventories?: LocationEquipmentInventory[];
+  athleteModel?: AthleteModel | null;
 }
 
 /**
@@ -334,6 +339,8 @@ export async function loadBootstrapForUser(params: {
     readinessSnap,
     athleteModelSnap,
     experimentsSnap,
+    sensoryMemories,
+    gymInventories,
   ] = await Promise.all([
     loadProgramsFromFirestore(params.uid, db),
     userDoc.collection("sessions").get(),
@@ -345,6 +352,8 @@ export async function loadBootstrapForUser(params: {
     userDoc.collection("readiness").get(),
     userDoc.collection("athleteModels").doc("current").get(),
     userDoc.collection("coachingExperiments").get(),
+    loadSensoryEntriesFromFirestore(params.uid, db),
+    loadGymInventoriesFromFirestore(params.uid, db),
   ]);
 
   const sessions = sessionsSnap.docs
@@ -386,6 +395,8 @@ export async function loadBootstrapForUser(params: {
     readinessLogs,
     athleteModel,
     coachingExperiments,
+    sensoryMemories,
+    gymInventories,
   };
 }
 
@@ -498,6 +509,26 @@ export async function saveUserSyncBatch(
         batch.set(ref, stripUndefinedDeep({ ...rl, id: safeRlId, traineeId: safeUid }), { merge: true });
       });
     }
+  }
+
+  if (Array.isArray(payload.sensoryMemories)) {
+    for (const sm of payload.sensoryMemories.slice(-200)) {
+      await saveSensoryEntryToFirestore(safeUid, sm, db);
+    }
+  }
+
+  if (Array.isArray(payload.gymInventories)) {
+    for (const gi of payload.gymInventories.slice(0, 20)) {
+      await saveGymInventoryToFirestore(safeUid, gi, db);
+    }
+  }
+
+  if (payload.athleteModel) {
+    const coachAdapter = createFirestoreCoachDbAdapter(db);
+    await coachAdapter.upsertAthleteModelInDb({
+      ...payload.athleteModel,
+      traineeId: safeUid,
+    });
   }
 
   const writtenDocs = await commitFirestoreOperationsInChunks(db, ops);

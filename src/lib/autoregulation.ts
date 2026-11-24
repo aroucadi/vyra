@@ -63,15 +63,39 @@ const AXIAL_SUBSTITUTIONS: Record<string, { replacement: string; reason: string 
     replacement: "Hack Squat Machine",
     reason: "Machine support reduces back strain on low recovery",
   },
+  "back squat": {
+    replacement: "Hack Squat Machine",
+    reason: "Machine support reduces back strain on low recovery",
+  },
   "barbell squat": {
     replacement: "Leg Press Machine",
     reason: "Provides stable back support while maintaining leg work",
+  },
+  "squat": {
+    replacement: "Leg Press Machine",
+    reason: "Provides stable back support while maintaining leg work",
+  },
+  "barbell deadlift": {
+    replacement: "45° Back / Glute Hyperextension",
+    reason: "Less lower-back fatigue on low sleep while targeting posterior chain",
+  },
+  "deadlift": {
+    replacement: "45° Back / Glute Hyperextension",
+    reason: "Less lower-back fatigue on low sleep while targeting posterior chain",
   },
   "barbell romanian deadlift": {
     replacement: "45° Back / Glute Hyperextension",
     reason: "Less lower-back fatigue on low sleep while targeting hamstrings",
   },
+  "romanian deadlift": {
+    replacement: "45° Back / Glute Hyperextension",
+    reason: "Less lower-back fatigue on low sleep while targeting hamstrings",
+  },
   "standing barbell overhead press": {
+    replacement: "Seated Dumbbell Shoulder Press",
+    reason: "Seated support keeps lifts stable when tired",
+  },
+  "overhead press": {
     replacement: "Seated Dumbbell Shoulder Press",
     reason: "Seated support keeps lifts stable when tired",
   },
@@ -81,6 +105,7 @@ const AXIAL_SUBSTITUTIONS: Record<string, { replacement: string; reason: string 
  * Checks if an exercise imparts significant axial loading on the spine.
  */
 export function isAxialLoadedExercise(exerciseName: string): boolean {
+  if (/machine|hack|leg press|supported|hyperextension/i.test(exerciseName)) return false;
   return AXIAL_LOADED_PATTERNS.some((pattern) => pattern.test(exerciseName));
 }
 
@@ -102,25 +127,30 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
     restingHeartRateBpm,
   } = input;
 
-  // Base score from sleep duration
+  const safeSoreness = Number.isFinite(sorenessRating) ? sorenessRating : 2;
+  const safeEnergy = Number.isFinite(energyRating) ? energyRating : 3;
+
+  // Base score from sleep duration (defaults to conservative 50 if unmeasured/NaN)
   let baseScore = 50;
-  if (sleepHours >= 8.0) {
-    baseScore = 95;
-  } else if (sleepHours >= 7.0) {
-    baseScore = 85;
-  } else if (sleepHours >= 6.0) {
-    baseScore = 70;
-  } else if (sleepHours >= 5.0) {
-    baseScore = 55;
-  } else {
-    baseScore = 35;
+  if (Number.isFinite(sleepHours)) {
+    if (sleepHours >= 8.0) {
+      baseScore = 95;
+    } else if (sleepHours >= 7.0) {
+      baseScore = 85;
+    } else if (sleepHours >= 6.0) {
+      baseScore = 70;
+    } else if (sleepHours >= 5.0) {
+      baseScore = 55;
+    } else {
+      baseScore = 35;
+    }
   }
 
   // Modulate with soreness (higher soreness reduces score)
-  const sorenessPenalty = (sorenessRating - 2) * 5;
+  const sorenessPenalty = (safeSoreness - 2) * 5;
 
   // Modulate with energy (higher energy increases score)
-  const energyBonus = (energyRating - 3) * 5;
+  const energyBonus = (safeEnergy - 3) * 5;
 
   // Modulate with HRV (sympathetic vs parasympathetic tone)
   let hrvDelta = 0;
@@ -160,6 +190,10 @@ export function calculateReadinessScore(input: TraineeReadinessInput): {
     15,
     Math.min(100, Math.round(baseScore - sorenessPenalty + energyBonus + hrvDelta + deepSleepDelta + rhrDelta))
   );
+
+  if (!Number.isFinite(finalScore)) {
+    return { score: 50, state: "suboptimal" };
+  }
 
   let state: ReadinessState = "optimal";
   if (finalScore < 60) {

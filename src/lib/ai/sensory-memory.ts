@@ -887,6 +887,31 @@ export class SensoryMemoryStore {
     }
   }
 
+  /**
+   * Release R1: Hydrates and reconciles sensory memories from Cloud Firestore / Cloud SQL across devices.
+   */
+  public hydrateFromCloudEntries(cloudEntries: SensoryFeedbackEntry[]): void {
+    this.hydrate();
+    if (!Array.isArray(cloudEntries) || cloudEntries.length === 0) return;
+    const existingMap = new Map(this.entries.map((e) => [e.id, e]));
+    for (const ce of cloudEntries) {
+      if (!ce || !ce.id) continue;
+      existingMap.set(ce.id, ce);
+    }
+    this.entries = Array.from(existingMap.values()).sort(
+      (a, b) => (a.epochMs || 0) - (b.epochMs || 0)
+    );
+    this.persist();
+  }
+
+  /**
+   * Returns all sensory memory entries currently held in the vault.
+   */
+  public getAllEntries(): SensoryFeedbackEntry[] {
+    this.hydrate();
+    return [...this.entries];
+  }
+
   public ingest(input: IngestFeedbackInput): SensoryFeedbackEntry {
     this.hydrate();
     const now = Date.now();

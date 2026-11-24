@@ -517,6 +517,28 @@ export class GymVisionInventoryStore {
   }
 
   /**
+   * Release R1: Hydrates and reconciles gym inventories from Cloud Firestore / Cloud SQL across devices.
+   */
+  public hydrateFromCloudInventories(cloudInventories: LocationEquipmentInventory[]): void {
+    this.hydrate();
+    if (!Array.isArray(cloudInventories) || cloudInventories.length === 0) return;
+    for (const inv of cloudInventories) {
+      if (!inv || !inv.gymId) continue;
+      const key = inv.traineeId ? this.getScopedKey(inv.gymId, inv.traineeId) : inv.gymId;
+      this.inventories[key] = this.ensureInventoryShape(inv);
+    }
+    this.persist();
+  }
+
+  /**
+   * Returns all location inventories currently held in the vault.
+   */
+  public getAllInventories(): LocationEquipmentInventory[] {
+    this.hydrate();
+    return Object.values(this.inventories);
+  }
+
+  /**
    * Analyzes an uploaded gym setup or exercise equipment photo (via Gemini Vision when available,
    * plus deterministic caption/metadata/exercise extraction) and updates the location's equipment inventory.
    * Handles duplicate photos, uncertain detections, unavailable equipment, and failed image analysis gracefully.
@@ -636,6 +658,15 @@ export class GymVisionInventoryStore {
       params.unavailableCategories || existing.unavailableEquipment
     );
     const detectedStations = new Set<string>(existing.detectedStations);
+    if (params.overrideAvailableCategories) {
+      for (const cat of params.overrideAvailableCategories) {
+        if (cat === "smith_machine") detectedStations.add("Smith Machine Counterbalanced Rack");
+        if (cat === "machine") detectedStations.add("Selectorized / Plate-Loaded Machine Station");
+        if (cat === "cable") detectedStations.add("Dual Adjustable Pulley Cable Station");
+        if (cat === "dumbbell") detectedStations.add("Dumbbell Free-Weight Station");
+        if (cat === "barbell") detectedStations.add("Olympic Barbell & Squat Rack");
+      }
+    }
     const limitations = new Set<string>(existing.limitations);
     let maxDumbbellKg = existing.maxDumbbellKg;
     let confidenceScore = 0.94;
@@ -985,6 +1016,38 @@ export class GymVisionInventoryStore {
       this.inventories[params.gymId] = updatedInventory;
     }
     this.persist();
+
+    // Release R2: Auto-register recognized machines into custom Salle de Sport in store.ts
+    try {
+      if (params.traineeId && finalStations.length > 0) {
+        const { appStore } = await import("@/lib/store");
+        const gyms = appStore.getUserGymLocations(params.traineeId);
+        const targetGym =
+          gyms.find((g) => g.id === params.gymId) ||
+          gyms.find((g) => g.isDefault) ||
+          gyms[0];
+        if (targetGym) {
+          const existingNotes = new Set(
+            (targetGym.equipmentNotes || []).map((n) => n.trim().toLowerCase())
+          );
+          const newNotes = [...(targetGym.equipmentNotes || [])];
+          for (const st of finalStations) {
+            if (!existingNotes.has(st.trim().toLowerCase())) {
+              newNotes.push(st);
+              existingNotes.add(st.trim().toLowerCase());
+            }
+          }
+          if (newNotes.length > (targetGym.equipmentNotes || []).length) {
+            appStore.updateGymLocation(
+              { ...targetGym, equipmentNotes: newNotes },
+              params.traineeId
+            );
+          }
+        }
+      }
+    } catch {
+      // Safe non-blocking hook for SSR or decoupled environments
+    }
 
     const recognition: GymPhotoRecognitionResult = {
       photoId: `gym_photo_${Date.now()}`,

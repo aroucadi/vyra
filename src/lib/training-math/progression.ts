@@ -240,7 +240,7 @@ export function selectDeloadCandidate(params: DeloadCandidateParams): DeloadCand
 }
 
 export function snapWeight(v: number, step: number): number {
-  if (!(step > 0)) return round1(v);
+  if (!Number.isFinite(v) || !Number.isFinite(step) || !(step > 0)) return round1(Number.isFinite(v) ? v : 0);
   const snapped = Math.round(v / step) * step;
   if ((step * 10) % 1 !== 0) {
     return Math.round(snapped * 100) / 100;
@@ -249,10 +249,12 @@ export function snapWeight(v: number, step: number): number {
 }
 
 export function addStep(w: number | string, step: number, inc: number): number {
-  const v = +w || 0;
-  const onGrid = inc > 0 && Math.abs(v - Math.round(v / inc) * inc) <= 0.1;
-  const next = v + step;
-  return Math.max(0, onGrid ? snapWeight(next, inc) : round1(next));
+  const v = Number.isFinite(+w) ? +w : 0;
+  const safeStep = Number.isFinite(step) ? step : 0;
+  const safeInc = Number.isFinite(inc) ? inc : 0;
+  const onGrid = safeInc > 0 && Math.abs(v - Math.round(v / safeInc) * safeInc) <= 0.1;
+  const next = v + safeStep;
+  return Math.max(0, onGrid ? snapWeight(next, safeInc) : round1(next));
 }
 
 export function stepWeight(value: number | string, step: number, direction: number): number {
@@ -261,9 +263,11 @@ export function stepWeight(value: number | string, step: number, direction: numb
 }
 
 export function deloadTo(cur: number, step: number, factor: number = DELOAD_FACTOR): number {
-  let next = snapWeight(cur * factor, step);
-  if (next >= cur) next = snapWeight(cur - step, step);
-  return Math.max(step, next);
+  const safeCur = Number.isFinite(cur) ? cur : 0;
+  const safeStep = Number.isFinite(step) ? step : 2.5;
+  let next = snapWeight(safeCur * factor, safeStep);
+  if (next >= safeCur) next = snapWeight(safeCur - safeStep, safeStep);
+  return Math.max(safeStep, next);
 }
 
 export function normalizeRepRange(
@@ -474,10 +478,11 @@ const sameRows = (a: SessionRecord, b: SessionRecord): boolean =>
   JSON.stringify(a.target?.rowReps || null) === JSON.stringify(b.target?.rowReps || null);
 
 export function stallCount(sessions: SessionRecord[], policy: ProgressionPolicy): number {
+  const normW = (w: unknown): number => (Number.isFinite(Number(w)) ? Number(w) : 0);
   let n = 0;
   for (let i = sessions.length - 1; i >= 0; i--) {
     if (sessions[i].ok) break;
-    if (i < sessions.length - 1 && sessions[i].weight !== sessions[i + 1].weight) break;
+    if (i < sessions.length - 1 && normW(sessions[i].weight) !== normW(sessions[i + 1].weight)) break;
     if (
       i < sessions.length - 1 &&
       sessions[i].planned &&
@@ -489,7 +494,7 @@ export function stallCount(sessions: SessionRecord[], policy: ProgressionPolicy)
 
     if (policy === 'double') {
       const run: number[] = [];
-      for (let j = i - 1; j >= 0 && sessions[j].weight === sessions[i].weight; j--) {
+      for (let j = i - 1; j >= 0 && normW(sessions[j].weight) === normW(sessions[i].weight); j--) {
         if (sessions[j].low != null) run.push(sessions[j].low!);
       }
       if (run.length && (sessions[i].low ?? 0) > Math.max(...run)) break;
@@ -499,7 +504,7 @@ export function stallCount(sessions: SessionRecord[], policy: ProgressionPolicy)
       const run: number[] = [];
       for (
         let j = i - 1;
-        j >= 0 && sessions[j].weight === sessions[i].weight && sameRows(sessions[j], sessions[i]);
+        j >= 0 && normW(sessions[j].weight) === normW(sessions[i].weight) && sameRows(sessions[j], sessions[i]);
         j--
       ) {
         run.push(tripleActive(sessions[j]));
@@ -627,7 +632,8 @@ export function nextPrescription(
     return { policy, kind: 'hold', sec: last.goal || cfg.sec, why: ['Came up short last time. Same target again.'] };
   }
 
-  const w = last.weight;
+  const rawW = Number(last.weight);
+  const w = Number.isFinite(rawW) ? rawW : (Number(cfg.weight) || 0);
 
   const epleyDeload = (): PrescriptionResult | null => {
     if (mode !== 'reps' || (policy !== 'linear' && policy !== 'double')) return null;

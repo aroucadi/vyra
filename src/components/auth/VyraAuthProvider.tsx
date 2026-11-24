@@ -5,6 +5,7 @@ import { appStore } from "@/lib/store";
 import { athleteModelStore } from "@/lib/ai/athlete-model";
 import { visualProgressStore } from "@/lib/ai/visual-progress";
 import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
+import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
 import { clearClientStorage } from "@/lib/storage";
 import { anchorIdentityWithFirebase, clearAnchoredIdentity } from "@/lib/auth/identity";
 import {
@@ -99,6 +100,12 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
         }
         visualProgressStore.claimAnonymousSnapshots(boot.user.id);
         sensoryMemoryStore.ingestFromSessionHistory(appStore.getSessions(boot.user.id));
+        if (boot.sensoryMemories && boot.sensoryMemories.length > 0) {
+          sensoryMemoryStore.hydrateFromCloudEntries(boot.sensoryMemories);
+        }
+        if (boot.gymInventories && boot.gymInventories.length > 0) {
+          gymVisionInventoryStore.hydrateFromCloudInventories(boot.gymInventories);
+        }
         setIsAuthenticated(true);
         setIsAlaa(Boolean(data.isAlaa));
         setAuthEmail(boot.user.email || null);

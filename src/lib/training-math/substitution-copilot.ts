@@ -373,8 +373,11 @@ export function findBiomechanicalSubstitutes(
       continue;
     }
 
-    // Specifically for deltoids: rear delt (deltoid_posterior) must not be replaced by front delt presses
-    if (currentSubdivision === 'deltoid_posterior' && candSubdivision === 'deltoid_anterior') {
+    // Specifically for deltoids: front and rear deltoids must not cross-substitute (presses != pulls/flies)
+    if (
+      (currentSubdivision === 'deltoid_posterior' && candSubdivision === 'deltoid_anterior') ||
+      (currentSubdivision === 'deltoid_anterior' && candSubdivision === 'deltoid_posterior')
+    ) {
       continue;
     }
 

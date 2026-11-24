@@ -1275,6 +1275,7 @@ export class Store {
       name: gym.name.trim(),
       address: gym.address?.trim(),
       notes: gym.notes?.trim(),
+      equipmentNotes: Array.isArray(gym.equipmentNotes) ? [...gym.equipmentNotes] : [],
       isDefault: Boolean(gym.isDefault || list.length === 0),
     };
 

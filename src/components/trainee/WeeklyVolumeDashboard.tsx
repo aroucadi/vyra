@@ -92,6 +92,15 @@ export function WeeklyVolumeDashboard({
         </div>
 
         {/* Proportional Dual Bar Meter */}
+        {metrics.isPosturallyDeficient && (
+          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2 text-xs text-amber-200">
+            <span className="text-amber-400 font-bold shrink-0">⚠️ Alert:</span>
+            <span>
+              {metrics.posturalWarningMessage ||
+                "Posture-to-push ratio is below the recommended 1.5:1 minimum threshold. Consider adding face pulls, rows, or rear delt work to protect shoulder health."}
+            </span>
+          </div>
+        )}
         <div className="space-y-1.5">
           <div className="w-full h-3 rounded-full bg-[#182030] overflow-hidden flex p-0.5 border border-[#1C2436]">
             <div
@@ -277,10 +286,12 @@ export function WeeklyVolumeDashboard({
         {showRationale && (
           <div className="mt-2 p-4 rounded-2xl bg-[#090C11] border border-amber-500/30 text-xs text-slate-300 leading-relaxed font-body space-y-2 animate-in fade-in duration-200">
             <p>
-              <strong className="text-amber-400 font-semibold font-editorial">
+              <strong className={clsx("font-semibold font-editorial", metrics.isPosturallyDeficient ? "text-amber-400" : "text-emerald-400")}>
                 Posture-to-Push Equilibrium ({metrics.totalPosturalRatio}):
               </strong>{" "}
-              Balancing {metrics.totalPosturalSets} weekly postural/pulling sets against {metrics.upperPressingSets} upper pressing sets protects scapular alignment and glenohumeral joint longevity without sacrificing pressing strength.
+              {metrics.isPosturallyDeficient
+                ? `Current program provides ${metrics.totalPosturalSets} weekly postural/pulling sets against ${metrics.upperPressingSets} upper pressing sets (${metrics.totalPosturalRatio}). This is below the recommended 1.5:1 minimum threshold — prioritize upper back and rear delt pulling volume to protect scapular alignment and glenohumeral stability.`
+                : `Balancing ${metrics.totalPosturalSets} weekly postural/pulling sets against ${metrics.upperPressingSets} upper pressing sets protects scapular alignment and glenohumeral joint longevity without sacrificing pressing strength.`}
             </p>
             <p>
               <strong className="text-sky-400 font-semibold font-editorial">

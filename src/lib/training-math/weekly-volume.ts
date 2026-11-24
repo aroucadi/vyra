@@ -7,6 +7,10 @@ export interface WeeklyVolumeBreakdown {
   totalPosturalSets: number;
   dynamicRatio: string;
   totalPosturalRatio: string;
+  isPosturallyDeficient: boolean;
+  posturalWarningMessage?: string;
+  evaluatedWeekIndex: number;
+  totalWeeksInProgram: number;
   lateralDeltExposures: number;
   quadricepsSets: number;
   splitLabel?: string;
@@ -24,6 +28,10 @@ export const MASTER_PROGRAM_VOLUME_METRICS: WeeklyVolumeBreakdown = {
   totalPosturalSets: 12,
   dynamicRatio: "1.5:1",
   totalPosturalRatio: "2.0:1",
+  isPosturallyDeficient: false,
+  posturalWarningMessage: undefined,
+  evaluatedWeekIndex: 0,
+  totalWeeksInProgram: 1,
   lateralDeltExposures: 3,
   quadricepsSets: 6,
   splitLabel: "4-Day Split",
@@ -36,7 +44,10 @@ export const MASTER_PROGRAM_VOLUME_METRICS: WeeklyVolumeBreakdown = {
 
 const DAY_SHORT_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBreakdown {
+export function computeWeeklyVolumeFromProgram(
+  program: Program,
+  targetWeekIndex: number = 0
+): WeeklyVolumeBreakdown {
   if (!program?.weeks || program.weeks.length === 0) {
     return {
       upperPressingSets: 0,
@@ -45,6 +56,10 @@ export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBr
       totalPosturalSets: 0,
       dynamicRatio: "0.0:1",
       totalPosturalRatio: "0.0:1",
+      isPosturallyDeficient: false,
+      posturalWarningMessage: undefined,
+      evaluatedWeekIndex: 0,
+      totalWeeksInProgram: 0,
       lateralDeltExposures: 0,
       quadricepsSets: 0,
       splitLabel: "0-Day Split",
@@ -56,7 +71,9 @@ export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBr
     };
   }
 
-  const week1 = program.weeks[0];
+  const totalWeeksInProgram = program.weeks.length;
+  const safeWeekIdx = Math.max(0, Math.min(targetWeekIndex, totalWeeksInProgram - 1));
+  const week1 = program.weeks[safeWeekIdx];
   const trainingDays = week1.days.filter(
     (d) => !d.isRestDay && d.blocks && d.blocks.some((b) => b.exercises.length > 0)
   );
@@ -91,12 +108,13 @@ export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBr
       const isDynamicPull =
         /pulldown|pull-up|pullup|chin-up|chinup|\brow\b|face pull|rear delt|reverse fly|shrug/i.test(lowerName) ||
         (/\b(lats|upper back|mid back|rhomboids|rear delt)\b/i.test(musclesText) && !isHingeAnchor);
+      const hasPressPattern =
+        /bench|chest press|incline.*press|shoulder press|overhead press|ohp|dip|push-up|pushup|pec fly/i.test(lowerName);
       const isUpperPress =
-        !isLegPress &&
         !isDynamicPull &&
         !isHingeAnchor &&
-        (/bench|chest press|incline.*press|shoulder press|overhead press|ohp|dip|push-up|pushup|pec fly/i.test(lowerName) ||
-          /\b(chest|pectoral|anterior delt|clavicular)\b/i.test(musclesText));
+        (hasPressPattern ||
+          (!isLegPress && /\b(chest|pectoral|anterior delt|clavicular)\b/i.test(musclesText)));
       const isLateralDelt =
         /lateral raise|upright row|cable lateral|side delt|lateral delt/i.test(combined);
 
@@ -123,18 +141,27 @@ export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBr
   }
 
   const totalPosturalSets = upperDynamicPullingSets + posteriorIsometricSets;
+  const numericDynamicRatio = upperPressingSets > 0 ? upperDynamicPullingSets / upperPressingSets : 0;
+  const numericTotalRatio =
+    upperPressingSets > 0 ? totalPosturalSets / upperPressingSets : totalPosturalSets > 0 ? 99 : 0;
+
   const dynamicRatio =
     upperPressingSets > 0
-      ? `${(upperDynamicPullingSets / upperPressingSets).toFixed(1)}:1`
+      ? `${numericDynamicRatio.toFixed(1)}:1`
       : totalPosturalSets > 0
       ? "Pull-Only"
       : "0.0:1";
   const totalPosturalRatio =
     upperPressingSets > 0
-      ? `${(totalPosturalSets / upperPressingSets).toFixed(1)}:1`
+      ? `${numericTotalRatio.toFixed(1)}:1`
       : totalPosturalSets > 0
       ? "Pull-Only"
       : "0.0:1";
+
+  const isPosturallyDeficient = upperPressingSets > 0 && numericTotalRatio < 1.5;
+  const posturalWarningMessage = isPosturallyDeficient
+    ? `Postural Imbalance Alert: Posture-to-push ratio (${numericTotalRatio.toFixed(1)}:1) is below the 1.5:1 minimum threshold. Increasing upper back / rear delt pulling volume protects glenohumeral longevity.`
+    : undefined;
 
   const isAlaaSeeded = program.id === "prog_alaa_master";
 
@@ -145,6 +172,10 @@ export function computeWeeklyVolumeFromProgram(program: Program): WeeklyVolumeBr
     totalPosturalSets,
     dynamicRatio,
     totalPosturalRatio,
+    isPosturallyDeficient,
+    posturalWarningMessage,
+    evaluatedWeekIndex: safeWeekIdx,
+    totalWeeksInProgram,
     lateralDeltExposures: isAlaaSeeded
       ? Math.max(lateralDeltExposures, MASTER_PROGRAM_VOLUME_METRICS.lateralDeltExposures)
       : lateralDeltExposures,

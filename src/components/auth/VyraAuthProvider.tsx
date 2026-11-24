@@ -139,6 +139,7 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
 
     const init = async () => {
       appStore.hydrateFromClientStorage(true);
+      await appStore.hydrateFromIndexedDbAsync();
       await applyBootstrap();
       if (active) setIsBootstrapping(false);
     };

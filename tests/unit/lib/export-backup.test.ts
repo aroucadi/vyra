@@ -222,4 +222,126 @@ describe("Complete Backup Export & Per-Set Equipment Photo Persistence", () => {
     assert.equal(exportedSess.setLogs[1].photoUrl, resolvedBase64);
     assert.equal(exportedSess.setLogs[1].equipmentPhotoBase64, resolvedBase64);
   });
+
+  it("losslessly preserves set notes, voice notes, embedded transcripts, and generates audioNotesCatalog", async () => {
+    const testUserId = "trainee_alaa";
+    const sampleAudioUri = "data:audio/webm;codecs=opus;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwE=";
+    const sampleAudioTranscript = "Excellente contraction sur la dernière rep avec 2s d'arrêt";
+
+    const partialSessionA: WorkoutSession = {
+      id: "sess_voice_notes_merge_test",
+      traineeId: testUserId,
+      programDayId: "prog_master_w1_d1",
+      programTitle: "5-Day Custom Protocol",
+      dayLabel: "Tuesday Pull Focus",
+      date: "2026-11-24",
+      startedAt: "2026-11-24T12:19:00.000Z",
+      endedAt: "2026-11-24T12:45:00.000Z",
+      durationSec: 1569,
+      notes: "Workout felt strong overall, left elbow stable",
+      sessionNote: "Workout felt strong overall, left elbow stable",
+      audioNoteUrl: sampleAudioUri,
+      audioTranscript: "Séance terminée en 26 minutes sans douleur",
+      setLogs: [
+        {
+          id: "s_vn_1",
+          exercisePrescriptionId: "ep_pull_1",
+          exerciseName: "lat pulldown",
+          setIndex: 1,
+          reps: 10,
+          weightKg: 40,
+          rirAchieved: 2,
+          // Missing note and audio in this copy
+        },
+        {
+          id: "s_vn_2",
+          exercisePrescriptionId: "ep_pull_1",
+          exerciseName: "lat pulldown",
+          setIndex: 2,
+          reps: 10,
+          weightKg: 40,
+          rirAchieved: 1,
+          note: "Form felt dialed, scapular retraction held 1s",
+        },
+      ],
+      exerciseFeedbacks: [
+        {
+          exerciseName: "lat pulldown",
+          tag: "optimal",
+          note: "Scapular depression initiator worked wonders",
+          audioNoteUrl: sampleAudioUri,
+          audioTranscript: sampleAudioTranscript,
+        },
+      ],
+    };
+
+    const partialSessionB: WorkoutSession = {
+      id: "sess_voice_notes_merge_test",
+      traineeId: testUserId,
+      programDayId: "prog_master_w1_d1",
+      programTitle: "5-Day Custom Protocol",
+      dayLabel: "Tuesday Pull Focus",
+      date: "2026-11-24",
+      startedAt: "2026-11-24T12:19:00.000Z",
+      endedAt: "2026-11-24T12:45:00.000Z",
+      durationSec: 1569,
+      setLogs: [
+        {
+          id: "s_vn_1",
+          exercisePrescriptionId: "ep_pull_1",
+          exerciseName: "lat pulldown",
+          setIndex: 1,
+          reps: 10,
+          weightKg: 40,
+          rirAchieved: 2,
+          note: "Warmup set felt easy",
+          audioNoteUrl: sampleAudioUri,
+          audioTranscript: "Première série propre",
+        },
+        {
+          id: "s_vn_2",
+          exercisePrescriptionId: "ep_pull_1",
+          exerciseName: "lat pulldown",
+          setIndex: 2,
+          reps: 10,
+          weightKg: 40,
+          rirAchieved: 1,
+          // Missing note in this copy; should be retained from partialSessionA
+        },
+      ],
+    };
+
+    const payload = await buildFullTraineeExportPayloadAsync(testUserId, {
+      extraSessions: [partialSessionA, partialSessionB],
+    });
+
+    const exported = payload.sessions.find((s) => s.id === "sess_voice_notes_merge_test");
+    assert.ok(exported, "Merged session must be exported");
+    assert.equal(exported.notes, "Workout felt strong overall, left elbow stable");
+    assert.equal(exported.audioTranscript, "Séance terminée en 26 minutes sans douleur");
+
+    // Check set 1: retains audioNoteUrl & note from copy B
+    const set1 = exported.setLogs.find((s) => s.setIndex === 1);
+    assert.ok(set1);
+    assert.equal(set1.note, "Warmup set felt easy");
+    assert.ok(set1.audioNoteUrl);
+    assert.equal(set1.audioTranscript, "Première série propre");
+
+    // Check set 2: retains note from copy A
+    const set2 = exported.setLogs.find((s) => s.setIndex === 2);
+    assert.ok(set2);
+    assert.equal(set2.note, "Form felt dialed, scapular retraction held 1s");
+
+    // Audio catalog check
+    assert.ok(payload.audioNotesCatalog.length >= 2, "Must catalog session and set/feedback audio notes");
+    const sessionAudioEntry = payload.audioNotesCatalog.find((a) => a.source === "session");
+    assert.ok(sessionAudioEntry);
+    assert.equal(sessionAudioEntry.sessionId, "sess_voice_notes_merge_test");
+    assert.equal(sessionAudioEntry.transcript, "Séance terminée en 26 minutes sans douleur");
+
+    // Summary counts check
+    assert.ok(payload.exportSummary.setsWithNotesCount >= 2, "Must count sets with text notes");
+    assert.ok(payload.exportSummary.setsWithAudioNotesCount >= 1, "Must count sets with voice notes");
+    assert.ok(payload.exportSummary.uniqueAudioNotesCount >= 1, "Must count unique voice notes");
+  });
 });

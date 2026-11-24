@@ -26,6 +26,7 @@ import {
 } from "@/db/seed/master-transformation-program";
 import { checkIsPersonalRecord, resolveExerciseVideoUrl, resolveProgramDay, toLocalDateString } from "./utils";
 import { getStorageAdapter } from "./storage/adapter";
+import { sanitizeSessionForLocalStorage } from "./storage";
 import { getAthleteIdentity } from "./auth/identity";
 import type { UserBootstrapPayload } from "./firebase/firestore-repository";
 
@@ -1772,6 +1773,41 @@ export class Store {
     }
   }
 
+  async hydrateFromIndexedDbAsync(): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    try {
+      const { loadAllClientSessions } = await import("./storage");
+      const activeUid = this.db.currentUser.id;
+      const clientSessions = await loadAllClientSessions(activeUid);
+      if (!Array.isArray(clientSessions) || clientSessions.length === 0) return false;
+
+      let addedAny = false;
+      for (const s of clientSessions) {
+        if (!s || !s.id) continue;
+        const idx = this.db.sessions.findIndex((existing) => existing.id === s.id);
+        if (idx >= 0) {
+          const existing = this.db.sessions[idx];
+          if ((!existing.setLogs || existing.setLogs.length === 0) && s.setLogs?.length) {
+            this.db.sessions[idx] = s;
+            addedAny = true;
+          }
+        } else {
+          this.db.sessions.unshift(s);
+          addedAny = true;
+        }
+      }
+      if (addedAny) {
+        this.db.sessions.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        this.notifyChange(false);
+      }
+      return addedAny;
+    } catch {
+      return false;
+    }
+  }
+
   getSessions(traineeId: string): WorkoutSession[] {
     return this.db.sessions.filter((s) => s.traineeId === traineeId);
   }
@@ -1789,11 +1825,12 @@ export class Store {
         const scopedKey = `vyra_offline_backup_v1_${targetUid}`;
         const raw = localStorage.getItem(scopedKey);
         const data = raw ? JSON.parse(raw) : { version: 1, sessions: [], readinessLogs: [], supplementLogs: [], metrics: [] };
+        const strippedSession = sanitizeSessionForLocalStorage(session);
         const existingIdx = data.sessions.findIndex((s: WorkoutSession) => s.id === session.id);
         if (existingIdx >= 0) {
-          data.sessions[existingIdx] = session;
+          data.sessions[existingIdx] = strippedSession;
         } else {
-          data.sessions.unshift(session);
+          data.sessions.unshift(strippedSession);
         }
         localStorage.setItem(scopedKey, JSON.stringify(data));
       } catch {}

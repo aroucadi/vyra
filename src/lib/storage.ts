@@ -9,6 +9,8 @@
 import type { ActiveExercise } from "@/components/trainee/session/types";
 import type {
   BodyMetricEntry,
+  ExerciseFeedbackRecord,
+  SetLog,
   SupplementLog,
   WearableBiometricSnapshot,
   WorkoutSession,
@@ -551,12 +553,52 @@ export async function drainMutationQueue(
 // ----------------------------------------------------------------------------
 
 /**
+ * Strips multi-megabyte base64 images from a session before writing to localStorage,
+ * preventing QuotaExceededError in mobile Safari (5MB quota). Full base64 images
+ * remain safely stored in IndexedDB.
+ */
+export function sanitizeSessionForLocalStorage(sess: WorkoutSession): WorkoutSession {
+  const MAX_INLINE_STORAGE_LEN = 30_000; // 30KB max per photo for localStorage
+  const cleanedSetLogs = (sess.setLogs || []).map((l: SetLog): SetLog => {
+    const copy = { ...l };
+    if (typeof copy.photoUrl === "string" && copy.photoUrl.startsWith("data:") && copy.photoUrl.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.photoUrl;
+    }
+    if (typeof copy.equipmentPhotoUrl === "string" && copy.equipmentPhotoUrl.startsWith("data:") && copy.equipmentPhotoUrl.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.equipmentPhotoUrl;
+    }
+    if (typeof copy.equipmentPhotoBase64 === "string" && copy.equipmentPhotoBase64.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.equipmentPhotoBase64;
+    }
+    return copy;
+  });
+  const cleanedFeedbacks = (sess.exerciseFeedbacks || []).map((fb: ExerciseFeedbackRecord): ExerciseFeedbackRecord => {
+    const copy = { ...fb };
+    if (typeof copy.photoUrl === "string" && copy.photoUrl.startsWith("data:") && copy.photoUrl.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.photoUrl;
+    }
+    if (typeof copy.equipmentPhotoUrl === "string" && copy.equipmentPhotoUrl.startsWith("data:") && copy.equipmentPhotoUrl.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.equipmentPhotoUrl;
+    }
+    if (typeof copy.equipmentPhotoBase64 === "string" && copy.equipmentPhotoBase64.length > MAX_INLINE_STORAGE_LEN) {
+      delete copy.equipmentPhotoBase64;
+    }
+    return copy;
+  });
+  return {
+    ...sess,
+    setLogs: cleanedSetLogs,
+    exerciseFeedbacks: cleanedFeedbacks,
+  };
+}
+
+/**
  * Saves a completed session to client durable storage (IndexedDB + localStorage fallback).
  */
 export async function persistClientWorkoutSession(session: StoredSessionRecord): Promise<void> {
   if (typeof window === "undefined") return;
 
-  // 1. Persist to localStorage buffer
+  // 1. Persist to localStorage buffer (with stripped large media to prevent QuotaExceededError)
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     const data: ClientStoredPayload = raw ? migrateLegacyStoredData(JSON.parse(raw)) : {
@@ -567,18 +609,19 @@ export async function persistClientWorkoutSession(session: StoredSessionRecord):
       metrics: [],
     };
 
+    const stripped = sanitizeSessionForLocalStorage(session);
     const existingIdx = data.sessions.findIndex((s) => s.id === session.id);
     if (existingIdx >= 0) {
-      data.sessions[existingIdx] = session;
+      data.sessions[existingIdx] = stripped;
     } else {
-      data.sessions.push(session);
+      data.sessions.push(stripped);
     }
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
   } catch (err) {
     console.warn("Failed to persist session to localStorage:", err);
   }
 
-  // 2. Persist to IndexedDB
+  // 2. Persist to IndexedDB (keeps full base64 images intact!)
   try {
     const db = await openClientDatabase();
     await new Promise<void>((resolve, reject) => {

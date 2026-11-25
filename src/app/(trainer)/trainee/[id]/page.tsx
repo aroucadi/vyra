@@ -60,7 +60,7 @@ export default function TraineeDetailPage({
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#10b981] text-black font-display font-black text-xs uppercase tracking-wider"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-            <span>Return to Squadron Radar</span>
+            <span>Back to Roster</span>
           </Link>
         </div>
       </div>

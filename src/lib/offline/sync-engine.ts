@@ -57,7 +57,7 @@ class OfflineSyncEngine {
       const response = await fetch("/api/sync/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events: unsynced }),
+        body: JSON.stringify({ traineeId, events: unsynced }),
       });
 
       if (!response.ok) {
@@ -65,7 +65,8 @@ class OfflineSyncEngine {
       }
 
       const result = await response.json();
-      const syncedIds: string[] = result.syncedIds || unsynced.map((e) => e.id);
+      const syncedIds: string[] =
+        result.syncedEventIds || result.syncedIds || unsynced.map((e) => e.id);
 
       // Mark locally synced in IndexedDB
       await adapter.markEventsSynced(syncedIds);

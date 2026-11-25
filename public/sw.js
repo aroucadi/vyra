@@ -1,5 +1,5 @@
 // VYRA Service Worker: App-Shell Caching & Offline Workout Logging Queue (Spec 018 Hardened)
-const CACHE_NAME = 'vyra-v2.2-offline';
+const CACHE_NAME = 'vyra-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/today',

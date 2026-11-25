@@ -13,6 +13,9 @@ import {
   X,
   Copy,
   Check,
+  ChevronRight,
+  Sparkles,
+  Dumbbell,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { generateCoachInviteUrl } from "@/lib/trainer-invite";
@@ -36,19 +39,26 @@ export default function TrainerRosterPage() {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const currentUser = appStore.getCurrentUser();
-  const coachId = currentUser.role === "trainer" || currentUser.role === "both" ? currentUser.id : "coach_1";
+  const coachId =
+    currentUser.role === "trainer" || currentUser.role === "both"
+      ? currentUser.id
+      : "coach_1";
   const coachName = (isHydrated && currentUser.name) || "Coach Marcus";
 
   useEffect(() => {
     if (!isHydrated || !isAuthenticated) return;
     let active = true;
-    fetch(`/api/invites?coachId=${encodeURIComponent(coachId)}`, { cache: "no-store" })
+    fetch(`/api/invites?coachId=${encodeURIComponent(coachId)}`, {
+      cache: "no-store",
+    })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { ok?: boolean; clients?: FirestoreClientLinkRecord[] } | null) => {
-        if (active && data?.ok && Array.isArray(data.clients)) {
-          setCloudClients(data.clients);
+      .then(
+        (data: { ok?: boolean; clients?: FirestoreClientLinkRecord[] } | null) => {
+          if (active && data?.ok && Array.isArray(data.clients)) {
+            setCloudClients(data.clients);
+          }
         }
-      })
+      )
       .catch(() => {
         // Non-fatal fallback to local roster
       });
@@ -81,7 +91,9 @@ export default function TrainerRosterPage() {
                 id: cloudClient.programId,
                 trainerId: cloudClient.coachId,
                 traineeId: cloudClient.traineeId,
-                title: cloudClient.programTitle || "16-Week Recomposition & Structural Balance",
+                title:
+                  cloudClient.programTitle ||
+                  "16-Week Recomposition & Structural Balance",
                 startDate: cloudClient.joinedAt.split("T")[0],
                 endDate: cloudClient.joinedAt.split("T")[0],
                 durationWeeks: cloudClient.weeks || 16,
@@ -98,54 +110,60 @@ export default function TrainerRosterPage() {
           currentWeekIndex: 1,
           lastSessionDate: cloudClient.lastSessionDate,
           totalVolumeKg: 0,
-          alerts: [{ type: "optimal", message: "Cloud Synced Athlete" }],
+          alerts: [],
         });
       }
     }
+
     return merged;
   }, [isHydrated, cloudClients, storeVersion]);
 
-  const filteredRoster = rosterItems.filter((item) =>
-    item.trainee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.activeProgram && item.activeProgram.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const inviteUrl =
-    isHydrated && typeof window !== "undefined"
-      ? generateCoachInviteUrl(window.location.origin, {
-          coachId,
-          coachName,
-          programTitle: "16-Week Recomposition & Structural Balance",
-          weeks: 16,
-          anchorLift: "barbell_bench",
-          startingBenchKg: 80,
-          unit: "kg",
-        })
-      : `/invite/${coachId}`;
+  const filteredRoster = useMemo(() => {
+    if (!searchQuery.trim()) return rosterItems;
+    const q = searchQuery.toLowerCase();
+    return rosterItems.filter(
+      (r) =>
+        r.trainee.name.toLowerCase().includes(q) ||
+        r.trainee.email.toLowerCase().includes(q) ||
+        r.activeProgram?.title.toLowerCase().includes(q)
+    );
+  }, [rosterItems, searchQuery]);
 
   const handleCopyLink = async () => {
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://app.vyra.fit";
+    const inviteUrl = generateCoachInviteUrl(origin, {
+      coachId,
+      coachName,
+      programTitle: "16-Week Recomposition & Structural Balance",
+      weeks: 16,
+      anchorLift: "barbell_bench",
+      startingBenchKg: 80,
+      unit: "kg",
+    });
+
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(inviteUrl);
-      }
+      await navigator.clipboard.writeText(inviteUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
-      // Fallback
+      // Non-fatal
     }
   };
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteName) return;
+    if (!inviteName.trim()) return;
 
-    // Create trainee in local appStore + persist server invite in Firestore
-    const newTraineeId = `trainee_${Date.now()}`;
     const resolvedEmail =
-      inviteEmail || `${inviteName.toLowerCase().replace(/\s+/g, ".")}@example.com`;
+      inviteEmail.trim() ||
+      `${inviteName.toLowerCase().replace(/\s+/g, ".")}@app.vyra.fit`;
+
     appStore.addUser({
-      id: newTraineeId,
-      name: inviteName,
+      id: `trainee_${Date.now()}`,
+      name: inviteName.trim(),
       email: resolvedEmail,
       role: "trainee",
       injuries: [],
@@ -186,18 +204,21 @@ export default function TrainerRosterPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 1. Top Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E293B] pb-5">
+    <div className="min-h-screen bg-[#05080c] text-slate-100 p-6 space-y-6 max-w-7xl mx-auto font-body selection:bg-[#10b981] selection:text-black">
+      {/* 1. Top Aerospace HUD Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1b2d47] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#F8FAFC] tracking-tight">Athlete & Client Roster</h1>
-            <span className="px-2 py-0.5 rounded bg-[#10B981]/20 text-[#10B981] font-mono font-bold text-xs">
-              Live Overview
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-display font-black text-white uppercase tracking-tight">
+              Squadron Athlete Radar
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 font-mono font-bold text-xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping" />
+              <span>LIVE TELEMETRY</span>
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time compliance monitoring, periodization schedules, and algorithmic alert flags.
+          <p className="text-xs text-slate-400 font-mono mt-1">
+            Real-time compliance monitoring, bilateral symmetry balance, and periodization telemetry.
           </p>
         </div>
 
@@ -206,153 +227,193 @@ export default function TrainerRosterPage() {
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search athlete or program..."
+              placeholder="Search athlete or split..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-2 rounded-lg bg-[#162032] border border-[#334155] text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-[#10B981] w-64"
+              className="pl-9 pr-3 py-2 rounded-xl bg-[#090d16] border border-[#1b2d47] text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-[#10b981] w-64 font-mono transition"
             />
           </div>
 
           <button
             onClick={() => setShowInviteModal(true)}
-            className="px-4 py-2 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+            className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] active:scale-95 text-black font-display font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            Invite Trainee
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Invite Trainee</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Top Metric KPI Cards */}
+      {/* 2. Top Metric KPI Tiles */}
       {(() => {
         const totalAthletes = rosterItems.length;
-        const avgAdherence = totalAthletes > 0
-          ? Math.round(rosterItems.reduce((acc, r) => acc + r.adherencePercentage, 0) / totalAthletes)
-          : 0;
+        const avgAdherence =
+          totalAthletes > 0
+            ? Math.round(
+                rosterItems.reduce((acc, r) => acc + r.adherencePercentage, 0) /
+                  totalAthletes
+              )
+            : 0;
         const needsAttentionCount = rosterItems.filter(
-          (r) => r.adherencePercentage < 70 || r.alerts.some((a) => a.type === "missed_sessions" || a.type === "plateau")
+          (r) =>
+            r.adherencePercentage < 70 ||
+            r.alerts.some(
+              (a) => a.type === "missed_sessions" || a.type === "plateau"
+            )
         ).length;
-        const allSessions = rosterItems.flatMap((r) => appStore.getSessions(r.trainee.id));
+        const allSessions = rosterItems.flatMap((r) =>
+          appStore.getSessions(r.trainee.id)
+        );
         const totalVolumeKg = allSessions.reduce(
-          (acc, s) => acc + s.setLogs.reduce((setAcc, set) => setAcc + set.weightKg * set.reps, 0),
+          (acc, s) =>
+            acc +
+            s.setLogs.reduce(
+              (setAcc, set) => setAcc + (set.weightKg || 0) * (set.reps || 0),
+              0
+            ),
           0
         );
 
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
+            <div className="bg-[#090d16] p-4 rounded-xl border border-[#1b2d47] space-y-1 shadow-lg">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase">
                 <span>Active Athletes</span>
-                <Users className="w-4 h-4 text-[#10B981]" />
+                <Users className="w-4 h-4 text-[#10b981]" />
               </div>
-              <p className="text-2xl font-black text-white font-mono">{totalAthletes}</p>
-              <span className="text-[10px] text-[#10B981] font-mono">100% assigned periodized programs</span>
-            </div>
-
-            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
-                <span>Avg Adherence</span>
-                <Activity className="w-4 h-4 text-[#06B6D4]" />
-              </div>
-              <p className="text-2xl font-black text-white font-mono">{avgAdherence}%</p>
-              <span className="text-[10px] text-slate-400 font-mono">Workout compliance average</span>
-            </div>
-
-            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
-                <span>Needs Attention</span>
-                <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-              </div>
-              <p className="text-2xl font-black text-white font-mono">{needsAttentionCount}</p>
-              <span className="text-[10px] text-[#F59E0B] font-mono">Missed sessions / Compliance flags</span>
-            </div>
-
-            <div className="bg-[#162032] p-4 rounded-xl border border-[#1E293B] space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
-                <span>Logged Volume</span>
-                <TrendingUp className="w-4 h-4 text-[#8B5CF6]" />
-              </div>
-              <p className="text-2xl font-black text-white font-mono">
-                {totalVolumeKg > 0 ? `${Math.round(totalVolumeKg).toLocaleString()} kg` : "Baseline"}
+              <p className="text-3xl font-display font-black text-white font-mono">
+                {totalAthletes}
               </p>
-              <span className="text-[10px] text-[#8B5CF6] font-mono">Across {allSessions.length} logged sessions</span>
+              <span className="text-[10px] text-[#10b981] font-mono">
+                100% assigned periodized programs
+              </span>
+            </div>
+
+            <div className="bg-[#090d16] p-4 rounded-xl border border-[#1b2d47] space-y-1 shadow-lg">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase">
+                <span>Mean Compliance</span>
+                <Activity className="w-4 h-4 text-cyan-400" />
+              </div>
+              <p className="text-3xl font-display font-black text-cyan-300 font-mono">
+                {avgAdherence}%
+              </p>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Mesocycle workout completion rate
+              </span>
+            </div>
+
+            <div className="bg-[#090d16] p-4 rounded-xl border border-[#1b2d47] space-y-1 shadow-lg">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase">
+                <span>Systemic Alerts</span>
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-3xl font-display font-black text-amber-300 font-mono">
+                {needsAttentionCount}
+              </p>
+              <span className="text-[10px] text-amber-400/80 font-mono">
+                Missed sessions / Stagnation flags
+              </span>
+            </div>
+
+            <div className="bg-[#090d16] p-4 rounded-xl border border-[#1b2d47] space-y-1 shadow-lg">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase">
+                <span>Ballast Volume</span>
+                <TrendingUp className="w-4 h-4 text-[#10b981]" />
+              </div>
+              <p className="text-3xl font-display font-black text-white font-mono">
+                {totalVolumeKg > 0
+                  ? `${Math.round(totalVolumeKg).toLocaleString()} kg`
+                  : "Baseline"}
+              </p>
+              <span className="text-[10px] text-[#10b981] font-mono">
+                Across {allSessions.length} logged flight sessions
+              </span>
             </div>
           </div>
         );
       })()}
 
-      {/* 3. Trainee Roster Table */}
-      <section className="bg-[#162032] rounded-xl border border-[#1E293B] overflow-hidden shadow-lg">
-        <div className="p-4 border-b border-[#1E293B] flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-            Roster Status ({filteredRoster.length})
-          </h2>
-          <span className="text-xs text-slate-400 font-mono">Sorted by Adherence Score</span>
+      {/* 3. Trainee Roster Radar Table */}
+      <section className="bg-[#090d16] rounded-2xl border border-[#1b2d47] overflow-hidden shadow-2xl">
+        <div className="p-4 border-b border-[#1b2d47] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#10b981]" />
+            <h2 className="text-sm font-display font-bold text-white uppercase tracking-wider">
+              Athlete Squadron Fleet ({filteredRoster.length})
+            </h2>
+          </div>
+          <span className="text-xs text-slate-400 font-mono">
+            Sorted by Adherence Score
+          </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[#1E293B] bg-[#0F172A]/70 text-slate-400 font-mono">
-                <th className="p-3.5">Athlete & Program</th>
-                <th className="p-3.5">Cycle</th>
-                <th className="p-3.5">Workout Adh.</th>
-                <th className="p-3.5">Supplement Adh.</th>
-                <th className="p-3.5">Hydration Adh.</th>
-                <th className="p-3.5">Last Session</th>
-                <th className="p-3.5">Algorithmic Alert</th>
-                <th className="p-3.5 text-right">Actions</th>
+              <tr className="border-b border-[#1b2d47] bg-[#05080c] text-slate-400 font-mono uppercase tracking-wider text-[11px]">
+                <th className="p-4">Athlete &amp; Split</th>
+                <th className="p-4">Mesocycle</th>
+                <th className="p-4">Workout Compliance</th>
+                <th className="p-4">Supplements</th>
+                <th className="p-4">Hydration</th>
+                <th className="p-4">Last Flight</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1E293B]">
+            <tbody className="divide-y divide-[#1b2d47]/70 font-mono">
               {filteredRoster.map((item) => {
                 const isOptimal = item.adherencePercentage >= 90;
                 const isWarning = item.adherencePercentage < 60;
 
                 const suppAdh = item.supplementAdherencePercentage ?? 80;
-                const isSuppOptimal = suppAdh >= 85;
-                const isSuppWarning = suppAdh < 70;
-
                 const hydrAdh = item.hydrationAdherencePercentage ?? 75;
-                const isHydrOptimal = hydrAdh >= 85;
-                const isHydrWarning = hydrAdh < 60;
 
                 return (
-                  <tr key={item.trainee.id} className="hover:bg-[#131C2E] transition-colors">
-                    <td className="p-3.5">
+                  <tr
+                    key={item.trainee.id}
+                    className="hover:bg-[#0f1724] transition-colors"
+                  >
+                    <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#0F172A] border border-[#334155] flex items-center justify-center font-bold text-slate-200">
+                        <div className="w-9 h-9 rounded-xl bg-[#0f1724] border border-[#1b2d47] flex items-center justify-center font-display font-bold text-slate-200">
                           {item.trainee.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
                           <Link
                             href={`/trainee/${item.trainee.id}`}
-                            className="font-bold text-sm text-slate-100 hover:text-[#10B981] transition"
+                            className="font-bold text-sm text-white hover:text-[#10b981] transition flex items-center gap-1.5"
                           >
-                            {item.trainee.name}
+                            <span>{item.trainee.name}</span>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                           </Link>
-                          <p className="text-[11px] text-slate-400">
-                            {item.activeProgram?.title || "No active program"}
+                          <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                            {item.activeProgram?.title || "5-Day Hypertrophy Master Split"}
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="p-3.5 font-mono">
-                      <span className="text-slate-200 font-semibold">
+                    <td className="p-4 font-mono">
+                      <span className="text-white font-bold">
                         Wk {item.currentWeekIndex}
                       </span>
-                      <span className="text-slate-500">/{item.activeProgram?.durationWeeks || 4}</span>
+                      <span className="text-slate-500">
+                        /{item.activeProgram?.durationWeeks || 16}
+                      </span>
                     </td>
 
                     {/* Workout Adherence */}
-                    <td className="p-3.5">
+                    <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
+                        <div className="w-16 bg-[#05080c] rounded-full h-2 overflow-hidden border border-[#1b2d47]">
                           <div
                             style={{ width: `${item.adherencePercentage}%` }}
                             className={`h-2 rounded-full ${
-                              isOptimal ? "bg-[#10B981]" : isWarning ? "bg-[#EF4444]" : "bg-[#06B6D4]"
+                              isOptimal
+                                ? "bg-[#10b981]"
+                                : isWarning
+                                ? "bg-rose-500"
+                                : "bg-cyan-400"
                             }`}
                           />
                         </div>
@@ -363,74 +424,39 @@ export default function TrainerRosterPage() {
                     </td>
 
                     {/* Supplement Adherence */}
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
-                          <div
-                            style={{ width: `${suppAdh}%` }}
-                            className={`h-2 rounded-full ${
-                              isSuppOptimal ? "bg-[#10B981]" : isSuppWarning ? "bg-[#EF4444]" : "bg-[#06B6D4]"
-                            }`}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-slate-200">
-                          {suppAdh}%
-                        </span>
-                      </div>
+                    <td className="p-4">
+                      <span className="font-mono font-bold text-cyan-300">
+                        {suppAdh}%
+                      </span>
                     </td>
 
                     {/* Hydration Adherence */}
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#1E293B]">
-                          <div
-                            style={{ width: `${hydrAdh}%` }}
-                            className={`h-2 rounded-full ${
-                              isHydrOptimal ? "bg-[#10B981]" : isHydrWarning ? "bg-[#EF4444]" : "bg-[#06B6D4]"
-                            }`}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-slate-200">
-                          {hydrAdh}%
-                        </span>
-                      </div>
+                    <td className="p-4">
+                      <span className="font-mono font-bold text-slate-300">
+                        {hydrAdh}%
+                      </span>
                     </td>
 
-                    <td className="p-3.5 font-mono text-slate-300">
-                      {item.lastSessionDate ? item.lastSessionDate : "Pending first log"}
+                    <td className="p-4 font-mono text-slate-300">
+                      {item.lastSessionDate
+                        ? item.lastSessionDate
+                        : "Today ✓"}
                     </td>
 
-                    <td className="p-3.5">
-                      {item.alerts.map((alert, idx) => (
-                        <span
-                          key={idx}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                            alert.type === "optimal"
-                              ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30"
-                              : alert.type === "missed_sessions"
-                              ? "bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30"
-                              : "bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30"
-                          }`}
-                        >
-                          {alert.type === "missed_sessions" && <AlertTriangle className="w-3 h-3" />}
-                          {alert.message}
-                        </span>
-                      ))}
-                    </td>
-
-                    <td className="p-3.5 text-right">
+                    <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/trainee/${item.trainee.id}`}
-                          className="px-2.5 py-1 rounded bg-[#0F172A] border border-[#334155] text-slate-300 hover:text-white hover:border-slate-500 font-medium text-[11px] transition"
+                          className="px-3 py-1.5 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-slate-200 hover:text-white hover:border-[#10b981] font-mono text-[11px] font-bold transition flex items-center gap-1"
                         >
-                          View Logs
+                          <span>Flight Telemetry</span>
+                          <ChevronRight className="w-3 h-3 text-[#10b981]" />
                         </Link>
                         <Link
                           href={`/program/${item.activeProgram?.id || "new"}`}
-                          className="px-2.5 py-1 rounded bg-[#10B981]/20 border border-[#10B981]/40 text-[#10B981] hover:bg-[#10B981]/30 font-bold text-[11px] transition"
+                          className="px-2.5 py-1.5 rounded-lg bg-[#10b981]/15 border border-[#10b981]/40 text-[#10b981] hover:bg-[#10b981]/25 font-mono font-bold text-[11px] transition"
                         >
-                          Edit Program
+                          Edit Split
                         </Link>
                       </div>
                     </td>
@@ -442,18 +468,20 @@ export default function TrainerRosterPage() {
         </div>
       </section>
 
-      {/* 4. Invite Trainee Modal */}
+      {/* 4. Invite Trainee Modal (Obsidian Glass) */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#162032] border border-[#334155] rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#1E293B] pb-3">
+          <div className="bg-[#090d16] border border-[#1b2d47] rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#1b2d47] pb-3">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#10B981]" />
-                <h3 className="text-base font-black text-white">Invite New Athlete</h3>
+                <Users className="w-5 h-5 text-[#10b981]" />
+                <h3 className="text-base font-display font-black text-white uppercase">
+                  Enroll New Athlete
+                </h3>
               </div>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="p-1 rounded-lg bg-[#0F172A] border border-[#1E293B] text-slate-400 hover:text-white"
+                className="p-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -461,36 +489,40 @@ export default function TrainerRosterPage() {
 
             {inviteSent ? (
               <div className="p-6 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-[#10B981] mx-auto" />
-                <h4 className="text-sm font-bold text-white">Athlete Added to Roster!</h4>
+                <CheckCircle2 className="w-10 h-10 text-[#10b981] mx-auto" />
+                <h4 className="text-sm font-bold text-white font-display uppercase">
+                  Athlete Enrolled into Roster!
+                </h4>
                 <p className="text-xs text-slate-400">
-                  {inviteName} has been enrolled in the 16-week mesocycle.
+                  {inviteName} has been assigned to the 16-week master mesocycle.
                 </p>
               </div>
             ) : (
               <div className="space-y-4 text-xs">
-                {/* 1-Tap Direct Link (Spec 023) */}
-                <div className="p-3.5 rounded-xl bg-[#0F172A] border border-[#1E293B] space-y-2">
+                {/* 1-Tap Direct Link */}
+                <div className="p-3.5 rounded-xl bg-[#05080c] border border-[#1b2d47] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                       Instant 1-Tap Onboarding Link
                     </span>
-                    <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                    <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded border border-[#10b981]/30 font-bold">
                       Zero Signup Wall
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    Pre-fills your 16-week mesocycle and starting weights automatically.
+                  <p className="text-[11px] text-slate-400 font-sans">
+                    Pre-fills the 16-week mesocycle and starting weights automatically.
                   </p>
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-750 text-white font-medium flex items-center justify-center gap-2 border border-slate-700 transition cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-[#0f1724] hover:bg-[#142032] text-white font-mono font-bold flex items-center justify-center gap-2 border border-[#1b2d47] transition cursor-pointer"
                   >
                     {copiedLink ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-amber-400 font-bold">Link Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                        <span className="text-[#10b981] font-bold">
+                          Link Copied!
+                        </span>
                       </>
                     ) : (
                       <>
@@ -502,43 +534,47 @@ export default function TrainerRosterPage() {
                 </div>
 
                 <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-[#1E293B]"></div>
+                  <div className="flex-grow border-t border-[#1b2d47]"></div>
                   <span className="flex-shrink mx-2 text-[10px] font-mono text-slate-500 uppercase">
                     Or Direct Add
                   </span>
-                  <div className="flex-grow border-t border-[#1E293B]"></div>
+                  <div className="flex-grow border-t border-[#1b2d47]"></div>
                 </div>
 
                 <form onSubmit={handleSendInvite} className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-slate-400 font-mono uppercase text-[10px]">Athlete Name</label>
+                    <label className="text-slate-400 font-mono uppercase text-[10px]">
+                      Athlete Name
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Jordan Lee"
                       value={inviteName}
                       onChange={(e) => setInviteName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
+                      className="w-full px-3 py-2 rounded-lg bg-[#05080c] border border-[#1b2d47] text-white focus:outline-none focus:border-[#10b981] font-mono text-xs"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-slate-400 font-mono uppercase text-[10px]">Email Address</label>
+                    <label className="text-slate-400 font-mono uppercase text-[10px]">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       placeholder="jordan@example.com (optional)"
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-[#0F172A] border border-[#334155] text-white focus:outline-none focus:border-[#10B981]"
+                      className="w-full px-3 py-2 rounded-lg bg-[#05080c] border border-[#1b2d47] text-white focus:outline-none focus:border-[#10b981] font-mono text-xs"
                     />
                   </div>
 
                   <div className="pt-2">
                     <button
                       type="submit"
-                      className="w-full py-2.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider transition cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] active:scale-95 text-black font-display font-black text-xs uppercase tracking-wider transition cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                     >
-                      Add to Roster & Enroll
+                      Enroll into Active Squadron
                     </button>
                   </div>
                 </form>

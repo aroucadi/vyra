@@ -20,7 +20,7 @@ interface AnatomicalTensionSpotlightProps {
   secondaryMuscles?: string[];
   className?: string;
   showToggle?: boolean;
-  accentColor?: "amber" | "sky";
+  accentColor?: "emerald" | "amber" | "sky";
 }
 
 // Normalized mapping from RAG/MuscleWiki targets to vector silhouette regions
@@ -48,10 +48,15 @@ export function AnatomicalTensionSpotlight({
   showToggle = true,
   accentColor = "amber",
 }: AnatomicalTensionSpotlightProps) {
+  const isEmerald = accentColor === "emerald";
   const isAmber = accentColor === "amber";
-  const primaryFill = isAmber ? "#F59E0B" : "#38BDF8";
-  const primaryStroke = isAmber ? "#FBBF24" : "#7DD3FC";
-  const primaryGlow = isAmber ? "rgba(245, 158, 11, 0.85)" : "rgba(56, 189, 248, 0.85)";
+  const primaryFill = isEmerald ? "#10B981" : isAmber ? "#F59E0B" : "#38BDF8";
+  const primaryStroke = isEmerald ? "#34D399" : isAmber ? "#FBBF24" : "#7DD3FC";
+  const primaryGlow = isEmerald
+    ? "rgba(16, 185, 129, 0.85)"
+    : isAmber
+    ? "rgba(245, 158, 11, 0.85)"
+    : "rgba(56, 189, 248, 0.85)";
 
   const primaryRegion = mapToRegion(primaryMuscle);
   const secondaryRegions = secondaryMuscles

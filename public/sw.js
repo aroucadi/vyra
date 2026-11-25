@@ -1,11 +1,12 @@
 // VYRA Service Worker: App-Shell Caching & Offline Workout Logging Queue (Spec 018 Hardened)
-const CACHE_NAME = 'vyra-v2';
+const CACHE_NAME = 'vyra-v2.2-offline';
 const PRECACHE_ASSETS = [
   '/',
   '/today',
   '/program',
   '/you',
   '/session',
+  '/progress',
   '/exercises',
   '/install',
   '/manifest.webmanifest',
@@ -37,7 +38,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Offline Movement & Substitution APIs: Stale-While-Revalidate
+  // 1. Offline Movement & Substitution APIs: Stale-While-Revalidate for basement gym support
   if (url.pathname.startsWith('/api/exercises') || url.pathname.startsWith('/api/substitutions')) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -56,7 +57,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Health, webhooks, analytics, telemetry: Network only
+  // 2. Health, webhooks, analytics, telemetry, sync: Network only
   if (url.pathname.startsWith('/api/')) {
     return;
   }
@@ -66,7 +67,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request).catch(() => {
         return caches.match(event.request).then((cached) => {
-          return cached || caches.match('/today');
+          return cached || caches.match('/today') || caches.match('/session');
         });
       })
     );

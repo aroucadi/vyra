@@ -7,6 +7,7 @@ import { visualProgressStore } from "@/lib/ai/visual-progress";
 import { sensoryMemoryStore } from "@/lib/ai/sensory-memory";
 import { gymVisionInventoryStore } from "@/lib/ai/gym-vision-inventory";
 import { clearClientStorage } from "@/lib/storage";
+import { offlineSyncEngine } from "@/lib/offline/sync-engine";
 import { anchorIdentityWithFirebase, clearAnchoredIdentity } from "@/lib/auth/identity";
 import {
   exchangeFirebaseIdTokenForSession,
@@ -137,11 +138,17 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
 
+    let stopSync: (() => void) | undefined;
+
     const init = async () => {
       appStore.hydrateFromClientStorage(true);
       await appStore.hydrateFromIndexedDbAsync();
       await applyBootstrap();
-      if (active) setIsBootstrapping(false);
+      if (active) {
+        setIsBootstrapping(false);
+        const traineeId = appStore.getCurrentUser()?.id || "trainee_alaa";
+        stopSync = offlineSyncEngine.initializeAutoSync(traineeId);
+      }
     };
 
     const hydrateTimer = setTimeout(() => {
@@ -169,6 +176,7 @@ export function VyraAuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
       clearTimeout(hydrateTimer);
       unsub();
+      if (stopSync) stopSync();
     };
   }, [applyBootstrap]);
 

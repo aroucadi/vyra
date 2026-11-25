@@ -6,6 +6,7 @@ import { appStore } from "@/lib/store";
 import { DeveloperMenu } from "@/components/DeveloperMenu";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
+import { ClaudeMcpConnectorCard } from "@/components/trainee/ClaudeMcpConnectorCard";
 import {
   useIsClientHydrated,
   useVyraAuth,
@@ -436,7 +437,10 @@ export default function YouPage() {
         </div>
       </section>
 
-      {/* 5. SOVEREIGN VAULT & HARDWARE HEADQUARTERS */}
+      {/* 5. ANTHROPIC CLAUDE CONNECTOR (MCP) */}
+      <ClaudeMcpConnectorCard userId={currentUser.id} />
+
+      {/* 6. SOVEREIGN VAULT & HARDWARE HEADQUARTERS */}
       <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3.5">
         <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
           <div className="flex items-center gap-2">

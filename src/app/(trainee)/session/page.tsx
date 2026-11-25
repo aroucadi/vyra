@@ -21,12 +21,10 @@ import type {
 } from "@/lib/types";
 import { saveSessionAction } from "@/lib/actions/session";
 import { uploadEquipmentPhotoAction } from "@/lib/actions/upload";
-import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { isCloudStorageEnabled } from "@/lib/cloud-storage";
 import { getStorageAdapter } from "@/lib/storage/adapter";
-import { Log } from "@/components/primitives/Log";
 import {
   generateAutoregulationPlan,
   type MinimalExerciseTarget,
@@ -40,32 +38,7 @@ import {
   enqueueMutation,
   drainMutationQueue,
 } from "@/lib/storage";
-import {
-  Clock,
-  Sparkles,
-  Video,
-  HelpCircle,
-  X,
-  FastForward,
-  Volume2,
-  VolumeX,
-  ArrowRightLeft,
-  Plus,
-  CheckCircle2,
-  MapPin,
-  Flame,
-  ArrowUpDown,
-  SkipForward,
-  Zap,
-  Layers,
-  Camera,
-  FileText,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import { soundService } from "@/lib/in-gym/sound";
-import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositionCard";
 import type { DailyWorkoutAdaptationResult } from "@/lib/ai/daily-session-adapter";
 import {
   evaluateJustInTimeProposition,
@@ -78,11 +51,9 @@ import {
   sensoryMemoryStore,
   inferPrimaryMuscleFromExerciseName,
 } from "@/lib/ai/sensory-memory";
-import { clsx } from "clsx";
 import { useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 import { useSessionTimers } from "@/hooks/useSessionTimers";
 import {
-  BIOFEEDBACK_OPTIONS,
   compressImage,
   mapDayPrescriptionsToExercises,
   type ActiveExercise,
@@ -93,6 +64,7 @@ import { SessionWarmupView } from "@/components/trainee/session/SessionWarmupVie
 import { SessionCooldownView } from "@/components/trainee/session/SessionCooldownView";
 import { SessionSummaryView } from "@/components/trainee/session/SessionSummaryView";
 import { SessionSheets } from "@/components/trainee/session/SessionSheets";
+import { KineticFlightHud } from "@/components/trainee/session/KineticFlightHud";
 
 interface SwapTarget {
   id?: string;
@@ -807,11 +779,7 @@ function SessionFlow({
       .catch(() => {});
   };
 
-  const isExCompleteOrSkipped = Boolean(
-    activeEx &&
-      (activeEx.completedSets.length >= activeEx.targetSets ||
-        activeEx.skippedRemaining)
-  );
+  const isFinalExercise = currentExIndex === exercises.length - 1;
   const pendingOtherExercises = exercises
     .map((e, idx) => ({ ex: e, idx }))
     .filter(
@@ -820,13 +788,6 @@ function SessionFlow({
         ex.completedSets.length < ex.targetSets &&
         !ex.skippedRemaining
     );
-  const isFinalExercise = currentExIndex === exercises.length - 1;
-  const isFinalSetOfExercise = Boolean(
-    activeEx && activeEx.completedSets.length + 1 >= activeEx.targetSets
-  );
-  const isAllExercisesComplete = exercises.every(
-    (e) => e.completedSets.length >= e.targetSets
-  );
   const isSupersetA = Boolean(
     activeEx?.subMovementOrder && activeEx.subMovementOrder.endsWith("A")
   );
@@ -1786,816 +1747,112 @@ function SessionFlow({
     );
   }
 
-  const currentSetNum = activeEx.completedSets.length + 1;
-
   return (
-    <div className="min-h-screen bg-[#090C11] flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none font-body">
-      <div className="space-y-3 pb-3 border-b border-[#1C2436]">
-        <header className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setIsExitAlertOpen(true)}
-            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition cursor-pointer font-editorial font-bold"
-          >
-            <X className="w-4 h-4" />
-            <span>Exit</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsGymDrawerOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 rounded-full text-[11px] font-medium text-slate-300 hover:text-amber-300 transition cursor-pointer max-w-[120px]"
-              title="Change salle de sport"
-            >
-              <MapPin className="w-3 h-3 text-amber-400 flex-shrink-0" />
-              <span className="truncate">{selectedGym?.name || "Gym"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsReorderDrawerOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 rounded-full text-xs font-mono font-bold text-slate-300 hover:text-white transition cursor-pointer"
-              title="Reorder exercises or jump to available machine"
-            >
-              <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
-              <span>
-                {currentExIndex + 1}/{exercises.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAddExerciseSheetOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-full text-[11px] font-bold text-amber-400 hover:text-amber-300 transition cursor-pointer"
-              title="Log extra exercise on top of program"
-            >
-              <Plus className="w-3 h-3 stroke-[2.5]" />
-              <span>Exercise</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-[#111622] px-2.5 py-1 rounded-full border border-[#1C2436]">
-            <Clock className="w-3.5 h-3.5" />
-            <span className="tabular">
-              {Math.floor(sessionDurationSec / 60)}:
-              {(sessionDurationSec % 60).toString().padStart(2, "0")}
-            </span>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-3 gap-1.5 py-2 px-3 bg-[#111622] border border-[#1C2436] rounded-xl text-center">
-          <div>
-            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
-              Total Gym
-            </span>
-            <span className="font-mono-tabular font-extrabold text-amber-400 text-sm">
-              {Math.floor(sessionDurationSec / 60)}:
-              {(sessionDurationSec % 60).toString().padStart(2, "0")}
-            </span>
-          </div>
-          <div className="border-x border-[#1C2436]">
-            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
-              Lifting
-            </span>
-            <span className="font-mono-tabular font-extrabold text-white text-sm">
-              {Math.floor(liftingDurationSec / 60)}:
-              {(liftingDurationSec % 60).toString().padStart(2, "0")}
-            </span>
-          </div>
-          <div>
-            <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
-              Rest
-            </span>
-            <span className="font-mono-tabular font-extrabold text-sky-400 text-sm">
-              {Math.floor(totalRestDurationSec / 60)}:
-              {(totalRestDurationSec % 60).toString().padStart(2, "0")}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <main className="flex-1 flex flex-col justify-center py-4 space-y-6">
-        {(activeEx.supersetTag || activeEx.subMovementOrder?.match(/[AB]$/)) && (
-          <div
-            className={clsx(
-              "p-3 rounded-xl space-y-2 animate-in fade-in transition-colors",
-              isStraightMode
-                ? "bg-slate-900/90 border border-slate-700/80"
-                : "bg-indigo-950/50 border border-indigo-700/60"
-            )}
-          >
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={clsx(
-                    "text-[10px] font-mono uppercase tracking-wider font-bold flex items-center gap-1.5",
-                    isStraightMode ? "text-slate-300" : "text-indigo-400"
-                  )}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {isStraightMode
-                    ? "Straight Sets Mode (One-by-One)"
-                    : "Station-Locked Superset"}
-                </span>
-                {activeEx.supersetTag && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Group {activeEx.supersetTag}
-                  </span>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleToggleSupersetMode}
-                className={clsx(
-                  "text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95",
-                  isStraightMode
-                    ? "bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/40 text-indigo-300"
-                    : "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300"
-                )}
-                title={
-                  isStraightMode
-                    ? "Switch back to alternating superset"
-                    : "Machine taken? Complete all sets of this exercise first"
-                }
-              >
-                {isStraightMode ? (
-                  <>
-                    <Zap className="w-3 h-3 text-indigo-400" />
-                    <span>⚡ Re-link Superset</span>
-                  </>
-                ) : (
-                  <>
-                    <Layers className="w-3 h-3 text-amber-400" />
-                    <span>📋 Machine Busy? Straight Sets</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="text-[11px] text-slate-200">
-              {isStraightMode ? (
-                <span>
-                  👉 <strong>Straight sets:</strong> Complete all{" "}
-                  {activeEx.targetSets} sets of <strong>{activeEx.name}</strong>{" "}
-                  with standard rest ({activeEx.restSeconds || 60}s) before
-                  moving to{" "}
-                  {partnerExercise ? (
-                    <strong>{partnerExercise.name}</strong>
-                  ) : (
-                    "the next station"
-                  )}
-                  .
-                </span>
-              ) : isSupersetA ? (
-                <span>
-                  👉 <strong>{activeEx.subMovementOrder || "Movement A"}</strong>
-                  : {activeEx.name} · 0s rest → immediately transition to{" "}
-                  {partnerExercise ? (
-                    <strong>{partnerExercise.name}</strong>
-                  ) : (
-                    "partner exercise"
-                  )}
-                </span>
-              ) : (
-                <span>
-                  👉 <strong>{activeEx.subMovementOrder || "Movement B"}</strong>
-                  : {activeEx.name} · {activeEx.restSeconds || 60}s rest
-                  triggered after set before next superset round
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-              <span>
-                {isStraightMode
-                  ? `Set ${Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of ${activeEx.targetSets}`
-                  : `Round ${Math.min(activeEx.completedSets.length + 1, activeEx.targetSets)} of ${activeEx.targetSets}`}
-              </span>
-              <span
-                className={
-                  isStraightMode ? "text-slate-400" : "text-indigo-300/80"
-                }
-              >
-                {isStraightMode
-                  ? "No machine switching required"
-                  : "Alternate back-and-forth between stations"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {activeJitProposition && (
-          <JitCoachPropositionCard
-            proposition={activeJitProposition}
-            onAccept={handleAcceptJitProposition}
-            onDismiss={handleDismissJitProposition}
-          />
-        )}
-
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                {activeEx.subMovementOrder && (
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                    {activeEx.subMovementOrder}
-                  </span>
-                )}
-                <h2 className="text-2xl sm:text-3xl font-black font-display uppercase text-white tracking-tight leading-tight">
-                  {activeEx.name}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-300 font-mono-tabular mt-1">
-                Target:{" "}
-                <span className="font-bold text-amber-400">
-                  {activeEx.targetSets} sets × {activeEx.repLow}-
-                  {activeEx.repHigh} reps
-                </span>{" "}
-                {activeEx.targetWeightKg ? `· ${activeEx.targetWeightKg}kg ` : ""}
-                · RIR {activeEx.targetRir}
-              </p>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
-                  Overload Ceiling: {activeEx.repHigh} reps
-                </span>
-                {activeEx.warmupSets !== undefined &&
-                  activeEx.warmupSets > 0 &&
-                  activeEx.completedSets.length === 0 && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
-                      Warm-up: {activeEx.warmupSets} sets
-                    </span>
-                  )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {activeEx.videoUrl && (
-                <a
-                  href={resolveExerciseVideoUrl(activeEx.name, {
-                    previousVideoUrl: activeEx.videoUrl,
-                    catalogue,
-                  })}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
-                  title="Watch quick exercise form demonstration (1 click)"
-                >
-                  <Video className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Video</span>
-                </a>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSwapTargetExercise({
-                    id: activeEx.id,
-                    name: activeEx.name,
-                    target:
-                      activeEx.target ||
-                      inferPrimaryMuscleFromExerciseName(activeEx.name),
-                    equipment: activeEx.equipment || "barbell",
-                  });
-                  setIsSwapDrawerOpen(true);
-                }}
-                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
-                aria-label="Swap occupied exercise equipment"
-              >
-                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400" />
-                <span>Swap</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
-                title="Snap equipment setup photo"
-              >
-                <Camera className="w-3.5 h-3.5 text-amber-400" />
-                <span>{activeEx.equipmentPhotoUrl ? "Photo ✓" : "Photo"}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsTipsOpen(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-[#111622] border border-[#1C2436] hover:border-[#2D3A54] text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer active:scale-95"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                <span>Tips</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-500 font-mono">
-            Previous best: {activeEx.lastBestWeight} kg ×{" "}
-            {activeEx.lastBestReps} reps
-          </div>
-        </div>
-
-        <div className="space-y-2 py-1">
-          <div className="flex items-center justify-center gap-2">
-            {Array.from({ length: activeEx.targetSets }).map((_, idx) => {
-              const isDone = idx < activeEx.completedSets.length;
-              const isCurrent = idx === activeEx.completedSets.length;
-
-              return (
-                <span
-                  key={idx}
-                  className={clsx(
-                    "w-3.5 h-3.5 rounded-full transition-all",
-                    isDone &&
-                      "bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.7)] scale-100",
-                    isCurrent &&
-                      "border-2 border-amber-400 bg-amber-500/20 animate-pulse scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]",
-                    !isDone &&
-                      !isCurrent &&
-                      "bg-[#151B27] border border-[#1C2436]"
-                  )}
-                />
-              );
-            })}
-          </div>
-
-          {activeEx.completedSets.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 justify-center">
-              {activeEx.completedSets.map((s, idx) => (
-                <span
-                  key={idx}
-                  className={clsx(
-                    "px-2.5 py-1 rounded-lg text-[11px] font-mono-tabular border flex items-center gap-1.5 shadow-sm",
-                    s.isDropSet
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-bold"
-                      : "bg-[#111622] border-[#1C2436] text-slate-200"
-                  )}
-                >
-                  <span className="text-slate-400 text-[10px] font-bold">
-                    {s.isDropSet ? "🔥 Drop:" : `Set ${idx + 1}:`}
-                  </span>
-                  <span className="font-extrabold text-white">
-                    {s.weight} kg
-                  </span>
-                  <span className="text-slate-400 font-medium">× {s.reps}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Log.Stepper
-            label="Weight (kg)"
-            value={activeEx.currentWeight}
-            step={2.5}
-            unit="kg"
-            onChange={(val) =>
-              setExercises((prev) => {
-                const copy = [...prev];
-                copy[currentExIndex] = {
-                  ...copy[currentExIndex],
-                  currentWeight: val,
-                };
-                return copy;
-              })
-            }
-          />
-
-          <Log.Stepper
-            label="Reps Completed"
-            value={activeEx.currentReps}
-            step={1}
-            min={1}
-            max={50}
-            unit="reps"
-            onChange={(val) =>
-              setExercises((prev) => {
-                const copy = [...prev];
-                copy[currentExIndex] = {
-                  ...copy[currentExIndex],
-                  currentReps: val,
-                };
-                return copy;
-              })
-            }
-          />
-        </div>
-
-        {isExCompleteOrSkipped ? (
-          <div className="space-y-3 animate-in fade-in duration-200">
-            <div className="p-4 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-3 shadow-sm font-body">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-                  <span>How did this lift feel? (Select all that apply)</span>
-                </span>
-                {(activeEx.feedbackTags && activeEx.feedbackTags.length > 0) ||
-                activeEx.feedbackTag ? (
-                  <span className="text-[10px] font-mono text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                    {activeEx.feedbackTags?.length ||
-                      (activeEx.feedbackTag ? 1 : 0)}{" "}
-                    selected ✓
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono text-slate-500">
-                    Multi-select
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {BIOFEEDBACK_OPTIONS.map((tag) => {
-                  const isSelected = Boolean(
-                    activeEx.feedbackTags?.includes(tag.id) ||
-                      (!activeEx.feedbackTags &&
-                        activeEx.feedbackTag === tag.id)
-                  );
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => handleToggleFeedbackTag(tag.id)}
-                      className={clsx(
-                        "py-2 px-2.5 rounded-xl border text-left text-xs transition flex items-center justify-between gap-1.5 cursor-pointer font-body",
-                        isSelected
-                          ? tag.activeColor
-                          : "bg-[#090C11] border-[#1C2436] text-slate-300 hover:text-white hover:bg-[#182030]"
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-sm">{tag.icon}</span>
-                        <span className="font-semibold truncate">
-                          {tag.label}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <span className="text-xs font-bold text-amber-400 flex-shrink-0">
-                          ✓
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold font-body">
-                  <FileText className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Setup &amp; Biofeedback Notes (Optional)</span>
-                </div>
-                <textarea
-                  value={activeEx.feedbackNote || ""}
-                  onChange={(e) => handleUpdateFeedbackNote(e.target.value)}
-                  placeholder="e.g. Pin set to position 4, right elbow felt smooth, micro-plates used..."
-                  rows={2}
-                  className="w-full p-3 rounded-xl bg-[#090C11] border border-[#1C2436] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none font-body"
-                />
-              </div>
-
-              <div className="pt-1">
-                <AudioNoteRecorder
-                  audioUrl={activeEx.feedbackAudioUrl}
-                  transcript={activeEx.feedbackAudioTranscript}
-                  onSave={(url, transcript) =>
-                    handleUpdateExerciseAudio(url, transcript)
-                  }
-                  onDelete={() =>
-                    handleUpdateExerciseAudio(undefined, undefined)
-                  }
-                  label={`Voice Note: ${activeEx.name}`}
-                  traineeId={currentUser.id}
-                  exerciseName={activeEx.name}
-                  gymName={selectedGym?.name}
-                />
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-[#090C11] border border-[#1C2436] space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white flex items-center gap-1.5 font-body">
-                    <Camera className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Equipment / Barbell Setup Photo</span>
-                  </span>
-                  {activeEx.equipmentPhotoUrl && (
-                    <span className="text-[10px] font-mono text-amber-400 font-bold">
-                      Photo Attached ✓
-                    </span>
-                  )}
-                </div>
-
-                {activeEx.equipmentPhotoUrl ? (
-                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedFullPhoto(activeEx.equipmentPhotoUrl!)
-                      }
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#182030] border border-[#1C2436] hover:border-amber-500/40 transition group cursor-pointer text-left active:scale-95"
-                    >
-                      <img
-                        src={activeEx.equipmentPhotoUrl}
-                        alt="Setup preview"
-                        className="w-8 h-8 object-cover rounded-lg border border-[#1C2436] group-hover:scale-105 transition flex-shrink-0"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-semibold text-amber-300">
-                          Inspect Photo
-                        </span>
-                        <span className="text-[9px] text-slate-400">
-                          Tap to enlarge
-                        </span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        shareEquipmentPhotoWithGemini({
-                          photoUrl: activeEx.equipmentPhotoUrl!,
-                          exerciseName: activeEx.name,
-                          note: activeEx.feedbackNote,
-                          traineeId: currentUser.id,
-                          gymName: selectedGym?.name,
-                        })
-                      }
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-900/80 to-cyan-900/80 border border-indigo-700/70 hover:border-indigo-500 text-white transition text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
-                      title="Share with Google Gemini for biomechanical analysis"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                      <span>Share with Gemini</span>
-                      <Share2 className="w-3 h-3 ml-0.5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-[10px] text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-[#182030] transition cursor-pointer"
-                    >
-                      Retake
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-3 px-3 rounded-xl border border-dashed border-[#1C2436] hover:border-amber-400/60 bg-[#111622] hover:bg-[#182030] transition flex items-center justify-center gap-2 text-xs text-slate-300 cursor-pointer active:scale-98"
-                  >
-                    <Camera className="w-4 h-4 text-amber-400" />
-                    <span>Snap Machine / Seat Setting / Barbell Photo</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {isAllExercisesComplete || isFinalExercise ? (
-              <button
-                type="button"
-                onClick={() => handleFinishSession()}
-                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
-              >
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                  <span>Finish Workout &amp; View Results ✓</span>
-                </div>
-                <span className="text-[11px] font-sans font-medium text-slate-900/80 normal-case">
-                  All prescribed sets complete · Tap to save &amp; view summary
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentExIndex((prev) =>
-                    Math.min(exercises.length - 1, prev + 1)
-                  )
-                }
-                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-base font-black rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer animate-in zoom-in-95 duration-200"
-              >
-                <div className="flex items-center gap-2">
-                  <span>Next: {exercises[currentExIndex + 1]?.name} →</span>
-                </div>
-                <span className="text-[11px] font-sans font-medium text-slate-900/80 normal-case">
-                  {activeEx.name} complete ({activeEx.completedSets.length}/
-                  {activeEx.targetSets} sets)
-                </span>
-              </button>
-            )}
-
-            {pendingOtherExercises.length > 0 && (
-              <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1.5">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                  Machine busy? Jump to available station:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {pendingOtherExercises.map(({ ex, idx }) => (
-                    <button
-                      key={ex.id || idx}
-                      type="button"
-                      onClick={() => jumpToExercise(idx)}
-                      className="py-1.5 px-2.5 rounded-xl bg-[#090C11] hover:bg-[#182030] border border-[#1C2436] hover:border-amber-500/50 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <span className="text-amber-400 font-mono font-bold">
-                        #{idx + 1}
-                      </span>
-                      <span className="truncate max-w-[140px] font-semibold">
-                        {ex.name}
-                      </span>
-                      <span className="text-[9px] text-slate-400 uppercase">
-                        ({ex.equipment || "free"})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <button
-                type="button"
-                onClick={handleLogDropSet}
-                className="py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-xs font-semibold text-amber-300 transition flex items-center justify-center gap-1.5 cursor-pointer font-editorial"
-                title="Log immediate drop set with reduced load"
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>
-                  + Drop Set ({activeEx.currentWeight}kg ×{" "}
-                  {activeEx.currentReps})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={handleAddBonusSet}
-                className="py-2.5 px-3 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer font-editorial"
-              >
-                <Plus className="w-3.5 h-3.5 text-amber-400" />
-                <span>+ Bonus Set</span>
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsAddExerciseSheetOpen(true)}
-              className="w-full py-2 px-3 text-[11px] text-slate-400 hover:text-slate-200 bg-[#111622]/60 hover:bg-[#111622] border border-[#1C2436] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>+ Add Extra Exercise on top of program</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Log.Confirm
-              isHitTarget={
-                activeEx.currentWeight ===
-                  (activeEx.lastBestWeight || activeEx.currentWeight) &&
-                activeEx.currentReps >= (activeEx.repLow || 8)
-              }
-              label={
-                activeEx.currentWeight ===
-                  (activeEx.lastBestWeight || activeEx.currentWeight) &&
-                activeEx.currentReps >= (activeEx.repLow || 8)
-                  ? `⚡ HIT TARGET (${activeEx.currentWeight}kg × ${activeEx.currentReps}) · Set ${Math.min(currentSetNum, activeEx.targetSets)}/${activeEx.targetSets} ✓`
-                  : isStraightMode
-                  ? `Done · Log Set ${Math.min(currentSetNum, activeEx.targetSets)} of ${activeEx.targetSets} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
-                  : activeEx.subMovementOrder
-                  ? `Done · Log ${activeEx.subMovementOrder} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
-                  : `Log Set ${Math.min(currentSetNum, activeEx.targetSets)} (${activeEx.currentWeight}kg × ${activeEx.currentReps}) ✓`
-              }
-              subLabel={
-                isStraightMode
-                  ? isFinalSetOfExercise
-                    ? "Final target set of this movement · Advances to next exercise"
-                    : `${activeEx.restSeconds || 60}s rest timer auto-starts`
-                  : isSupersetA
-                  ? `0s Rest · Immediate transition to ${partnerExercise?.subMovementOrder || `${supersetPrefix}B`}`
-                  : isSupersetB
-                  ? `Triggers ${activeEx.restSeconds || 60}s rest countdown before next round`
-                  : isFinalSetOfExercise
-                  ? "Final target set · Tap to finish or log drop set"
-                  : `${activeEx.restSeconds}s rest timer auto-starts`
-              }
-              onClick={handleLogSet}
-            />
-
-            <div className="flex items-center justify-between pt-1 px-1 text-[11px] text-slate-400">
-              <button
-                type="button"
-                onClick={() => setIsReorderDrawerOpen(true)}
-                className="hover:text-cyan-400 flex items-center gap-1 transition cursor-pointer"
-              >
-                <ArrowUpDown className="w-3 h-3 text-cyan-400" />
-                <span>Reorder / Jump</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleSkipRemainingSets}
-                className="hover:text-amber-400 flex items-center gap-1 transition cursor-pointer"
-              >
-                <SkipForward className="w-3 h-3 text-amber-400" />
-                <span>End lift &amp; rate feedback →</span>
-              </button>
-            </div>
-
-            {activeEx.completedSets.length > 0 && (
-              <button
-                type="button"
-                onClick={handleLogDropSet}
-                className="w-full py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl text-xs font-semibold text-amber-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>
-                  Log as Drop Set ({activeEx.currentWeight}kg ×{" "}
-                  {activeEx.currentReps})
-                </span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {restTimerSec !== null && (
-          <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-200 shadow-sm font-body">
-            <div className="flex items-center gap-2 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>Rest:</span>
-              <span className="font-display font-black text-amber-400 text-base tabular-nums">
-                {restTimerSec}s
-              </span>
-              <span className="text-[10px] font-mono text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 hidden sm:inline">
-                Chime Active
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !isSoundMuted;
-                  setIsSoundMuted(next);
-                  soundService.setMuted(next);
-                }}
-                aria-label={
-                  isSoundMuted
-                    ? "Unmute rest timer audio"
-                    : "Mute rest timer audio"
-                }
-                className="p-1 rounded-md text-slate-400 hover:text-white transition cursor-pointer"
-              >
-                {isSoundMuted ? (
-                  <VolumeX className="w-4 h-4 text-slate-500" />
-                ) : (
-                  <Volume2 className="w-4 h-4 text-amber-400" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={cancelOrSkipRest}
-                className="text-[11px] font-mono font-semibold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <span>Skip</span>
-                <FastForward className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <footer className="pt-3 border-t border-[#1C2436] flex items-center justify-between font-body">
-        <button
-          type="button"
-          disabled={currentExIndex === 0}
-          onClick={() => setCurrentExIndex((prev) => Math.max(0, prev - 1))}
-          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs cursor-pointer font-display uppercase tracking-wider font-bold"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Prev</span>
-        </button>
-
-        {isAllExercisesComplete || isFinalExercise ? (
-          <button
-            type="button"
-            onClick={() => handleFinishSession()}
-            className="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-display uppercase tracking-wider font-black rounded-xl text-xs shadow-md hover:from-amber-400 hover:to-amber-300 transition cursor-pointer"
-          >
-            Finish Workout →
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setIsReorderDrawerOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-[11px] font-mono text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
-            title="Jump station or change order"
-          >
-            <ArrowUpDown className="w-3 h-3 text-amber-400" />
-            <span>
-              {activeEx.completedSets.length}/{activeEx.targetSets} done · Jump
-            </span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          disabled={currentExIndex === exercises.length - 1}
-          onClick={() =>
-            setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1))
+    <div className="min-h-screen bg-[#090C11]">
+      <KineticFlightHud
+        exercise={activeEx}
+        currentExIndex={currentExIndex}
+        totalExercises={exercises.length}
+        sessionDurationSec={sessionDurationSec}
+        liftingDurationSec={liftingDurationSec}
+        totalRestDurationSec={totalRestDurationSec}
+        restTimerSec={restTimerSec}
+        isSoundMuted={isSoundMuted}
+        onToggleSound={() => {
+          const next = !isSoundMuted;
+          setIsSoundMuted(next);
+          soundService.setMuted(next);
+        }}
+        onSkipRest={cancelOrSkipRest}
+        onUpdateWeight={(val) =>
+          setExercises((prev) => {
+            const copy = [...prev];
+            copy[currentExIndex] = {
+              ...copy[currentExIndex],
+              currentWeight: val,
+            };
+            return copy;
+          })
+        }
+        onUpdateReps={(val) =>
+          setExercises((prev) => {
+            const copy = [...prev];
+            copy[currentExIndex] = {
+              ...copy[currentExIndex],
+              currentReps: val,
+            };
+            return copy;
+          })
+        }
+        onUpdateRir={(rir) =>
+          setExercises((prev) => {
+            const copy = [...prev];
+            copy[currentExIndex] = {
+              ...copy[currentExIndex],
+              targetRir: rir,
+            };
+            return copy;
+          })
+        }
+        onLogSet={handleLogSet}
+        onLogDropSet={handleLogDropSet}
+        onAddBonusSet={handleAddBonusSet}
+        onSkipRemainingSets={handleSkipRemainingSets}
+        onFinishSession={() => handleFinishSession()}
+        onOpenReorder={() => setIsReorderDrawerOpen(true)}
+        onOpenGymDrawer={() => setIsGymDrawerOpen(true)}
+        onOpenAddExercise={() => setIsAddExerciseSheetOpen(true)}
+        onOpenSwap={() => {
+          setSwapTargetExercise({
+            id: activeEx.id,
+            name: activeEx.name,
+            target:
+              activeEx.target ||
+              inferPrimaryMuscleFromExerciseName(activeEx.name),
+            equipment: activeEx.equipment || "barbell",
+          });
+          setIsSwapDrawerOpen(true);
+        }}
+        onOpenTips={() => setIsTipsOpen(true)}
+        onExit={() => setIsExitAlertOpen(true)}
+        selectedGymName={selectedGym?.name}
+        selectedPhoto={selectedFullPhoto}
+        onSnapPhotoClick={() => fileInputRef.current?.click()}
+        onInspectPhoto={(url) => setSelectedFullPhoto(url)}
+        onSharePhotoWithGemini={() => {
+          if (activeEx.equipmentPhotoUrl) {
+            shareEquipmentPhotoWithGemini({
+              photoUrl: activeEx.equipmentPhotoUrl,
+              exerciseName: activeEx.name,
+              note: activeEx.feedbackNote,
+              traineeId: currentUser.id,
+              gymName: selectedGym?.name,
+            });
           }
-          className="p-2 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1 text-xs"
-        >
-          <span>Next</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </footer>
+        }}
+        partnerExercise={partnerExercise}
+        isStraightMode={isStraightMode}
+        onToggleSupersetMode={handleToggleSupersetMode}
+        isSupersetA={isSupersetA}
+        isSupersetB={isSupersetB}
+        activeJitProposition={activeJitProposition}
+        onAcceptJitProposition={handleAcceptJitProposition}
+        onDismissJitProposition={handleDismissJitProposition}
+        onToggleFeedbackTag={handleToggleFeedbackTag}
+        onUpdateFeedbackNote={handleUpdateFeedbackNote}
+        onUpdateExerciseAudio={handleUpdateExerciseAudio}
+        userId={currentUser.id}
+        pendingOtherExercises={pendingOtherExercises}
+        onJumpToExercise={jumpToExercise}
+        onPrevExercise={() =>
+          setCurrentExIndex((prev) => Math.max(0, prev - 1))
+        }
+        onNextExercise={() =>
+          setCurrentExIndex((prev) =>
+            Math.min(exercises.length - 1, prev + 1)
+          )
+        }
+      />
 
       <SessionSheets
         activeEx={activeEx}

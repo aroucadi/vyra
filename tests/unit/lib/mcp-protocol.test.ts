@@ -140,4 +140,18 @@ describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
     assert.ok(res.error);
     assert.equal(res.error.code, -32601);
   });
+
+  it("exposes GET and OPTIONS endpoints with CORS headers for Claude Web", async () => {
+    const { GET, OPTIONS } = await import("@/app/api/mcp/route");
+    const optRes = await OPTIONS();
+    assert.equal(optRes.status, 204);
+    assert.equal(optRes.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.ok(optRes.headers.get("Access-Control-Allow-Methods")?.includes("POST"));
+
+    const getRes = await GET();
+    assert.equal(getRes.status, 200);
+    const body = await getRes.json();
+    assert.equal(body.status, "online");
+    assert.equal(body.server.name, "vyra-aerospace-mcp");
+  });
 });

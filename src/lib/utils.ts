@@ -238,22 +238,54 @@ function isGenericYoutubeSearchUrl(url: string): boolean {
  * the current exercise name, and automatically upgrades generic YouTube search
  * queries with precision operators and short-duration (<4m) filtering.
  */
+export function isDirectVideoUrl(url?: string): boolean {
+  if (!url) return false;
+  return /\.(mp4|webm)($|\?)/i.test(url) || url.includes("media.musclewiki.com") || url.includes("/media/clip/");
+}
+
+export function getOpenGymClipUrl(id: string): string {
+  const normId = String(id).padStart(4, "0");
+  return `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${normId}.mp4`;
+}
+
+export function getOpenGymStillUrl(id: string): string {
+  const normId = String(id).padStart(4, "0");
+  return `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/${normId}.webp`;
+}
+
+/**
+ * Resolves a high-quality video demonstration URL for an exercise.
+ * Prioritizes direct animated MP4 clips (OpenGym CDN or MuscleWiki),
+ * then falls back to verified instructional videos or high-precision YouTube queries.
+ */
 export function resolveExerciseVideoUrl(
   exerciseName: string,
   options?: {
+    id?: string;
+    clipUrl?: string;
     explicitVideoUrl?: string;
     previousExerciseName?: string;
     previousVideoUrl?: string;
     equipment?: string;
     targetMuscle?: string;
-    catalogue?: Array<{ name: string; videoUrl?: string; mediaUrls?: string[] }>;
+    catalogue?: Array<{ id?: string; name: string; videoUrl?: string; clipUrl?: string; mediaUrls?: string[] }>;
   }
 ): string {
   const normName = (exerciseName || "").trim().toLowerCase();
   const prevNorm = options?.previousExerciseName?.trim().toLowerCase();
   const isSwapped = Boolean(prevNorm && prevNorm !== normName);
 
-  // 1. If an explicit non-generic video URL (e.g. direct MP4 / watch?v= / already-upgraded search URL) is provided for the current exercise
+  // 1. Direct clip passed explicitly
+  if (options?.clipUrl && isSafeUrl(options.clipUrl)) {
+    return options.clipUrl;
+  }
+
+  // 2. OpenGym numeric ID passed directly (e.g. "0025" or 25)
+  if (options?.id && /^\d{1,4}$/.test(options.id.trim())) {
+    return getOpenGymClipUrl(options.id);
+  }
+
+  // 3. If an explicit non-generic video URL is provided for the current exercise
   if (
     options?.explicitVideoUrl &&
     isSafeUrl(options.explicitVideoUrl) &&
@@ -263,11 +295,14 @@ export function resolveExerciseVideoUrl(
     return options.explicitVideoUrl;
   }
 
-  // 2. Check the exercise catalogue for an exact match with a dedicated direct video (e.g. MuscleWiki MP4 or watch URL)
+  // 4. Check the exercise catalogue for an exact match with a dedicated direct video
   if (options?.catalogue && options.catalogue.length > 0) {
     const exactMatch = options.catalogue.find(
-      (c) => c.name.trim().toLowerCase() === normName
+      (c) => (c.name && c.name.trim().toLowerCase() === normName) || (options?.id && c.id === options.id)
     );
+    if (exactMatch?.clipUrl && isSafeUrl(exactMatch.clipUrl)) {
+      return exactMatch.clipUrl;
+    }
     if (exactMatch?.mediaUrls && exactMatch.mediaUrls.length > 0 && isSafeUrl(exactMatch.mediaUrls[0])) {
       return exactMatch.mediaUrls[0];
     }
@@ -278,9 +313,12 @@ export function resolveExerciseVideoUrl(
     ) {
       return exactMatch.videoUrl;
     }
+    if (exactMatch?.id && /^\d{1,4}$/.test(exactMatch.id.trim())) {
+      return getOpenGymClipUrl(exactMatch.id);
+    }
   }
 
-  // 3. If not swapped and previousVideoUrl is a direct non-generic video link (e.g. watch?v= or MP4), keep it
+  // 5. If not swapped and previousVideoUrl is a direct non-generic video link (e.g. watch?v= or MP4), keep it
   if (
     !isSwapped &&
     options?.previousVideoUrl &&

@@ -22,6 +22,7 @@ import {
 import { clsx } from "clsx";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import { soundService } from "@/lib/in-gym/sound";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 
 interface SubstitutionCopilotDrawerProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export function SubstitutionCopilotDrawer({
   const [equipmentFilter, setEquipmentFilter] = useState<
     "all" | "machine" | "dumbbell" | "cable" | "barbell" | "body weight"
   >("all");
+  const [previewVideoExercise, setPreviewVideoExercise] = useState<RagExercise | null>(null);
 
   useEffect(() => {
     if (!currentExercise || !isOpen) return;
@@ -204,16 +206,15 @@ export function SubstitutionCopilotDrawer({
                     </div>
 
                     {videoUrl && (
-                      <a
-                        href={videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[10px] font-mono font-bold hover:bg-cyan-500/30 shrink-0 cursor-pointer"
-                        title="Preview form video"
+                      <button
+                        type="button"
+                        onClick={() => setPreviewVideoExercise(cand.exercise)}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[10px] font-mono font-bold hover:bg-cyan-500/30 shrink-0 cursor-pointer transition active:scale-95"
+                        title="Preview form video demonstration"
                       >
                         <Video className="w-3 h-3" />
                         <span>VIDEO</span>
-                      </a>
+                      </button>
                     )}
                   </div>
 
@@ -269,6 +270,13 @@ export function SubstitutionCopilotDrawer({
             Cancel & Keep Current Exercise
           </button>
         </div>
+
+        {/* Inline Demonstration Video Modal */}
+        <ExerciseVideoModal
+          isOpen={Boolean(previewVideoExercise)}
+          onClose={() => setPreviewVideoExercise(null)}
+          exercise={previewVideoExercise}
+        />
       </SheetContent>
     </Sheet>
   );

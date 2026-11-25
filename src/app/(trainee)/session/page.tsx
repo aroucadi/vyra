@@ -1502,32 +1502,47 @@ function SessionFlow({
   };
 
   const applySubstituteCandidate = (candidate: {
+    id?: string;
     name: string;
     instructions?: string[];
     equipment: string;
     target?: string;
     videoUrl?: string;
+    clipUrl?: string;
+    imageUrl?: string;
   }) => {
+    let replacedOriginalName = "";
+
     setExercises((prev) => {
       const nextList = prev.map((ex, idx) => {
         const matches =
           (swapTargetExercise?.id && ex.id === swapTargetExercise.id) ||
-          idx === currentExIndex;
+          (!swapTargetExercise?.id && idx === currentExIndex);
         if (!matches) return ex;
+
+        replacedOriginalName = ex.name;
+
         const newVideoUrl = resolveExerciseVideoUrl(candidate.name, {
+          id: candidate.id,
+          clipUrl: candidate.clipUrl,
           explicitVideoUrl: candidate.videoUrl,
           previousExerciseName: ex.name,
           previousVideoUrl: ex.videoUrl,
           catalogue,
         });
+
         return {
           ...ex,
+          id: candidate.id || ex.id,
+          exerciseId: candidate.id || ex.exerciseId,
           name: candidate.name,
           formCue: candidate.instructions?.[0] || ex.formCue,
           equipment: candidate.equipment,
           target:
             candidate.target || inferPrimaryMuscleFromExerciseName(candidate.name),
           videoUrl: newVideoUrl,
+          clipUrl: candidate.clipUrl,
+          imageUrl: candidate.imageUrl,
           currentWeight: candidate.equipment.toLowerCase().includes("body")
             ? 0
             : ex.currentWeight,
@@ -1536,6 +1551,23 @@ function SessionFlow({
       persistDraft(nextList, currentExIndex);
       return nextList;
     });
+
+    const targetNameToSwap = swapTargetExercise?.name || replacedOriginalName;
+    if (targetNameToSwap && candidate.name && targetNameToSwap !== candidate.name) {
+      try {
+        const resolvedDayOfWeek = targetDay?.dayOfWeek ?? (program ? resolveProgramDay(program.startDate).dayOfWeek : undefined);
+        appStore.swapExerciseInActiveProgram(
+          currentUser.id,
+          targetNameToSwap,
+          candidate.name,
+          resolvedDayOfWeek
+        );
+      } catch (err) {
+        console.warn("[Session] Failed to persist swap to active program:", err);
+      }
+    }
+
+    soundService.playTargetHitFeedback(true);
     setIsSwapDrawerOpen(false);
   };
 

@@ -24,6 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import type { ActiveExercise } from "./types";
@@ -116,6 +117,7 @@ export function SessionSheets({
   onMoveExerciseDown,
   onJumpToExercise,
 }: SessionSheetsProps) {
+  const [isVideoModalOpen, setIsVideoModalOpen] = React.useState(false);
   return (
     <>
       <Sheet open={isTipsOpen} onOpenChange={setIsTipsOpen}>
@@ -140,19 +142,14 @@ export function SessionSheets({
 
           <div className="space-y-4 pt-1 pb-4 text-xs">
             {activeEx.videoUrl && (
-              <a
-                href={resolveExerciseVideoUrl(activeEx.name, {
-                  previousVideoUrl: activeEx.videoUrl,
-                  catalogue,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setIsVideoModalOpen(true)}
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#10b981] to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-display uppercase tracking-wider font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#10b981]/20 transition cursor-pointer active:scale-95"
               >
                 <Video className="w-4 h-4 stroke-[2.5]" />
                 <span>Watch Form Demonstration Video</span>
-                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-              </a>
+              </button>
             )}
 
             {activeEx.formCue && (
@@ -304,6 +301,20 @@ export function SessionSheets({
         onClose={() => setIsSwapDrawerOpen(false)}
         currentExercise={swapTargetExercise}
         onApplySubstitute={onApplySubstitute}
+      />
+
+      {/* Inline Form Video Demonstration Modal */}
+      <ExerciseVideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        exercise={{
+          id: activeEx.id,
+          name: activeEx.name,
+          target: activeEx.target,
+          equipment: activeEx.equipment,
+          videoUrl: activeEx.videoUrl,
+          formCue: activeEx.formCue,
+        }}
       />
 
       <Sheet

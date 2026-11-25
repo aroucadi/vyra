@@ -27,6 +27,7 @@ import { AdaptiveRecalibrationCard } from "@/components/trainee/AdaptiveRecalibr
 import { DailyAiCoachAdapterCard } from "@/components/trainee/DailyAiCoachAdapterCard";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import type { ActiveExercise } from "./types";
@@ -146,6 +147,7 @@ export function SessionPreviewView({
   onApplySubstitute,
   onBeginWorkout,
 }: SessionPreviewViewProps) {
+  const [videoModalExercise, setVideoModalExercise] = React.useState<ActiveExercise | null>(null);
   return (
     <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200 font-body">
       <header className="flex items-center justify-between">
@@ -412,26 +414,40 @@ export function SessionPreviewView({
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
-                  {ex.videoUrl && (
-                    <a
-                      href={resolveExerciseVideoUrl(ex.name, {
-                        previousVideoUrl: ex.videoUrl,
-                        catalogue,
-                      })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 rounded-lg bg-[#182030] border border-[#1C2436] hover:bg-[#222D42] text-amber-400 flex items-center gap-1 text-[11px] font-semibold transition"
-                      title="Watch exercise video demonstration"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Video</span>
-                    </a>
-                  )}
+                  {/* 1-Tap Biomechanical Swap Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapTargetExercise({
+                        id: ex.id,
+                        name: ex.name,
+                        target: ex.target || inferPrimaryMuscleFromExerciseName(ex.name),
+                        equipment: ex.equipment || "barbell",
+                      });
+                      setIsSwapDrawerOpen(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] flex items-center gap-1 text-[11px] font-mono font-bold transition active:scale-95 cursor-pointer"
+                    title="Swap this exercise with biomechanical alternative"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span className="hidden sm:inline">Swap</span>
+                  </button>
+
+                  {/* Inline Motion Video Preview */}
+                  <button
+                    type="button"
+                    onClick={() => setVideoModalExercise(ex)}
+                    className="p-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 flex items-center gap-1 text-[11px] font-mono font-bold transition cursor-pointer"
+                    title="Watch exercise video demonstration"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Video</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setPreviewDetailEx(ex)}
-                    className="p-1 text-slate-400 hover:text-slate-200 transition"
+                    className="p-1 text-slate-400 hover:text-slate-200 transition cursor-pointer"
                     aria-label="View exercise details"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -694,6 +710,13 @@ export function SessionPreviewView({
         onClose={() => setIsSwapDrawerOpen(false)}
         currentExercise={swapTargetExercise}
         onApplySubstitute={onApplySubstitute}
+      />
+
+      {/* Inline Demonstration Video Modal */}
+      <ExerciseVideoModal
+        isOpen={Boolean(videoModalExercise)}
+        onClose={() => setVideoModalExercise(null)}
+        exercise={videoModalExercise}
       />
     </div>
   );

@@ -85,6 +85,8 @@ export interface Exercise {
   secondaryMuscles: string[];
   equipment: string;
   videoUrl?: string;
+  clipUrl?: string;
+  imageUrl?: string;
   wikiUrl?: string;
   muscleWikiId?: number;
   difficulty?: "Beginner" | "Intermediate" | "Advanced";
@@ -152,6 +154,8 @@ export interface ExercisePrescription {
   loadGuidance?: string; // e.g. "Double progression: add weight when hitting 10 reps on all sets"
   formCueText?: string; // e.g. "Pause on sternum, tuck elbows 45°"
   videoUrl?: string;
+  clipUrl?: string;
+  imageUrl?: string;
   wikiMuscleUrl?: string;
   targetMuscleGroups: string[];
   equipmentVariations?: EquipmentOption[];

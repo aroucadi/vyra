@@ -20,6 +20,7 @@ export interface CompletedSetEntry {
 
 export interface ActiveExercise {
   id: string;
+  exerciseId?: string;
   name: string;
   category?: string;
   subMovementOrder?: string;
@@ -34,6 +35,8 @@ export interface ActiveExercise {
   lastBestReps: number;
   formCue?: string;
   videoUrl?: string;
+  clipUrl?: string;
+  imageUrl?: string;
   loadGuidance?: string;
   completedSets: CompletedSetEntry[];
   currentWeight: number;
@@ -167,6 +170,7 @@ export function mapDayPrescriptionsToExercises(
 
     return {
       id: ex.id,
+      exerciseId: ex.exerciseId,
       name: ex.exerciseName,
       category: ex.category,
       subMovementOrder: ex.subMovementOrder,
@@ -183,6 +187,8 @@ export function mapDayPrescriptionsToExercises(
       videoUrl: resolveExerciseVideoUrl(ex.exerciseName, {
         explicitVideoUrl: ex.videoUrl,
       }),
+      clipUrl: ex.clipUrl,
+      imageUrl: ex.imageUrl,
       loadGuidance:
         ex.loadGuidance ||
         "Double progression: add 2.5 kg once top rep target is reached.",

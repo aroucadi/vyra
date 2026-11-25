@@ -41,6 +41,8 @@ export interface RagExercise {
   variantOf?: string;
   textSource?: string;
   videoUrl?: string;
+  clipUrl?: string;
+  imageUrl?: string;
 }
 
 export interface ExerciseQueryConstraints {

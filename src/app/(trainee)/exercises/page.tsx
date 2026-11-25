@@ -4,6 +4,7 @@ import React, { useState, useEffect, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
 import { VyraLogo } from "@/components/brand/VyraLogo";
@@ -103,6 +104,7 @@ export default function TraineeExerciseLibraryPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const [selectedExercise, setSelectedExercise] = useState<RagExercise | null>(null);
+  const [videoModalExercise, setVideoModalExercise] = useState<RagExercise | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -481,15 +483,14 @@ export default function TraineeExerciseLibraryPage() {
 
                   {/* Bottom Action Strip: Direct Form Video & Detailed Cues */}
                   <div className="flex items-center justify-between pt-2 border-t border-[#1b2d47]/70 text-xs font-mono">
-                    <a
-                      href={videoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setVideoModalExercise({ ...ex, videoUrl })}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 font-bold transition active:scale-95 cursor-pointer text-[11px]"
                     >
                       <Video className="w-3.5 h-3.5" />
                       <span>Form Video</span>
-                    </a>
+                    </button>
 
                     <button
                       type="button"
@@ -559,6 +560,13 @@ export default function TraineeExerciseLibraryPage() {
         exercise={selectedExercise}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
+      />
+
+      {/* 5. INLINE DEMONSTRATION VIDEO MODAL */}
+      <ExerciseVideoModal
+        isOpen={Boolean(videoModalExercise)}
+        onClose={() => setVideoModalExercise(null)}
+        exercise={videoModalExercise}
       />
     </div>
   );

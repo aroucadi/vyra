@@ -117,6 +117,10 @@ export function ingestCatalogueFromDirectory(dirPath: string): CatalogueIngestio
     const muscleMap = (item.muscleMap as RagExercise['muscleMap']) || 
       (base?.muscleMap ? (base.muscleMap as RagExercise['muscleMap']) : undefined);
 
+    const clipUrl = `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${id}.mp4`;
+    const imageUrl = `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/${id}.webp`;
+    const videoUrl = typeof item.videoUrl === 'string' && item.videoUrl ? item.videoUrl : clipUrl;
+
     const exercise: RagExercise = {
       id,
       name,
@@ -132,6 +136,9 @@ export function ingestCatalogueFromDirectory(dirPath: string): CatalogueIngestio
       variantOf,
       textSource,
       muscleMap,
+      clipUrl,
+      imageUrl,
+      videoUrl,
     };
 
     byId.set(id, exercise);
@@ -180,6 +187,15 @@ export function loadExerciseCatalogue(forceReload = false): CatalogueIngestionRe
     const aliases = new Map<string, string>();
 
     for (const ex of exercises) {
+      if (!ex.clipUrl && ex.id) {
+        ex.clipUrl = `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${ex.id}.mp4`;
+      }
+      if (!ex.imageUrl && ex.id) {
+        ex.imageUrl = `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/${ex.id}.webp`;
+      }
+      if (!ex.videoUrl && ex.clipUrl) {
+        ex.videoUrl = ex.clipUrl;
+      }
       byId.set(ex.id, ex);
       if (ex.variantOf) {
         aliases.set(ex.id, ex.variantOf);

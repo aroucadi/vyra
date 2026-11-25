@@ -74,25 +74,25 @@ function CoachInviteContent() {
         : `anon_${typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID().replace(/-/g, "").slice(0, 12) : Date.now().toString(36)}`;
     acceptCoachInvite(validAnonId, invite);
     setAccepted(true);
-    try {
-      await fetch("/api/invites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "accept",
-          inviteId: inviteId || undefined,
-          coachId: invite.coachId,
-          traineeId: validAnonId,
-          traineeName: invite.traineeName,
-          invite,
-        }),
-      });
-    } catch {
+    void fetch("/api/invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "accept",
+        inviteId: inviteId || undefined,
+        coachId: invite.coachId,
+        traineeId: validAnonId,
+        traineeName: invite.traineeName,
+        invite,
+      }),
+    }).catch(() => {
       // Offline / local fallback already persisted in appStore
-    }
-    setTimeout(() => {
+    });
+    if (typeof window !== "undefined") {
+      window.location.href = "/today";
+    } else {
       router.push("/today");
-    }, 500);
+    }
   };
 
   return (

@@ -12,8 +12,13 @@ import { ReadinessCheckin } from "@/components/trainee/ReadinessCheckin";
 import { SessionAdjustmentSheet } from "@/components/trainee/SessionAdjustmentSheet";
 import { DayZeroOnboardingCard } from "@/components/trainee/DayZeroOnboardingCard";
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
+import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
+import { soundService } from "@/lib/in-gym/sound";
+import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
+import type { RagExercise } from "@/types/exercise-rag";
 import {
   useIsClientHydrated,
   useVyraAuth,
@@ -25,6 +30,7 @@ import type { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import {
   Activity,
   ArrowRight,
+  ArrowRightLeft,
   ChevronRight,
   Clock,
   Dumbbell,
@@ -69,6 +75,37 @@ export default function TodayPage() {
   });
   const [tick, setTick] = useState(0);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
+  const [swapExerciseTarget, setSwapExerciseTarget] = useState<{
+    id?: string;
+    name: string;
+    target: string;
+    equipment: string;
+  } | null>(null);
+  const [isSwapDrawerOpen, setIsSwapDrawerOpen] = useState(false);
+  const [videoModalExercise, setVideoModalExercise] = useState<{
+    id?: string;
+    name: string;
+    target?: string;
+    equipment?: string;
+    videoUrl?: string;
+    formCue?: string;
+  } | null>(null);
+
+  const handleApplyTodaySwap = (candidate: RagExercise) => {
+    if (!swapExerciseTarget) return;
+    const res = appStore.swapExerciseInActiveProgram(
+      currentUser.id,
+      swapExerciseTarget.name,
+      candidate.name,
+      resolved.dayOfWeek
+    );
+    if (res.success) {
+      soundService.playTargetHitFeedback(true);
+      setTick((t) => t + 1);
+    }
+    setIsSwapDrawerOpen(false);
+    setSwapExerciseTarget(null);
+  };
 
   const sessions = isHydrated ? appStore.getSessions(currentUser.id) : [];
   const metricEntries = isHydrated ? appStore.getMetrics(currentUser.id) : [];
@@ -252,7 +289,7 @@ export default function TodayPage() {
             </Link>
           )}
 
-          <span className="text-slate-400">
+          <span suppressHydrationWarning className="text-slate-400">
             {isHydrated
               ? new Date().toLocaleDateString("en-US", {
                   weekday: "short",
@@ -307,7 +344,7 @@ export default function TodayPage() {
           </button>
         </div>
 
-        <h1 className="text-2xl font-display uppercase tracking-wider font-extrabold text-white">
+        <h1 suppressHydrationWarning className="text-2xl font-display uppercase tracking-wider font-extrabold text-white">
           {isDayZero
             ? "Day 1 Calibration"
             : `System Primed, ${currentUser.name.split(" ")[0]}.`}
@@ -505,11 +542,11 @@ export default function TodayPage() {
                 <span className="text-[10px] font-mono uppercase text-slate-400 block font-bold">
                   Collimated Movement Queue:
                 </span>
-                <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                   {todayExercises.map((ex, idx) => (
                     <div
                       key={ex.id || idx}
-                      className="p-2 bg-[#05080c] rounded-lg border border-[#1b2d47] flex items-center justify-between text-xs font-mono"
+                      className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono hover:border-cyan-500/40 transition group"
                     >
                       <div className="flex items-center gap-2 min-w-0 pr-2">
                         <span className="text-[10px] text-[#10b981] font-bold w-4">
@@ -519,21 +556,49 @@ export default function TodayPage() {
                           {ex.exerciseName}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] text-slate-400 font-mono">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
                           {ex.sets}×{ex.repRangeLow}-{ex.repRangeHigh}
                         </span>
-                        {ex.videoUrl && (
-                          <a
-                            href={ex.videoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded bg-[#0f1724] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 transition"
-                            title="Form preview"
-                          >
-                            <Video className="w-3 h-3" />
-                          </a>
-                        )}
+
+                        {/* Video Demo Button */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVideoModalExercise({
+                              name: ex.exerciseName,
+                              target: ex.targetMuscleGroups?.[0],
+                              equipment: ex.selectedEquipment,
+                              videoUrl: ex.videoUrl,
+                              formCue: ex.formCueText,
+                            })
+                          }
+                          className="p-1.5 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 hover:bg-[#142032] transition cursor-pointer"
+                          title="Preview form video"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* 1-Tap Biomechanical Swap Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSwapExerciseTarget({
+                              id: ex.id,
+                              name: ex.exerciseName,
+                              target:
+                                ex.targetMuscleGroups?.[0] ||
+                                inferPrimaryMuscleFromExerciseName(ex.exerciseName),
+                              equipment: ex.selectedEquipment || "machine",
+                            });
+                            setIsSwapDrawerOpen(true);
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] text-[10px] font-mono font-bold transition cursor-pointer active:scale-95"
+                          title="Swap exercise with biomechanical alternative"
+                        >
+                          <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
+                          <span>SWAP</span>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -652,6 +717,24 @@ export default function TodayPage() {
         session={selectedSession}
         isOpen={!!selectedSession}
         onOpenChange={(open) => !open && setSelectedSession(null)}
+      />
+
+      {/* 1-Tap Biomechanical Substitution Drawer */}
+      <SubstitutionCopilotDrawer
+        isOpen={isSwapDrawerOpen}
+        onClose={() => {
+          setIsSwapDrawerOpen(false);
+          setSwapExerciseTarget(null);
+        }}
+        currentExercise={swapExerciseTarget}
+        onApplySubstitute={handleApplyTodaySwap}
+      />
+
+      {/* Inline Movement Video Demonstration Modal */}
+      <ExerciseVideoModal
+        isOpen={Boolean(videoModalExercise)}
+        onClose={() => setVideoModalExercise(null)}
+        exercise={videoModalExercise}
       />
     </div>
   );

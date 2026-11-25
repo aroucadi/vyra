@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RagExercise } from "@/types/exercise-rag";
@@ -9,6 +9,9 @@ import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensi
 import { SubstitutionCandidate } from "@/lib/training-math/substitution-copilot";
 import { appStore } from "@/lib/store";
 import { resolveDayOneWorkoutDay } from "@/lib/onboarding";
+import { isDirectVideoUrl, resolveExerciseVideoUrl, resolveProgramDay } from "@/lib/utils";
+import { soundService } from "@/lib/in-gym/sound";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import {
   Sparkles,
   ArrowRightLeft,
@@ -19,6 +22,8 @@ import {
   Disc,
   Zap,
   ListOrdered,
+  Play,
+  Check,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -95,6 +100,8 @@ export function ExerciseDetailSheet({
     setTabState({ exerciseId: exercise?.id, tab });
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
+  const [videoModalExercise, setVideoModalExercise] = useState<RagExercise | null>(null);
+  const [swapFeedbackMessage, setSwapFeedbackMessage] = useState<string | null>(null);
 
   // Fetch contextual biomechanical substitutes
   useEffect(() => {
@@ -139,6 +146,60 @@ export function ExerciseDetailSheet({
 
   const { setupCue, driveCue } = extractGoldenCues(exercise.instructions);
 
+  const effectiveVideoUrl =
+    exercise.clipUrl ||
+    exercise.videoUrl ||
+    resolveExerciseVideoUrl(exercise.name, {
+      id: exercise.id,
+      clipUrl: exercise.clipUrl,
+      explicitVideoUrl: exercise.videoUrl,
+      equipment: exercise.equipment,
+      targetMuscle: exercise.target,
+    });
+
+  const isDirectVideo = isDirectVideoUrl(effectiveVideoUrl);
+
+  const handleSwapIntoTodayWorkout = () => {
+    const currentUser = appStore.getCurrentUser();
+    const program = appStore.getActiveProgramForTrainee(currentUser.id);
+    if (!program) {
+      handleUseInDayOneSession();
+      return;
+    }
+    const resolved = resolveProgramDay(program.startDate);
+    const currentWeek = program.weeks?.[Math.min(resolved.weekIndex - 1, (program.weeks?.length || 1) - 1)];
+    const todayDay = currentWeek?.days?.find((d) => d.dayOfWeek === resolved.dayOfWeek && !d.isRestDay);
+    const existingExercises = todayDay?.blocks?.flatMap((b) => b.exercises) || [];
+
+    // Find an exercise matching either muscle target or the first exercise to replace
+    const targetToReplace =
+      existingExercises.find(
+        (e) =>
+          e.targetMuscleGroups?.some((t) => t.toLowerCase() === exercise.target.toLowerCase()) ||
+          e.exerciseName.toLowerCase().includes(exercise.target.toLowerCase())
+      ) || existingExercises[0];
+
+    if (targetToReplace) {
+      const res = appStore.swapExerciseInActiveProgram(
+        currentUser.id,
+        targetToReplace.exerciseName,
+        exercise.name,
+        todayDay?.dayOfWeek ?? resolved.dayOfWeek
+      );
+      if (res.success) {
+        soundService.playTargetHitFeedback(true);
+        setSwapFeedbackMessage(`Swapped for ${targetToReplace.exerciseName} in today's workout!`);
+        setTimeout(() => {
+          onClose();
+          router.push("/today");
+        }, 1200);
+        return;
+      }
+    }
+
+    handleUseInDayOneSession();
+  };
+
   const handleUseInDayOneSession = () => {
     const currentUser = appStore.getCurrentUser();
     const dayOne = resolveDayOneWorkoutDay(currentUser.id);
@@ -150,300 +211,368 @@ export function ExerciseDetailSheet({
         dayOne.programDay?.dayOfWeek
       );
     }
+    soundService.playTargetHitFeedback(true);
     onClose();
     router.push("/today?onboarding=day0");
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="max-w-md mx-auto rounded-t-3xl bg-[#090C11] border-[#1C2436] p-5 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl font-body"
-      >
-        {/* 1. Header (Eyebrow + Capitalized Title + Plate Popover) */}
-        <SheetHeader className="text-left space-y-1.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                {exercise.category || "Strength"}
-              </span>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#182030] text-slate-300 border border-[#1C2436]">
-                {exercise.equipment}
-              </span>
-            </div>
-            {isBarbellOrSmith && (
-              <PlateCalculatorPopover
-                totalWeight={60}
-                unit="kg"
-                equipmentType={exercise.equipment}
-              />
-            )}
-          </div>
-          <SheetTitle className="text-xl font-editorial font-bold text-white tracking-tight capitalize pt-0.5">
-            {exercise.name}
-          </SheetTitle>
-          <SheetDescription className="text-xs text-slate-400 font-body">
-            Primary Target: <span className="text-amber-400 font-semibold capitalize">{exercise.target}</span> · Body Part: <span className="text-slate-300 capitalize">{exercise.bodyPart}</span>
-          </SheetDescription>
-        </SheetHeader>
-
-        {/* 2. Segmented 3-Tab Progressive Navigation */}
-        <div className="grid grid-cols-3 p-1 bg-[#111622] border border-[#1C2436] rounded-xl">
-          <button
-            type="button"
-            onClick={() => setActiveTab("cues")}
-            className={clsx(
-              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
-              activeTab === "cues"
-                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Coach Cues</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("steps")}
-            className={clsx(
-              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
-              activeTab === "steps"
-                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <ListOrdered className="w-3.5 h-3.5" />
-            <span>Full Steps</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("swaps")}
-            className={clsx(
-              "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
-              activeTab === "swaps"
-                ? "bg-amber-400 text-slate-950 font-display font-black uppercase tracking-wider shadow-sm"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Swaps{substitutes.length > 0 ? ` (${substitutes.length})` : ""}</span>
-          </button>
-        </div>
-
-        {/* TAB 1: COACH CUES & ANATOMICAL SPOTLIGHT (High-Signal Hero) */}
-        {activeTab === "cues" && (
-          <div className="space-y-3">
-            {/* Split Hero: Micro-Spotlight + 2 Kinetic Anchors */}
-            <div className="grid grid-cols-[124px_1fr] gap-3 items-stretch">
-              {/* Left Column: Refined Anatomical Tension Spotlight */}
-              <div className="flex flex-col">
-                <AnatomicalTensionSpotlight
-                  primaryMuscle={exercise.target}
-                  secondaryMuscles={exercise.secondaryMuscles || []}
-                  accentColor="amber"
-                  className="h-full justify-between"
-                />
-              </div>
-
-              {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
-              <div className="flex flex-col justify-between gap-2">
-                {/* Anchor 1: Setup */}
-                <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Setup</span>
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase">Prep</span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
-                    {setupCue}
-                  </p>
-                </div>
-
-                {/* Anchor 2: Kinetic Drive */}
-                <div className="p-3 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-1 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                      <span>Drive</span>
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase">Action</span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
-                    {driveCue}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Video or External Form Demonstration Link */}
-            {exercise.videoUrl && (
-              <a
-                href={exercise.videoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full h-11 px-3.5 rounded-xl bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-xs font-semibold text-slate-200 flex items-center justify-between transition shadow-xs cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-amber-400" />
-                  <span>Watch Biomechanical Form Cue</span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* TAB 2: FULL STEP-BY-STEP PROTOCOL */}
-        {activeTab === "steps" && (
-          <div className="space-y-3">
+    <>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          side="bottom"
+          className="max-w-md mx-auto rounded-t-3xl bg-[#05080c] border-[#1b2d47] p-5 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl font-body text-slate-100"
+        >
+          {/* 1. Header (Eyebrow + Capitalized Title + Plate Popover) */}
+          <SheetHeader className="text-left space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
-                Step-by-Step Biomechanical Execution
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">
-                {(exercise.instructions || []).length} Steps
-              </span>
-            </div>
-
-            <div className="space-y-2 p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl text-xs text-slate-300">
-              {exercise.instructions && exercise.instructions.length > 0 ? (
-                exercise.instructions.map((step, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-[#1C2436] last:border-0">
-                    <span className="w-5 h-5 rounded-full bg-[#182030] border border-[#1C2436] text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <p className="text-xs leading-relaxed text-slate-200">{step}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-400 py-2 text-center">
-                  Execute with stable posture and controlled eccentric phase.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: EQUIPMENT & 1-TAP SWAPS */}
-        {activeTab === "swaps" && (
-          <div className="space-y-4">
-            {/* Equipment Context Card */}
-            <div className="p-3.5 bg-[#111622] border border-[#1C2436] rounded-2xl space-y-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Disc className="w-3.5 h-3.5 text-amber-400" />
-                Equipment & Loading Profile
-              </span>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">Prescribed Apparatus:</span>
-                <span className="font-semibold text-white capitalize">{exercise.equipment}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30">
+                  {exercise.category || "Strength"}
+                </span>
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#0f1724] text-slate-300 border border-[#1b2d47]">
+                  {exercise.equipment}
+                </span>
               </div>
               {isBarbellOrSmith && (
-                <div className="pt-2 border-t border-[#1C2436] flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Standard Olympic Bar:</span>
-                  <span className="text-xs font-mono font-bold text-amber-400">20.0 kg Base Tare</span>
-                </div>
+                <PlateCalculatorPopover
+                  totalWeight={60}
+                  unit="kg"
+                  equipmentType={exercise.equipment}
+                />
               )}
             </div>
-
-            {/* Direct Biomechanical Swaps */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                1-Tap Biomechanical Alternatives
+            <SheetTitle className="text-xl font-display font-black text-white tracking-tight uppercase pt-0.5">
+              {exercise.name}
+            </SheetTitle>
+            <SheetDescription className="text-xs text-slate-400 font-body">
+              Primary Target:{" "}
+              <span className="text-[#10b981] font-semibold capitalize font-mono">
+                {exercise.target}
+              </span>{" "}
+              · Body Part:{" "}
+              <span className="text-slate-300 capitalize font-mono">
+                {exercise.bodyPart}
               </span>
-              <p className="text-[11px] text-slate-400">
-                Equipment occupied? Swap immediately to an exercise targeting the exact same primary motor pattern.
-              </p>
+            </SheetDescription>
+          </SheetHeader>
 
-              <div className="space-y-2 pt-1">
-                {substitutes.length > 0 ? (
-                  substitutes.map((sub) => {
-                    const match = candidates.find((c) => c.exercise.id === sub.id);
-                    return (
-                      <div
-                        key={sub.id}
-                        className="p-3.5 bg-[#111622] border border-[#1C2436] hover:border-slate-700 rounded-xl space-y-2 text-xs transition"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5 min-w-0 pr-3">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-white truncate capitalize">{sub.name}</span>
-                              {match && (
-                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                                  {Math.round(match.similarityScore * 100)}%
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] font-mono text-slate-400">
-                              {sub.equipment} · <span className="text-amber-400 capitalize">{sub.target}</span>
-                              {match && (
-                                <span className="text-sky-400 ml-1">· {match.resistanceProfile}</span>
-                              )}
-                            </div>
-                          </div>
-                          {onSelectAsSubstitute ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onSelectAsSubstitute(sub);
-                                onClose();
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-display uppercase tracking-wider font-bold text-xs transition shrink-0 cursor-pointer shadow-sm"
-                            >
-                              Swap
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-mono text-slate-500">Available</span>
-                          )}
-                        </div>
-                        {match?.biomechanicalRationale && (
-                          <div className="text-[11px] text-slate-300 leading-snug bg-[#090C11] p-2.5 rounded-lg border border-[#1C2436]">
-                            <span className="text-amber-400 font-semibold font-mono text-[10px]">COACH: </span>
-                            {match.biomechanicalRationale}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-4 rounded-xl bg-[#111622] border border-[#1C2436] text-center text-xs text-slate-400">
-                    No immediate substitutes found for {exercise.target}.
+          {/* Feedback banner if swapped */}
+          {swapFeedbackMessage && (
+            <div className="p-3 bg-[#10b981]/20 border border-[#10b981]/50 rounded-xl flex items-center gap-2 text-xs font-mono text-[#10b981] animate-in fade-in">
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>{swapFeedbackMessage}</span>
+            </div>
+          )}
+
+          {/* 2. Segmented 3-Tab Progressive Navigation */}
+          <div className="grid grid-cols-3 p-1 bg-[#090d16] border border-[#1b2d47] rounded-xl">
+            <button
+              type="button"
+              onClick={() => setActiveTab("cues")}
+              className={clsx(
+                "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+                activeTab === "cues"
+                  ? "bg-[#10b981] text-black font-display font-black uppercase tracking-wider shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Coach Cues</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("steps")}
+              className={clsx(
+                "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+                activeTab === "steps"
+                  ? "bg-[#10b981] text-black font-display font-black uppercase tracking-wider shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+              <span>Full Steps</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("swaps")}
+              className={clsx(
+                "h-8 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer",
+                activeTab === "swaps"
+                  ? "bg-[#10b981] text-black font-display font-black uppercase tracking-wider shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>Swaps{substitutes.length > 0 ? ` (${substitutes.length})` : ""}</span>
+            </button>
+          </div>
+
+          {/* TAB 1: COACH CUES & ANATOMICAL SPOTLIGHT (High-Signal Hero) */}
+          {activeTab === "cues" && (
+            <div className="space-y-3">
+              {/* Split Hero: Micro-Spotlight + 2 Kinetic Anchors */}
+              <div className="grid grid-cols-[124px_1fr] gap-3 items-stretch">
+                {/* Left Column: Refined Anatomical Tension Spotlight */}
+                <div className="flex flex-col">
+                  <AnatomicalTensionSpotlight
+                    primaryMuscle={exercise.target}
+                    secondaryMuscles={exercise.secondaryMuscles || []}
+                    accentColor="emerald"
+                    className="h-full justify-between"
+                  />
+                </div>
+
+                {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
+                <div className="flex flex-col justify-between gap-2">
+                  {/* Anchor 1: Setup */}
+                  <div className="p-3 bg-[#090d16] border border-[#1b2d47] rounded-2xl space-y-1 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#10b981] flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-[#10b981] shrink-0" />
+                        <span>Setup</span>
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-500 uppercase">Prep</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
+                      {setupCue}
+                    </p>
                   </div>
+
+                  {/* Anchor 2: Kinetic Drive */}
+                  <div className="p-3 bg-[#090d16] border border-[#1b2d47] rounded-2xl space-y-1 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span>Drive</span>
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-500 uppercase">Action</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-100 leading-snug pt-0.5">
+                      {driveCue}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Demonstration Video Preview Container */}
+              {isDirectVideo ? (
+                <div className="relative rounded-2xl overflow-hidden bg-black border border-[#1b2d47] aspect-video w-full group">
+                  <video
+                    src={effectiveVideoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-contain bg-black"
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <button
+                      type="button"
+                      onClick={() => setVideoModalExercise(exercise)}
+                      className="px-2.5 py-1 rounded-lg bg-[#05080c]/80 border border-[#1b2d47] text-white hover:text-cyan-300 text-[10px] font-mono flex items-center gap-1 cursor-pointer transition shadow-md"
+                    >
+                      <Video className="w-3 h-3 text-cyan-400" />
+                      <span>Expand Video</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setVideoModalExercise(exercise)}
+                  className="w-full h-11 px-3.5 rounded-xl bg-[#090d16] hover:bg-[#0f1724] border border-[#1b2d47] text-xs font-semibold text-slate-200 flex items-center justify-between transition shadow-xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-cyan-400" />
+                    <span>Watch Biomechanical Form Demo</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: FULL STEP-BY-STEP PROTOCOL */}
+          {activeTab === "steps" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#10b981] font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />
+                  Step-by-Step Biomechanical Execution
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {(exercise.instructions || []).length} Steps
+                </span>
+              </div>
+
+              <div className="space-y-2 p-3.5 bg-[#090d16] border border-[#1b2d47] rounded-2xl text-xs text-slate-300">
+                {exercise.instructions && exercise.instructions.length > 0 ? (
+                  exercise.instructions.map((step, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5 py-1.5 border-b border-[#1b2d47] last:border-0">
+                      <span className="w-5 h-5 rounded-full bg-[#05080c] border border-[#1b2d47] text-[#10b981] text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <p className="text-xs leading-relaxed text-slate-200">{step}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 py-2 text-center">
+                    Execute with stable posture and controlled eccentric phase.
+                  </p>
                 )}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Single Dominant CTA */}
-        <div className="pt-2">
-          {onSelectAsSubstitute ? (
-            <button
-              type="button"
-              onClick={() => {
-                onSelectAsSubstitute(exercise);
-                onClose();
-              }}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-            >
-              <span>Select as Active Exercise</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleUseInDayOneSession}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-            >
-              <span>Use in Day 1 Session</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
           )}
-        </div>
-      </SheetContent>
-    </Sheet>
+
+          {/* TAB 3: EQUIPMENT & 1-TAP SWAPS */}
+          {activeTab === "swaps" && (
+            <div className="space-y-4">
+              {/* Equipment Context Card */}
+              <div className="p-3.5 bg-[#090d16] border border-[#1b2d47] rounded-2xl space-y-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Disc className="w-3.5 h-3.5 text-cyan-400" />
+                  Equipment & Loading Profile
+                </span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">Prescribed Apparatus:</span>
+                  <span className="font-semibold text-white capitalize">{exercise.equipment}</span>
+                </div>
+                {isBarbellOrSmith && (
+                  <div className="pt-2 border-t border-[#1b2d47] flex items-center justify-between">
+                    <span className="text-xs text-slate-400">Standard Olympic Bar:</span>
+                    <span className="text-xs font-mono font-bold text-[#10b981]">20.0 kg Base Tare</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Direct Biomechanical Swaps */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#10b981] font-bold flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  1-Tap Biomechanical Alternatives
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  Equipment occupied? Swap immediately to an exercise targeting the exact same primary motor pattern.
+                </p>
+
+                <div className="space-y-2.5 pt-1">
+                  {substitutes.length > 0 ? (
+                    substitutes.map((sub) => {
+                      const match = candidates.find((c) => c.exercise.id === sub.id);
+                      return (
+                        <div
+                          key={sub.id}
+                          className="p-3.5 bg-[#090d16] border border-[#1b2d47] hover:border-[#10b981]/50 rounded-xl space-y-2 text-xs transition"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="space-y-0.5 min-w-0 pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-white truncate capitalize">{sub.name}</span>
+                                {match && (
+                                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30">
+                                    {Math.round(match.similarityScore * 100)}%
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] font-mono text-slate-400">
+                                {sub.equipment} · <span className="text-[#10b981] capitalize">{sub.target}</span>
+                                {match && (
+                                  <span className="text-cyan-400 ml-1">· {match.resistanceProfile}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setVideoModalExercise(sub)}
+                                className="p-1.5 rounded-lg bg-[#05080c] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 transition"
+                                title="Watch preview"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                              </button>
+
+                              {onSelectAsSubstitute ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onSelectAsSubstitute(sub);
+                                    onClose();
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-black font-display uppercase tracking-wider font-bold text-xs transition shrink-0 cursor-pointer shadow-sm active:scale-95"
+                                >
+                                  Swap
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-mono text-slate-500">Available</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {match?.biomechanicalRationale && (
+                            <div className="text-[11px] text-slate-300 leading-snug bg-[#05080c] p-2.5 rounded-lg border border-[#1b2d47]">
+                              <span className="text-[#10b981] font-semibold font-mono text-[10px]">COACH: </span>
+                              {match.biomechanicalRationale}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 rounded-xl bg-[#090d16] border border-[#1b2d47] text-center text-xs text-slate-400">
+                      No immediate substitutes found for {exercise.target}.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Footer Button */}
+          <div className="pt-2">
+            {onSelectAsSubstitute ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectAsSubstitute(exercise);
+                  onClose();
+                }}
+                className="w-full py-3.5 bg-gradient-to-r from-[#10b981] to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-[#10b981]/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                <span>Select as Active Exercise</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleSwapIntoTodayWorkout}
+                  className="py-3 px-2 bg-[#090d16] hover:bg-[#111827] border border-[#10b981]/50 text-[#10b981] font-display font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                  <span>Swap into Today</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUseInDayOneSession}
+                  className="py-3 px-2 bg-gradient-to-r from-[#10b981] to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                >
+                  <span>Start Session</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Inline Video Modal */}
+      <ExerciseVideoModal
+        isOpen={Boolean(videoModalExercise)}
+        onClose={() => setVideoModalExercise(null)}
+        exercise={videoModalExercise}
+      />
+    </>
   );
 }

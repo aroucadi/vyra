@@ -32,6 +32,7 @@ import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositio
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import type { CoachProposition } from "@/lib/ai/coach-agent";
 import type { ExerciseBiofeedbackTag } from "@/lib/types";
 import {
@@ -127,6 +128,7 @@ export function KineticFlightHud({
   const [isVoiceCoachActive, setIsVoiceCoachActive] = useState(true);
   const [isHandsFreeListening, setIsHandsFreeListening] = useState(false);
   const [voiceStatusMessage, setVoiceStatusMessage] = useState<string | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   const spokenRestSecRef = useRef<number | null>(null);
   const speechRecognizerRef = useRef<{ stop: () => void; start: () => void } | null>(null);
@@ -353,16 +355,15 @@ export function KineticFlightHud({
           </button>
 
           {effectiveVideoUrl && (
-            <a
-              href={effectiveVideoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setIsVideoModalOpen(true)}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-mono text-[11px] font-bold hover:bg-cyan-500/30 active:scale-95 transition shadow-[0_0_8px_rgba(6,182,212,0.4)] cursor-pointer"
               title="Watch form video demo"
             >
               <Video className="w-3.5 h-3.5 text-cyan-300" />
               <span>VIDEO</span>
-            </a>
+            </button>
           )}
 
           <button
@@ -832,6 +833,19 @@ export function KineticFlightHud({
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </footer>
+
+      {/* Inline Motion Telemetry Video Modal */}
+      <ExerciseVideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        exercise={{
+          name: exercise.name,
+          target: exercise.target,
+          equipment: exercise.equipment,
+          videoUrl: effectiveVideoUrl,
+          formCue: exercise.formCue,
+        }}
+      />
     </div>
   );
 }

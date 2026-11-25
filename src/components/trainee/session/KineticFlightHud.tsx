@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
 import {
   Sparkles,
@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mic,
+  MicOff,
   Check,
   ArrowRightLeft,
 } from "lucide-react";
@@ -33,6 +34,11 @@ import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import type { CoachProposition } from "@/lib/ai/coach-agent";
 import type { ExerciseBiofeedbackTag } from "@/lib/types";
+import {
+  voiceCoach,
+  parseVoiceCommand,
+  type VoiceCommandAction,
+} from "@/lib/in-gym/voice-coach";
 
 export interface KineticFlightHudProps {
   exercise: ActiveExercise;
@@ -118,6 +124,143 @@ export function KineticFlightHud({
   onNextExercise,
 }: KineticFlightHudProps) {
   const [isAudioRecordingActive, setIsAudioRecordingActive] = useState(false);
+  const [isVoiceCoachActive, setIsVoiceCoachActive] = useState(true);
+  const [isHandsFreeListening, setIsHandsFreeListening] = useState(false);
+  const [voiceStatusMessage, setVoiceStatusMessage] = useState<string | null>(null);
+
+  const spokenRestSecRef = useRef<number | null>(null);
+  const speechRecognizerRef = useRef<any>(null);
+
+  // Real-time audio cues during rest timers
+  useEffect(() => {
+    if (restTimerSec === null) {
+      spokenRestSecRef.current = null;
+      return;
+    }
+    if (!isVoiceCoachActive || isSoundMuted) return;
+
+    if (restTimerSec === 45 && spokenRestSecRef.current !== 45) {
+      spokenRestSecRef.current = 45;
+      voiceCoach.speakRestPace(
+        45,
+        exercise.currentWeight,
+        exercise.currentReps,
+        exercise.targetRir
+      );
+    } else if (restTimerSec === 15 && spokenRestSecRef.current !== 15) {
+      spokenRestSecRef.current = 15;
+      voiceCoach.speakRestPace(15);
+    } else if (restTimerSec === 1 && spokenRestSecRef.current !== 0) {
+      spokenRestSecRef.current = 0;
+      voiceCoach.speakRestPace(0);
+    }
+  }, [
+    restTimerSec,
+    isVoiceCoachActive,
+    isSoundMuted,
+    exercise.currentWeight,
+    exercise.currentReps,
+    exercise.targetRir,
+  ]);
+
+  const handleVoiceCommandAction = (
+    action: VoiceCommandAction,
+    transcript: string
+  ) => {
+    if (action.type === "LOG_SET") {
+      if (action.weightKg !== undefined) onUpdateWeight(action.weightKg);
+      if (action.reps !== undefined) onUpdateReps(action.reps);
+      if (action.rir !== undefined) onUpdateRir(action.rir);
+      onLogSet();
+      const finalReps = action.reps ?? exercise.currentReps;
+      const finalWeight = action.weightKg ?? exercise.currentWeight;
+      setVoiceStatusMessage(`Logged ${finalReps} reps @ ${finalWeight}kg`);
+      if (isVoiceCoachActive && !isSoundMuted) {
+        voiceCoach.speakSetLogged(finalReps, finalWeight, action.rir);
+      }
+    } else if (action.type === "SET_WEIGHT") {
+      onUpdateWeight(action.weightKg);
+      setVoiceStatusMessage(`Weight: ${action.weightKg}kg`);
+      if (isVoiceCoachActive && !isSoundMuted) {
+        voiceCoach.speak(`Weight set to ${action.weightKg} kilos`);
+      }
+    } else if (action.type === "ADJUST_WEIGHT") {
+      const next = Math.max(0, exercise.currentWeight + action.deltaKg);
+      onUpdateWeight(Number(next.toFixed(1)));
+      setVoiceStatusMessage(`Weight: ${next}kg`);
+    } else if (action.type === "SET_REPS") {
+      onUpdateReps(action.reps);
+      setVoiceStatusMessage(`Reps: ${action.reps}`);
+    } else if (action.type === "SET_RIR") {
+      onUpdateRir(action.rir);
+      setVoiceStatusMessage(`RIR: ${action.rir}`);
+    } else if (action.type === "SKIP_REST") {
+      onSkipRest();
+      setVoiceStatusMessage("Rest skipped");
+    } else if (action.type === "SWAP_EXERCISE") {
+      onOpenSwap();
+      setVoiceStatusMessage("Opening station swap...");
+    } else if (action.type === "ADD_SET") {
+      onAddBonusSet();
+      setVoiceStatusMessage("Bonus set added");
+    } else {
+      setVoiceStatusMessage(`Heard: "${transcript}"`);
+    }
+
+    setTimeout(() => {
+      setVoiceStatusMessage(null);
+    }, 3500);
+  };
+
+  const startHandsFreeListening = () => {
+    if (typeof window === "undefined") return;
+    const speechWin = window as unknown as {
+      SpeechRecognition?: any;
+      webkitSpeechRecognition?: any;
+    };
+    const SpeechRecognitionCtor =
+      speechWin.SpeechRecognition || speechWin.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setVoiceStatusMessage("Voice recognition not supported");
+      setTimeout(() => setVoiceStatusMessage(null), 2500);
+      return;
+    }
+
+    try {
+      if (speechRecognizerRef.current) {
+        speechRecognizerRef.current.stop();
+      }
+      const recognizer = new SpeechRecognitionCtor();
+      recognizer.continuous = false;
+      recognizer.interimResults = false;
+      recognizer.lang = "en-US";
+
+      recognizer.onstart = () => {
+        setIsHandsFreeListening(true);
+        setVoiceStatusMessage("Listening for command...");
+      };
+
+      recognizer.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (!transcript) return;
+        const action = parseVoiceCommand(transcript);
+        handleVoiceCommandAction(action, transcript);
+      };
+
+      recognizer.onerror = () => {
+        setIsHandsFreeListening(false);
+      };
+
+      recognizer.onend = () => {
+        setIsHandsFreeListening(false);
+      };
+
+      speechRecognizerRef.current = recognizer;
+      recognizer.start();
+    } catch {
+      setIsHandsFreeListening(false);
+    }
+  };
 
   const completedSetsCount = exercise.completedSets.length;
   const currentSetNum = completedSetsCount + 1;
@@ -224,12 +367,45 @@ export function KineticFlightHud({
             <Camera className="w-3.5 h-3.5" />
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              const next = !isVoiceCoachActive;
+              setIsVoiceCoachActive(next);
+              voiceCoach.setEnabled(next);
+            }}
+            className={clsx(
+              "w-8 h-8 rounded-lg border flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0",
+              isVoiceCoachActive
+                ? "bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]"
+                : "bg-[#0f1724] border-[#1b2d47] text-slate-500 hover:text-slate-300"
+            )}
+            title={isVoiceCoachActive ? "Voice Coach: Active (audio pacing enabled)" : "Voice Coach: Muted"}
+          >
+            {isVoiceCoachActive ? (
+              <Volume2 className="w-3.5 h-3.5 text-[#10b981]" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5" />
+            )}
+          </button>
+
           <div className="text-[11px] font-mono font-bold text-[#10b981] px-2 py-1 rounded bg-[#0f1724] border border-[#1b2d47] shrink-0">
             {Math.floor(sessionDurationSec / 60)}:
             {(sessionDurationSec % 60).toString().padStart(2, "0")}
           </div>
         </div>
       </header>
+
+      {/* Dynamic Voice Status Toast */}
+      {voiceStatusMessage && (
+        <div className="mx-3 mt-1 px-3 py-1 bg-[#10b981]/15 border border-[#10b981]/40 rounded-lg text-[#10b981] text-xs font-mono flex items-center justify-between animate-in fade-in shrink-0">
+          <span className="flex items-center gap-1.5 font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />
+            {voiceStatusMessage}
+          </span>
+          <span className="text-[9px] font-mono text-slate-400 uppercase">VOICE COACH</span>
+        </div>
+      )}
 
       {/* 2. DYNAMIC ANATOMICAL TARGETING SPOTLIGHT (HERO OF THE SCREEN) */}
       <main className="flex-1 flex flex-col justify-center items-center px-3 py-1 space-y-1 overflow-hidden min-h-0">
@@ -306,6 +482,21 @@ export function KineticFlightHud({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={startHandsFreeListening}
+                className={clsx(
+                  "px-2 py-1 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition cursor-pointer",
+                  isHandsFreeListening
+                    ? "bg-red-500/20 border-red-500 text-red-300 animate-pulse"
+                    : "bg-[#142032] border-[#1b2d47] text-[#10b981] hover:text-white"
+                )}
+                title="Tap to speak (e.g. '8 reps at 60kg')"
+              >
+                <Mic className={clsx("w-3 h-3", isHandsFreeListening ? "text-red-400" : "text-[#10b981]")} />
+                <span>{isHandsFreeListening ? "LISTENING" : "VOICE"}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={onToggleSound}
@@ -515,21 +706,38 @@ export function KineticFlightHud({
               </div>
             </div>
 
-            {/* COACH CUE & AUDIO BUTTON */}
+            {/* COACH CUE & HANDS-FREE VOICE LOG BUTTON */}
             <div className="flex items-center justify-between gap-2 px-1 text-xs">
               <div className="text-[11px] font-mono text-slate-400 truncate">
                 {exercise.formCue
                   ? `"${exercise.formCue}"`
                   : `"Locked scapulae. Drive through full range."`}
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAudioRecordingActive((prev) => !prev)}
-                className="w-6 h-6 rounded bg-[#142032] border border-[#1b2d47] flex items-center justify-center text-cyan-400 active:scale-95 transition cursor-pointer shrink-0"
-                title="Voice memo"
-              >
-                <Mic className="w-3 h-3" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={startHandsFreeListening}
+                  className={clsx(
+                    "flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono font-bold active:scale-95 transition cursor-pointer",
+                    isHandsFreeListening
+                      ? "bg-red-500/20 border-red-500 text-red-300 animate-pulse"
+                      : "bg-[#142032] border-[#1b2d47] text-[#10b981] hover:text-white hover:border-[#10b981]/50"
+                  )}
+                  title="Hands-free voice logging (e.g. 'Log 8 reps at 60kg')"
+                >
+                  <Mic className={clsx("w-3 h-3", isHandsFreeListening ? "text-red-400 animate-ping" : "text-[#10b981]")} />
+                  <span>{isHandsFreeListening ? "LISTENING..." : "VOICE LOG"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAudioRecordingActive((prev) => !prev)}
+                  className="w-6 h-6 rounded bg-[#142032] border border-[#1b2d47] flex items-center justify-center text-cyan-400 active:scale-95 transition cursor-pointer"
+                  title="Voice memo"
+                >
+                  <Sparkles className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
             {/* Inline Audio Recorder if toggled */}

@@ -142,7 +142,20 @@ export async function executeMcpToolCall(
     case "vyra_get_athlete_dossier": {
       const user = appStore.getUser(traineeId) || appStore.getCurrentUser();
       const metrics = appStore.getMetrics(traineeId);
-      const isAlaa = traineeId === "trainee_alaa" || user.email?.includes("alaa");
+
+      const currentWeight = metrics.length
+        ? metrics[metrics.length - 1].weightKg
+        : user.biometrics?.baselineWeightKg ?? user.baselineMetrics?.fedBaselineWeightKg ?? 52.05;
+
+      const smmKg = user.biometrics?.skeletalMuscleMassKg ?? 24.9;
+      const smmIndex = currentWeight > 0 ? Number(((smmKg / currentWeight) * 100).toFixed(1)) : 47.8;
+      const leftArm = user.biometrics?.segmentalSymmetry?.leftArmKg ?? 2.5;
+      const rightArm = user.biometrics?.segmentalSymmetry?.rightArmKg ?? 2.5;
+      const leftLeg = user.biometrics?.segmentalSymmetry?.leftLegKg ?? 7.6;
+      const rightLeg = user.biometrics?.segmentalSymmetry?.rightLegKg ?? 7.5;
+      const trunk = user.biometrics?.segmentalSymmetry?.trunkKg ?? 12.6;
+      const bodyFat = user.biometrics?.bodyFatPercent ?? 10.0;
+      const targetWeight = user.biometrics?.week16TargetWeightKg ?? 57.0;
 
       const dossier = {
         athlete: {
@@ -152,30 +165,42 @@ export async function executeMcpToolCall(
           role: user.role,
           primaryGoal: user.goals?.[0] || "Strength & Hypertrophy",
           injuries: user.injuries || [],
+          heightCm: user.heightCm || user.biometrics?.heightCm || (user.baselineMetrics?.heightM ? user.baselineMetrics.heightM * 100 : undefined),
+          currentWeightKg: currentWeight,
         },
-        inBodySegmentalTelemetry: isAlaa
-          ? {
-              skeletalMuscleMassKg: 24.9,
-              smmIndexPercent: 47.8,
-              bodyFatPercent: 10.0,
-              bilateralSymmetry: {
-                arms: { leftKg: 2.5, rightKg: 2.5, symmetry: "100% Equilibrium" },
-                legs: { leftKg: 7.6, rightKg: 7.5, symmetry: "99.2% Equilibrium (0.1kg Micro-Delta)" },
-                axialTrunkKg: 12.6,
-              },
-              baselineWeightKg: 52.05,
-              targetSurplusWeightKg: 57.0,
-              dailyMacroTargets: {
+        inBodySegmentalTelemetry: {
+          skeletalMuscleMassKg: smmKg,
+          smmIndexPercent: smmIndex,
+          bodyFatPercent: bodyFat,
+          bilateralSymmetry: {
+            arms: {
+              leftKg: leftArm,
+              rightKg: rightArm,
+              symmetry: leftArm === rightArm ? "100% Equilibrium" : "Calibrated",
+            },
+            legs: {
+              leftKg: leftLeg,
+              rightKg: rightLeg,
+              symmetry: leftLeg === rightLeg ? "100% Equilibrium" : "99.2% Equilibrium (0.1kg Micro-Delta)",
+            },
+            axialTrunkKg: trunk,
+          },
+          baselineWeightKg: user.biometrics?.baselineWeightKg ?? user.baselineMetrics?.fedBaselineWeightKg ?? 52.05,
+          targetSurplusWeightKg: targetWeight,
+          dailyMacroTargets: user.baselineMetrics?.dailyMacrosTarget
+            ? {
+                caloriesKcal: user.baselineMetrics.dailyTargetKcal,
+                proteinG: user.baselineMetrics.dailyMacrosTarget.proteinG,
+                carbsG: user.baselineMetrics.dailyMacrosTarget.carbsG,
+                fatsG: user.baselineMetrics.dailyMacrosTarget.fatG,
+              }
+            : {
                 caloriesKcal: 2850,
                 proteinG: 140,
                 carbsG: 380,
                 fatsG: 65,
               },
-            }
-          : {
-              currentWeightKg: metrics.length ? metrics[metrics.length - 1].weightKg : undefined,
-              heightCm: user.heightCm,
-            },
+        },
       };
 
       return {

@@ -19,13 +19,11 @@ import { appStore } from "@/lib/store";
 import { computeExercisePrescription } from "@/lib/progression-adapter";
 import { triggerBackupDownload } from "@/lib/storage";
 import { OverloadPrescriptionCard } from "@/components/trainee/OverloadPrescriptionCard";
-import { MesocycleArchitectCard } from "@/components/trainee/MesocycleArchitectCard";
 import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
 import type { SubscriptionTier } from "@/lib/entitlements";
-import type { TrainingGoal } from "@/lib/onboarding";
 import type { GymLocation, ProgramDay, User } from "@/lib/types";
 import type { ActiveExercise } from "./types";
 
@@ -112,23 +110,9 @@ export function SessionSummaryView({
     };
   });
 
-  const userGoal: TrainingGoal =
-    (currentUser.goals?.[0] as TrainingGoal | undefined) || "hypertrophy";
-  const primaryEx = exercises[0];
-  const bestSet = primaryEx?.completedSets?.length
-    ? primaryEx.completedSets.reduce(
-        (best, s) =>
-          s.weight * (1 + s.reps / 30) > best.weight * (1 + best.reps / 30)
-            ? s
-            : best,
-        primaryEx.completedSets[0]
-      )
-    : null;
-  const benchmark1RmKg = bestSet
-    ? Math.round(bestSet.weight * (1 + bestSet.reps / 30))
-    : primaryEx?.currentWeight
-    ? Math.round(primaryEx.currentWeight * 1.25)
-    : 80;
+  const targetProteinG = currentUser.baselineMetrics?.dailyMacrosTarget?.proteinG
+    ? Math.round(currentUser.baselineMetrics.dailyMacrosTarget.proteinG / 4)
+    : 40;
 
   return (
     <div className="flex-1 pb-16 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in zoom-in-95 duration-300 font-body select-none">
@@ -142,7 +126,7 @@ export function SessionSummaryView({
             </span>
           </div>
           <span className="text-slate-400 font-mono">
-            LOG #{Math.floor(100 + Math.random() * 900)}-FLIGHT
+            LOG #{userSessions.length + 1}-FLIGHT
           </span>
         </div>
 
@@ -371,7 +355,7 @@ export function SessionSummaryView({
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
               <span className="text-slate-200">
-                42g Protein Synthesis Window (&lt;45m)
+                {targetProteinG}g Protein Synthesis Window (&lt;45m)
               </span>
             </div>
             <span className="text-[10px] text-[#10b981] font-bold">PENDING</span>
@@ -380,7 +364,7 @@ export function SessionSummaryView({
           <div className="flex items-center justify-between p-2.5 bg-[#05080c] rounded-lg border border-[#1b2d47]">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-              <span className="text-slate-200">8h 30m Deep Rest Target</span>
+              <span className="text-slate-200">8h Deep Rest Target</span>
             </div>
             <span className="text-[10px] text-indigo-300 font-bold">
               SCHEDULED
@@ -389,13 +373,7 @@ export function SessionSummaryView({
         </div>
       </div>
 
-      {/* 8. ARCHITECT & SYNC CARDS */}
-      <MesocycleArchitectCard
-        userId={currentUser.id}
-        goal={userGoal}
-        benchmark1RmKg={benchmark1RmKg}
-      />
-
+      {/* 8. PASSKEY SYNC CARD */}
       <PasskeySyncCard
         userId={currentUser.id}
         userName={currentUser.name}

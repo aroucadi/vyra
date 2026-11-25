@@ -79,8 +79,8 @@ export default function TodayPage() {
   const effectiveForceDayZero = isHydrated
     ? forceDayZero !== undefined
       ? forceDayZero
-      : !program && sessions.length === 0
-    : true;
+      : Boolean(!program && sessions.length === 0)
+    : false;
   const resolved = program
     ? resolveProgramDay(program.startDate)
     : { weekIndex: 1, dayOfWeek: 0, started: true };
@@ -95,6 +95,9 @@ export default function TodayPage() {
   const todayExercises = todaySession?.blocks
     ? todaySession.blocks.flatMap((b) => b.exercises)
     : [];
+  const estimatedPaceMin = Math.round(
+    Math.max(25, todayExercises.reduce((sum, e) => sum + e.sets, 0) * 2.5)
+  );
 
   // Chronobiological phase
   const chrono = useMemo(() => getChronoPhase(), [tick]);
@@ -179,7 +182,30 @@ export default function TodayPage() {
     }
   };
 
-  const isWorkoutDone = heroMoment?.badge === "Done";
+  const todayDateStr = isHydrated ? new Date().toISOString().split("T")[0] : "";
+  const completedTodaySession = isHydrated
+    ? sessions.find((s) => s.date === todayDateStr)
+    : undefined;
+  const completedVolumeKg =
+    completedTodaySession?.setLogs?.reduce(
+      (sum, l) => sum + l.weightKg * l.reps,
+      0
+    ) || 0;
+  const isWorkoutDone = Boolean(
+    completedTodaySession ||
+      heroMoment?.badge === "Done" ||
+      moments.find((m) => m.id === "moment_workout")?.badge === "Done"
+  );
+  const latestBiometrics = isHydrated
+    ? appStore.getLatestWearableBiometrics(currentUser.id)
+    : undefined;
+  const readinessScore = latestBiometrics?.readinessScore ?? 92;
+  const readinessLabel =
+    readinessScore >= 80
+      ? "Optimal drive"
+      : readinessScore >= 60
+      ? "Moderate drive"
+      : "Deload recommended";
 
   return (
     <div className="flex-1 pb-28 px-4 pt-4 max-w-md mx-auto w-full space-y-5 animate-in fade-in duration-300 font-body select-none">
@@ -330,7 +356,7 @@ export default function TodayPage() {
                   Target Prime Window
                 </span>
                 <span className="text-sm font-mono font-bold text-white tracking-tight">
-                  12:15 – 14:30 // 37 MIN PACE
+                  {chrono.label} // ~{estimatedPaceMin} MIN PACE
                 </span>
                 <span className="text-[10px] font-mono text-[#10b981] block">
                   Scapular &amp; Pelvic Switch Locked
@@ -338,10 +364,10 @@ export default function TodayPage() {
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/25 font-bold">
-                  CNS 94.8%
+                  READINESS {readinessScore}%
                 </span>
                 <span className="text-[9px] font-mono text-slate-400 mt-1 block">
-                  Optimal recruitment
+                  {readinessLabel}
                 </span>
               </div>
             </div>
@@ -397,7 +423,7 @@ export default function TodayPage() {
                 </span>
               </div>
               <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold">
-                +250 KCAL SURPLUS
+                {currentUser.goals?.[0]?.toUpperCase() || "HYPERTROPHY"} TARGET
               </span>
             </div>
 
@@ -442,7 +468,7 @@ export default function TodayPage() {
                 </span>
               </div>
               <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded border border-[#10b981]/30 font-bold">
-                {isRestDay ? "REST DAY" : isWorkoutDone ? "COMPLETED" : "SCHEDULED"}
+                {isRestDay ? "REST DAY" : isWorkoutDone ? "COMPLETED TODAY ✓" : "SCHEDULED"}
               </span>
             </div>
 
@@ -453,7 +479,7 @@ export default function TodayPage() {
               <div className="flex items-center gap-3 text-xs font-mono text-slate-400 mt-1">
                 <span>{todayExercises.length} Movements</span>
                 <span>·</span>
-                <span>37 Min Target Pace</span>
+                <span>~{estimatedPaceMin} Min Pace</span>
                 <span>·</span>
                 <span className="text-[#10b981] font-bold">RIR 2 Lock</span>
               </div>
@@ -465,7 +491,11 @@ export default function TodayPage() {
                 Progression Target:
               </span>
               <span className="text-[#10b981] font-bold">
-                +450 KG Ballast Overload Hit Goal
+                {completedTodaySession
+                  ? `${completedVolumeKg > 0 ? completedVolumeKg.toLocaleString() + " KG Volume Logged" : "Completed"}`
+                  : todayExercises.length > 0
+                  ? `${todayExercises.reduce((sum, e) => sum + e.sets, 0)} Working Sets Scheduled`
+                  : "Active Recovery"}
               </span>
             </div>
 
@@ -517,9 +547,10 @@ export default function TodayPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const dateStr = new Date().toISOString().split("T")[0];
                     const todaySess =
-                      sessions.find((s) => s.date === dateStr) || sessions[0];
+                      completedTodaySession ||
+                      sessions.find((s) => s.date === todayDateStr) ||
+                      sessions[0];
                     if (todaySess) setSelectedSession(todaySess);
                     else router.push("/progress");
                   }}
@@ -531,40 +562,36 @@ export default function TodayPage() {
                   </div>
                   <ChevronRight className="w-5 h-5" />
                 </button>
-              ) : heroMoment?.actionHref ? (
+              ) : isRestDay ? (
+                <button
+                  type="button"
+                  onClick={() => setIsSuppDrawerOpen(true)}
+                  className="w-full h-14 py-3 bg-[#0f1724] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white font-display uppercase tracking-wider text-base font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>REST DAY PROTOCOL // LOG NUTRITION</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2]" />
+                </button>
+              ) : (
                 <Link
-                  href={heroMoment.actionHref}
+                  href={`/session?day=${todaySession?.id || "day_1"}`}
                   className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
                 >
                   <div className="flex items-center gap-2">
                     <Play className="w-6 h-6 fill-current" />
-                    <span>{heroMoment.actionLabel || "COMMENCE SESSION"}</span>
+                    <span>COMMENCE SESSION</span>
                   </div>
                   <div className="flex items-center gap-1 bg-[#05080c]/80 text-[#10b981] px-2.5 py-1 rounded-lg border border-[#10b981]/40 font-mono text-xs font-bold">
-                    <span>37 MIN</span>
+                    <span>~{estimatedPaceMin} MIN</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </div>
                 </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsSuppDrawerOpen(true)}
-                  className="w-full h-14 py-3 bg-[#10b981] hover:bg-emerald-400 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-lg font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <span>{heroMoment?.actionLabel || "LOG DAILY PROTOCOLS"}</span>
-                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                </button>
               )}
 
               {/* Secondary Utility Controls */}
-              {!isRestDay && heroMoment?.actionHref && !isWorkoutDone && (
+              {!isRestDay && !isWorkoutDone && (
                 <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
                   <Link
-                    href={
-                      heroMoment.actionHref.includes("mode=")
-                        ? heroMoment.actionHref.replace(/mode=[^&]+/, "mode=preview")
-                        : `${heroMoment.actionHref}${heroMoment.actionHref.includes("?") ? "&" : "?"}mode=preview`
-                    }
+                    href={`/session?day=${todaySession?.id || "day_1"}&mode=preview`}
                     className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5"
                   >
                     <Eye className="w-3.5 h-3.5 text-cyan-400" />

@@ -82,17 +82,13 @@ export default function ProgressPage() {
   const week16TargetWeightKg = biometrics?.week16TargetWeightKg ?? 57.0;
   const apexTargetKg = biometrics?.longTermAthleteTargetKg ?? 59.3;
 
-  const segmental = useMemo(
-    () =>
-      biometrics?.segmentalSymmetry ?? {
-        leftArmKg: 2.5,
-        rightArmKg: 2.5,
-        leftLegKg: 7.6,
-        rightLegKg: 7.5,
-        trunkKg: 12.6,
-      },
-    [biometrics?.segmentalSymmetry]
-  );
+  const segmental = biometrics?.segmentalSymmetry ?? {
+    leftArmKg: 2.5,
+    rightArmKg: 2.5,
+    leftLegKg: 7.6,
+    rightLegKg: 7.5,
+    trunkKg: 12.6,
+  };
 
   // SMM percentage relative to body weight
   const weights = metrics.map((m) => m.weightKg);
@@ -159,51 +155,44 @@ export default function ProgressPage() {
       : "+0.40";
 
   // Cumulative tonnage across all sessions
-  const totalLifetimeTonnage = useMemo(
-    () =>
-      sessions.reduce(
-        (sum, s) =>
-          sum +
-          (s.setLogs
-            ? s.setLogs.reduce(
-                (sSum, l) => sSum + (l.weightKg || 0) * (l.reps || 0),
-                0
-              )
-            : 0),
-        0
-      ),
-    [sessions]
+  const totalLifetimeTonnage = sessions.reduce(
+    (sum, s) =>
+      sum +
+      (s.setLogs
+        ? s.setLogs.reduce(
+            (sSum, l) => sSum + (l.weightKg || 0) * (l.reps || 0),
+            0
+          )
+        : 0),
+    0
   );
 
   // 3. Extract PRs
-  const prs = useMemo(() => {
-    const list: {
-      exercise: string;
-      weight: number;
-      reps: number;
-      date: string;
-      equipment?: string;
-      estimated1Rm: number;
-    }[] = [];
+  const prsList: {
+    exercise: string;
+    weight: number;
+    reps: number;
+    date: string;
+    equipment?: string;
+    estimated1Rm: number;
+  }[] = [];
 
-    sessions.forEach((s) => {
-      s.setLogs?.forEach((l) => {
-        if (l.isPR) {
-          list.push({
-            exercise: l.exerciseName,
-            weight: l.weightKg,
-            reps: l.reps,
-            date: s.date,
-            equipment: l.selectedEquipment,
-            estimated1Rm: calculateEstimated1RM(l.weightKg, l.reps),
-          });
-        }
-      });
+  sessions.forEach((s) => {
+    s.setLogs?.forEach((l) => {
+      if (l.isPR) {
+        prsList.push({
+          exercise: l.exerciseName,
+          weight: l.weightKg,
+          reps: l.reps,
+          date: s.date,
+          equipment: l.selectedEquipment,
+          estimated1Rm: calculateEstimated1RM(l.weightKg, l.reps),
+        });
+      }
     });
+  });
 
-    // Sort PRs by estimated 1RM descending
-    return list.sort((a, b) => b.estimated1Rm - a.estimated1Rm);
-  }, [sessions]);
+  const prs = prsList.sort((a, b) => b.estimated1Rm - a.estimated1Rm);
 
   return (
     <div className="flex-1 pb-28 px-4 pt-4 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-300 font-body select-none">

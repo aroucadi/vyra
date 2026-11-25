@@ -276,7 +276,7 @@ export default function TodayPage() {
                 borderColor: `${chrono.accentColor}40`,
               }}
             >
-              {chrono.label} // {chrono.badge}
+              {`${chrono.label} // ${chrono.badge}`}
             </span>
             <span className="text-[10px] font-mono text-slate-400">
               {program
@@ -356,7 +356,7 @@ export default function TodayPage() {
                   Target Prime Window
                 </span>
                 <span className="text-sm font-mono font-bold text-white tracking-tight">
-                  {chrono.label} // ~{estimatedPaceMin} MIN PACE
+                  {`${chrono.label} // ~${estimatedPaceMin} MIN PACE`}
                 </span>
                 <span className="text-[10px] font-mono text-[#10b981] block">
                   Scapular &amp; Pelvic Switch Locked

@@ -129,7 +129,7 @@ export function KineticFlightHud({
   const [voiceStatusMessage, setVoiceStatusMessage] = useState<string | null>(null);
 
   const spokenRestSecRef = useRef<number | null>(null);
-  const speechRecognizerRef = useRef<any>(null);
+  const speechRecognizerRef = useRef<{ stop: () => void; start: () => void } | null>(null);
 
   // Real-time audio cues during rest timers
   useEffect(() => {
@@ -214,9 +214,20 @@ export function KineticFlightHud({
 
   const startHandsFreeListening = () => {
     if (typeof window === "undefined") return;
+    interface RecognitionInstance {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      onstart: (() => void) | null;
+      onresult: ((event: { results?: Array<Array<{ transcript?: string }>> }) => void) | null;
+      onerror: (() => void) | null;
+      onend: (() => void) | null;
+      start: () => void;
+      stop: () => void;
+    }
     const speechWin = window as unknown as {
-      SpeechRecognition?: any;
-      webkitSpeechRecognition?: any;
+      SpeechRecognition?: new () => RecognitionInstance;
+      webkitSpeechRecognition?: new () => RecognitionInstance;
     };
     const SpeechRecognitionCtor =
       speechWin.SpeechRecognition || speechWin.webkitSpeechRecognition;
@@ -231,6 +242,7 @@ export function KineticFlightHud({
         speechRecognizerRef.current.stop();
       }
       const recognizer = new SpeechRecognitionCtor();
+      speechRecognizerRef.current = recognizer;
       recognizer.continuous = false;
       recognizer.interimResults = false;
       recognizer.lang = "en-US";
@@ -240,7 +252,7 @@ export function KineticFlightHud({
         setVoiceStatusMessage("Listening for command...");
       };
 
-      recognizer.onresult = (event: any) => {
+      recognizer.onresult = (event: { results?: Array<Array<{ transcript?: string }>> }) => {
         const transcript = event.results?.[0]?.[0]?.transcript;
         if (!transcript) return;
         const action = parseVoiceCommand(transcript);
@@ -448,7 +460,7 @@ export function KineticFlightHud({
           />
           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-mono text-[#10b981] font-bold uppercase tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-            <span>{primaryMuscle} // ACTIVE TARGET</span>
+            <span>{`${primaryMuscle} // ACTIVE TARGET`}</span>
           </div>
         </div>
 

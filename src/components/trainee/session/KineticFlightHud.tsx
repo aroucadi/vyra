@@ -424,8 +424,9 @@ export function KineticFlightHud({
         </div>
       )}
 
-      {/* 2. DYNAMIC ANATOMICAL TARGETING SPOTLIGHT (HERO OF THE SCREEN) */}
-      <main className="flex-1 flex flex-col justify-center items-center px-3 py-1 space-y-1 overflow-hidden min-h-0">
+      {/* 2. DYNAMIC FLIGHT COCKPIT (Dual-Pane on Desktop, Thumb-Flow on Mobile) */}
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 lg:items-center px-3 py-1 overflow-y-auto lg:overflow-hidden min-h-0">
+        <main className="flex flex-col justify-center items-center py-1 space-y-2 overflow-hidden min-h-0 lg:col-span-5 w-full">
         {/* Superset indicator if applicable */}
         {(exercise.supersetTag || exercise.subMovementOrder?.match(/[AB]$/)) && (
           <div className="w-full px-2 py-1 rounded-lg bg-indigo-950/60 border border-indigo-700/60 flex items-center justify-between text-[10px] shrink-0">
@@ -550,7 +551,7 @@ export function KineticFlightHud({
       </main>
 
       {/* 3. LOWER CONTROLS: INTUITIVE NUMERIC STEPPERS (NO SCALING LINE, NO EMPTY SPACE) */}
-      <section className="bg-[#05080c] border-t border-[#1b2d47] px-3 pt-2 pb-2 space-y-2 shrink-0 z-30">
+      <section className="bg-[#05080c] border-t lg:border-t-0 lg:border-l border-[#1b2d47] px-3 lg:px-6 pt-2 pb-2 space-y-2 shrink-0 z-30 lg:col-span-7 w-full">
         {isExCompleteOrSkipped ? (
           /* COMPLETION VIEW */
           <div className="space-y-2 animate-in fade-in">
@@ -817,6 +818,7 @@ export function KineticFlightHud({
           </div>
         )}
       </section>
+    </div>
 
       {/* 4. FOOTER BAR: PREV / STATION / SKIP / NEXT */}
       <footer className="px-3 py-1.5 border-t border-[#1b2d47] flex items-center justify-between bg-[#05080c] text-[11px] font-mono shrink-0">

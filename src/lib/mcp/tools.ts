@@ -13,6 +13,11 @@ import {
   resolveMcpShadowAngelAudit,
 } from "./athlete-context";
 import {
+  resolveMcpKnowledgeRag,
+  resolveMcpScientificDeepInsights,
+  resolveMcpExerciseSubstitutions,
+} from "./knowledge-rag-resolver";
+import {
   McpJsonRpcRequest,
   McpJsonRpcResponse,
   McpToolDefinition,
@@ -166,6 +171,81 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
         },
       },
       required: ["traineeId", "title", "rationale", "actionType"],
+    },
+  },
+  {
+    name: "vyra_query_knowledge_rag",
+    description:
+      "Omniscient multimodal RAG search engine across all 6 Vyra knowledge corpora (6,554-exercise biomechanics, workout flight logs, wearable recovery telemetry, 16-week mesocycle volume landmarks, gym equipment vision, and physique posture scans). Claude can ask any freeform or structured question to receive synthesized agentic reasoning, video streaming URLs, and grounded facts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Any natural language question, movement name, muscle group, or symptom (e.g. 'Incline DB Press shoulder fatigue', 'Romanian deadlift substitutes', '14-day caloric surplus pacing')",
+        },
+        traineeId: {
+          type: "string",
+          description: "Optional trainee ID (defaults to active authenticated trainee or trainee_alaa)",
+        },
+        focusArea: {
+          type: "string",
+          enum: ["all", "biomechanics", "overload_trajectory", "telemetry_recovery", "mesocycle_landmarks", "gym_equipment", "physique_posture"],
+          description: "Optional focal area to prioritize in RAG retrieval",
+        },
+        limit: {
+          type: "number",
+          description: "Max number of exercise matches to return (default: 5, max: 10)",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "vyra_get_scientific_deep_insights",
+    description:
+      "Delivers pre-computed sports science audits and high-signal analytical gems so Claude can immediately interpret weight gain velocity (+0.16 kg/wk), caloric surplus efficiency (2,850 kcal vs 2,665 kcal direct macros + 185 kcal buffer), progressive overload velocity, muscle subdivision volume distribution (MEV/MAV/MRV), structural push:pull balance, and joint safety guardrails without manual math.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        traineeId: {
+          type: "string",
+          description: "Optional trainee ID (defaults to active authenticated trainee or trainee_alaa)",
+        },
+        topic: {
+          type: "string",
+          enum: ["all", "caloric_pacing_and_weight_velocity", "progressive_overload_and_plateaus", "hypertrophy_volume_distribution", "joint_safety_and_sensory_guardrails"],
+          description: "Specific insight pillar (defaults to 'all')",
+        },
+      },
+    },
+  },
+  {
+    name: "vyra_get_exercise_substitutions",
+    description:
+      "Retrieves biomechanically validated exercise substitutions using 64-D vector matching, line of drive force vectors, resistance profile curves, apparatus compatibility, and injury avoidance rationales.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        exerciseName: {
+          type: "string",
+          description: "Exercise to replace (e.g. 'Incline Dumbbell Press', 'Barbell Romanian Deadlift', 'Cable Lateral Raise')",
+        },
+        reason: {
+          type: "string",
+          enum: ["shoulder_pain", "lower_back_fatigue", "equipment_busy", "progression_stall", "low_energy", "biomechanical_variety", "general"],
+          description: "Clinical or practical reason for substitution",
+        },
+        traineeId: {
+          type: "string",
+          description: "Optional trainee ID",
+        },
+        limit: {
+          type: "number",
+          description: "Max substitution candidates to return (default: 3)",
+        },
+      },
+      required: ["exerciseName"],
     },
   },
 ];
@@ -366,6 +446,34 @@ export async function executeMcpToolCall(
             ),
           },
         ],
+      };
+    }
+
+    case "vyra_query_knowledge_rag": {
+      const query = String(args.query || "");
+      const focusArea = String(args.focusArea || "all");
+      const limit = typeof args.limit === "number" ? Math.min(10, Math.max(1, args.limit)) : 5;
+      const ragReport = resolveMcpKnowledgeRag(traineeId, query, focusArea, limit);
+      return {
+        content: [{ type: "text", text: JSON.stringify(ragReport, null, 2) }],
+      };
+    }
+
+    case "vyra_get_scientific_deep_insights": {
+      const topic = String(args.topic || "all");
+      const insights = resolveMcpScientificDeepInsights(traineeId, topic);
+      return {
+        content: [{ type: "text", text: JSON.stringify(insights, null, 2) }],
+      };
+    }
+
+    case "vyra_get_exercise_substitutions": {
+      const exerciseName = String(args.exerciseName || "");
+      const reason = String(args.reason || "general");
+      const limit = typeof args.limit === "number" ? Math.min(10, Math.max(1, args.limit)) : 3;
+      const substitutions = resolveMcpExerciseSubstitutions(exerciseName, reason, traineeId, limit);
+      return {
+        content: [{ type: "text", text: JSON.stringify(substitutions, null, 2) }],
       };
     }
 

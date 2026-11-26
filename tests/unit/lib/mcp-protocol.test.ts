@@ -4,8 +4,8 @@ import { handleMcpJsonRpcRequest, VYRA_MCP_TOOLS } from "@/lib/mcp/tools";
 import { MCP_SERVER_INFO, MCP_PROTOCOL_VERSION } from "@/lib/mcp/protocol";
 
 describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
-  it("exposes all 8 required Vyra MCP tools", () => {
-    assert.ok(VYRA_MCP_TOOLS.length >= 8);
+  it("exposes all 11 required Vyra MCP tools", () => {
+    assert.ok(VYRA_MCP_TOOLS.length >= 11);
     const names = VYRA_MCP_TOOLS.map((t) => t.name);
     assert.ok(names.includes("vyra_get_athlete_dossier"));
     assert.ok(names.includes("vyra_get_flight_logs"));
@@ -15,6 +15,9 @@ describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
     assert.ok(names.includes("vyra_get_shadow_angel_audit"));
     assert.ok(names.includes("vyra_query_exercise_catalogue"));
     assert.ok(names.includes("vyra_propose_coaching_intervention"));
+    assert.ok(names.includes("vyra_query_knowledge_rag"));
+    assert.ok(names.includes("vyra_get_scientific_deep_insights"));
+    assert.ok(names.includes("vyra_get_exercise_substitutions"));
   });
 
   it("handles 'initialize' method according to MCP specification", async () => {
@@ -200,6 +203,77 @@ describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.success, true);
     assert.equal(parsed.proposition.actionType, "EXERCISE_SWAP");
+  });
+
+  it("executes 'vyra_query_knowledge_rag' and returns multimodal synthesized evidence", async () => {
+    const res = await handleMcpJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "vyra_query_knowledge_rag",
+        arguments: {
+          traineeId: "trainee_alaa",
+          query: "Incline Dumbbell Press shoulder fatigue",
+          focusArea: "biomechanics",
+        },
+      },
+    });
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.traineeId, "trainee_alaa");
+    assert.ok(parsed.synthesizedReasoningSummary);
+    assert.ok(Array.isArray(parsed.ragEvidenceBundle.biomechanicalMatches));
+    assert.ok(parsed.ragEvidenceBundle.workoutLogSummary.recentBallastVolumeKg > 0);
+    assert.ok(parsed.scientificRecommendations.length > 0);
+  });
+
+  it("executes 'vyra_get_scientific_deep_insights' and delivers pre-computed gems", async () => {
+    const res = await handleMcpJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "vyra_get_scientific_deep_insights",
+        arguments: { traineeId: "trainee_alaa" },
+      },
+    });
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.athleteName, "Alaa");
+    assert.equal(parsed.pacingAndSurplusAudit.currentWeightKg, 52.05);
+    assert.equal(parsed.pacingAndSurplusAudit.macroBreakdown.bufferCaloriesKcal, 185);
+    assert.ok(parsed.progressiveOverloadAudit.structuralPushPullRatio.ratio > 0.9);
+    assert.ok(parsed.jointSafetyAndSensoryGuardrails.supraspinatusShoulderRule.includes("Lever lateral raise"));
+    assert.ok(parsed.jointSafetyAndSensoryGuardrails.inclinePressBenchAngleCorrection.includes("30°"));
+  });
+
+  it("executes 'vyra_get_exercise_substitutions' with biomechanical match and justification", async () => {
+    const res = await handleMcpJsonRpcRequest({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: {
+        name: "vyra_get_exercise_substitutions",
+        arguments: {
+          exerciseName: "Incline Dumbbell Press",
+          reason: "shoulder_pain",
+          limit: 3,
+        },
+      },
+    });
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.sourceExercise, "Incline Dumbbell Press");
+    assert.equal(parsed.detectedSubdivision, "pec_clavicular");
+    assert.ok(parsed.substitutions.length > 0);
+    assert.ok(parsed.substitutions[0].biomechanicalJustification.includes("anterior glide"));
   });
 
   it("returns error for unknown method", async () => {

@@ -22,7 +22,7 @@ import {
   resolveMcpFlightLogs,
   resolveMcpTodayWorkout,
 } from "./athlete-context";
-import { mapExerciseToSubdivisions } from "@/components/trainee/anatomy/MedicalVectorAtlas";
+import { mapExerciseToSubdivisions } from "@/lib/anatomy/subdivisions";
 
 export interface McpKnowledgeRagReport {
   traineeId: string;

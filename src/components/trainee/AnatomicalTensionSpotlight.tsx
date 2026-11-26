@@ -2,6 +2,10 @@
 
 import React, { useState } from "react";
 import { clsx } from "clsx";
+import { MedicalVectorAtlas, mapExerciseToSubdivisions, AnatomicalSubdivisionId } from "./anatomy/MedicalVectorAtlas";
+
+export { MedicalVectorAtlas, mapExerciseToSubdivisions };
+export type { AnatomicalSubdivisionId };
 
 export type MuscleRegion =
   | "chest"
@@ -15,12 +19,15 @@ export type MuscleRegion =
   | "glutes"
   | "core";
 
-interface AnatomicalTensionSpotlightProps {
+export interface AnatomicalTensionSpotlightProps {
   primaryMuscle?: string;
   secondaryMuscles?: string[];
+  compensatingMuscle?: string | null;
   className?: string;
   showToggle?: boolean;
-  accentColor?: "emerald" | "amber" | "sky";
+  accentColor?: "emerald" | "amber" | "sky" | "cyan";
+  variant?: "compact" | "medical-atlas";
+  forceVectorDirection?: "converging_press" | "diverging_pull" | "lateral_arc" | "hip_hinge" | "vertical_push" | "none";
 }
 
 // Normalized mapping from RAG/MuscleWiki targets to vector silhouette regions
@@ -44,10 +51,29 @@ function mapToRegion(muscleName?: string): MuscleRegion | null {
 export function AnatomicalTensionSpotlight({
   primaryMuscle,
   secondaryMuscles = [],
+  compensatingMuscle = null,
   className,
   showToggle = true,
   accentColor = "amber",
+  variant = "compact",
+  forceVectorDirection,
 }: AnatomicalTensionSpotlightProps) {
+  // If medical-atlas variant is requested, delegate to science-grade MedicalVectorAtlas
+  if (variant === "medical-atlas") {
+    const mapped = mapExerciseToSubdivisions(primaryMuscle);
+    return (
+      <MedicalVectorAtlas
+        primarySubdivision={mapped.primary}
+        secondarySubdivisions={mapped.secondaries}
+        compensatingSubdivision={compensatingMuscle ? mapExerciseToSubdivisions(compensatingMuscle).primary : null}
+        className={className}
+        showToggle={showToggle}
+        accentColor={accentColor === "amber" ? "amber" : "emerald"}
+        forceVectorDirection={forceVectorDirection || mapped.vectorDirection}
+      />
+    );
+  }
+
   const isEmerald = accentColor === "emerald";
   const isAmber = accentColor === "amber";
   const primaryFill = isEmerald ? "#10B981" : isAmber ? "#F59E0B" : "#38BDF8";
@@ -59,9 +85,10 @@ export function AnatomicalTensionSpotlight({
     : "rgba(56, 189, 248, 0.85)";
 
   const primaryRegion = mapToRegion(primaryMuscle);
+  const compensatingRegion = mapToRegion(compensatingMuscle || undefined);
   const secondaryRegions = secondaryMuscles
     .map(mapToRegion)
-    .filter((r): r is MuscleRegion => Boolean(r && r !== primaryRegion));
+    .filter((r): r is MuscleRegion => Boolean(r && r !== primaryRegion && r !== compensatingRegion));
 
   // Determine intelligent default anatomical view
   const isPosteriorDominant = Boolean(
@@ -82,13 +109,22 @@ export function AnatomicalTensionSpotlight({
   const setView = (nextView: "front" | "back") =>
     setViewOverride({ key: muscleKey, view: nextView });
 
-  const getRegionState = (region: MuscleRegion): "primary" | "secondary" | "inactive" => {
+  const getRegionState = (region: MuscleRegion): "primary" | "secondary" | "compensation" | "inactive" => {
+    if (compensatingRegion === region) return "compensation";
     if (primaryRegion === region) return "primary";
     if (secondaryRegions.includes(region)) return "secondary";
     return "inactive";
   };
 
-  const getPathStyle = (state: "primary" | "secondary" | "inactive") => {
+  const getPathStyle = (state: "primary" | "secondary" | "compensation" | "inactive") => {
+    if (state === "compensation") {
+      return {
+        fill: "#EF4444",
+        stroke: "#F87171",
+        strokeWidth: "2",
+        filter: "drop-shadow(0px 0px 8px rgba(239, 68, 68, 0.95))",
+      };
+    }
     if (state === "primary") {
       return {
         fill: primaryFill,

@@ -6,6 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { RagExercise } from "@/types/exercise-rag";
 import { PlateCalculatorPopover } from "@/components/trainee/PlateCalculatorPopover";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
+import { MindMuscleBiofeedbackCard } from "@/components/trainee/anatomy/MindMuscleBiofeedbackCard";
+import { Interactive3DBiomechanicsLab } from "@/components/trainee/anatomy/Interactive3DBiomechanicsLab";
 import { SubstitutionCandidate } from "@/lib/training-math/substitution-copilot";
 import { appStore } from "@/lib/store";
 import { resolveDayOneWorkoutDay } from "@/lib/onboarding";
@@ -103,6 +105,8 @@ export function ExerciseDetailSheet({
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
   const [substitutes, setSubstitutes] = useState<RagExercise[]>([]);
   const [videoModalExercise, setVideoModalExercise] = useState<RagExercise | null>(null);
+  const [is3DLabOpen, setIs3DLabOpen] = useState(false);
+  const [compensatingMuscle, setCompensatingMuscle] = useState<string | null>(null);
   const [swapFeedbackMessage, setSwapFeedbackMessage] = useState<string | null>(null);
 
   // Fetch contextual biomechanical substitutes
@@ -356,9 +360,17 @@ export function ExerciseDetailSheet({
                   <AnatomicalTensionSpotlight
                     primaryMuscle={exercise.target}
                     secondaryMuscles={exercise.secondaryMuscles || []}
+                    compensatingMuscle={compensatingMuscle}
                     accentColor="emerald"
                     className="h-full justify-between"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setIs3DLabOpen(true)}
+                    className="mt-1 w-full py-1 rounded-lg bg-[#0b1320] border border-[#1b2d47] hover:border-[#10b981]/50 text-[#10b981] text-[9px] font-mono font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                  >
+                    <span>🔬 3D Lab</span>
+                  </button>
                 </div>
 
                 {/* Right Column: Setup Anchor & Kinetic Drive Cards */}
@@ -443,6 +455,15 @@ export function ExerciseDetailSheet({
                   </ul>
                 </div>
               )}
+
+              {/* Interactive Mind-Muscle Biofeedback Diagnostics */}
+              <MindMuscleBiofeedbackCard
+                movementName={exercise.name}
+                targetMuscle={exercise.target}
+                onSelectSensation={(_sensationId, compSubdivision) => {
+                  setCompensatingMuscle(compSubdivision || null);
+                }}
+              />
             </div>
           )}
 
@@ -619,6 +640,34 @@ export function ExerciseDetailSheet({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* 3D Kinetic Biomechanics Lab Modal */}
+      {is3DLabOpen && (
+        <div className="fixed inset-0 z-50 bg-[#05080c]/95 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
+          <div className="flex items-center justify-between pb-3 border-b border-[#1b2d47] shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping" />
+              <span className="font-display font-black text-sm tracking-widest text-[#10b981] uppercase">
+                3D Kinetic Biomechanics Lab
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIs3DLabOpen(false)}
+              className="px-3 py-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-xs font-mono font-bold text-slate-300 hover:text-white cursor-pointer"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="flex-1 mt-3 overflow-hidden rounded-2xl border border-[#1b2d47]">
+            <Interactive3DBiomechanicsLab
+              movementName={exercise.name}
+              targetMuscle={exercise.target}
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Inline Video Modal */}
       <ExerciseVideoModal

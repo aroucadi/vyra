@@ -30,6 +30,8 @@ import {
 import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
 import { JitCoachPropositionCard } from "@/components/trainee/JitCoachPropositionCard";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
+import { MindMuscleBiofeedbackCard } from "@/components/trainee/anatomy/MindMuscleBiofeedbackCard";
+import { Interactive3DBiomechanicsLab } from "@/components/trainee/anatomy/Interactive3DBiomechanicsLab";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
@@ -129,6 +131,8 @@ export function KineticFlightHud({
   const [isHandsFreeListening, setIsHandsFreeListening] = useState(false);
   const [voiceStatusMessage, setVoiceStatusMessage] = useState<string | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [is3DLabOpen, setIs3DLabOpen] = useState(false);
+  const [compensatingMuscle, setCompensatingMuscle] = useState<string | null>(null);
 
   const spokenRestSecRef = useRef<number | null>(null);
   const speechRecognizerRef = useRef<{ stop: () => void; start: () => void } | null>(null);
@@ -452,13 +456,24 @@ export function KineticFlightHud({
 
         {/* DYNAMIC ANATOMICAL SPOTLIGHT HIGHLIGHTING TARGET MUSCLES */}
         <div className="flex flex-col items-center justify-center shrink-0">
-          <AnatomicalTensionSpotlight
-            primaryMuscle={primaryMuscle}
-            secondaryMuscles={secondaryMuscles}
-            accentColor="emerald"
-            showToggle={false}
-            className="w-36 h-40"
-          />
+          <div className="relative">
+            <AnatomicalTensionSpotlight
+              primaryMuscle={primaryMuscle}
+              secondaryMuscles={secondaryMuscles}
+              compensatingMuscle={compensatingMuscle}
+              accentColor="emerald"
+              showToggle={false}
+              className="w-36 h-40"
+            />
+            <button
+              type="button"
+              onClick={() => setIs3DLabOpen(true)}
+              className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-[#10b981]/20 border border-[#10b981]/50 text-[#10b981] hover:bg-[#10b981]/30 text-[9px] font-mono font-bold flex items-center gap-1 transition shadow-xs cursor-pointer z-10"
+              title="Open 3D Biomechanics Lab"
+            >
+              <span>🔬 3D</span>
+            </button>
+          </div>
           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-mono text-[#10b981] font-bold uppercase tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
             <span>{`${primaryMuscle} // ACTIVE TARGET`}</span>
@@ -548,6 +563,15 @@ export function KineticFlightHud({
                   {completedSetsCount}/{exercise.targetSets} Sets Logged ✓
                 </span>
               </div>
+
+              {/* Science-Grade Mind-Muscle Biofeedback Card */}
+              <MindMuscleBiofeedbackCard
+                movementName={exercise.name}
+                targetMuscle={primaryMuscle}
+                onSelectSensation={(_sensationId, compSubdivision) => {
+                  setCompensatingMuscle(compSubdivision || null);
+                }}
+              />
 
               {/* Biofeedback Tags */}
               <div className="grid grid-cols-3 gap-1">
@@ -833,6 +857,34 @@ export function KineticFlightHud({
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </footer>
+
+      {/* 3D Kinetic Biomechanics Lab Modal */}
+      {is3DLabOpen && (
+        <div className="fixed inset-0 z-50 bg-[#05080c]/95 backdrop-blur-md flex flex-col p-4 animate-in fade-in">
+          <div className="flex items-center justify-between pb-3 border-b border-[#1b2d47] shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping" />
+              <span className="font-display font-black text-sm tracking-widest text-[#10b981] uppercase">
+                3D Kinetic Biomechanics Lab
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIs3DLabOpen(false)}
+              className="px-3 py-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-xs font-mono font-bold text-slate-300 hover:text-white cursor-pointer"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="flex-1 mt-3 overflow-hidden rounded-2xl border border-[#1b2d47]">
+            <Interactive3DBiomechanicsLab
+              movementName={exercise.name}
+              targetMuscle={primaryMuscle}
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Inline Motion Telemetry Video Modal */}
       <ExerciseVideoModal

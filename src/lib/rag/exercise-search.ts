@@ -6,7 +6,7 @@
  */
 
 import { RagExercise } from '@/types/exercise-rag';
-import { loadExerciseCatalogue } from './catalogue-loader';
+import { loadSafeExerciseCatalogue } from '@/lib/ai/catalogue-bridge';
 
 export const GYM_SHORTHANDS: Record<string, string[]> = {
   db: ['dumbbell'],
@@ -140,7 +140,7 @@ let cachedIndex: SearchIndex | null = null;
 function getSearchIndex(): SearchIndex {
   if (cachedIndex) return cachedIndex;
 
-  const { exercises } = loadExerciseCatalogue();
+  const exercises = loadSafeExerciseCatalogue();
   const vocab = new Set<string>();
   const wordToCorpora = new Map<string, number[]>();
 
@@ -155,9 +155,17 @@ function getSearchIndex(): SearchIndex {
       e.target,
       e.equipment,
       e.bodyPart,
+      e.apparatusGroup,
+      e.hardwareDetail,
+      e.muscleSubdivision,
+      e.movementPattern,
+      e.mechanics,
+      e.resistanceProfile,
+      ...(e.primaryMuscles || []),
       ...(e.secondaryMuscles || []),
+      ...(e.swapSynergyKeys || []),
       e.description,
-    ].join(' '));
+    ].filter(Boolean).join(' '));
 
     const haystackWords = haystack.split(/[\s\-‐-―()/,]+/).filter(Boolean);
     const allUniqueWords = new Set<string>([...words, ...haystackWords]);
@@ -189,6 +197,13 @@ function getSearchIndex(): SearchIndex {
 export interface SearchOptions {
   limit?: number;
   thresholdScore?: number;
+  apparatusGroup?: string;
+  hardwareDetail?: string;
+  muscleSubdivision?: string;
+  movementPattern?: string;
+  mechanics?: string;
+  resistanceProfile?: string;
+  maxAxialLoading?: string;
 }
 
 interface ProcessedForm {
@@ -208,8 +223,14 @@ export function searchExercises(
   const normQuery = normalizeStr(query).trim();
   const limit = Math.max(0, options.limit ?? 30);
   if (!normQuery) {
-    const { exercises } = loadExerciseCatalogue();
-    return exercises.slice(0, Math.max(0, options.limit ?? 25));
+    const exercises = loadSafeExerciseCatalogue();
+    let pool = exercises;
+    if (options.apparatusGroup) pool = pool.filter(e => normalizeStr(e.apparatusGroup) === normalizeStr(options.apparatusGroup));
+    if (options.hardwareDetail) pool = pool.filter(e => normalizeStr(e.hardwareDetail) === normalizeStr(options.hardwareDetail));
+    if (options.muscleSubdivision) pool = pool.filter(e => normalizeStr(e.muscleSubdivision) === normalizeStr(options.muscleSubdivision));
+    if (options.movementPattern) pool = pool.filter(e => normalizeStr(e.movementPattern) === normalizeStr(options.movementPattern));
+    if (options.resistanceProfile) pool = pool.filter(e => normalizeStr(e.resistanceProfile) === normalizeStr(options.resistanceProfile));
+    return pool.slice(0, Math.max(0, options.limit ?? 25));
   }
 
   const { exercises, corpora, vocab, wordToCorpora } = getSearchIndex();
@@ -368,8 +389,22 @@ export function searchExercises(
   }
 
   const scored: { exercise: RagExercise; score: number }[] = [];
+  const axialRank: Record<string, number> = { none: 0, low: 1, moderate: 2, high: 3 };
+  const maxAxialNum = options.maxAxialLoading ? axialRank[normalizeStr(options.maxAxialLoading)] ?? 3 : null;
 
   for (const i of candidateIndices) {
+    const ex = exercises[i];
+    if (options.apparatusGroup && normalizeStr(ex.apparatusGroup) !== normalizeStr(options.apparatusGroup)) continue;
+    if (options.hardwareDetail && normalizeStr(ex.hardwareDetail) !== normalizeStr(options.hardwareDetail)) continue;
+    if (options.muscleSubdivision && normalizeStr(ex.muscleSubdivision) !== normalizeStr(options.muscleSubdivision)) continue;
+    if (options.movementPattern && normalizeStr(ex.movementPattern) !== normalizeStr(options.movementPattern)) continue;
+    if (options.mechanics && normalizeStr(ex.mechanics) !== normalizeStr(options.mechanics)) continue;
+    if (options.resistanceProfile && normalizeStr(ex.resistanceProfile) !== normalizeStr(options.resistanceProfile)) continue;
+    if (maxAxialNum !== null && ex.axialLoading) {
+      const cur = axialRank[normalizeStr(ex.axialLoading)] ?? 0;
+      if (cur > maxAxialNum) continue;
+    }
+
     const c = corpora[i];
     let totalScore = 0;
     let allTokensMatched = true;

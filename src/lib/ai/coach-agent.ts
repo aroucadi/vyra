@@ -42,12 +42,20 @@ import {
   StructuredSymptomInput,
   ParsedSymptomAssessment,
 } from "./symptom-nlu";
+import {
+  synthesizeUnifiedBiomechanicalRagContext,
+  queryActiveMesocycle,
+  queryPhysiquePostureVision,
+} from "../rag/unified-agentic-rag";
 
 export {
   parseSymptomsFromTokenTable,
   extractStructuredSymptomsViaLlm,
   type StructuredSymptomInput,
   type ParsedSymptomAssessment,
+  synthesizeUnifiedBiomechanicalRagContext,
+  queryActiveMesocycle,
+  queryPhysiquePostureVision,
 };
 
 export type CoachingTier =
@@ -232,6 +240,45 @@ export const VERTEX_AGENT_TOOL_DECLARATIONS = [
         sleepHours: { type: "NUMBER" },
         readinessFeeling: { type: "STRING" },
       },
+    },
+  },
+  {
+    name: "query_active_mesocycle_status",
+    description:
+      "Retrieves the athlete's current 16-week periodized mesocycle program, active phase (hypertrophy, strength, peaking, deload), current week number, weekly target volume landmarks (MEV/MRV), and scheduled day of week.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        traineeId: { type: "STRING" },
+        targetMuscle: { type: "STRING" },
+      },
+      required: ["traineeId"],
+    },
+  },
+  {
+    name: "rag_physique_posture_vision",
+    description:
+      "Retrieves AI vision assessment of athlete physique and posture photos, detecting postural imbalances (anterior pelvic tilt, rounded shoulders), lagging muscle subdivisions, and visual hypertrophy priorities.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        traineeId: { type: "STRING" },
+      },
+      required: ["traineeId"],
+    },
+  },
+  {
+    name: "get_unified_biomechanical_rag",
+    description:
+      "Master Agentic RAG tool: Pulls the complete unified context synthesized across all 6 corpora (6,554 Exercise Library with videos, Workout Logs & PRs, Wearable Telemetry & Readiness, 16-Week Mesocycle, Gym Vision Equipment, and Physique Vision Priorities).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        traineeId: { type: "STRING" },
+        currentExerciseName: { type: "STRING" },
+        gymId: { type: "STRING" },
+      },
+      required: ["traineeId", "currentExerciseName"],
     },
   },
   {

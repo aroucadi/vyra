@@ -24,8 +24,10 @@ import {
   ListOrdered,
   Play,
   Check,
+  AlertCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { enrichExerciseWithBiomechanics } from "@/lib/rag/biomechanical-metadata";
 
 interface ExerciseDetailSheetProps {
   exercise: RagExercise | null;
@@ -139,6 +141,8 @@ export function ExerciseDetailSheet({
   }, [exercise?.id, exercise?.name, exercise?.target, exercise?.equipment, isOpen]);
 
   if (!exercise) return null;
+
+  const enriched = enrichExerciseWithBiomechanics(exercise);
 
   const isBarbellOrSmith =
     exercise.equipment.toLowerCase().includes("barbell") ||
@@ -255,6 +259,40 @@ export function ExerciseDetailSheet({
                 {exercise.bodyPart}
               </span>
             </SheetDescription>
+
+            {/* Biomechanical Metadata Radar Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {enriched.apparatusGroup && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30">
+                  {enriched.apparatusGroup.replace("_", " ")} · {enriched.hardwareDetail?.replace("_", " ")}
+                </span>
+              )}
+              {enriched.muscleSubdivision && enriched.muscleSubdivision !== "general" && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                  {enriched.muscleSubdivision.replace("_", " ")}
+                </span>
+              )}
+              {enriched.resistanceProfile && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                  {enriched.resistanceProfile} Tension
+                </span>
+              )}
+              {enriched.movementPattern && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#0f1724] text-slate-300 border border-[#1b2d47]">
+                  {enriched.movementPattern.replace("_", " ")}
+                </span>
+              )}
+              {enriched.axialLoading && enriched.axialLoading !== "none" && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  Axial: {enriched.axialLoading}
+                </span>
+              )}
+              {enriched.tempoRecommendation && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#0f1724] text-slate-400 border border-[#1b2d47]">
+                  Tempo: {enriched.tempoRecommendation}
+                </span>
+              )}
+            </div>
           </SheetHeader>
 
           {/* Feedback banner if swapped */}
@@ -389,6 +427,21 @@ export function ExerciseDetailSheet({
                   </div>
                   <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                 </button>
+              )}
+
+              {/* Biomechanical Mistake Checkpoints */}
+              {enriched.commonMistakes && enriched.commonMistakes.length > 0 && (
+                <div className="p-3 bg-[#090d16] border border-[#1b2d47] rounded-2xl space-y-1.5 shadow-sm">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Biomechanical Watchpoints</span>
+                  </div>
+                  <ul className="space-y-1 text-xs text-slate-300 list-disc list-inside">
+                    {enriched.commonMistakes.map((m, idx) => (
+                      <li key={idx} className="leading-snug">{m}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}

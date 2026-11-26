@@ -41,6 +41,11 @@ import {
   detectMedicalRedFlags,
   normalizeInjuryFlagsToSymptoms,
 } from "./coach-agent";
+import {
+  queryActiveMesocycle,
+  queryPhysiquePostureVision,
+  synthesizeUnifiedBiomechanicalRagContext,
+} from "../rag/unified-agentic-rag";
 import { inferPrimaryMuscleFromExerciseName } from "./sensory-memory";
 import {
   inferMuscleSubdivision,
@@ -1060,6 +1065,21 @@ export async function runVertexAgenticCoachLoop(
             ? String(args.readinessFeeling)
             : input.readinessFeeling,
         });
+      }
+      case "query_active_mesocycle_status": {
+        const tId = String(args.traineeId || input.traineeId);
+        const tMuscle = args.targetMuscle ? String(args.targetMuscle) : undefined;
+        return queryActiveMesocycle(tId, tMuscle);
+      }
+      case "rag_physique_posture_vision": {
+        const tId = String(args.traineeId || input.traineeId);
+        return queryPhysiquePostureVision(tId);
+      }
+      case "get_unified_biomechanical_rag": {
+        const tId = String(args.traineeId || input.traineeId);
+        const exName = String(args.currentExerciseName || input.exerciseName);
+        const gId = args.gymId ? String(args.gymId) : input.gymId;
+        return synthesizeUnifiedBiomechanicalRagContext(tId, exName, gId);
       }
       case "propose_and_critique_intervention": {
         const primaryBottleneck = String(args.primaryBottleneck || "").trim();

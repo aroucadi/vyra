@@ -4,9 +4,8 @@
  * Implements deterministic pre-filtering (equipment, injury safety) and anatomical scoring.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { RagExercise, ExerciseQueryConstraints } from '@/types/exercise-rag';
+import { loadSafeExerciseCatalogue } from '@/lib/ai/catalogue-bridge';
 
 // Normalize strings for matching
 const norm = (s?: string) => (s ? s.trim().toLowerCase() : '');
@@ -32,9 +31,27 @@ export function filterAndRankExercises(
   const category = constraints.category ? norm(constraints.category) : null;
   const searchTerm = norm(constraints.searchTerm);
 
+  const apparatusGroups = constraints.apparatusGroups
+    ? new Set(constraints.apparatusGroups.map(norm))
+    : null;
+  const hardwareDetails = constraints.hardwareDetails
+    ? new Set(constraints.hardwareDetails.map(norm))
+    : null;
+  const muscleSubdivision = norm(constraints.muscleSubdivision);
+  const movementPattern = norm(constraints.movementPattern);
+  const mechanics = norm(constraints.mechanics);
+  const resistanceProfile = norm(constraints.resistanceProfile);
+
+  const axialRank: Record<string, number> = { none: 0, low: 1, moderate: 2, high: 3 };
+  const maxAxialNum = constraints.maxAxialLoading
+    ? axialRank[norm(constraints.maxAxialLoading)] ?? 3
+    : null;
+
   // 1. HARD PRE-FILTERING (Deterministic constraint gate)
   const filtered = pool.filter((ex) => {
     const exEq = norm(ex.equipment);
+    const exApp = norm(ex.apparatusGroup);
+    const exHard = norm(ex.hardwareDetail);
 
     // Equipment compliance check
     if (allowedEquipment && !allowedEquipment.has(exEq) && exEq !== 'body weight' && exEq !== 'none') {
@@ -43,6 +60,39 @@ export function filterAndRankExercises(
 
     if (excludedEquipment.has(exEq)) {
       return false;
+    }
+
+    // Apparatus Group check
+    if (apparatusGroups && exApp && !apparatusGroups.has(exApp)) {
+      return false;
+    }
+
+    // Hardware Detail check
+    if (hardwareDetails && exHard && !hardwareDetails.has(exHard)) {
+      return false;
+    }
+
+    // Movement pattern check
+    if (movementPattern && norm(ex.movementPattern) !== movementPattern) {
+      return false;
+    }
+
+    // Mechanics check (compound vs isolation)
+    if (mechanics && norm(ex.mechanics) !== mechanics) {
+      return false;
+    }
+
+    // Resistance profile check
+    if (resistanceProfile && norm(ex.resistanceProfile) !== resistanceProfile) {
+      return false;
+    }
+
+    // Axial spinal load check
+    if (maxAxialNum !== null && ex.axialLoading) {
+      const curAxialNum = axialRank[norm(ex.axialLoading)] ?? 0;
+      if (curAxialNum > maxAxialNum) {
+        return false;
+      }
     }
 
     // Category check
@@ -87,6 +137,11 @@ export function filterAndRankExercises(
       if (!matchesTarget) return false;
     }
 
+    // Muscle subdivision requirement if specified
+    if (muscleSubdivision && norm(ex.muscleSubdivision) !== muscleSubdivision) {
+      return false;
+    }
+
     return true;
   });
 
@@ -95,6 +150,12 @@ export function filterAndRankExercises(
     let score = 0;
     const exTarget = norm(ex.target);
     const exName = norm(ex.name);
+    const exSub = norm(ex.muscleSubdivision);
+
+    // Exact muscle subdivision match
+    if (muscleSubdivision && exSub === muscleSubdivision) {
+      score += 60;
+    }
 
     // Exact or partial target muscle match
     if (targetMuscle) {
@@ -128,27 +189,10 @@ export function filterAndRankExercises(
   return scored.slice(0, limit).map((s) => s.ex);
 }
 
-let cachedCatalogue: RagExercise[] | null = null;
-
 /**
- * Returns the compiled exercise catalogue from memory or loads from disk (Node/server environment).
+ * Returns the compiled exercise catalogue from memory or loads from disk safely.
  */
 export function getCompiledCatalogue(): RagExercise[] {
-  if (cachedCatalogue && cachedCatalogue.length > 0) {
-    return cachedCatalogue;
-  }
-
-  try {
-    const filePath = path.resolve(process.cwd(), 'public', 'data', 'exercise-catalogue.json');
-    if (fs.existsSync(filePath)) {
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-      cachedCatalogue = data;
-      return cachedCatalogue || [];
-    }
-  } catch {
-    // Fallback if running client-side or during bundle
-  }
-
-  return [];
+  return loadSafeExerciseCatalogue();
 }
 

@@ -93,6 +93,20 @@ export interface Exercise {
   steps?: string[];
   mediaUrls?: string[];
   muscleWikiUrl?: string;
+  apparatusGroup?: string;
+  hardwareDetail?: string;
+  muscleSubdivision?: string;
+  movementPattern?: string;
+  mechanics?: "compound" | "isolation";
+  planeOfMotion?: "sagittal" | "frontal" | "transverse" | "multiplanar";
+  resistanceProfile?: "lengthened" | "shortened" | "constant" | "ascending";
+  axialLoading?: "none" | "low" | "moderate" | "high";
+  jointStress?: "low" | "moderate" | "high";
+  unilateral?: boolean;
+  tempoRecommendation?: string;
+  coachingCues?: string[];
+  commonMistakes?: string[];
+  swapSynergyKeys?: string[];
 }
 
 export type EquipmentType = "machine" | "dumbbell" | "cable" | "bodyweight";

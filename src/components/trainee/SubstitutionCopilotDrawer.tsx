@@ -18,6 +18,12 @@ import {
   X,
   Dumbbell,
   Check,
+  Eye,
+  Activity,
+  Calendar,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
@@ -44,6 +50,8 @@ export function SubstitutionCopilotDrawer({
   onApplySubstitute,
 }: SubstitutionCopilotDrawerProps) {
   const [candidates, setCandidates] = useState<SubstitutionCandidate[]>([]);
+  const [ragEvidence, setRagEvidence] = useState<any>(null);
+  const [showEvidenceCockpit, setShowEvidenceCockpit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [equipmentFilter, setEquipmentFilter] = useState<
     "all" | "machine" | "dumbbell" | "cable" | "barbell" | "body weight"
@@ -71,8 +79,9 @@ export function SubstitutionCopilotDrawer({
         if (!res.ok) throw new Error("Failed to load substitutions");
         const data = await res.json();
 
-        if (active && data.substitutes) {
-          setCandidates(data.substitutes);
+        if (active) {
+          if (data.substitutes) setCandidates(data.substitutes);
+          if (data.ragEvidence) setRagEvidence(data.ragEvidence);
         }
       } catch {
         // fail silently
@@ -155,6 +164,74 @@ export function SubstitutionCopilotDrawer({
           ))}
         </div>
 
+        {/* 2.5 Agentic Multimodal RAG Evidence Cockpit */}
+        {ragEvidence && (
+          <div className="rounded-xl border border-[#10b981]/30 bg-[#08121a] p-3 text-xs space-y-2">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setShowEvidenceCockpit(!showEvidenceCockpit)}
+            >
+              <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-[#10b981]">
+                <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />
+                <span>Multimodal RAG Grounding (6 Corpora)</span>
+              </div>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-white flex items-center gap-1 text-[10px] font-mono"
+              >
+                <span>{showEvidenceCockpit ? "Hide Radar" : "View Radar"}</span>
+                {showEvidenceCockpit ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {/* Quick Summary Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              <span className="px-2 py-0.5 rounded-md bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] text-[10px] font-mono flex items-center gap-1">
+                <Eye className="w-3 h-3 text-[#10b981]" />
+                <span>Station: {ragEvidence.gymVision?.gymName || "Verified"} (Max {ragEvidence.gymVision?.maxDumbbellWeightKg || 40}kg DB)</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-mono flex items-center gap-1">
+                <Activity className="w-3 h-3 text-cyan-400" />
+                <span>Logs: 1RM {ragEvidence.workoutLogs?.bestEstimated1RmKg || 0}kg ({ragEvidence.workoutLogs?.performanceTrend || "active"})</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] font-mono flex items-center gap-1">
+                <Layers className="w-3 h-3 text-amber-400" />
+                <span>Recovery: {ragEvidence.telemetry?.readinessScore || 82}% ({ragEvidence.telemetry?.readinessState || "optimal"})</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[10px] font-mono flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-purple-400" />
+                <span>Meso: Wk {ragEvidence.mesocycle?.currentWeekNumber || 3} ({ragEvidence.mesocycle?.activePhase || "hypertrophy"})</span>
+              </span>
+            </div>
+
+            {/* Expanded Multi-Corpus Detail Grid */}
+            {showEvidenceCockpit && (
+              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 gap-2 text-[11px] font-mono text-slate-300">
+                <div className="bg-[#05080c] p-2 rounded-lg border border-slate-800">
+                  <span className="text-[#10b981] font-bold block mb-0.5">1. Gym Equipment Vision:</span>
+                  <span>Available: {ragEvidence.gymVision?.confirmedApparatus?.join(', ')}. Specialty: {ragEvidence.gymVision?.detectedStations?.slice(0, 2).join(' • ')}.</span>
+                </div>
+                <div className="bg-[#05080c] p-2 rounded-lg border border-slate-800">
+                  <span className="text-cyan-400 font-bold block mb-0.5">2. Workout Performance Logs:</span>
+                  <span>Logged Sessions: {ragEvidence.workoutLogs?.totalSessionsLogged}. Historical Best 1RM: {ragEvidence.workoutLogs?.bestEstimated1RmKg}kg.</span>
+                </div>
+                <div className="bg-[#05080c] p-2 rounded-lg border border-slate-800">
+                  <span className="text-amber-400 font-bold block mb-0.5">3. Recovery & Readiness Telemetry:</span>
+                  <span>Readiness: {ragEvidence.telemetry?.readinessScore}/100. Sleep: {ragEvidence.telemetry?.sleepHours}h. Systemic Fatigue: {ragEvidence.telemetry?.systemicFatigue}.</span>
+                </div>
+                <div className="bg-[#05080c] p-2 rounded-lg border border-slate-800">
+                  <span className="text-purple-400 font-bold block mb-0.5">4. Physique & Posture Vision:</span>
+                  <span>Priorities: {ragEvidence.physiqueVision?.priorityDevelopmentAreas?.join(' • ') || 'Optimal structural alignment'}.</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 3. Ranked Alternatives List */}
         <div className="space-y-3 pt-1">
           {loading ? (
@@ -172,15 +249,25 @@ export function SubstitutionCopilotDrawer({
                   key={cand.exercise.id || idx}
                   className="p-4 bg-[#090d16] border border-[#1b2d47] rounded-xl space-y-3 shadow-lg hover:border-[#10b981]/50 transition"
                 >
-                  {/* Top Badges: Match % + Tension Profile */}
+                  {/* Top Badges: Match % + Tension Profile + Apparatus */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40">
                         {Math.round(cand.similarityScore * 100)}% Match
                       </span>
                       <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
                         {cand.resistanceProfile} Tension
                       </span>
+                      {cand.exercise.apparatusGroup && (
+                        <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#10b981]/10 text-emerald-300 border border-[#10b981]/30">
+                          {cand.exercise.apparatusGroup.replace('_', ' ')}
+                        </span>
+                      )}
+                      {cand.exercise.axialLoading && cand.exercise.axialLoading !== 'none' && (
+                        <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                          Axial: {cand.exercise.axialLoading}
+                        </span>
+                      )}
                     </div>
                     <span className="text-[10px] font-mono text-slate-400 uppercase">
                       {cand.exercise.equipment}

@@ -5,7 +5,7 @@
  * and Mike Tuchscherer / RTS weighted ensemble with RIR attenuation.
  */
 
-import { getExerciseById } from '../rag/catalogue-loader';
+import { safeGetExerciseById as getExerciseById } from '../rag/safe-exercise-lookup';
 
 export const REP_CAP = 12;
 export const WEIGHTED_REP_CAP = 15;

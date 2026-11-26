@@ -18,6 +18,61 @@ export type ExerciseCategory =
   | 'rehab'
   | string;
 
+export type ApparatusGroup =
+  | 'bodyweight'
+  | 'dumbbell'
+  | 'barbell'
+  | 'cable'
+  | 'machine'
+  | 'smith_machine'
+  | 'kettlebell'
+  | 'band'
+  | 'plate'
+  | 'other';
+
+export type HardwareDetail =
+  | 'bodyweight'
+  | 'dumbbell'
+  | 'barbell'
+  | 'pin_selectorized'
+  | 'plate_loaded'
+  | 'cable_stack'
+  | 'smith_machine'
+  | 'kettlebell'
+  | 'resistance_band'
+  | 'ez_barbell'
+  | 'trap_bar'
+  | 'landmine'
+  | 'weight_plate'
+  | 'suspension_trainer'
+  | 'cardio_machine'
+  | 'calisthenic_bar'
+  | 'bench'
+  | 'other';
+
+export type MovementPattern =
+  | 'horizontal_push'
+  | 'horizontal_pull'
+  | 'vertical_push'
+  | 'vertical_pull'
+  | 'squat'
+  | 'hip_hinge'
+  | 'lunge'
+  | 'isolation'
+  | 'carry'
+  | 'core_flexion'
+  | 'core_rotation'
+  | 'core_stability'
+  | 'cardio';
+
+export type MechanicsType = 'compound' | 'isolation';
+export type PlaneOfMotion = 'sagittal' | 'frontal' | 'transverse' | 'multiplanar';
+export type KineticChain = 'open_chain' | 'closed_chain';
+export type ResistanceProfile = 'lengthened' | 'shortened' | 'constant' | 'ascending';
+export type AxialLoadingLevel = 'none' | 'low' | 'moderate' | 'high';
+export type JointStressLevel = 'low' | 'moderate' | 'high';
+export type DifficultyTier = 'beginner' | 'intermediate' | 'advanced';
+
 export interface ExerciseMuscleMap {
   primaries?: string[];
   secondaries?: string[];
@@ -43,12 +98,38 @@ export interface RagExercise {
   videoUrl?: string;
   clipUrl?: string;
   imageUrl?: string;
+
+  // Enriched Biomechanical Metadata for Agentic Swapping & AI Reasoning
+  apparatusGroup?: ApparatusGroup;
+  hardwareDetail?: HardwareDetail;
+  primaryMuscles?: string[];
+  muscleSubdivision?: string;
+  movementPattern?: MovementPattern;
+  mechanics?: MechanicsType;
+  planeOfMotion?: PlaneOfMotion;
+  kineticChain?: KineticChain;
+  resistanceProfile?: ResistanceProfile;
+  axialLoading?: AxialLoadingLevel;
+  jointStress?: JointStressLevel;
+  difficultyTier?: DifficultyTier;
+  unilateral?: boolean;
+  tempoRecommendation?: string;
+  coachingCues?: string[];
+  commonMistakes?: string[];
+  swapSynergyKeys?: string[];
 }
 
 export interface ExerciseQueryConstraints {
   availableEquipment?: string[];
+  apparatusGroups?: ApparatusGroup[];
+  hardwareDetails?: HardwareDetail[];
   targetMuscle?: string;
   secondaryMuscles?: string[];
+  muscleSubdivision?: string;
+  movementPattern?: MovementPattern;
+  mechanics?: MechanicsType;
+  resistanceProfile?: ResistanceProfile;
+  maxAxialLoading?: AxialLoadingLevel;
   bodyPart?: string;
   category?: ExerciseCategory;
   excludedEquipment?: string[];

@@ -245,7 +245,7 @@ export default function TodayPage() {
       : "Deload recommended";
 
   return (
-    <div className="flex-1 pb-28 px-4 pt-4 max-w-md mx-auto w-full space-y-5 animate-in fade-in duration-300 font-body select-none">
+    <div className="flex-1 pb-28 px-3 sm:px-4 lg:px-6 pt-2 lg:pt-4 max-w-md lg:max-w-6xl mx-auto w-full space-y-6 animate-in fade-in duration-300 font-body select-none">
       {/* 1. TOP TELEMETRY STATUS STRIP */}
       <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2.5">
         <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export default function TodayPage() {
           </button>
         </div>
 
-        <h1 suppressHydrationWarning className="text-2xl font-display uppercase tracking-wider font-extrabold text-white">
+        <h1 suppressHydrationWarning className="text-2xl lg:text-3xl font-display uppercase tracking-wider font-extrabold text-white">
           {isDayZero
             ? "Day 1 Calibration"
             : `System Primed, ${currentUser.name.split(" ")[0]}.`}
@@ -358,345 +358,389 @@ export default function TodayPage() {
           onCalibrated={() => setTick((t) => t + 1)}
         />
       ) : (
-        <>
-          {/* 3. 24-HOUR CHRONOBIOLOGICAL ARC & READINESS MATRIX */}
-          <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3">
-            <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
-                  Circadian Hypertrophy Arc
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    readinessStatus.includes("Light")
-                      ? "bg-amber-400 animate-pulse"
-                      : readinessStatus.includes("Moderate")
-                      ? "bg-amber-300"
-                      : readinessStatus.includes("Full")
-                      ? "bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.8)]"
-                      : "bg-slate-500"
-                  }`}
-                />
-                <span className="font-mono text-[11px] text-slate-300 font-bold">
-                  {readinessStatus}
-                </span>
-              </div>
-            </div>
-
-            {/* Visual Arc Dial Representation */}
-            <div className="p-3 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono uppercase text-slate-400 block">
-                  Target Prime Window
-                </span>
-                <span className="text-sm font-mono font-bold text-white tracking-tight">
-                  {`${chrono.label} // ~${estimatedPaceMin} MIN PACE`}
-                </span>
-                <span className="text-[10px] font-mono text-[#10b981] block">
-                  Scapular &amp; Pelvic Switch Locked
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/25 font-bold">
-                  READINESS {readinessScore}%
-                </span>
-                <span className="text-[9px] font-mono text-slate-400 mt-1 block">
-                  {readinessLabel}
-                </span>
-              </div>
-            </div>
-
-            {/* Prompt for Readiness Check-in if not yet answered */}
-            {!hasReadinessInput && (
-              <ReadinessCheckin
-                userId={currentUser.id}
-                onCheckedIn={() => setTick((t) => t + 1)}
-              />
-            )}
-
-            {/* Cross-Pillar Insight if exists */}
-            {insight && (
-              <Insight
-                sentence={insight.sentence}
-                sourcePillars={insight.sources}
-                whyPrompt={insight.whyPrompt}
-                onWhyClick={handleWhyClick}
-              />
-            )}
-          </section>
-
-          {/* 4. NUTRITIONAL FUEL GAUGES (AEROSPACE TELEMETRY CELLS) */}
-          <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3">
-            <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
-                  Nutritional Energy Cells (Mass Stack)
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSuppDrawerOpen(true)}
-                className="text-[10px] font-mono text-cyan-300 hover:text-cyan-200 transition cursor-pointer"
-              >
-                Protocols &amp; Jumbo →
-              </button>
-            </div>
-
-            {/* Caloric Banner */}
-            <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono text-slate-400 uppercase block">
-                  Daily Hypertrophy Surplus
-                </span>
-                <span className="text-lg font-display font-black text-white tracking-wide">
-                  {targetKcal}{" "}
-                  <span className="text-xs font-mono font-normal text-slate-400">
-                    TARGET KCAL / DAY
+        /* RESPONSIVE COMMAND DECK GRID (Hero on Left/Top, Ambient Telemetry on Right) */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* =========================================================================
+              MAIN OPERATIONAL STAGE (Left 8 cols on desktop)
+              The workout directive is front-and-center without clutter
+             ========================================================================= */}
+          <div className="lg:col-span-8 space-y-6 order-1">
+            
+            {/* 3. TODAY'S TRAINING DIRECTIVE & HERO CTA */}
+            <section className="p-4 sm:p-5 bg-gradient-to-b from-[#111624] to-[#0c1018] border border-[#1b2d47] rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4 text-[#10b981]" />
+                  <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
+                    Training Directive // 01 of 01
                   </span>
+                </div>
+                <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded border border-[#10b981]/30 font-bold">
+                  {isRestDay ? "REST DAY" : isWorkoutDone ? "COMPLETED TODAY ✓" : "SCHEDULED"}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold">
-                {currentUser.goals?.[0]?.toUpperCase() || "HYPERTROPHY"} TARGET
-              </span>
-            </div>
 
-            {/* Macro Triad */}
-            <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-              <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
-                <div className="text-base font-display font-black text-[#10b981]">
-                  {targetProtein}g
-                </div>
-                <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
-                  Protein
+              <div>
+                <h2 className="text-xl sm:text-2xl font-display uppercase tracking-wider font-extrabold text-white">
+                  {todaySession?.label || (isRestDay ? "Somatic Adaptation & Rest" : "High Mechanical Tension Split")}
+                </h2>
+                <div className="flex items-center gap-3 text-xs font-mono text-slate-400 mt-1">
+                  <span>{todayExercises.length} Movements</span>
+                  <span>·</span>
+                  <span>~{estimatedPaceMin} Min Pace</span>
+                  <span>·</span>
+                  <span className="text-[#10b981] font-bold">RIR 2 Lock</span>
                 </div>
               </div>
 
-              <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
-                <div className="text-base font-display font-black text-cyan-300">
-                  {targetCarbs}g
-                </div>
-                <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
-                  Carbs
-                </div>
-              </div>
-
-              <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
-                <div className="text-base font-display font-black text-amber-300">
-                  {targetFat}g
-                </div>
-                <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
-                  Fats
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 5. TODAY'S TRAINING DIRECTIVE & MASSIVE PRIMARY CTA */}
-          <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
-              <div className="flex items-center gap-2">
-                <Dumbbell className="w-4 h-4 text-[#10b981]" />
-                <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
-                  Training Directive // 01 of 01
+              {/* Overload Delta Callout */}
+              <div className="p-3 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-400 text-[11px]">
+                  Progression Target:
+                </span>
+                <span className="text-[#10b981] font-bold">
+                  {completedTodaySession
+                    ? `${completedVolumeKg > 0 ? completedVolumeKg.toLocaleString() + " KG Volume Logged" : "Completed"}`
+                    : todayExercises.length > 0
+                    ? `${todayExercises.reduce((sum, e) => sum + e.sets, 0)} Working Sets Scheduled`
+                    : "Active Recovery"}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded border border-[#10b981]/30 font-bold">
-                {isRestDay ? "REST DAY" : isWorkoutDone ? "COMPLETED TODAY ✓" : "SCHEDULED"}
-              </span>
-            </div>
 
-            <div>
-              <h2 className="text-xl font-display uppercase tracking-wider font-extrabold text-white">
-                {todaySession?.label || (isRestDay ? "Somatic Adaptation & Rest" : "High Mechanical Tension Split")}
-              </h2>
-              <div className="flex items-center gap-3 text-xs font-mono text-slate-400 mt-1">
-                <span>{todayExercises.length} Movements</span>
-                <span>·</span>
-                <span>~{estimatedPaceMin} Min Pace</span>
-                <span>·</span>
-                <span className="text-[#10b981] font-bold">RIR 2 Lock</span>
-              </div>
-            </div>
-
-            {/* Overload Delta Callout */}
-            <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-400 text-[11px]">
-                Progression Target:
-              </span>
-              <span className="text-[#10b981] font-bold">
-                {completedTodaySession
-                  ? `${completedVolumeKg > 0 ? completedVolumeKg.toLocaleString() + " KG Volume Logged" : "Completed"}`
-                  : todayExercises.length > 0
-                  ? `${todayExercises.reduce((sum, e) => sum + e.sets, 0)} Working Sets Scheduled`
-                  : "Active Recovery"}
-              </span>
-            </div>
-
-            {/* Lifts Chip Queue */}
-            {todayExercises.length > 0 && !isRestDay && (
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-mono uppercase text-slate-400 block font-bold">
-                  Collimated Movement Queue:
-                </span>
-                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                  {todayExercises.map((ex, idx) => (
-                    <div
-                      key={ex.id || idx}
-                      className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono hover:border-cyan-500/40 transition group"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 pr-2">
-                        <span className="text-[10px] text-[#10b981] font-bold w-4">
-                          {idx + 1}.
-                        </span>
-                        <span className="text-slate-200 truncate font-semibold">
-                          {ex.exerciseName}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-                          {ex.sets}×{ex.repRangeLow}-{ex.repRangeHigh}
-                        </span>
-
-                        {/* Video Demo Button */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVideoModalExercise({
-                              name: ex.exerciseName,
-                              target: ex.targetMuscleGroups?.[0],
-                              equipment: ex.selectedEquipment,
-                              videoUrl: ex.videoUrl,
-                              formCue: ex.formCueText,
-                            })
-                          }
-                          className="p-1.5 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 hover:bg-[#142032] transition cursor-pointer"
-                          title="Preview form video"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* 1-Tap Biomechanical Swap Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSwapExerciseTarget({
-                              id: ex.id,
-                              name: ex.exerciseName,
-                              target:
-                                ex.targetMuscleGroups?.[0] ||
-                                inferPrimaryMuscleFromExerciseName(ex.exerciseName),
-                              equipment: ex.selectedEquipment || "machine",
-                            });
-                            setIsSwapDrawerOpen(true);
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] text-[10px] font-mono font-bold transition cursor-pointer active:scale-95"
-                          title="Swap exercise with biomechanical alternative"
-                        >
-                          <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
-                          <span>SWAP</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* PRIMARY ACTION TRIGGER */}
-            <div className="pt-2 space-y-2">
-              {isWorkoutDone ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const todaySess =
-                      completedTodaySession ||
-                      sessions.find((s) => s.date === todayDateStr) ||
-                      sessions[0];
-                    if (todaySess) setSelectedSession(todaySess);
-                    else router.push("/progress");
-                  }}
-                  className="w-full h-15 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.45)] transition-all cursor-pointer flex items-center justify-between px-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-6 h-6 stroke-[2.5]" />
-                    <span>VIEW COMPLETED STATS</span>
+              {/* Collimated Movement Queue */}
+              {todayExercises.length > 0 && !isRestDay && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block font-bold">
+                      Movement Queue ({todayExercises.length}):
+                    </span>
+                    <span className="text-[10px] font-mono text-cyan-400">
+                      1-Tap Video &amp; Swap Active
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              ) : isRestDay ? (
+
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {todayExercises.map((ex, idx) => (
+                      <div
+                        key={ex.id || idx}
+                        className="p-3 bg-[#070b12] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono hover:border-cyan-500/40 transition group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <span className="text-[11px] text-[#10b981] font-bold w-5">
+                            {idx + 1}.
+                          </span>
+                          <span className="text-slate-200 truncate font-semibold text-sm">
+                            {ex.exerciseName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                            {ex.sets}×{ex.repRangeLow}-{ex.repRangeHigh}
+                          </span>
+
+                          {/* Video Demo Button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setVideoModalExercise({
+                                name: ex.exerciseName,
+                                target: ex.targetMuscleGroups?.[0],
+                                equipment: ex.selectedEquipment,
+                                videoUrl: ex.videoUrl,
+                                formCue: ex.formCueText,
+                              })
+                            }
+                            className="p-1.5 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 hover:bg-[#142032] transition cursor-pointer"
+                            title="Preview form video"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* 1-Tap Biomechanical Swap Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSwapExerciseTarget({
+                                id: ex.id,
+                                name: ex.exerciseName,
+                                target:
+                                  ex.targetMuscleGroups?.[0] ||
+                                  inferPrimaryMuscleFromExerciseName(ex.exerciseName),
+                                equipment: ex.selectedEquipment || "machine",
+                              });
+                              setIsSwapDrawerOpen(true);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] text-[10px] font-mono font-bold transition cursor-pointer active:scale-95"
+                            title="Swap exercise with biomechanical alternative"
+                          >
+                            <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
+                            <span>SWAP</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PRIMARY ACTION TRIGGER */}
+              <div className="pt-2 space-y-2">
+                {isWorkoutDone ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const todaySess =
+                        completedTodaySession ||
+                        sessions.find((s) => s.date === todayDateStr) ||
+                        sessions[0];
+                      if (todaySess) setSelectedSession(todaySess);
+                      else router.push("/progress");
+                    }}
+                    className="w-full h-15 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.45)] transition-all cursor-pointer flex items-center justify-between px-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-6 h-6 stroke-[2.5]" />
+                      <span>VIEW COMPLETED STATS</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                ) : isRestDay ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsSuppDrawerOpen(true)}
+                    className="w-full h-14 py-3 bg-[#0f1724] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white font-display uppercase tracking-wider text-base font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>REST DAY PROTOCOL // LOG NUTRITION</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2]" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`/session?day=${todaySession?.id || "day_1"}`}
+                    className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Play className="w-6 h-6 fill-current" />
+                      <span>COMMENCE SESSION</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#05080c]/80 text-[#10b981] px-2.5 py-1 rounded-lg border border-[#10b981]/40 font-mono text-xs font-bold">
+                      <span>~{estimatedPaceMin} MIN</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </div>
+                  </Link>
+                )}
+
+                {/* Secondary Utility Controls */}
+                {!isRestDay && !isWorkoutDone && (
+                  <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                    <Link
+                      href={`/session?day=${todaySession?.id || "day_1"}&mode=preview`}
+                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Preview &amp; Cues</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAdjustSheetOpen(true)}
+                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Adjust Session</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* 4. DAY TIMELINE & DAILY MOMENTS STREAM */}
+            <section className="space-y-3 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400 px-1 font-mono">
+                <span className="font-semibold text-slate-300">
+                  CIRCADIAN DAY TIMELINE
+                </span>
                 <button
                   type="button"
                   onClick={() => setIsSuppDrawerOpen(true)}
-                  className="w-full h-14 py-3 bg-[#0f1724] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white font-display uppercase tracking-wider text-base font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer"
                 >
-                  <span>REST DAY PROTOCOL // LOG NUTRITION</span>
-                  <ArrowRight className="w-4 h-4 stroke-[2]" />
+                  All protocols →
                 </button>
-              ) : (
-                <Link
-                  href={`/session?day=${todaySession?.id || "day_1"}`}
-                  className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <Play className="w-6 h-6 fill-current" />
-                    <span>COMMENCE SESSION</span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-[#05080c]/80 text-[#10b981] px-2.5 py-1 rounded-lg border border-[#10b981]/40 font-mono text-xs font-bold">
-                    <span>~{estimatedPaceMin} MIN</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </div>
-                </Link>
-              )}
+              </div>
 
-              {/* Secondary Utility Controls */}
-              {!isRestDay && !isWorkoutDone && (
-                <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
-                  <Link
-                    href={`/session?day=${todaySession?.id || "day_1"}&mode=preview`}
-                    className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Preview &amp; Cues</span>
-                  </Link>
+              <Plan.Timeline
+                moments={moments.filter((m) => m.id !== heroMoment?.id)}
+                onMomentClick={handleMomentClick}
+              />
+            </section>
+          </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsAdjustSheetOpen(true)}
-                    className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Adjust Session</span>
-                  </button>
+          {/* =========================================================================
+              CONTEXT SIDEBAR (Right 4 cols on desktop; cleanly stacks below on mobile)
+              Readiness score, Nutritional Mass Stack, and AI Sentinel
+             ========================================================================= */}
+          <div className="lg:col-span-4 space-y-6 order-2">
+            
+            {/* 5. 24-HOUR CIRCADIAN ARC & READINESS MATRIX */}
+            <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
+                    Circadian Readiness
+                  </span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      readinessStatus.includes("Light")
+                        ? "bg-amber-400 animate-pulse"
+                        : readinessStatus.includes("Moderate")
+                        ? "bg-amber-300"
+                        : readinessStatus.includes("Full")
+                        ? "bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                        : "bg-slate-500"
+                    }`}
+                  />
+                  <span className="font-mono text-[11px] text-slate-300 font-bold">
+                    {readinessStatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Visual Arc Dial Representation */}
+              <div className="p-3 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono uppercase text-slate-400 block">
+                    Target Prime Window
+                  </span>
+                  <span className="text-sm font-mono font-bold text-white tracking-tight">
+                    {`${chrono.label} // ~${estimatedPaceMin} MIN PACE`}
+                  </span>
+                  <span className="text-[10px] font-mono text-[#10b981] block">
+                    Scapular &amp; Pelvic Switch Locked
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/25 font-bold">
+                    DRIVE {readinessScore}%
+                  </span>
+                  <span className="text-[9px] font-mono text-slate-400 mt-1 block">
+                    {readinessLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Prompt for Readiness Check-in if not yet answered */}
+              {!hasReadinessInput && (
+                <ReadinessCheckin
+                  userId={currentUser.id}
+                  onCheckedIn={() => setTick((t) => t + 1)}
+                />
               )}
-            </div>
-          </section>
 
-          {/* 6. DAY TIMELINE & DAILY MOMENTS STREAM */}
-          <section className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1 font-mono">
-              <span className="font-semibold text-slate-300">
-                DAILY CHRONO PROTOCOLS
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsSuppDrawerOpen(true)}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer"
-              >
-                All protocols →
-              </button>
-            </div>
+              {/* Cross-Pillar Insight if exists */}
+              {insight && (
+                <Insight
+                  sentence={insight.sentence}
+                  sourcePillars={insight.sources}
+                  whyPrompt={insight.whyPrompt}
+                  onWhyClick={handleWhyClick}
+                />
+              )}
+            </section>
 
-            <Plan.Timeline
-              moments={moments.filter((m) => m.id !== heroMoment?.id)}
-              onMomentClick={handleMomentClick}
-            />
-          </section>
-        </>
+            {/* 6. NUTRITIONAL FUEL GAUGES (AEROSPACE TELEMETRY CELLS) */}
+            <section className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
+                    Nutritional Fuel (Mass Stack)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSuppDrawerOpen(true)}
+                  className="text-[10px] font-mono text-cyan-300 hover:text-cyan-200 transition cursor-pointer"
+                >
+                  Protocols &amp; Jumbo →
+                </button>
+              </div>
+
+              {/* Caloric Banner */}
+              <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono text-slate-400 uppercase block">
+                    Daily Hypertrophy Surplus
+                  </span>
+                  <span className="text-lg font-display font-black text-white tracking-wide">
+                    {targetKcal}{" "}
+                    <span className="text-xs font-mono font-normal text-slate-400">
+                      TARGET KCAL / DAY
+                    </span>
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold">
+                  {currentUser.goals?.[0]?.toUpperCase() || "HYPERTROPHY"} TARGET
+                </span>
+              </div>
+
+              {/* Macro Triad */}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
+                  <div className="text-base font-display font-black text-[#10b981]">
+                    {targetProtein}g
+                  </div>
+                  <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
+                    Protein
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
+                  <div className="text-base font-display font-black text-cyan-300">
+                    {targetCarbs}g
+                  </div>
+                  <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
+                    Carbs
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-[#05080c] rounded-xl border border-[#1b2d47]">
+                  <div className="text-base font-display font-black text-amber-300">
+                    {targetFat}g
+                  </div>
+                  <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">
+                    Fats
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 7. QUICK AI COACH SENTINEL ACCESS */}
+            <section className="p-4 bg-[#0a0e17] border border-[#1b2d47] rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
+                    AI Sovereign Coach
+                  </span>
+                </div>
+                <Link
+                  href="/coach"
+                  className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition"
+                >
+                  Open Chat →
+                </Link>
+              </div>
+              <p className="text-xs text-slate-400">
+                Connected to Claude MCP &amp; Gemini 4 Argon with full RAG over your 6,554 exercises and telemetry.
+              </p>
+            </section>
+
+          </div>
+        </div>
       )}
 
       {/* MODALS & DRAWERS */}

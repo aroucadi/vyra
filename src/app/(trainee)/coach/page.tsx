@@ -7,7 +7,7 @@ import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine"
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
 import { resolveProgramDay } from "@/lib/utils";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Brain, ShieldAlert, Dumbbell, Scale, Activity } from "lucide-react";
 import { clsx } from "clsx";
 import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 
@@ -242,25 +242,25 @@ function CoachChat() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#090C11] pb-24 px-4 pt-6 max-w-lg mx-auto w-full min-h-[calc(100dvh-16px)]">
+    <div className="flex-1 flex flex-col bg-[#090C11] pb-24 px-3 sm:px-4 lg:px-6 pt-2 lg:pt-4 max-w-md lg:max-w-6xl mx-auto w-full min-h-[calc(100dvh-32px)]">
       {/* Header */}
       <header className="flex items-center justify-between pb-4 border-b border-[#1C2436] flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
+            <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-editorial text-xl font-bold text-[#F8FAFC] tracking-tight leading-none">
-              VYRA Coach
+            <h1 className="font-editorial text-xl lg:text-2xl font-bold text-[#F8FAFC] tracking-tight leading-none">
+              VYRA Intelligence Studio
             </h1>
-            <p className="text-[11px] text-[#94A3B8] mt-1">
-              Adaptive Performance Concierge
+            <p className="text-xs text-[#94A3B8] mt-1">
+              Multimodal Sports Science Concierge · Gemini 4 Argon &amp; Claude MCP
             </p>
           </div>
         </div>
         <span
           className={clsx(
-            "text-[10px] font-mono px-2.5 py-1 rounded-full border font-bold tracking-wider",
+            "text-[10px] font-mono px-3 py-1 rounded-full border font-bold tracking-wider",
             activeEngineStatus === "GEMINI 4 ARGON"
               ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
               : "bg-[#111622] border-[#1C2436] text-amber-400"
@@ -270,98 +270,146 @@ function CoachChat() {
         </span>
       </header>
 
-      {/* Message Feed */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-4">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={clsx(
-              "flex flex-col gap-1",
-              m.sender === "user" ? "items-end" : "items-start"
-            )}
-          >
-            <div
-              className={clsx(
-                "p-3.5 rounded-2xl text-xs max-w-[88%] leading-relaxed whitespace-pre-line",
-                m.sender === "user"
-                  ? "bg-amber-400 text-[#090C11] font-semibold rounded-br-none shadow-sm"
-                  : "bg-[#111622] border border-[#1C2436] text-[#E2E8F0] rounded-bl-none shadow-sm"
-              )}
-            >
-              {m.text}
-            </div>
-            {m.sender === "coach" && m.engineLabel && (
-              <span className="text-[9px] font-mono text-[#64748B] px-1 uppercase tracking-widest">
-                {m.engineLabel}
-              </span>
-            )}
+      {/* Responsive Grid (Chat on Left, Context Rail on Right) */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 min-h-0">
+        
+        {/* Chat Feed Column */}
+        <div className="lg:col-span-8 flex flex-col min-h-0 h-full">
+          {/* Message Feed */}
+          <div className="flex-1 overflow-y-auto py-2 space-y-4 pr-1">
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={clsx(
+                  "flex flex-col gap-1",
+                  m.sender === "user" ? "items-end" : "items-start"
+                )}
+              >
+                <div
+                  className={clsx(
+                    "p-3.5 rounded-2xl text-xs max-w-[88%] leading-relaxed whitespace-pre-line",
+                    m.sender === "user"
+                      ? "bg-amber-400 text-[#090C11] font-semibold rounded-br-none shadow-sm"
+                      : "bg-[#111622] border border-[#1C2436] text-[#E2E8F0] rounded-bl-none shadow-sm"
+                  )}
+                >
+                  {m.text}
+                </div>
+                {m.sender === "coach" && m.engineLabel && (
+                  <span className="text-[9px] font-mono text-[#64748B] px-1 uppercase tracking-widest">
+                    {m.engineLabel}
+                  </span>
+                )}
 
-            {m.card && (
-              <div className="w-full max-w-[96%]">
-                <CoachSmartActionCard card={m.card} traineeId={currentUser.id} />
+                {m.card && (
+                  <div className="w-full max-w-[96%]">
+                    <CoachSmartActionCard card={m.card} traineeId={currentUser.id} />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Intelligent UI Progressive Streaming Reserved Space */}
+            {isStreaming && (
+              <div className="flex flex-col items-start space-y-2 animate-in fade-in duration-200">
+                <div className="p-3.5 rounded-2xl rounded-bl-none bg-[#111622] border border-[#1C2436] text-xs text-[#CBD5E1] max-w-[88%] flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span className="text-[11px] text-[#94A3B8]">
+                    Reasoning with Multimodal RAG &amp; Sports Science Telemetry...
+                  </span>
+                </div>
+                <div className="w-full max-w-[96%] h-28 rounded-2xl bg-[#111622]/60 border border-[#1C2436] p-4 space-y-3 animate-pulse">
+                  <div className="h-3 w-1/3 bg-[#1C2436] rounded" />
+                  <div className="h-4 w-2/3 bg-[#1C2436] rounded" />
+                </div>
               </div>
             )}
+            <div ref={feedEndRef} />
           </div>
-        ))}
 
-        {/* Intelligent UI Progressive Streaming Reserved Space (Zero-CLS) */}
-        {isStreaming && (
-          <div className="flex flex-col items-start space-y-2 animate-in fade-in duration-200">
-            <div className="p-3.5 rounded-2xl rounded-bl-none bg-[#111622] border border-[#1C2436] text-xs text-[#CBD5E1] max-w-[88%] flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span className="text-[11px] text-[#94A3B8]">
-                Reasoning with Case File & Biomechanics...
-              </span>
-            </div>
-            <div className="w-full max-w-[96%] h-32 rounded-2xl bg-[#111622]/60 border border-[#1C2436] p-4 space-y-3 animate-pulse">
-              <div className="h-3 w-1/3 bg-[#1C2436] rounded" />
-              <div className="h-4 w-2/3 bg-[#1C2436] rounded" />
-              <div className="h-9 w-full bg-[#1C2436]/70 rounded-xl" />
-            </div>
+          {/* Contextual Quick Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-2.5 -mx-2 px-2 flex-shrink-0 no-scrollbar">
+            {quickChips.map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                disabled={isStreaming}
+                onClick={() => void handleSend(chip.prompt)}
+                className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#111622] border border-[#1C2436] hover:border-amber-500/40 text-[11px] text-[#CBD5E1] transition disabled:opacity-50 cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
-        )}
-        <div ref={feedEndRef} />
-      </div>
 
-      {/* Contextual Quick Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto py-2 -mx-4 px-4 flex-shrink-0 no-scrollbar">
-        {quickChips.map((chip, idx) => (
-          <button
-            key={idx}
-            type="button"
-            disabled={isStreaming}
-            onClick={() => void handleSend(chip.prompt)}
-            className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#111622] border border-[#1C2436] hover:border-amber-500/40 text-[11px] text-[#CBD5E1] transition disabled:opacity-50"
+          {/* Input Field */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSend();
+            }}
+            className="pt-1 flex items-center gap-2 flex-shrink-0"
           >
-            {chip.label}
-          </button>
-        ))}
-      </div>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything, check rate of gain, or swap an exercise..."
+              className="flex-1 bg-[#111622] border border-[#1C2436] rounded-xl px-4 py-3 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-amber-400 font-mono"
+            />
+            <button
+              type="submit"
+              disabled={isStreaming || !input.trim()}
+              aria-label="Send message"
+              className="w-12 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-[#090C11] rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold disabled:opacity-50 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
 
-      {/* Input Field */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSend();
-        }}
-        className="pt-2 flex items-center gap-2 flex-shrink-0"
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything or request a swap..."
-          className="flex-1 bg-[#111622] border border-[#1C2436] rounded-xl px-3.5 py-3 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-amber-400"
-        />
-        <button
-          type="submit"
-          disabled={isStreaming || !input.trim()}
-          aria-label="Send message"
-          className="w-11 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-[#090C11] rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold disabled:opacity-50"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </form>
+        {/* Right Context Rail (Visible on Desktop lg:) */}
+        <div className="hidden lg:flex flex-col lg:col-span-4 space-y-4">
+          <div className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 text-xs font-display uppercase tracking-wider text-white font-bold border-b border-[#1b2d47] pb-2">
+              <Brain className="w-4 h-4 text-cyan-400" />
+              <span>Grounded RAG Context</span>
+            </div>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex justify-between p-2 bg-[#05080c] rounded-lg border border-[#1b2d47]">
+                <span className="text-slate-400">Trainee ID:</span>
+                <span className="text-white font-bold">{currentUser.id}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-[#05080c] rounded-lg border border-[#1b2d47]">
+                <span className="text-slate-400">Target Kcal:</span>
+                <span className="text-amber-400 font-bold">2,850 kcal/day</span>
+              </div>
+              <div className="flex justify-between p-2 bg-[#05080c] rounded-lg border border-[#1b2d47]">
+                <span className="text-slate-400">14-Day Gain Pace:</span>
+                <span className="text-[#10b981] font-bold">+0.16 kg/wk (Optimal)</span>
+              </div>
+              <div className="flex justify-between p-2 bg-[#05080c] rounded-lg border border-[#1b2d47]">
+                <span className="text-slate-400">Structural Balance:</span>
+                <span className="text-cyan-300 font-bold">1.02:1 Push:Pull</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-[#0f1724] border border-[#1b2d47] rounded-2xl space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-display uppercase tracking-wider text-white font-bold border-b border-[#1b2d47] pb-2">
+              <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <span>Clinical Safety Guardrails</span>
+            </div>
+            <ul className="text-xs font-body text-slate-300 space-y-1.5 list-disc list-inside">
+              <li>Left supraspinatus: incline capped at 30°</li>
+              <li>Left-Arm Leader Rule active on dumbbell sets</li>
+              <li>Monday football: zero lower-body loading</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

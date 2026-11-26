@@ -161,7 +161,7 @@ export default function TraineeExerciseLibraryPage() {
   }, [query, selectedMuscle, selectedEquipment, retryNonce]);
 
   return (
-    <div className="min-h-screen bg-[#05080c] text-slate-100 pb-36 w-full max-w-md mx-auto flex flex-col font-body select-none overflow-x-hidden">
+    <div className="min-h-screen bg-[#05080c] text-slate-100 pb-36 w-full max-w-md lg:max-w-6xl mx-auto flex flex-col font-body select-none overflow-x-hidden">
       {/* 1. STICKY COMMAND HEADER */}
       <header className="sticky top-0 z-30 bg-[#05080c]/95 backdrop-blur-md border-b border-[#1b2d47] px-4 pt-3 pb-3 space-y-3 w-full">
         {/* Tier 1: Brand & Top Beacon */}
@@ -408,7 +408,7 @@ export default function TraineeExerciseLibraryPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {exercises.map((ex) => {
               const videoUrl = resolveExerciseVideoUrl(ex.name, {
                 explicitVideoUrl: (ex as unknown as { videoUrl?: string }).videoUrl,

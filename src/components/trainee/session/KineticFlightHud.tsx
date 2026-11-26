@@ -307,9 +307,9 @@ export function KineticFlightHud({
   };
 
   return (
-    <div className="h-screen bg-[#05080c] text-[#E1E7F0] flex flex-col justify-between max-w-md mx-auto w-full select-none font-body pb-safe overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-[#05080c] text-[#E1E7F0] flex flex-col justify-between max-w-md lg:max-w-6xl mx-auto w-full select-none font-body pb-safe overflow-y-auto lg:overflow-hidden px-2 sm:px-4">
       {/* 1. TOP HUD BAR: STATION + EXERCISE + PROMINENT VIDEO TRIGGER */}
-      <header className="bg-[#05080c] border-b border-[#1b2d47]/70 px-3 py-2 flex items-center justify-between gap-2 shrink-0 z-30">
+      <header className="bg-[#05080c] border-b border-[#1b2d47]/70 px-3 py-2.5 flex items-center justify-between gap-2 shrink-0 z-30">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
@@ -321,15 +321,15 @@ export function KineticFlightHud({
           </button>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="font-display text-base font-black uppercase text-white truncate leading-tight">
+            <div className="flex items-center gap-2">
+              <span className="font-display text-base sm:text-lg font-black uppercase text-white truncate leading-tight">
                 {exercise.name}
               </span>
-              <span className="text-[10px] font-mono text-cyan-400 font-bold shrink-0">
+              <span className="text-[10px] font-mono text-cyan-400 font-bold shrink-0 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30">
                 SET {Math.min(currentSetNum, exercise.targetSets)}/{exercise.targetSets}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-mono text-[#10b981] truncate uppercase">
                 Target: {primaryMuscle}
               </span>
@@ -351,11 +351,11 @@ export function KineticFlightHud({
           <button
             type="button"
             onClick={onOpenSwap}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-slate-300 hover:text-cyan-300 hover:border-cyan-500/50 active:scale-95 transition cursor-pointer shrink-0"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] text-slate-300 hover:text-cyan-300 hover:border-cyan-500/50 active:scale-95 transition cursor-pointer shrink-0"
             title="Station occupied? Instant exercise swap"
           >
             <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline text-[10px] font-mono font-bold">SWAP</span>
+            <span className="text-[10px] font-mono font-bold">SWAP</span>
           </button>
 
           {effectiveVideoUrl && (
@@ -406,7 +406,7 @@ export function KineticFlightHud({
             )}
           </button>
 
-          <div className="text-[11px] font-mono font-bold text-[#10b981] px-2 py-1 rounded bg-[#0f1724] border border-[#1b2d47] shrink-0">
+          <div className="text-[11px] font-mono font-bold text-[#10b981] px-2.5 py-1 rounded-lg bg-[#0f1724] border border-[#1b2d47] shrink-0">
             {Math.floor(sessionDurationSec / 60)}:
             {(sessionDurationSec % 60).toString().padStart(2, "0")}
           </div>

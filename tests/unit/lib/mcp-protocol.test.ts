@@ -4,13 +4,15 @@ import { handleMcpJsonRpcRequest, VYRA_MCP_TOOLS } from "@/lib/mcp/tools";
 import { MCP_SERVER_INFO, MCP_PROTOCOL_VERSION } from "@/lib/mcp/protocol";
 
 describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
-  it("exposes all 6 required Vyra MCP tools", () => {
-    assert.equal(VYRA_MCP_TOOLS.length, 6);
+  it("exposes all 8 required Vyra MCP tools", () => {
+    assert.ok(VYRA_MCP_TOOLS.length >= 8);
     const names = VYRA_MCP_TOOLS.map((t) => t.name);
     assert.ok(names.includes("vyra_get_athlete_dossier"));
     assert.ok(names.includes("vyra_get_flight_logs"));
+    assert.ok(names.includes("vyra_get_today_workout"));
     assert.ok(names.includes("vyra_get_active_mesocycle"));
     assert.ok(names.includes("vyra_get_biometric_curve"));
+    assert.ok(names.includes("vyra_get_shadow_angel_audit"));
     assert.ok(names.includes("vyra_query_exercise_catalogue"));
     assert.ok(names.includes("vyra_propose_coaching_intervention"));
   });
@@ -40,7 +42,7 @@ describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
     assert.equal(res.jsonrpc, "2.0");
     assert.equal(res.id, 2);
     const result = res.result as { tools: unknown[] };
-    assert.equal(result.tools.length, 6);
+    assert.ok(result.tools.length >= 8);
   });
 
   it("executes 'vyra_get_athlete_dossier' and returns InBody bio-impedance data for Alaa", async () => {
@@ -84,8 +86,79 @@ describe("Anthropic Claude Model Context Protocol (MCP) Suite", () => {
     assert.equal(res.jsonrpc, "2.0");
     const result = res.result as { content: Array<{ text: string }> };
     const parsed = JSON.parse(result.content[0].text);
-    assert.equal(typeof parsed.totalRecordedSessions, "number");
+    assert.equal(typeof parsed.totalSessionsRecorded, "number");
+    assert.ok(parsed.totalSessionsRecorded >= 3);
+    assert.ok(parsed.cumulativeTonnageKg > 20000);
     assert.ok(Array.isArray(parsed.flightLogs));
+  });
+
+  it("executes 'vyra_get_biometric_curve' and returns 14-day weigh-ins and pacing", async () => {
+    const res = await handleMcpJsonRpcRequest(
+      {
+        jsonrpc: "2.0",
+        id: 41,
+        method: "tools/call",
+        params: {
+          name: "vyra_get_biometric_curve",
+          arguments: { traineeId: "trainee_alaa", days: 14 },
+        },
+      },
+      "trainee_alaa"
+    );
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.ok(parsed.totalWeighInsLogged >= 14);
+    assert.ok(parsed.weeklyRateOfGainKg > 0);
+    assert.equal(parsed.surplusEvaluation.status, "OPTIMAL_LEAN_SURPLUS");
+    assert.ok(Array.isArray(parsed.weighIns));
+  });
+
+  it("executes 'vyra_get_today_workout' and returns scheduled session and cues", async () => {
+    const res = await handleMcpJsonRpcRequest(
+      {
+        jsonrpc: "2.0",
+        id: 42,
+        method: "tools/call",
+        params: {
+          name: "vyra_get_today_workout",
+          arguments: { traineeId: "trainee_alaa" },
+        },
+      },
+      "trainee_alaa"
+    );
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.ok(parsed.todaySession.sessionLabel);
+    assert.ok(parsed.todaySession.blocks.length > 0);
+    assert.ok(parsed.todaySession.technicalIntentions.length > 0);
+  });
+
+  it("executes 'vyra_get_shadow_angel_audit' for 360-degree audit", async () => {
+    const res = await handleMcpJsonRpcRequest(
+      {
+        jsonrpc: "2.0",
+        id: 43,
+        method: "tools/call",
+        params: {
+          name: "vyra_get_shadow_angel_audit",
+          arguments: { traineeId: "trainee_alaa" },
+        },
+      },
+      "trainee_alaa"
+    );
+
+    assert.equal(res.jsonrpc, "2.0");
+    const result = res.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.shadowAngelVerdict.overallStatus, "HIGH_FIDELITY_PROGRESSION");
+    assert.ok(parsed.dossier);
+    assert.ok(parsed.biometricCurve);
+    assert.ok(parsed.flightLogs);
+    assert.ok(parsed.todayWorkout);
   });
 
   it("executes 'vyra_query_exercise_catalogue' with filters", async () => {

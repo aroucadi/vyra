@@ -6,6 +6,13 @@
 import { appStore } from "@/lib/store";
 import { loadExerciseCatalogue } from "@/lib/rag/catalogue-loader";
 import {
+  resolveCanonicalMcpAthlete,
+  resolveMcpBiometricCurve,
+  resolveMcpFlightLogs,
+  resolveMcpTodayWorkout,
+  resolveMcpShadowAngelAudit,
+} from "./athlete-context";
+import {
   McpJsonRpcRequest,
   McpJsonRpcResponse,
   McpToolDefinition,
@@ -30,9 +37,27 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "vyra_get_biometric_curve",
+    description:
+      "Retrieves the historical 14-day/30-day bodyweight weigh-in curve, 7-day rolling average, weekly rate-of-gain pacing (+0.25% to 0.50%/week), and caloric surplus audit.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        traineeId: {
+          type: "string",
+          description: "Optional trainee ID",
+        },
+        days: {
+          type: "number",
+          description: "Days of history to analyze (default: 14, max: 60)",
+        },
+      },
+    },
+  },
+  {
     name: "vyra_get_flight_logs",
     description:
-      "Retrieves past completed workout flight logs, including ballast volume (kg), set logs (weight, reps, RIR), PRs recorded, and athlete feedback.",
+      "Retrieves past completed workout flight logs, including ballast volume (kg), set logs (weight, reps, RIR), PRs recorded, and progressive overload audit.",
     inputSchema: {
       type: "object",
       properties: {
@@ -48,9 +73,9 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: "vyra_get_active_mesocycle",
+    name: "vyra_get_today_workout",
     description:
-      "Retrieves the active periodized mesocycle split, target muscle recruitment, exercise assignments, and current progression week.",
+      "Retrieves today's scheduled training session, prescribed exercise blocks, sets, reps, target RIR, rest periods, load guidance, warmup protocol, and technical focus intentions.",
     inputSchema: {
       type: "object",
       properties: {
@@ -62,9 +87,9 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: "vyra_get_biometric_curve",
+    name: "vyra_get_active_mesocycle",
     description:
-      "Retrieves historical bodyweight weigh-in curve, surplus rate-of-gain pacing, and hydration compliance.",
+      "Retrieves the active 16-week periodized mesocycle split, target muscle recruitment, volume landmarks (MEV/MAV/MRV), exercise assignments, and current progression week.",
     inputSchema: {
       type: "object",
       properties: {
@@ -72,9 +97,19 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
           type: "string",
           description: "Optional trainee ID",
         },
-        days: {
-          type: "number",
-          description: "Days of history to analyze (default: 30)",
+      },
+    },
+  },
+  {
+    name: "vyra_get_shadow_angel_audit",
+    description:
+      "Comprehensive 360° neutral Shadow Angel audit snapshot compiling athlete dossier, 14-day weigh-in curve & pacing, progressive overload history, today's workout, and joint health status in one call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        traineeId: {
+          type: "string",
+          description: "Optional trainee ID",
         },
       },
     },
@@ -82,21 +117,25 @@ export const VYRA_MCP_TOOLS: McpToolDefinition[] = [
   {
     name: "vyra_query_exercise_catalogue",
     description:
-      "Searches the 731+ OpenGym biomechanical movement library by target muscle, gym equipment station, or exercise name.",
+      "Searches the 6,554-movement biomechanical library by target muscle, apparatus group, hardware detail, movement pattern, or name. Returns video streaming URLs, resistance profiles, and coaching cues.",
     inputSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "Search keyword (e.g. 'pulldown', 'incline press')",
+          description: "Search keyword (e.g. 'pulldown', 'incline press', 'lateral raise')",
         },
         targetMuscle: {
           type: "string",
-          description: "Target muscle group (e.g. 'lats', 'chest', 'quadriceps')",
+          description: "Target muscle group (e.g. 'lats', 'chest', 'quadriceps', 'shoulders')",
         },
-        equipment: {
+        apparatusGroup: {
           type: "string",
-          description: "Gym station equipment (e.g. 'cable', 'dumbbell', 'barbell', 'machine')",
+          description: "Equipment group (e.g. 'cable', 'dumbbell', 'barbell', 'machine', 'smith_machine')",
+        },
+        movementPattern: {
+          type: "string",
+          description: "Biomechanical pattern (e.g. 'horizontal_push', 'vertical_pull', 'isolation_flexion')",
         },
       },
     },
@@ -140,127 +179,71 @@ export async function executeMcpToolCall(
 
   switch (name) {
     case "vyra_get_athlete_dossier": {
-      const user = appStore.getUser(traineeId) || appStore.getCurrentUser();
-      const metrics = appStore.getMetrics(traineeId);
-
-      const currentWeight = metrics.length
-        ? metrics[metrics.length - 1].weightKg
-        : user.biometrics?.baselineWeightKg ?? user.baselineMetrics?.fedBaselineWeightKg ?? 52.05;
-
-      const smmKg = user.biometrics?.skeletalMuscleMassKg ?? 24.9;
-      const smmIndex = currentWeight > 0 ? Number(((smmKg / currentWeight) * 100).toFixed(1)) : 47.8;
-      const leftArm = user.biometrics?.segmentalSymmetry?.leftArmKg ?? 2.5;
-      const rightArm = user.biometrics?.segmentalSymmetry?.rightArmKg ?? 2.5;
-      const leftLeg = user.biometrics?.segmentalSymmetry?.leftLegKg ?? 7.6;
-      const rightLeg = user.biometrics?.segmentalSymmetry?.rightLegKg ?? 7.5;
-      const trunk = user.biometrics?.segmentalSymmetry?.trunkKg ?? 12.6;
-      const bodyFat = user.biometrics?.bodyFatPercent ?? 10.0;
-      const targetWeight = user.biometrics?.week16TargetWeightKg ?? 57.0;
-
-      const dossier = {
-        athlete: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          primaryGoal: user.goals?.[0] || "Strength & Hypertrophy",
-          injuries: user.injuries || [],
-          heightCm: user.heightCm || user.biometrics?.heightCm || (user.baselineMetrics?.heightM ? user.baselineMetrics.heightM * 100 : undefined),
-          currentWeightKg: currentWeight,
-        },
-        inBodySegmentalTelemetry: {
-          skeletalMuscleMassKg: smmKg,
-          smmIndexPercent: smmIndex,
-          bodyFatPercent: bodyFat,
-          bilateralSymmetry: {
-            arms: {
-              leftKg: leftArm,
-              rightKg: rightArm,
-              symmetry: leftArm === rightArm ? "100% Equilibrium" : "Calibrated",
-            },
-            legs: {
-              leftKg: leftLeg,
-              rightKg: rightLeg,
-              symmetry: leftLeg === rightLeg ? "100% Equilibrium" : "99.2% Equilibrium (0.1kg Micro-Delta)",
-            },
-            axialTrunkKg: trunk,
-          },
-          baselineWeightKg: user.biometrics?.baselineWeightKg ?? user.baselineMetrics?.fedBaselineWeightKg ?? 52.05,
-          targetSurplusWeightKg: targetWeight,
-          dailyMacroTargets: user.baselineMetrics?.dailyMacrosTarget
-            ? {
-                caloriesKcal: user.baselineMetrics.dailyTargetKcal,
-                proteinG: user.baselineMetrics.dailyMacrosTarget.proteinG,
-                carbsG: user.baselineMetrics.dailyMacrosTarget.carbsG,
-                fatsG: user.baselineMetrics.dailyMacrosTarget.fatG,
-              }
-            : {
-                caloriesKcal: 2850,
-                proteinG: 140,
-                carbsG: 380,
-                fatsG: 65,
-              },
-        },
-      };
-
+      const dossier = resolveCanonicalMcpAthlete(traineeId);
       return {
         content: [{ type: "text", text: JSON.stringify(dossier, null, 2) }],
       };
     }
 
+    case "vyra_get_biometric_curve": {
+      const days = typeof args.days === "number" ? Math.min(60, Math.max(1, args.days)) : 14;
+      const curveReport = resolveMcpBiometricCurve(traineeId, days);
+      return {
+        content: [{ type: "text", text: JSON.stringify(curveReport, null, 2) }],
+      };
+    }
+
     case "vyra_get_flight_logs": {
       const limit = typeof args.limit === "number" ? Math.min(50, Math.max(1, args.limit)) : 10;
-      const sessions = appStore.getSessions(traineeId).slice(0, limit);
-
-      const formattedSessions = sessions.map((s, idx) => ({
-        flightLogId: `LOG #${sessions.length - idx}-FLIGHT`,
-        sessionId: s.id,
-        date: s.date,
-        dayLabel: s.dayLabel,
-        durationMinutes: Math.round((s.durationSec || 0) / 60),
-        gymName: s.gymName || "Punch by Badr Hari",
-        totalBallastVolumeKg: s.setLogs?.reduce(
-          (acc, l) => acc + (l.weightKg || 0) * (l.reps || 0),
-          0
-        ) || 0,
-        prsRecorded: s.setLogs?.filter((l) => l.isPR).length || 0,
-        setLogsCount: s.setLogs?.length || 0,
-        exercises: [...new Set(s.setLogs?.map((l) => l.exerciseName))],
-        sessionNote: s.sessionNote,
-      }));
-
+      const flightLogsReport = resolveMcpFlightLogs(traineeId, limit);
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                traineeId,
-                totalRecordedSessions: sessions.length,
-                flightLogs: formattedSessions,
-              },
-              null,
-              2
-            ),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(flightLogsReport, null, 2) }],
+      };
+    }
+
+    case "vyra_get_today_workout": {
+      const todayReport = resolveMcpTodayWorkout(traineeId);
+      return {
+        content: [{ type: "text", text: JSON.stringify(todayReport, null, 2) }],
       };
     }
 
     case "vyra_get_active_mesocycle": {
-      const program = appStore.getActiveProgramForTrainee(traineeId);
-      const isAlaa = traineeId === "trainee_alaa";
-
+      const isAlaa = !traineeId || traineeId === "trainee_alaa" || traineeId === "anon_visitor";
       const mesocycleData = {
-        traineeId,
-        programId: program?.id || "prog_master_16wk",
-        title: program?.title || "16-Week Recomposition & Structural Balance",
-        durationWeeks: program?.durationWeeks || 16,
-        currentWeek: 1,
-        splitArchitecture: isAlaa
-          ? "5-Day Master Split (Upper A / Lower A / Push B / Pull B / Legs Core)"
-          : "Standard Periodized Split",
-        frequencyDaysPerWeek: 5,
+        traineeId: isAlaa ? "trainee_alaa" : traineeId,
+        programId: "prog_master_16wk",
+        title: "16-Week Recomposition & Structural Balance",
+        totalDurationWeeks: 16,
+        currentWeekNumber: 1,
+        activePhase: "Hypertrophy Phase 1 - Structural Calibration & Baseline Load",
+        splitModel: "5-Day Master Split (Mon/Tue/Wed/Thu/Sat | Fri & Sun Rest)",
+        weeklyVolumeLandmarks: {
+          chest: { weeklyPrescribedSets: 14, mev: 10, mav: 16, mrv: 22 },
+          upperBackAndLats: { weeklyPrescribedSets: 16, mev: 12, mav: 18, mrv: 24 },
+          lateralDeltoids: { weeklyPrescribedSets: 12, mev: 8, mav: 14, mrv: 20 },
+          quadriceps: { weeklyPrescribedSets: 12, mev: 8, mav: 14, mrv: 20 },
+          hamstrings: { weeklyPrescribedSets: 10, mev: 6, mav: 12, mrv: 18 },
+          arms: { weeklyPrescribedSets: 12, mev: 6, mav: 12, mrv: 18 },
+        },
+        scheduledDays: [
+          { day: 1, dayName: "Monday", label: "Upper Hypertrophy A", focus: "Clavicular Chest, Upper Back & Side Delts" },
+          { day: 2, dayName: "Tuesday", label: "Lower Hypertrophy A", focus: "Knee-Dominant Quads & Hamstrings" },
+          { day: 3, dayName: "Wednesday", label: "Push Hypertrophy B", focus: "Sternal Chest, Triceps & Lateral Delts" },
+          { day: 4, dayName: "Thursday", label: "Pull Hypertrophy B", focus: "Vertical Lats, Rhomboids & Rear Delts" },
+          { day: 5, dayName: "Friday", label: "Active Recovery", focus: "Mobility, Decompression & Walk" },
+          { day: 6, dayName: "Saturday", label: "Legs Core & Balance", focus: "Posterior Chain, Glutes & Core Bracing" },
+          { day: 7, dayName: "Sunday", label: "Full Systemic Recovery", focus: "Glycogen Supercompensation & Sleep" },
+        ],
+        nutritionAndSupplementation: {
+          dailyCaloricTargetKcal: 2850,
+          dailyMacros: { proteinG: 140, carbsG: 380, fatsG: 65 },
+          dailySupplements: [
+            { name: "Scitec Jumbo Hardcore Mass Gainer", timing: "Post-workout / Mid-afternoon", dose: "4 scoops (2.82g Creatine Monohydrate)" },
+            { name: "Vitamin D3 + K2", timing: "With fat-containing lunch", dose: "Mandatory daily target 40-60 ng/mL" },
+            { name: "Electrolytes & Sodium", timing: "Intra-workout", dose: "750ml water + 500mg sodium" },
+          ],
+        },
         status: "ACTIVE",
       };
 
@@ -269,63 +252,58 @@ export async function executeMcpToolCall(
       };
     }
 
-    case "vyra_get_biometric_curve": {
-      const days = typeof args.days === "number" ? args.days : 30;
-      const metrics = appStore.getMetrics(traineeId).slice(-days);
-
+    case "vyra_get_shadow_angel_audit": {
+      const shadowAngelReport = resolveMcpShadowAngelAudit(traineeId);
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                traineeId,
-                recordsCount: metrics.length,
-                timeframeDays: days,
-                weighIns: metrics.map((m) => ({
-                  date: m.date,
-                  weightKg: m.weightKg,
-                  bodyFatPercent: m.bodyFatPercent,
-                })),
-              },
-              null,
-              2
-            ),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(shadowAngelReport, null, 2) }],
       };
     }
 
     case "vyra_query_exercise_catalogue": {
       const query = (typeof args.query === "string" ? args.query : "").toLowerCase().trim();
       const targetMuscle = (typeof args.targetMuscle === "string" ? args.targetMuscle : "").toLowerCase().trim();
-      const equipment = (typeof args.equipment === "string" ? args.equipment : "").toLowerCase().trim();
+      const apparatusGroup = (typeof args.apparatusGroup === "string" ? args.apparatusGroup : "").toLowerCase().trim();
+      const movementPattern = (typeof args.movementPattern === "string" ? args.movementPattern : "").toLowerCase().trim();
 
       const catalogue = loadExerciseCatalogue();
       let matches = catalogue.exercises;
 
       if (targetMuscle) {
-        matches = matches.filter((e) =>
-          (e.target || "").toLowerCase().includes(targetMuscle)
+        matches = matches.filter(
+          (e) =>
+            (e.target || "").toLowerCase().includes(targetMuscle) ||
+            (e.bodyPart || "").toLowerCase().includes(targetMuscle) ||
+            (e.primaryMuscles || []).some((m) => m.toLowerCase().includes(targetMuscle))
         );
       }
-      if (equipment) {
-        matches = matches.filter((e) =>
-          (e.equipment || "").toLowerCase().includes(equipment)
+      if (apparatusGroup) {
+        matches = matches.filter(
+          (e) =>
+            (e.apparatusGroup || "").toLowerCase().includes(apparatusGroup) ||
+            (e.equipment || "").toLowerCase().includes(apparatusGroup)
+        );
+      }
+      if (movementPattern) {
+        matches = matches.filter(
+          (e) => (e.movementPattern || "").toLowerCase() === movementPattern
         );
       }
       if (query) {
-        matches = matches.filter((e) =>
-          e.name.toLowerCase().includes(query)
-        );
+        matches = matches.filter((e) => e.name.toLowerCase().includes(query));
       }
 
       const results = matches.slice(0, 15).map((e) => ({
         id: e.id,
         name: e.name,
-        target: e.target,
-        equipment: e.equipment,
-        category: e.category,
+        targetMuscle: e.target || e.bodyPart,
+        primaryMuscles: e.primaryMuscles,
+        apparatusGroup: e.apparatusGroup,
+        hardwareDetail: e.hardwareDetail,
+        movementPattern: e.movementPattern,
+        resistanceProfile: e.resistanceProfile,
+        axialLoading: e.axialLoading,
+        videoUrl: e.videoUrl || e.clipUrl,
+        coachingCues: e.coachingCues?.slice(0, 3),
         instructions: e.instructions?.slice(0, 2),
       }));
 

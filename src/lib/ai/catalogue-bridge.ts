@@ -8,6 +8,7 @@
 
 import { RagExercise } from "@/types/exercise-rag";
 import { appStore } from "../store";
+import { enrichExerciseWithBiomechanics } from "@/lib/rag/biomechanical-metadata";
 
 let cachedExercises: RagExercise[] | null = null;
 let fullCatalogueLoaded = false;
@@ -58,17 +59,22 @@ export function loadSafeExerciseCatalogue(): RagExercise[] {
     return cachedExercises;
   }
 
-  // 1. Server / Node.js runtime: load full 6,554-exercise catalogue via non-bundled require
+  // 1. Server / Node.js runtime: load full 6,554-exercise catalogue synchronously via process.getBuiltinModule
   if (typeof window === "undefined") {
     try {
-      const dynamicRequire = eval("require");
-      const loader = dynamicRequire("../rag/catalogue-loader");
-      if (loader && typeof loader.loadExerciseCatalogue === "function") {
-        const res = loader.loadExerciseCatalogue();
-        if (res && Array.isArray(res.exercises) && res.exercises.length > 0) {
-          cachedExercises = res.exercises;
-          fullCatalogueLoaded = true;
-          return cachedExercises!;
+      const getBuiltin = (process as unknown as { getBuiltinModule?: <T = unknown>(id: string) => T | undefined }).getBuiltinModule;
+      const fsMod = getBuiltin?.<{ existsSync: (p: string) => boolean; readFileSync: (p: string, enc: string) => string }>("node:fs");
+      const pathMod = getBuiltin?.<{ resolve: (...args: string[]) => string }>("node:path");
+      if (fsMod && pathMod) {
+        const filePath = pathMod.resolve(process.cwd(), "public", "data", "exercise-catalogue.json");
+        if (fsMod.existsSync(filePath)) {
+          const raw = fsMod.readFileSync(filePath, "utf-8");
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) {
+            cachedExercises = list as RagExercise[];
+            fullCatalogueLoaded = true;
+            return cachedExercises;
+          }
         }
       }
     } catch {
@@ -86,17 +92,25 @@ export function loadSafeExerciseCatalogue(): RagExercise[] {
   // 2. Immediate synchronous fallback while browser fetch resolves
   try {
     const storeExercises = appStore.getExercises();
-    cachedExercises = storeExercises.map((ex) => ({
-      id: ex.id,
-      name: ex.name,
-      bodyPart: ex.primaryMuscle.toLowerCase(),
-      target: ex.primaryMuscle.toLowerCase(),
-      equipment: ex.equipment.toLowerCase(),
-      secondaryMuscles: (ex.secondaryMuscles || []).map((m) => m.toLowerCase()),
-      instructions: ex.steps || [],
-      description: ex.steps?.join(" ") || ex.name,
-      category: "strength",
-    }));
+    cachedExercises = storeExercises.map((ex) => {
+      const enriched = enrichExerciseWithBiomechanics({
+        id: ex.id,
+        name: ex.name,
+        target: ex.primaryMuscle.toLowerCase(),
+        bodyPart: ex.primaryMuscle.toLowerCase(),
+        equipment: ex.equipment.toLowerCase(),
+        secondaryMuscles: (ex.secondaryMuscles || []).map((m) => m.toLowerCase()),
+        instructions: ex.steps || [],
+        description: ex.steps?.join(" ") || ex.name,
+        category: "strength",
+      });
+      return {
+        ...enriched,
+        clipUrl: ex.videoUrl || `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${ex.id}.mp4`,
+        imageUrl: ex.imageUrl || `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/${ex.id}.webp`,
+        videoUrl: ex.videoUrl || `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${ex.id}.mp4`,
+      } as RagExercise;
+    });
     return cachedExercises;
   } catch {
     return [];

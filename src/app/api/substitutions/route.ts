@@ -32,8 +32,21 @@ export async function GET(req: NextRequest) {
       : undefined;
 
     const catalogueResult = loadExerciseCatalogue();
+    let resolvedTarget = target;
+    let resolvedEquipment = equipment;
+
+    if ((!resolvedTarget || !resolvedEquipment) && name) {
+      const match = catalogueResult.exercises.find(
+        (e) => e.name.toLowerCase() === name.toLowerCase() || e.name.toLowerCase().includes(name.toLowerCase())
+      );
+      if (match) {
+        if (!resolvedTarget) resolvedTarget = match.target || match.bodyPart || '';
+        if (!resolvedEquipment) resolvedEquipment = match.equipment || '';
+      }
+    }
+
     const substitutes = findBiomechanicalSubstitutes(
-      { name, target, equipment, category },
+      { name, target: resolvedTarget, equipment: resolvedEquipment, category },
       catalogueResult.exercises,
       { excludedEquipment, preferredEquipment, limit }
     );

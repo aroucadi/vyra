@@ -49,8 +49,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-touch-fullscreen" content="yes" />
       </head>
-      <body className="bg-[#090C11] text-[#F9FAFB] min-h-screen flex flex-col antialiased selection:bg-amber-500/20 font-body">
+      <body className="bg-[#090C11] text-[#F9FAFB] min-h-screen flex flex-col antialiased selection:bg-amber-500/20 font-body select-none">
         <VyraAuthProvider>
           <main className="flex-1 flex flex-col">{children}</main>
         </VyraAuthProvider>

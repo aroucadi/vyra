@@ -20,6 +20,7 @@ import { clsx } from "clsx";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { appStore } from "@/lib/store";
 import { useIsClientHydrated, useVyraAuth } from "@/components/auth/VyraAuthProvider";
+import { haptics } from "@/lib/haptics";
 
 export type ChronobiologicalPhase =
   | "morning_anchor"
@@ -259,10 +260,10 @@ export function TraineeNav() {
          ========================================================================= */}
       <nav
         aria-label="Mobile Navigation"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090C11]/95 backdrop-blur-xl border-t border-[#1C2436] max-w-lg mx-auto pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_24px_rgba(0,0,0,0.6)] select-none"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 ios-glass-dock max-w-lg mx-auto pb-[max(env(safe-area-inset-bottom,0px),14px)] shadow-[0_-4px_30px_rgba(0,0,0,0.8)] select-none"
       >
         {/* 24-Hour Adaptive Chronobiological Glow Track */}
-        <div className="h-[2px] w-full bg-[#182030] overflow-hidden flex">
+        <div className="h-[2px] w-full bg-[#182030]/80 overflow-hidden flex">
           <div
             className={clsx(
               "h-full transition-all duration-700",
@@ -278,7 +279,7 @@ export function TraineeNav() {
           />
         </div>
 
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-14 px-1.5 pt-1">
           {navItems
             .filter((item) => item.label !== "AI Coach") // Coach accessible via Today header & prompt chips on mobile
             .map((item) => {
@@ -293,9 +294,12 @@ export function TraineeNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => {
+                    if (!isActive) haptics.selection();
+                  }}
                   aria-current={isActive ? "page" : undefined}
                   className={clsx(
-                    "flex flex-col items-center justify-center flex-1 py-1 transition-all rounded-xl relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-95 cursor-pointer",
+                    "flex flex-col items-center justify-center flex-1 py-1 transition-all rounded-xl relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ios-press-state cursor-pointer",
                     isActive
                       ? item.isChronoActive && chrono.phase === "kinetic_crucible"
                         ? "text-[#4be277] font-bold"
@@ -306,11 +310,11 @@ export function TraineeNav() {
                   <div className="relative">
                     <Icon
                       className={clsx(
-                        "w-5 h-5 transition-transform group-hover:scale-105",
+                        "w-5 h-5 transition-transform",
                         isActive
                           ? item.isChronoActive && chrono.phase === "kinetic_crucible"
-                            ? "stroke-[2.5] text-[#4be277]"
-                            : "stroke-[2.25] text-amber-400"
+                            ? "stroke-[2.5] text-[#4be277] scale-105"
+                            : "stroke-[2.35] text-amber-400 scale-105"
                           : "stroke-[1.75]"
                       )}
                       aria-hidden="true"
@@ -322,7 +326,7 @@ export function TraineeNav() {
                     )}
                   </div>
 
-                  <span className="text-[10px] mt-1 tracking-wider uppercase font-editorial font-bold">
+                  <span className="text-[10px] mt-0.5 tracking-wider uppercase font-editorial font-bold">
                     {item.label}
                   </span>
 

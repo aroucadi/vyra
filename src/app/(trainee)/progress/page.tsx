@@ -35,6 +35,7 @@ import {
   useIsClientHydrated,
   useVyraStoreVersion,
 } from "@/components/auth/VyraAuthProvider";
+import { haptics } from "@/lib/haptics";
 
 type ProgressStudioTab = "body_comp" | "strength_prs" | "flight_vault";
 
@@ -235,9 +236,12 @@ export default function ProgressPage() {
           <div className="flex items-center gap-1.5 p-1 bg-[#090d15] border border-[#1b2d47] rounded-xl self-start sm:self-auto text-xs font-mono">
             <button
               type="button"
-              onClick={() => setActiveStudio("body_comp")}
+              onClick={() => {
+                haptics.selection();
+                setActiveStudio("body_comp");
+              }}
               className={clsx(
-                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer ios-press-state",
                 activeStudio === "body_comp"
                   ? "bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40 shadow-sm"
                   : "text-slate-400 hover:text-white"
@@ -248,9 +252,12 @@ export default function ProgressPage() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveStudio("strength_prs")}
+              onClick={() => {
+                haptics.selection();
+                setActiveStudio("strength_prs");
+              }}
               className={clsx(
-                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer ios-press-state",
                 activeStudio === "strength_prs"
                   ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
                   : "text-slate-400 hover:text-white"
@@ -261,9 +268,12 @@ export default function ProgressPage() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveStudio("flight_vault")}
+              onClick={() => {
+                haptics.selection();
+                setActiveStudio("flight_vault");
+              }}
               className={clsx(
-                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1.5 cursor-pointer ios-press-state",
                 activeStudio === "flight_vault"
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
                   : "text-slate-400 hover:text-white"

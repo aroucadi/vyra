@@ -101,6 +101,68 @@ body {
   overflow-x: hidden;
 }
 
+/* ==========================================================================
+   SOVEREIGN MOBILE NATIVE HIG FOUNDATION (Safari & Chrome PWA)
+   ========================================================================== */
+
+/* 1. Obliterate web callout, tap highlight, and accidental selection */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* 2. Global UI chrome & app selection prevention (Native App feel) */
+body, button, nav, header, aside, footer, [role="button"], [role="tab"], .ios-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 3. Re-enable selection strictly for user text editing and logs */
+input, textarea, [contenteditable="true"], .selectable-text {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+/* 4. Touch action manipulation eliminates double-tap zoom & 300ms click delay */
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* 5. Native iOS momentum scroll stage */
+.native-scroll-stage {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 6. UIKit-style tactile press depression */
+.ios-press-state {
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.12s ease;
+  will-change: transform;
+}
+.ios-press-state:active {
+  transform: scale(0.965);
+  opacity: 0.88;
+}
+
+/* 7. Frosted Glass Materials (Apple HIG Dark System Material) */
+.ios-glass-dock {
+  background-color: rgba(9, 12, 17, 0.85);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ios-glass-header {
+  background-color: rgba(9, 12, 17, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 body {
   background-color: var(--alaa-canvas, var(--canvas));
   color: var(--alaa-text-chalk, var(--text-primary));

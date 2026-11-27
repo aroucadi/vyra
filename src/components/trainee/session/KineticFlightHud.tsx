@@ -33,6 +33,7 @@ import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensi
 import { MindMuscleBiofeedbackCard } from "@/components/trainee/anatomy/MindMuscleBiofeedbackCard";
 import { Interactive3DBiomechanicsLab } from "@/components/trainee/anatomy/Interactive3DBiomechanicsLab";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
+import { haptics } from "@/lib/haptics";
 import { resolveExerciseVideoUrl } from "@/lib/utils";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import type { CoachProposition } from "@/lib/ai/coach-agent";
@@ -297,11 +298,13 @@ export function KineticFlightHud({
   });
 
   const handleAdjustWeight = (delta: number) => {
+    haptics.light();
     const next = Math.max(0, exercise.currentWeight + delta);
     onUpdateWeight(Number(next.toFixed(1)));
   };
 
   const handleAdjustReps = (val: number) => {
+    haptics.light();
     const next = Math.max(1, Math.min(30, val));
     onUpdateReps(next);
   };
@@ -730,9 +733,12 @@ export function KineticFlightHud({
                   <button
                     key={btn.rir}
                     type="button"
-                    onClick={() => onUpdateRir(btn.rir)}
+                    onClick={() => {
+                      haptics.selection();
+                      onUpdateRir(btn.rir);
+                    }}
                     className={clsx(
-                      "py-1.5 rounded-lg text-[10px] font-mono font-bold transition active:scale-95 cursor-pointer border text-center",
+                      "py-1.5 rounded-lg text-[10px] font-mono font-bold transition ios-press-state cursor-pointer border text-center",
                       exercise.targetRir === btn.rir
                         ? btn.activeCls
                         : "bg-[#05080c] border-[#1b2d47] text-slate-400 hover:text-white"
@@ -801,8 +807,11 @@ export function KineticFlightHud({
             {/* 3.4 GIANT 60PX PRIMARY CTA: LOG SET & REST (ABSOLUTE BOTTOM ANCHOR) */}
             <button
               type="button"
-              onClick={onLogSet}
-              className="w-full h-15 py-3 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 text-[#05080c] rounded-xl font-display text-2xl tracking-wider uppercase flex items-center justify-between px-4 shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_30px_rgba(0,242,254,0.6)] active:scale-[0.98] transition-all cursor-pointer font-black shrink-0"
+              onClick={() => {
+                haptics.success();
+                onLogSet();
+              }}
+              className="w-full h-15 py-3 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 text-[#05080c] rounded-xl font-display text-2xl tracking-wider uppercase flex items-center justify-between px-4 shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_30px_rgba(0,242,254,0.6)] ios-press-state transition-all cursor-pointer font-black shrink-0"
             >
               <div className="flex items-center gap-2">
                 <Check className="w-6 h-6 stroke-[3]" />

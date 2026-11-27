@@ -30,6 +30,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { haptics } from "@/lib/haptics";
 
 interface MuscleFilter {
   id: string;
@@ -249,13 +250,14 @@ export default function TraineeExerciseLibraryPage() {
                 <button
                   key={mc.id}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    haptics.selection();
                     setSelectedMuscle((prev) =>
                       prev === mc.value && mc.value !== "all" ? "all" : mc.value
-                    )
-                  }
+                    );
+                  }}
                   className={clsx(
-                    "min-h-[30px] px-3 rounded-lg text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer active:scale-95 flex items-center justify-center",
+                    "min-h-[30px] px-3 rounded-lg text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer ios-press-state flex items-center justify-center",
                     isSelected
                       ? "bg-[#10b981]/20 text-[#10b981] border-[#10b981]/50 font-bold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                       : "bg-[#0f1724] text-slate-300 border-[#1b2d47] hover:bg-[#142032] hover:text-white"
@@ -275,13 +277,14 @@ export default function TraineeExerciseLibraryPage() {
                 <button
                   key={hw.id}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    haptics.selection();
                     setSelectedEquipment((prev) =>
                       prev === hw.value && hw.value !== "all" ? "all" : hw.value
-                    )
-                  }
+                    );
+                  }}
                   className={clsx(
-                    "min-h-[28px] px-2.5 rounded-lg text-[10px] font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer active:scale-95 flex items-center gap-1",
+                    "min-h-[28px] px-2.5 rounded-lg text-[10px] font-mono font-semibold whitespace-nowrap shrink-0 border transition-all cursor-pointer ios-press-state flex items-center gap-1",
                     isSelected
                       ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                       : "bg-[#0f1724] text-slate-400 border-[#1b2d47] hover:bg-[#142032] hover:text-slate-200"

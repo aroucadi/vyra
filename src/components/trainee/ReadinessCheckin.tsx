@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { appStore } from "@/lib/store";
 import { Moon, Sparkles, Check, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
+import { haptics } from "@/lib/haptics";
 
 interface ReadinessCheckinProps {
   userId: string;
@@ -22,6 +23,7 @@ export function ReadinessCheckin({ userId, onCheckedIn }: ReadinessCheckinProps)
   ];
 
   const handleSelect = (idx: number) => {
+    haptics.selection();
     setSelected(idx);
     setSubmitting(true);
     const opt = options[idx];

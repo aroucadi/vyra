@@ -27,6 +27,7 @@ import {
 import { getChronoPhase } from "@/components/trainee/TraineeNav";
 import { resolveProgramDay } from "@/lib/utils";
 import type { ExercisePrescription, WorkoutSession } from "@/lib/types";
+import { haptics } from "@/lib/haptics";
 import {
   Activity,
   ArrowRight,
@@ -461,6 +462,7 @@ export default function TodayPage() {
                           <button
                             type="button"
                             onClick={() => {
+                              haptics.medium();
                               setSwapExerciseTarget({
                                 id: ex.id,
                                 name: ex.exerciseName,
@@ -471,7 +473,7 @@ export default function TodayPage() {
                               });
                               setIsSwapDrawerOpen(true);
                             }}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] text-[10px] font-mono font-bold transition cursor-pointer active:scale-95"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#10b981]/15 hover:bg-[#10b981]/25 border border-[#10b981]/30 text-[#10b981] text-[10px] font-mono font-bold transition cursor-pointer ios-press-state"
                             title="Swap exercise with biomechanical alternative"
                           >
                             <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
@@ -490,6 +492,7 @@ export default function TodayPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      haptics.light();
                       const todaySess =
                         completedTodaySession ||
                         sessions.find((s) => s.date === todayDateStr) ||
@@ -497,7 +500,7 @@ export default function TodayPage() {
                       if (todaySess) setSelectedSession(todaySess);
                       else router.push("/progress");
                     }}
-                    className="w-full h-15 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.45)] transition-all cursor-pointer flex items-center justify-between px-4"
+                    className="w-full h-15 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 ios-press-state text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.45)] transition-all cursor-pointer flex items-center justify-between px-4"
                   >
                     <div className="flex items-center gap-2">
                       <Trophy className="w-6 h-6 stroke-[2.5]" />
@@ -508,8 +511,11 @@ export default function TodayPage() {
                 ) : isRestDay ? (
                   <button
                     type="button"
-                    onClick={() => setIsSuppDrawerOpen(true)}
-                    className="w-full h-14 py-3 bg-[#0f1724] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white font-display uppercase tracking-wider text-base font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+                    onClick={() => {
+                      haptics.light();
+                      setIsSuppDrawerOpen(true);
+                    }}
+                    className="w-full h-14 py-3 bg-[#0f1724] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white font-display uppercase tracking-wider text-base font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2 ios-press-state"
                   >
                     <span>REST DAY PROTOCOL // LOG NUTRITION</span>
                     <ArrowRight className="w-4 h-4 stroke-[2]" />
@@ -517,7 +523,8 @@ export default function TodayPage() {
                 ) : (
                   <Link
                     href={`/session?day=${todaySession?.id || "day_1"}`}
-                    className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
+                    onClick={() => haptics.heavy()}
+                    className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 ios-press-state text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
                   >
                     <div className="flex items-center gap-2">
                       <Play className="w-6 h-6 fill-current" />
@@ -535,7 +542,8 @@ export default function TodayPage() {
                   <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
                     <Link
                       href={`/session?day=${todaySession?.id || "day_1"}&mode=preview`}
-                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5"
+                      onClick={() => haptics.light()}
+                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 ios-press-state"
                     >
                       <Eye className="w-3.5 h-3.5 text-cyan-400" />
                       <span>Preview &amp; Cues</span>
@@ -543,8 +551,11 @@ export default function TodayPage() {
 
                     <button
                       type="button"
-                      onClick={() => setIsAdjustSheetOpen(true)}
-                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={() => {
+                        haptics.medium();
+                        setIsAdjustSheetOpen(true);
+                      }}
+                      className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 cursor-pointer ios-press-state"
                     >
                       <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
                       <span>Adjust Session</span>

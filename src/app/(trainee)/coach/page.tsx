@@ -10,6 +10,7 @@ import { resolveProgramDay } from "@/lib/utils";
 import { Send, Sparkles, Brain, ShieldAlert, Dumbbell, Scale, Activity } from "lucide-react";
 import { clsx } from "clsx";
 import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
+import { haptics } from "@/lib/haptics";
 
 interface Message {
   id: string;
@@ -107,6 +108,7 @@ function CoachChat() {
   const handleSend = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if (!query || isStreaming) return;
+    haptics.light();
 
     const userMsg: Message = {
       id: `msg_user_${Date.now()}`,

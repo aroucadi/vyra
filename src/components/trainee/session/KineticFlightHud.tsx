@@ -34,8 +34,9 @@ import { MindMuscleBiofeedbackCard } from "@/components/trainee/anatomy/MindMusc
 import { Interactive3DBiomechanicsLab } from "@/components/trainee/anatomy/Interactive3DBiomechanicsLab";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import { haptics } from "@/lib/haptics";
-import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import type { CoachProposition } from "@/lib/ai/coach-agent";
 import type { ExerciseBiofeedbackTag } from "@/lib/types";
 import {
@@ -313,7 +314,7 @@ export function KineticFlightHud({
     <div className="min-h-screen lg:h-screen bg-[#05080c] text-[#E1E7F0] flex flex-col justify-between max-w-md lg:max-w-6xl mx-auto w-full select-none font-body pb-safe overflow-y-auto lg:overflow-hidden px-2 sm:px-4">
       {/* 1. TOP HUD BAR: STATION + EXERCISE + PROMINENT VIDEO TRIGGER */}
       <header className="bg-[#05080c] border-b border-[#1b2d47]/70 px-3 py-2.5 flex items-center justify-between gap-2 shrink-0 z-30">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
             onClick={onExit}
@@ -322,6 +323,13 @@ export function KineticFlightHud({
           >
             <X className="w-4 h-4" />
           </button>
+
+          <ExerciseThumbnail
+            exerciseId={exercise.exerciseId || exercise.id}
+            exerciseName={exercise.name}
+            stillUrl={exercise.stillUrl || exercise.imageUrl}
+            size="md"
+          />
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -902,10 +910,21 @@ export function KineticFlightHud({
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
         exercise={{
+          id: exercise.exerciseId || exercise.id,
           name: exercise.name,
           target: exercise.target,
           equipment: exercise.equipment,
           videoUrl: effectiveVideoUrl,
+          clipUrl:
+            exercise.clipUrl ||
+            (exercise.exerciseId
+              ? getOpenGymClipUrl(exercise.exerciseId)
+              : undefined),
+          stillUrl:
+            exercise.imageUrl ||
+            (exercise.exerciseId
+              ? getOpenGymStillUrl(exercise.exerciseId)
+              : undefined),
           formCue: exercise.formCue,
         }}
       />

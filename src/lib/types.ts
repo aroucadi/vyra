@@ -86,6 +86,7 @@ export interface Exercise {
   equipment: string;
   videoUrl?: string;
   clipUrl?: string;
+  stillUrl?: string;
   imageUrl?: string;
   wikiUrl?: string;
   muscleWikiId?: number;
@@ -169,6 +170,7 @@ export interface ExercisePrescription {
   formCueText?: string; // e.g. "Pause on sternum, tuck elbows 45°"
   videoUrl?: string;
   clipUrl?: string;
+  stillUrl?: string;
   imageUrl?: string;
   wikiMuscleUrl?: string;
   targetMuscleGroups: string[];

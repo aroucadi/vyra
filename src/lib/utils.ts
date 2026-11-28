@@ -243,13 +243,59 @@ export function isDirectVideoUrl(url?: string): boolean {
   return /\.(mp4|webm)($|\?)/i.test(url) || url.includes("media.musclewiki.com") || url.includes("/media/clip/");
 }
 
+export function normalizeOpenGymId(id?: string): string {
+  return String(id || "")
+    .replace(/^[^\d]*/, "")
+    .padStart(4, "0");
+}
+
+export function inferApparatusFromExercise(
+  name: string,
+  equipment?: string
+): "dumbbell" | "barbell" | "cable" | "machine" | "bodyweight" {
+  const text = `${name || ""} ${equipment || ""}`.toLowerCase();
+  if (text.includes("dumbbell") || text.includes("db")) return "dumbbell";
+  if (text.includes("barbell") || text.includes("bb")) return "barbell";
+  if (
+    text.includes("cable") ||
+    text.includes("cuff") ||
+    text.includes("pulldown") ||
+    text.includes("pushdown")
+  ) {
+    return "cable";
+  }
+  if (
+    text.includes("machine") ||
+    text.includes("lever") ||
+    text.includes("press machine") ||
+    text.includes("hack") ||
+    text.includes("pec deck")
+  ) {
+    return "machine";
+  }
+  if (
+    text.includes("bodyweight") ||
+    text.includes("body weight") ||
+    text.includes("pull-up") ||
+    text.includes("pull up") ||
+    text.includes("chin-up") ||
+    text.includes("chin up") ||
+    text.includes("push-up") ||
+    text.includes("push up") ||
+    text.includes("dip")
+  ) {
+    return "bodyweight";
+  }
+  return "dumbbell";
+}
+
 export function getOpenGymClipUrl(id: string): string {
-  const normId = String(id).padStart(4, "0");
+  const normId = normalizeOpenGymId(id);
   return `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/${normId}.mp4`;
 }
 
 export function getOpenGymStillUrl(id: string): string {
-  const normId = String(id).padStart(4, "0");
+  const normId = normalizeOpenGymId(id);
   return `https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/${normId}.webp`;
 }
 
@@ -280,8 +326,8 @@ export function resolveExerciseVideoUrl(
     return options.clipUrl;
   }
 
-  // 2. OpenGym numeric ID passed directly (e.g. "0025" or 25)
-  if (options?.id && /^\d{1,4}$/.test(options.id.trim())) {
+  // 2. OpenGym numeric ID passed directly (e.g. "0025", 25, or "ex_0025")
+  if (options?.id && /^(?:ex_)?\d{1,4}$/i.test(options.id.trim())) {
     return getOpenGymClipUrl(options.id);
   }
 
@@ -313,7 +359,7 @@ export function resolveExerciseVideoUrl(
     ) {
       return exactMatch.videoUrl;
     }
-    if (exactMatch?.id && /^\d{1,4}$/.test(exactMatch.id.trim())) {
+    if (exactMatch?.id && /^(?:ex_)?\d{1,4}$/i.test(exactMatch.id.trim())) {
       return getOpenGymClipUrl(exactMatch.id);
     }
   }

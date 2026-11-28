@@ -8,6 +8,7 @@ import { ExercisePrescription } from "@/lib/types";
 import { RagExercise } from "@/types/exercise-rag";
 import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
 import { WeeklyVolumeDashboard } from "@/components/trainee/WeeklyVolumeDashboard";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import {
   Dumbbell,
   ArrowRight,
@@ -376,6 +377,12 @@ export default function ProgramCalendarPage() {
                         <span className="w-5 h-5 rounded-lg bg-[#182030] border border-[#1C2436] text-[10px] font-mono font-bold text-amber-400 flex items-center justify-center shrink-0">
                           #{idx + 1}
                         </span>
+                        <ExerciseThumbnail
+                          exerciseId={ex.exerciseId || ex.id}
+                          exerciseName={ex.exerciseName}
+                          stillUrl={ex.stillUrl}
+                          size="sm"
+                        />
                         <div className="min-w-0 space-y-0.5">
                           <span className="font-semibold text-white truncate text-xs block group-hover:text-amber-300 transition-colors">
                             {formatExerciseName(ex.exerciseName)}

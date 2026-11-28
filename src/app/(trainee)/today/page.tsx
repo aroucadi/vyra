@@ -14,6 +14,7 @@ import { DayZeroOnboardingCard } from "@/components/trainee/DayZeroOnboardingCar
 import { WorkoutSessionDetailSheet } from "@/components/trainee/WorkoutSessionDetailSheet";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import { VyraLogo } from "@/components/brand/VyraLogo";
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { soundService } from "@/lib/in-gym/sound";
@@ -25,19 +26,22 @@ import {
   useVyraStoreVersion,
 } from "@/components/auth/VyraAuthProvider";
 import { getChronoPhase } from "@/components/trainee/TraineeNav";
-import { resolveProgramDay } from "@/lib/utils";
+import { resolveProgramDay, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import type { ExercisePrescription, WorkoutSession } from "@/lib/types";
 import { haptics } from "@/lib/haptics";
+import { clsx } from "clsx";
 import {
   Activity,
   ArrowRight,
   ArrowRightLeft,
+  Calendar,
   ChevronRight,
   Clock,
   Dumbbell,
   Eye,
   Flame,
   Play,
+  RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -76,6 +80,7 @@ export default function TodayPage() {
   });
   const [tick, setTick] = useState(0);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
+  const [inspectedDayOfWeek, setInspectedDayOfWeek] = useState<number | null>(null);
   const [swapExerciseTarget, setSwapExerciseTarget] = useState<{
     id?: string;
     name: string;
@@ -89,6 +94,8 @@ export default function TodayPage() {
     target?: string;
     equipment?: string;
     videoUrl?: string;
+    clipUrl?: string;
+    stillUrl?: string;
     formCue?: string;
   } | null>(null);
 
@@ -98,7 +105,7 @@ export default function TodayPage() {
       currentUser.id,
       swapExerciseTarget.name,
       candidate.name,
-      resolved.dayOfWeek
+      currentInspectedDay
     );
     if (res.success) {
       soundService.playTargetHitFeedback(true);
@@ -127,14 +134,26 @@ export default function TodayPage() {
         Math.min(resolved.weekIndex - 1, program.weeks.length - 1)
       ]
     : undefined;
+
+  const currentInspectedDay = inspectedDayOfWeek ?? resolved.dayOfWeek;
   const todaySession = currentWeek?.days
     ? currentWeek.days.find((d) => d.dayOfWeek === resolved.dayOfWeek)
     : undefined;
-  const todayExercises = todaySession?.blocks
-    ? todaySession.blocks.flatMap((b) => b.exercises)
+  const displaySession = currentWeek?.days
+    ? currentWeek.days.find((d) => d.dayOfWeek === currentInspectedDay) ||
+      todaySession ||
+      currentWeek.days[0]
+    : todaySession;
+  const displayExercises = displaySession?.blocks
+    ? displaySession.blocks.flatMap((b) => b.exercises)
     : [];
+  const todayExercises = displayExercises;
   const estimatedPaceMin = Math.round(
-    Math.max(25, todayExercises.reduce((sum, e) => sum + e.sets, 0) * 2.5)
+    Math.max(25, displayExercises.reduce((sum, e) => sum + e.sets, 0) * 2.5)
+  );
+  const displayScheduledSets = displayExercises.reduce((sum, e) => sum + e.sets, 0);
+  const isInspectingDifferentDay = Boolean(
+    currentWeek?.days && currentInspectedDay !== resolved.dayOfWeek
   );
 
   // Chronobiological phase
@@ -174,7 +193,7 @@ export default function TodayPage() {
     insight,
     readinessStatus,
     hasReadinessInput,
-    isRestDay,
+    isRestDay: timelineRestDay,
     isDayZero,
   } = useMemo(
     () =>
@@ -184,6 +203,11 @@ export default function TodayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isHydrated, currentUser.id, tick, effectiveForceDayZero, storeVersion]
   );
+
+  const isDisplayRestDay = displaySession
+    ? Boolean(displaySession.isRestDay || displayExercises.length === 0)
+    : timelineRestDay;
+  const isRestDay = isDisplayRestDay;
 
   const handleMomentClick = (moment: TimelineMoment) => {
     if (moment.learnType === "supplements" || moment.learnType === "hydration") {
@@ -229,11 +253,12 @@ export default function TodayPage() {
       (sum, l) => sum + l.weightKg * l.reps,
       0
     ) || 0;
-  const isWorkoutDone = Boolean(
+  const isCalendarWorkoutDone = Boolean(
     completedTodaySession ||
       heroMoment?.badge === "Done" ||
       moments.find((m) => m.id === "moment_workout")?.badge === "Done"
   );
+  const isWorkoutDone = !isInspectingDifferentDay && isCalendarWorkoutDone;
   const latestBiometrics = isHydrated
     ? appStore.getLatestWearableBiometrics(currentUser.id)
     : undefined;
@@ -368,26 +393,125 @@ export default function TodayPage() {
              ========================================================================= */}
           <div className="lg:col-span-8 space-y-6 order-1">
             
+            {/* MULTI-DAY PROGRAM WORKOUT SELECTOR (PILL TABS) */}
+            {currentWeek?.days && currentWeek.days.length > 0 && (
+              <div className="p-2 bg-[#0c121e] border border-[#1b2d47] rounded-2xl flex items-center justify-between gap-1 shadow-lg overflow-x-auto">
+                {currentWeek.days.map((day, idx) => {
+                  const isSelected = day.dayOfWeek === currentInspectedDay;
+                  const isToday = day.dayOfWeek === resolved.dayOfWeek;
+                  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                  const dayLabel = dayNames[day.dayOfWeek] || `D${idx + 1}`;
+                  const isRest = day.isRestDay;
+
+                  return (
+                    <button
+                      key={day.id || idx}
+                      type="button"
+                      data-day-of-week={day.dayOfWeek}
+                      data-selected={isSelected}
+                      data-is-today={isToday}
+                      onClick={() => {
+                        haptics.selection();
+                        setInspectedDayOfWeek(day.dayOfWeek === resolved.dayOfWeek ? null : day.dayOfWeek);
+                      }}
+                      className={clsx(
+                        "flex-1 py-2 px-1 rounded-xl flex flex-col items-center gap-0.5 transition-all cursor-pointer relative ios-press-state min-w-0 select-none",
+                        isSelected
+                          ? "bg-gradient-to-b from-[#10b981] to-[#059669] text-[#05080c] font-black shadow-lg shadow-emerald-500/30 scale-[1.03] z-10"
+                          : isToday
+                          ? "bg-[#111e33] hover:bg-[#162744] text-white border border-[#10b981]/50 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                          : "bg-[#070b14] hover:bg-[#101726] text-slate-400 hover:text-slate-200 border border-[#1b2d47]/50"
+                      )}
+                      title={`${day.label}${isToday ? " (Today)" : ""}`}
+                    >
+                      {/* Glowing Active Calendar Day Badge */}
+                      {isToday && (
+                        <span
+                          className={clsx(
+                            "text-[8px] font-mono uppercase tracking-wider font-extrabold px-1 py-0 rounded leading-tight flex items-center gap-0.5 mb-0.5",
+                            isSelected
+                              ? "bg-[#05080c]/85 text-[#10b981]"
+                              : "bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40 shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                          )}
+                        >
+                          <span className="w-1 h-1 rounded-full bg-[#10b981] animate-ping" />
+                          TODAY
+                        </span>
+                      )}
+
+                      <span
+                        className={clsx(
+                          "text-xs font-display uppercase tracking-wider font-bold truncate max-w-full",
+                          isSelected ? "text-[#05080c]" : "text-slate-200"
+                        )}
+                      >
+                        {dayLabel}
+                      </span>
+
+                      <span
+                        className={clsx(
+                          "text-[9px] font-mono truncate max-w-full leading-none",
+                          isSelected
+                            ? "text-[#05080c]/80 font-bold"
+                            : isRest
+                            ? "text-slate-500"
+                            : "text-emerald-400/80"
+                        )}
+                      >
+                        {isRest ? "REST" : `D${idx + 1}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* 3. TODAY'S TRAINING DIRECTIVE & HERO CTA */}
             <section className="p-4 sm:p-5 bg-gradient-to-b from-[#111624] to-[#0c1018] border border-[#1b2d47] rounded-2xl space-y-4 shadow-xl">
               <div className="flex items-center justify-between border-b border-[#1b2d47]/70 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Dumbbell className="w-4 h-4 text-[#10b981]" />
                   <span className="text-xs font-display uppercase tracking-wider text-white font-bold">
-                    Training Directive // 01 of 01
+                    {isInspectingDifferentDay
+                      ? `Inspecting Day ${(currentWeek?.days.findIndex((d) => d.dayOfWeek === currentInspectedDay) ?? currentInspectedDay) + 1} (${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][currentInspectedDay] || ""})`
+                      : "Training Directive // 01 of 01"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded border border-[#10b981]/30 font-bold">
-                  {isRestDay ? "REST DAY" : isWorkoutDone ? "COMPLETED TODAY ✓" : "SCHEDULED"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {isInspectingDifferentDay && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptics.light();
+                        setInspectedDayOfWeek(null);
+                      }}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 font-bold transition flex items-center gap-1 cursor-pointer ios-press-state"
+                      title="Return to active calendar today"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Return to Today</span>
+                    </button>
+                  )}
+                  <span className="text-[10px] font-mono text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded border border-[#10b981]/30 font-bold">
+                    {isInspectingDifferentDay
+                      ? isRestDay
+                        ? "REST DAY // PREVIEW"
+                        : "PREVIEW // SCHEDULED"
+                      : isRestDay
+                      ? "REST DAY"
+                      : isWorkoutDone
+                      ? "COMPLETED TODAY ✓"
+                      : "SCHEDULED"}
+                  </span>
+                </div>
               </div>
 
               <div>
                 <h2 className="text-xl sm:text-2xl font-display uppercase tracking-wider font-extrabold text-white">
-                  {todaySession?.label || (isRestDay ? "Somatic Adaptation & Rest" : "High Mechanical Tension Split")}
+                  {displaySession?.label || (isRestDay ? "Somatic Adaptation & Rest" : "High Mechanical Tension Split")}
                 </h2>
                 <div className="flex items-center gap-3 text-xs font-mono text-slate-400 mt-1">
-                  <span>{todayExercises.length} Movements</span>
+                  <span>{displayExercises.length} Movements</span>
                   <span>·</span>
                   <span>~{estimatedPaceMin} Min Pace</span>
                   <span>·</span>
@@ -398,13 +522,13 @@ export default function TodayPage() {
               {/* Overload Delta Callout */}
               <div className="p-3 bg-[#05080c] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-400 text-[11px]">
-                  Progression Target:
+                  {isInspectingDifferentDay ? "Scheduled Target:" : "Progression Target:"}
                 </span>
                 <span className="text-[#10b981] font-bold">
-                  {completedTodaySession
+                  {!isInspectingDifferentDay && completedTodaySession
                     ? `${completedVolumeKg > 0 ? completedVolumeKg.toLocaleString() + " KG Volume Logged" : "Completed"}`
-                    : todayExercises.length > 0
-                    ? `${todayExercises.reduce((sum, e) => sum + e.sets, 0)} Working Sets Scheduled`
+                    : displayExercises.length > 0
+                    ? `${displayScheduledSets} Working Sets Scheduled`
                     : "Active Recovery"}
                 </span>
               </div>
@@ -428,9 +552,15 @@ export default function TodayPage() {
                         className="p-3 bg-[#070b12] rounded-xl border border-[#1b2d47] flex items-center justify-between text-xs font-mono hover:border-cyan-500/40 transition group"
                       >
                         <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                          <span className="text-[11px] text-[#10b981] font-bold w-5">
+                          <span className="text-[11px] text-[#10b981] font-bold w-5 shrink-0">
                             {idx + 1}.
                           </span>
+                          <ExerciseThumbnail
+                            exerciseId={ex.exerciseId || ex.id}
+                            exerciseName={ex.exerciseName}
+                            stillUrl={ex.stillUrl}
+                            size="sm"
+                          />
                           <span className="text-slate-200 truncate font-semibold text-sm">
                             {ex.exerciseName}
                           </span>
@@ -445,10 +575,21 @@ export default function TodayPage() {
                             type="button"
                             onClick={() =>
                               setVideoModalExercise({
+                                id: ex.exerciseId || ex.id,
                                 name: ex.exerciseName,
                                 target: ex.targetMuscleGroups?.[0],
                                 equipment: ex.selectedEquipment,
                                 videoUrl: ex.videoUrl,
+                                clipUrl:
+                                  ex.clipUrl ||
+                                  (ex.exerciseId
+                                    ? getOpenGymClipUrl(ex.exerciseId)
+                                    : undefined),
+                                stillUrl:
+                                  ex.imageUrl ||
+                                  (ex.exerciseId
+                                    ? getOpenGymStillUrl(ex.exerciseId)
+                                    : undefined),
                                 formCue: ex.formCueText,
                               })
                             }
@@ -522,13 +663,13 @@ export default function TodayPage() {
                   </button>
                 ) : (
                   <Link
-                    href={`/session?day=${todaySession?.id || "day_1"}`}
+                    href={`/session?day=${displaySession?.id || "day_1"}`}
                     onClick={() => haptics.heavy()}
                     className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 ios-press-state text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
                   >
                     <div className="flex items-center gap-2">
                       <Play className="w-6 h-6 fill-current" />
-                      <span>COMMENCE SESSION</span>
+                      <span>{isInspectingDifferentDay ? "START INSPECTED SESSION" : "COMMENCE SESSION"}</span>
                     </div>
                     <div className="flex items-center gap-1 bg-[#05080c]/80 text-[#10b981] px-2.5 py-1 rounded-lg border border-[#10b981]/40 font-mono text-xs font-bold">
                       <span>~{estimatedPaceMin} MIN</span>
@@ -541,7 +682,7 @@ export default function TodayPage() {
                 {!isRestDay && !isWorkoutDone && (
                   <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
                     <Link
-                      href={`/session?day=${todaySession?.id || "day_1"}&mode=preview`}
+                      href={`/session?day=${displaySession?.id || "day_1"}&mode=preview`}
                       onClick={() => haptics.light()}
                       className="p-2.5 bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-slate-300 hover:text-white rounded-xl text-center transition flex items-center justify-center gap-1.5 ios-press-state"
                     >

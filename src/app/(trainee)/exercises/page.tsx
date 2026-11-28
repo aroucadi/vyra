@@ -7,8 +7,9 @@ import { ExerciseDetailSheet } from "@/components/trainee/ExerciseDetailSheet";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { AnatomicalBodyMap } from "@/components/trainee/AnatomicalBodyMap";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import { VyraLogo } from "@/components/brand/VyraLogo";
-import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -425,16 +426,23 @@ export default function TraineeExerciseLibraryPage() {
                   className="w-full rounded-2xl bg-[#0f1724] border border-[#1b2d47] hover:border-cyan-500/50 hover:bg-[#142032]/70 transition-all duration-200 p-3.5 space-y-3 shadow-md relative group"
                 >
                   <div className="flex items-start gap-3">
-                    {/* Integrated Vector Anatomical Spotlight (64x64) */}
-                    <div className="w-16 h-18 rounded-xl bg-[#05080c] border border-[#1b2d47] flex items-center justify-center shrink-0 overflow-hidden relative group-hover:border-cyan-500/40 transition">
-                      <AnatomicalTensionSpotlight
-                        primaryMuscle={primaryTarget}
-                        secondaryMuscles={ex.secondaryMuscles || []}
-                        accentColor="emerald"
-                        showToggle={false}
-                        className="w-14 h-16 scale-95"
-                      />
-                    </div>
+                    {/* Integrated OpenGym Visual Thumbnail / Anatomical Frame */}
+                    <ExerciseThumbnail
+                      exerciseId={ex.id}
+                      exerciseName={ex.name}
+                      imageUrl={ex.imageUrl}
+                      size="lg"
+                      className="w-16 h-18 rounded-xl bg-[#05080c] border border-[#1b2d47] group-hover:border-cyan-500/40 transition"
+                      fallback={
+                        <AnatomicalTensionSpotlight
+                          primaryMuscle={primaryTarget}
+                          secondaryMuscles={ex.secondaryMuscles || []}
+                          accentColor="emerald"
+                          showToggle={false}
+                          className="w-14 h-16 scale-95"
+                        />
+                      }
+                    />
 
                     {/* Main Content Details */}
                     <div className="min-w-0 flex-1 space-y-1">
@@ -488,7 +496,20 @@ export default function TraineeExerciseLibraryPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-[#1b2d47]/70 text-xs font-mono">
                     <button
                       type="button"
-                      onClick={() => setVideoModalExercise({ ...ex, videoUrl })}
+                      onClick={() =>
+                        setVideoModalExercise({
+                          ...ex,
+                          id: ex.id,
+                          name: ex.name,
+                          videoUrl,
+                          clipUrl:
+                            ex.clipUrl ||
+                            (ex.id ? getOpenGymClipUrl(ex.id) : undefined),
+                          imageUrl:
+                            ex.imageUrl ||
+                            (ex.id ? getOpenGymStillUrl(ex.id) : undefined),
+                        })
+                      }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#05080c] hover:bg-[#142032] border border-[#1b2d47] text-cyan-400 hover:text-cyan-300 font-bold transition active:scale-95 cursor-pointer text-[11px]"
                     >
                       <Video className="w-3.5 h-3.5" />

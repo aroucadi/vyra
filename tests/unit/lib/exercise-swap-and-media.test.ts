@@ -5,13 +5,15 @@ import {
   isDirectVideoUrl,
   getOpenGymClipUrl,
   getOpenGymStillUrl,
+  buildExerciseVideoUrl,
 } from '../../../src/lib/utils';
 import { appStore } from '../../../src/lib/store';
 import { loadExerciseCatalogue, getExerciseById } from '../../../src/lib/rag/catalogue-loader';
 
 describe('Exercise Library Enrichment & Biomechanical Swap Engine', () => {
   describe('Direct Video & Media Resolution', () => {
-    it('generates valid OpenGym clip and still CDN URLs', () => {
+    it('generates valid OpenGym clip and still CDN URLs with normalization', () => {
+      // Direct numeric IDs
       const clip = getOpenGymClipUrl('0025');
       assert.equal(
         clip,
@@ -22,6 +24,62 @@ describe('Exercise Library Enrichment & Biomechanical Swap Engine', () => {
       assert.equal(
         still,
         'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/1465.webp'
+      );
+
+      // Prefix-normalized IDs (e.g. 'ex_0576' -> '0576')
+      assert.equal(
+        getOpenGymClipUrl('ex_0576'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/0576.mp4'
+      );
+      assert.equal(
+        getOpenGymClipUrl('ex_25'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/0025.mp4'
+      );
+      assert.equal(
+        getOpenGymClipUrl('576'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/0576.mp4'
+      );
+
+      assert.equal(
+        getOpenGymStillUrl('ex_0576'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/0576.webp'
+      );
+      assert.equal(
+        getOpenGymStillUrl('ex_1465'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/1465.webp'
+      );
+      assert.equal(
+        getOpenGymStillUrl('25'),
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/still/0025.webp'
+      );
+    });
+
+    it('builds precision YouTube form demonstration search URLs with duration filter', () => {
+      const ytUrl = buildExerciseVideoUrl('Barbell Bench Press', {
+        equipment: 'barbell',
+        targetMuscle: 'chest',
+      });
+
+      assert.ok(ytUrl.startsWith('https://www.youtube.com/results?search_query='));
+      assert.ok(ytUrl.includes('sp=EgIYAQ%3D%3D'), 'Must contain <4 min YouTube duration filter');
+      
+      const parsed = new URL(ytUrl);
+      const query = parsed.searchParams.get('search_query') || '';
+      assert.ok(query.includes('"Barbell Bench Press"'), 'Must quote core movement');
+      assert.ok(query.includes('form OR technique OR tutorial'), 'Must include form boolean operators');
+      assert.ok(query.includes('-vlog'), 'Must filter out vlogs');
+
+      // Test anatomical cue injection (e.g. Reverse Fly -> rear delt)
+      const reverseFlyUrl = buildExerciseVideoUrl('Reverse Fly');
+      const reverseFlyQuery = new URL(reverseFlyUrl).searchParams.get('search_query') || '';
+      assert.ok(reverseFlyQuery.includes('rear delt'), 'Must disambiguate Reverse Fly to rear delt');
+    });
+
+    it('resolves direct MP4 video when prefixed ID like ex_0025 is provided', () => {
+      const videoUrl = resolveExerciseVideoUrl('barbell bench press', { id: 'ex_0025' });
+      assert.equal(
+        videoUrl,
+        'https://cdn.jsdelivr.net/gh/DuarteSantos8/openGym@main/catalogue/media/clip/0025.mp4'
       );
     });
 

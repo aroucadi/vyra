@@ -97,6 +97,7 @@ export interface RagExercise {
   textSource?: string;
   videoUrl?: string;
   clipUrl?: string;
+  stillUrl?: string;
   imageUrl?: string;
 
   // Enriched Biomechanical Metadata for Agentic Swapping & AI Reasoning

@@ -28,7 +28,8 @@ import { DailyAiCoachAdapterCard } from "@/components/trainee/DailyAiCoachAdapte
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
-import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
+import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import { inferPrimaryMuscleFromExerciseName } from "@/lib/ai/sensory-memory";
 import type { ActiveExercise } from "./types";
 import type { AutoregulationPlan } from "@/lib/autoregulation";
@@ -369,6 +370,12 @@ export function SessionPreviewView({
                   <span className="font-mono text-slate-500 text-[10px] w-6 flex-shrink-0">
                     {ex.subMovementOrder || `${idx + 1}.`}
                   </span>
+                  <ExerciseThumbnail
+                    exerciseId={ex.exerciseId || ex.id}
+                    exerciseName={ex.name}
+                    stillUrl={ex.stillUrl || ex.imageUrl}
+                    size="sm"
+                  />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-medium text-slate-200 truncate">
@@ -716,7 +723,24 @@ export function SessionPreviewView({
       <ExerciseVideoModal
         isOpen={Boolean(videoModalExercise)}
         onClose={() => setVideoModalExercise(null)}
-        exercise={videoModalExercise}
+        exercise={
+          videoModalExercise
+            ? {
+                ...videoModalExercise,
+                id: videoModalExercise.exerciseId || videoModalExercise.id,
+                clipUrl:
+                  videoModalExercise.clipUrl ||
+                  (videoModalExercise.exerciseId
+                    ? getOpenGymClipUrl(videoModalExercise.exerciseId)
+                    : undefined),
+                stillUrl:
+                  videoModalExercise.imageUrl ||
+                  (videoModalExercise.exerciseId
+                    ? getOpenGymStillUrl(videoModalExercise.exerciseId)
+                    : undefined),
+              }
+            : null
+        }
       />
     </div>
   );

@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/sheet";
 import { SubstitutionCopilotDrawer } from "@/components/trainee/SubstitutionCopilotDrawer";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
+import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
-import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import type { ActiveExercise } from "./types";
 import type { Exercise } from "@/lib/types";
 
@@ -251,9 +252,15 @@ export function SessionSheets({
                     className="flex-1 text-left min-w-0 cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-amber-400 font-bold">
+                      <span className="text-[10px] font-mono text-amber-400 font-bold shrink-0">
                         #{idx + 1}
                       </span>
+                      <ExerciseThumbnail
+                        exerciseId={ex.exerciseId || ex.id}
+                        exerciseName={ex.name}
+                        stillUrl={ex.stillUrl || ex.imageUrl}
+                        size="sm"
+                      />
                       <span className="text-xs font-semibold text-white truncate">
                         {ex.name}
                       </span>
@@ -308,11 +315,21 @@ export function SessionSheets({
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
         exercise={{
-          id: activeEx.id,
+          id: activeEx.exerciseId || activeEx.id,
           name: activeEx.name,
           target: activeEx.target,
           equipment: activeEx.equipment,
           videoUrl: activeEx.videoUrl,
+          clipUrl:
+            activeEx.clipUrl ||
+            (activeEx.exerciseId
+              ? getOpenGymClipUrl(activeEx.exerciseId)
+              : undefined),
+          stillUrl:
+            activeEx.imageUrl ||
+            (activeEx.exerciseId
+              ? getOpenGymStillUrl(activeEx.exerciseId)
+              : undefined),
           formCue: activeEx.formCue,
         }}
       />

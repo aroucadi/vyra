@@ -36,6 +36,7 @@ export interface ActiveExercise {
   formCue?: string;
   videoUrl?: string;
   clipUrl?: string;
+  stillUrl?: string;
   imageUrl?: string;
   loadGuidance?: string;
   completedSets: CompletedSetEntry[];

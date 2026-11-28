@@ -26,7 +26,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { resolveExerciseVideoUrl } from "@/lib/utils";
+import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import { soundService } from "@/lib/in-gym/sound";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 
@@ -241,6 +241,8 @@ export function SubstitutionCopilotDrawer({
           ) : candidates.length > 0 ? (
             candidates.map((cand, idx) => {
               const videoUrl = resolveExerciseVideoUrl(cand.exercise.name, {
+                id: cand.exercise.id,
+                clipUrl: cand.exercise.clipUrl,
                 explicitVideoUrl: cand.exercise.videoUrl,
               });
 
@@ -295,7 +297,24 @@ export function SubstitutionCopilotDrawer({
                     {videoUrl && (
                       <button
                         type="button"
-                        onClick={() => setPreviewVideoExercise(cand.exercise)}
+                        onClick={() =>
+                          setPreviewVideoExercise({
+                            ...cand.exercise,
+                            id: cand.exercise.id,
+                            name: cand.exercise.name,
+                            clipUrl:
+                              cand.exercise.clipUrl ||
+                              (cand.exercise.id
+                                ? getOpenGymClipUrl(cand.exercise.id)
+                                : undefined),
+                            imageUrl:
+                              cand.exercise.imageUrl ||
+                              (cand.exercise.id
+                                ? getOpenGymStillUrl(cand.exercise.id)
+                                : undefined),
+                            videoUrl,
+                          })
+                        }
                         className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[10px] font-mono font-bold hover:bg-cyan-500/30 shrink-0 cursor-pointer transition active:scale-95"
                         title="Preview form video demonstration"
                       >

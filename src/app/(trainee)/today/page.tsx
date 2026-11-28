@@ -48,6 +48,7 @@ import {
   Trophy,
   Video,
   Zap,
+  Loader2,
 } from "lucide-react";
 
 export default function TodayPage() {
@@ -78,6 +79,7 @@ export default function TodayPage() {
     }
     return localStorage.getItem("vyra_user_view") === "program" ? false : undefined;
   });
+  const [isLaunchingSession, setIsLaunchingSession] = useState(false);
   const [tick, setTick] = useState(0);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
   const [inspectedDayOfWeek, setInspectedDayOfWeek] = useState<number | null>(null);
@@ -664,12 +666,27 @@ export default function TodayPage() {
                 ) : (
                   <Link
                     href={`/session?day=${displaySession?.id || "day_1"}`}
-                    onClick={() => haptics.heavy()}
-                    className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 ios-press-state text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4"
+                    onClick={() => {
+                      haptics.heavy();
+                      setIsLaunchingSession(true);
+                    }}
+                    className={clsx(
+                      "w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 ios-press-state text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-between px-4 select-none",
+                      isLaunchingSession && "pointer-events-none opacity-90 cursor-wait"
+                    )}
                   >
                     <div className="flex items-center gap-2">
-                      <Play className="w-6 h-6 fill-current" />
-                      <span>{isInspectingDifferentDay ? "START INSPECTED SESSION" : "COMMENCE SESSION"}</span>
+                      {isLaunchingSession ? (
+                        <>
+                          <Loader2 className="w-6 h-6 animate-spin text-[#05080c]" />
+                          <span>LAUNCHING HUD...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-6 h-6 fill-current" />
+                          <span>{isInspectingDifferentDay ? "START INSPECTED SESSION" : "COMMENCE SESSION"}</span>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 bg-[#05080c]/80 text-[#10b981] px-2.5 py-1 rounded-lg border border-[#10b981]/40 font-mono text-xs font-bold">
                       <span>~{estimatedPaceMin} MIN</span>

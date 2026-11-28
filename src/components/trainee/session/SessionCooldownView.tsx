@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Check, CheckCircle2, Clock, Flame, SkipForward } from "lucide-react";
+import { Check, CheckCircle2, Clock, Flame, SkipForward, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { formatDuration } from "./types";
+import { haptics } from "@/lib/haptics";
 
 interface SessionCooldownViewProps {
   cooldownDurationSec: number;
@@ -11,6 +12,7 @@ interface SessionCooldownViewProps {
   onToggleDrill: (drillId: number) => void;
   onCompleteCooldown: () => void;
   onSkipCooldown: () => void;
+  isFinishingSession?: boolean;
 }
 
 const COOLDOWN_DRILLS = [
@@ -42,6 +44,7 @@ export function SessionCooldownView({
   onToggleDrill,
   onCompleteCooldown,
   onSkipCooldown,
+  isFinishingSession = false,
 }: SessionCooldownViewProps) {
   return (
     <div className="flex-1 pb-12 px-4 pt-6 max-w-md mx-auto w-full space-y-6 animate-in fade-in duration-200">
@@ -122,20 +125,53 @@ export function SessionCooldownView({
       <div className="space-y-2.5 pt-2">
         <button
           type="button"
-          onClick={onCompleteCooldown}
-          className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+          disabled={isFinishingSession}
+          onClick={() => {
+            if (isFinishingSession) return;
+            haptics.heavy();
+            onCompleteCooldown();
+          }}
+          className={clsx(
+            "w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider text-sm font-black rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 select-none",
+            isFinishingSession
+              ? "opacity-85 cursor-wait pointer-events-none"
+              : "cursor-pointer active:scale-[0.98]"
+          )}
         >
-          <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-          <span>Finish &amp; Save Workout ✓</span>
+          {isFinishingSession ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+              <span>Archiving Workout &amp; Syncing...</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+              <span>Finish &amp; Save Workout ✓</span>
+            </>
+          )}
         </button>
 
         <button
           type="button"
-          onClick={onSkipCooldown}
-          className="w-full py-3 bg-[#111622] hover:bg-[#182030] active:scale-[0.98] border border-[#1C2436] text-slate-400 hover:text-white font-editorial font-bold text-xs rounded-2xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          disabled={isFinishingSession}
+          onClick={() => {
+            if (isFinishingSession) return;
+            haptics.light();
+            onSkipCooldown();
+          }}
+          className={clsx(
+            "w-full py-3 bg-[#111622] hover:bg-[#182030] border border-[#1C2436] text-slate-400 hover:text-white font-editorial font-bold text-xs rounded-2xl transition flex items-center justify-center gap-1.5 select-none",
+            isFinishingSession
+              ? "opacity-50 cursor-wait pointer-events-none"
+              : "cursor-pointer active:scale-[0.98]"
+          )}
         >
-          <SkipForward className="w-3.5 h-3.5 text-slate-500" />
-          <span>Skip Cooldown → View Summary</span>
+          {isFinishingSession ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+          ) : (
+            <SkipForward className="w-3.5 h-3.5 text-slate-500" />
+          )}
+          <span>{isFinishingSession ? "Saving..." : "Skip Cooldown → View Summary"}</span>
         </button>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { resolveCoachQuery, CoachSmartActionCardData } from "@/lib/coach-engine"
 import { runAutonomousCoachingLifecycleCheck } from "@/lib/ai/coaching-cycle";
 import { CoachSmartActionCard } from "@/components/coach/CoachSmartActionCard";
 import { resolveProgramDay } from "@/lib/utils";
-import { Send, Sparkles, Brain, ShieldAlert, Dumbbell, Scale, Activity } from "lucide-react";
+import { Send, Sparkles, Brain, ShieldAlert, Dumbbell, Scale, Activity, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { useIsClientHydrated, useVyraStoreVersion } from "@/components/auth/VyraAuthProvider";
 import { haptics } from "@/lib/haptics";
@@ -365,7 +365,11 @@ function CoachChat() {
               aria-label="Send message"
               className="w-12 h-11 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-[#090C11] rounded-xl flex items-center justify-center transition flex-shrink-0 font-bold disabled:opacity-50 cursor-pointer"
             >
-              <Send className="w-4 h-4" />
+              {isStreaming ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#090C11]" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </form>
         </div>

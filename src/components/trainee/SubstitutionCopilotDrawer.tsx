@@ -24,11 +24,13 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
 import { soundService } from "@/lib/in-gym/sound";
 import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
+import { haptics } from "@/lib/haptics";
 
 interface SubstitutionCopilotDrawerProps {
   isOpen: boolean;
@@ -53,6 +55,7 @@ export function SubstitutionCopilotDrawer({
   const [ragEvidence, setRagEvidence] = useState<any>(null);
   const [showEvidenceCockpit, setShowEvidenceCockpit] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [swappingId, setSwappingId] = useState<string | null>(null);
   const [equipmentFilter, setEquipmentFilter] = useState<
     "all" | "machine" | "dumbbell" | "cable" | "barbell" | "body weight"
   >("all");
@@ -344,18 +347,47 @@ export function SubstitutionCopilotDrawer({
                   </div>
 
                   {/* 1-Tap Swap CTA */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundService.playTargetHitFeedback(true);
-                      onApplySubstitute(cand.exercise);
-                      onClose();
-                    }}
-                    className="w-full h-10 bg-[#10b981] hover:bg-[#059669] active:scale-[0.98] text-black font-display uppercase tracking-wider font-black text-xs rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.3)] transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
-                    <span>Swap Station & Continue Workout</span>
-                  </button>
+                  {(() => {
+                    const candidateKey = cand.exercise.id || cand.exercise.name;
+                    const isThisSwapping = swappingId === candidateKey;
+                    return (
+                      <button
+                        type="button"
+                        disabled={Boolean(swappingId)}
+                        onClick={() => {
+                          if (swappingId) return;
+                          haptics.heavy();
+                          soundService.playTargetHitFeedback(true);
+                          setSwappingId(candidateKey);
+                          setTimeout(() => {
+                            onApplySubstitute(cand.exercise);
+                            onClose();
+                            setSwappingId(null);
+                          }, 150);
+                        }}
+                        className={clsx(
+                          "w-full h-10 font-display uppercase tracking-wider font-black text-xs rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.3)] transition flex items-center justify-center gap-2 select-none",
+                          isThisSwapping
+                            ? "bg-[#059669] text-white cursor-wait"
+                            : Boolean(swappingId)
+                            ? "bg-[#10b981]/50 text-black/50 cursor-not-allowed"
+                            : "bg-[#10b981] hover:bg-[#059669] active:scale-[0.98] text-black cursor-pointer"
+                        )}
+                      >
+                        {isThisSwapping ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>Station Swapped ✓</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
+                            <span>Swap Station &amp; Continue Workout</span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })

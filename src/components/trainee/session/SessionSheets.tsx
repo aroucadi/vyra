@@ -8,6 +8,7 @@ import {
   Camera,
   CheckCircle2,
   ExternalLink,
+  Loader2,
   Plus,
   Search,
   Share2,
@@ -28,6 +29,7 @@ import { ExerciseVideoModal } from "@/components/trainee/ExerciseVideoModal";
 import { ExerciseThumbnail } from "@/components/trainee/ExerciseThumbnail";
 import { shareEquipmentPhotoWithGemini } from "@/lib/share-equipment";
 import { resolveExerciseVideoUrl, getOpenGymClipUrl, getOpenGymStillUrl } from "@/lib/utils";
+import { haptics } from "@/lib/haptics";
 import type { ActiveExercise } from "./types";
 import type { Exercise } from "@/lib/types";
 
@@ -75,6 +77,7 @@ interface SessionSheetsProps {
     videoUrl?: string;
   }) => void;
   onFinishSession: () => void;
+  isFinishingSession?: boolean;
   onAddBonusSet: () => void;
   onAddExtraExercise: (picked: Exercise) => void;
   onMoveExerciseUp: (index: number) => void;
@@ -112,6 +115,7 @@ export function SessionSheets({
   onExitToToday,
   onApplySubstitute,
   onFinishSession,
+  isFinishingSession = false,
   onAddBonusSet,
   onAddExtraExercise,
   onMoveExerciseUp,
@@ -360,14 +364,31 @@ export function SessionSheets({
           <div className="space-y-2.5 pt-2">
             <button
               type="button"
+              disabled={isFinishingSession}
               onClick={() => {
+                if (isFinishingSession) return;
+                haptics.heavy();
                 setIsWorkoutCompleteModalOpen(false);
                 onFinishSession();
               }}
-              className="w-full py-4 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] text-slate-950 font-display uppercase tracking-wider font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className={clsx(
+                "w-full py-4 px-5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-display uppercase tracking-wider font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 select-none",
+                isFinishingSession
+                  ? "opacity-80 cursor-wait pointer-events-none"
+                  : "cursor-pointer active:scale-[0.98]"
+              )}
             >
-              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-              <span>Finish &amp; Save Workout ✓</span>
+              {isFinishingSession ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>Syncing Workout &amp; Telemetry...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                  <span>Finish &amp; Save Workout ✓</span>
+                </>
+              )}
             </button>
 
             <button

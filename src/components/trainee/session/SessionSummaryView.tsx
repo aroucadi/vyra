@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { clsx } from "clsx";
 import {
   MapPin,
   Sparkles,
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Download,
+  Loader2,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import { computeExercisePrescription } from "@/lib/progression-adapter";
@@ -23,6 +25,7 @@ import { PasskeySyncCard } from "@/components/trainee/PasskeySyncCard";
 import { AudioNoteRecorder } from "@/components/trainee/AudioNoteRecorder";
 import { GymSelectorDrawer } from "@/components/trainee/GymSelectorDrawer";
 import { AnatomicalTensionSpotlight } from "@/components/trainee/AnatomicalTensionSpotlight";
+import { haptics } from "@/lib/haptics";
 import type { SubscriptionTier } from "@/lib/entitlements";
 import type { GymLocation, ProgramDay, User } from "@/lib/types";
 import type { ActiveExercise } from "./types";
@@ -63,6 +66,7 @@ export function SessionSummaryView({
   onUpdateSessionAudio,
   onReturnToday,
 }: SessionSummaryViewProps) {
+  const [isReturning, setIsReturning] = React.useState(false);
   const totalVolume = exercises.reduce(
     (acc, ex) =>
       acc + ex.completedSets.reduce((sAcc, s) => sAcc + s.weight * s.reps, 0),
@@ -410,11 +414,31 @@ export function SessionSummaryView({
       <div className="space-y-2 pt-2">
         <button
           type="button"
-          onClick={onReturnToday}
-          className="w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 active:scale-[0.98] text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(0,242,254,0.6)] transition-all cursor-pointer flex items-center justify-center gap-2"
+          disabled={isReturning}
+          onClick={() => {
+            if (isReturning) return;
+            haptics.heavy();
+            setIsReturning(true);
+            onReturnToday();
+          }}
+          className={clsx(
+            "w-full h-15 py-3.5 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_24px_rgba(16,185,129,0.45)] transition-all flex items-center justify-center gap-2 select-none",
+            isReturning
+              ? "opacity-85 cursor-wait pointer-events-none"
+              : "cursor-pointer active:scale-[0.98] hover:from-emerald-400 hover:to-cyan-300"
+          )}
         >
-          <span>COMMIT TO RECORDER &amp; RECOVER</span>
-          <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+          {isReturning ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin text-[#05080c]" />
+              <span>RETURNING TO TODAY COCKPIT...</span>
+            </>
+          ) : (
+            <>
+              <span>COMMIT TO RECORDER &amp; RECOVER</span>
+              <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+            </>
+          )}
         </button>
 
         <button

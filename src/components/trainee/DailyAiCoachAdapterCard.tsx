@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 import {
   adaptDailyWorkoutSession,
   DailyWorkoutAdaptationResult,
@@ -61,6 +63,7 @@ export function DailyAiCoachAdapterCard({
 }: DailyAiCoachAdapterCardProps) {
   const [message, setMessage] = useState("");
   const [isAdapting, setIsAdapting] = useState(false);
+  const [activeChipId, setActiveChipId] = useState<string | null>(null);
   const [photoStatus, setPhotoStatus] = useState<string | null>(null);
   const photoInputRef = React.useRef<HTMLInputElement | null>(null);
 
@@ -143,10 +146,11 @@ export function DailyAiCoachAdapterCard({
     return adaptDailyWorkoutSession(payload);
   };
 
-  const handleRunAdaptation = async (customPrompt?: string) => {
+  const handleRunAdaptation = async (customPrompt?: string, chipId?: string) => {
     const textToUse = (customPrompt ?? message).trim();
-    if (!textToUse) return;
+    if (!textToUse || isAdapting) return;
     setIsAdapting(true);
+    if (chipId) setActiveChipId(chipId);
     try {
       const result = await runViaServerThenLocal({
         traineeId,
@@ -158,6 +162,7 @@ export function DailyAiCoachAdapterCard({
       onApplyDailyAdaptation(result);
     } finally {
       setIsAdapting(false);
+      setActiveChipId(null);
     }
   };
 
@@ -326,28 +331,50 @@ export function DailyAiCoachAdapterCard({
           marginBottom: 10,
         }}
       >
-        {QUICK_SCENARIO_CHIPS.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => {
-              setMessage(chip.prompt);
-              handleRunAdaptation(chip.prompt);
-            }}
-            style={{
-              background: "#1C2436",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 999,
-              padding: "4px 10px",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#E2E8F0",
-              cursor: "pointer",
-            }}
-          >
-            {chip.label}
-          </button>
-        ))}
+        {QUICK_SCENARIO_CHIPS.map((chip) => {
+          const isActiveThisChip = isAdapting && activeChipId === chip.id;
+          return (
+            <button
+              key={chip.id}
+              type="button"
+              disabled={isAdapting}
+              onClick={() => {
+                if (isAdapting) return;
+                haptics.selection();
+                setMessage(chip.prompt);
+                handleRunAdaptation(chip.prompt, chip.id);
+              }}
+              style={{
+                background: isActiveThisChip ? "#1E2A42" : "#1C2436",
+                border: isActiveThisChip
+                  ? "1px solid #F59E0B"
+                  : "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 999,
+                padding: "4px 10px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: isActiveThisChip ? "#FCD34D" : "#E2E8F0",
+                cursor: isAdapting ? "wait" : "pointer",
+                opacity: isAdapting && !isActiveThisChip ? 0.5 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 0.15s ease",
+              }}
+            >
+              {isActiveThisChip && (
+                <Loader2
+                  style={{
+                    width: 11,
+                    height: 11,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+              )}
+              <span>{isActiveThisChip ? "Adapting..." : chip.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Voice / Text Input Row */}
@@ -355,6 +382,7 @@ export function DailyAiCoachAdapterCard({
         <input
           type="text"
           value={message}
+          disabled={isAdapting}
           onChange={(e) => setMessage(e.target.value)}
           placeholder='Tell Coach your situation (e.g. "Only 20m today", "Hurt abs in football")...'
           style={{
@@ -365,12 +393,17 @@ export function DailyAiCoachAdapterCard({
             padding: "8px 11px",
             fontSize: 12,
             color: "#F8FAFC",
+            opacity: isAdapting ? 0.6 : 1,
           }}
         />
         <button
           type="button"
           disabled={isAdapting || !message.trim()}
-          onClick={() => handleRunAdaptation()}
+          onClick={() => {
+            if (isAdapting) return;
+            haptics.selection();
+            handleRunAdaptation();
+          }}
           style={{
             background: "#F59E0B",
             color: "#090C11",
@@ -379,11 +412,23 @@ export function DailyAiCoachAdapterCard({
             padding: "8px 12px",
             fontSize: 12,
             fontWeight: 800,
-            cursor: "pointer",
+            cursor: isAdapting ? "wait" : "pointer",
             opacity: isAdapting || !message.trim() ? 0.6 : 1,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          {isAdapting ? "Adapting..." : "Adapt Day"}
+          {isAdapting && (
+            <Loader2
+              style={{
+                width: 12,
+                height: 12,
+                animation: "spin 1s linear infinite",
+              }}
+            />
+          )}
+          <span>{isAdapting ? "Adapting..." : "Adapt Day"}</span>
         </button>
       </div>
 

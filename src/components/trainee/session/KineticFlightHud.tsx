@@ -21,6 +21,7 @@ import {
   MicOff,
   Check,
   ArrowRightLeft,
+  Loader2,
 } from "lucide-react";
 import {
   BIOFEEDBACK_OPTIONS,
@@ -64,6 +65,7 @@ export interface KineticFlightHudProps {
   onAddBonusSet: () => void;
   onSkipRemainingSets: () => void;
   onFinishSession: () => void;
+  isFinishingSession?: boolean;
   onOpenReorder: () => void;
   onOpenGymDrawer: () => void;
   onOpenAddExercise: () => void;
@@ -111,6 +113,7 @@ export function KineticFlightHud({
   onAddBonusSet,
   onSkipRemainingSets,
   onFinishSession,
+  isFinishingSession = false,
   onOpenReorder,
   onOpenSwap,
   onExit,
@@ -624,11 +627,30 @@ export function KineticFlightHud({
             {isFinalExercise ? (
               <button
                 type="button"
-                onClick={onFinishSession}
-                className="w-full h-14 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.5)] transition cursor-pointer flex items-center justify-center gap-2"
+                disabled={isFinishingSession}
+                onClick={() => {
+                  if (isFinishingSession) return;
+                  haptics.heavy();
+                  onFinishSession();
+                }}
+                className={clsx(
+                  "w-full h-14 bg-gradient-to-r from-[#10b981] via-emerald-400 to-cyan-400 text-[#05080c] font-display uppercase tracking-wider text-xl font-black rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.5)] transition flex items-center justify-center gap-2 select-none",
+                  isFinishingSession
+                    ? "opacity-90 cursor-wait pointer-events-none"
+                    : "cursor-pointer active:scale-[0.98] ios-press-state"
+                )}
               >
-                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
-                <span>FINISH WORKOUT &amp; DEBRIEF ✓</span>
+                {isFinishingSession ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin text-[#05080c]" />
+                    <span>ARCHIVING WORKOUT &amp; SYNCING...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                    <span>FINISH WORKOUT &amp; DEBRIEF ✓</span>
+                  </>
+                )}
               </button>
             ) : (
               <button

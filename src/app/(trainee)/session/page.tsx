@@ -65,6 +65,8 @@ import { SessionCooldownView } from "@/components/trainee/session/SessionCooldow
 import { SessionSummaryView } from "@/components/trainee/session/SessionSummaryView";
 import { SessionSheets } from "@/components/trainee/session/SessionSheets";
 import { KineticFlightHud } from "@/components/trainee/session/KineticFlightHud";
+import { Loader2 } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 
 interface SwapTarget {
   id?: string;
@@ -119,6 +121,8 @@ function SessionFlow({
   const [isReorderDrawerOpen, setIsReorderDrawerOpen] = useState(false);
   const [isWorkoutCompleteModalOpen, setIsWorkoutCompleteModalOpen] =
     useState(false);
+  const [isFinishingSession, setIsFinishingSession] = useState(false);
+  const isFinishingSessionRef = useRef(false);
   const [isAddExerciseSheetOpen, setIsAddExerciseSheetOpen] = useState(false);
   const [exerciseSearchQuery, setExerciseSearchQuery] = useState("");
   const [selectedMuscleFilter, setSelectedMuscleFilter] = useState("all");
@@ -1251,7 +1255,12 @@ function SessionFlow({
     overrideWarmup?: { completed: boolean; durationSec: number },
     overrideCooldown?: { completed: boolean; durationSec: number }
   ) => {
-    cancelOrSkipRest();
+    if (isFinishingSessionRef.current) return;
+    isFinishingSessionRef.current = true;
+    setIsFinishingSession(true);
+    haptics.heavy();
+    try {
+      cancelOrSkipRest();
     const now = Date.now();
     const finalSessionTotalSec = sessionStartEpochRef.current
       ? Math.max(1, Math.round((now - sessionStartEpochRef.current) / 1000))
@@ -1372,6 +1381,10 @@ function SessionFlow({
     appStore.saveSession(completedSession);
     sensoryMemoryStore.ingestFromSessionHistory([completedSession]);
     setMode("summary");
+    } finally {
+      isFinishingSessionRef.current = false;
+      setIsFinishingSession(false);
+    }
   };
 
   const handleQuickStartStarterSession = () => {
@@ -1706,6 +1719,7 @@ function SessionFlow({
       <SessionCooldownView
         cooldownDurationSec={cooldownDurationSec}
         checkedCooldownDrills={checkedCooldownDrills}
+        isFinishingSession={isFinishingSession}
         onToggleDrill={(drillId) =>
           setCheckedCooldownDrills((prev) => ({
             ...prev,
@@ -1831,6 +1845,7 @@ function SessionFlow({
         onAddBonusSet={handleAddBonusSet}
         onSkipRemainingSets={handleSkipRemainingSets}
         onFinishSession={() => handleFinishSession()}
+        isFinishingSession={isFinishingSession}
         onOpenReorder={() => setIsReorderDrawerOpen(true)}
         onOpenGymDrawer={() => setIsGymDrawerOpen(true)}
         onOpenAddExercise={() => setIsAddExerciseSheetOpen(true)}
@@ -1916,6 +1931,7 @@ function SessionFlow({
         onExitToToday={() => router.push("/today")}
         onApplySubstitute={applySubstituteCandidate}
         onFinishSession={() => handleFinishSession()}
+        isFinishingSession={isFinishingSession}
         onAddBonusSet={handleAddBonusSet}
         onAddExtraExercise={handleAddExtraExercise}
         onMoveExerciseUp={moveExerciseUp}
@@ -1941,6 +1957,30 @@ function SessionFlow({
         onChange={handleCaptureEquipmentPhoto}
         className="hidden"
       />
+
+      {isFinishingSession && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 bg-[#05080c]/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200"
+        >
+          <div className="relative flex items-center justify-center mb-5">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
+            <div className="w-16 h-16 rounded-2xl bg-[#090d16] border border-[#10b981]/50 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <Loader2 className="w-8 h-8 text-[#10b981] animate-spin" />
+            </div>
+          </div>
+          <h3 className="text-xl font-display uppercase tracking-wider font-black text-white mb-1">
+            Finalizing Session
+          </h3>
+          <p className="text-xs font-mono text-emerald-400 mb-2">
+            Compiling Biomechanical Logs &amp; Telemetry...
+          </p>
+          <p className="text-[11px] text-slate-400 max-w-xs font-body">
+            Saving sets, updating sensory memory, and preparing your performance debrief.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

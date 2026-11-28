@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { Mic, Square, Play, Pause, Trash2, Volume2, Sparkles, Share2 } from "lucide-react";
+import { Mic, Square, Play, Pause, Trash2, Volume2, Sparkles, Share2, Loader2 } from "lucide-react";
 import { shareAudioNoteWithGemini } from "@/lib/share-equipment";
 import {
   embedTranscriptInAudioDataUri,
@@ -70,6 +70,7 @@ function AudioNoteRecorderInner({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const speechRecRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -202,6 +203,7 @@ function AudioNoteRecorderInner({
 
           // If browser SpeechRecognition was unavailable or produced no text, run async Gemini transcription pipeline
           if (!capturedText) {
+            setIsTranscribing(true);
             try {
               const asyncTranscript = await transcribeAudioFeedbackWithGemini(
                 rawBase64Audio,
@@ -216,6 +218,8 @@ function AudioNoteRecorderInner({
               }
             } catch {
               // Preserve original audio recording even if async transcription fails
+            } finally {
+              setIsTranscribing(false);
             }
           }
 
@@ -470,7 +474,13 @@ function AudioNoteRecorderInner({
             </button>
           </div>
         </div>
-        {resolvedTranscript && (
+        {isTranscribing && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-800/60 text-[11px] text-cyan-300">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
+            <span>Transcribing Voice Memo with Gemini AI...</span>
+          </div>
+        )}
+        {resolvedTranscript && !isTranscribing && (
           <div className="px-2.5 py-1.5 rounded-lg bg-[#090C11]/80 border border-[#1C2436] text-[11px] text-slate-300 flex items-start gap-1.5">
             <Sparkles className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
             <span className="italic leading-snug">“{resolvedTranscript}”</span>

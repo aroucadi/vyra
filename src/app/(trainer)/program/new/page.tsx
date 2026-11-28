@@ -19,6 +19,7 @@ import {
   Flame,
   Utensils,
   X,
+  Loader2,
 } from "lucide-react";
 import { appStore } from "@/lib/store";
 import {
@@ -243,6 +244,8 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   const [activeDayIndex, setActiveDayIndex] = useState(0); // 0 = Mon
   const [status, setStatus] = useState<"draft" | "published">("published");
   const [version, setVersion] = useState(1);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
@@ -553,20 +556,28 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
   };
 
   const handleSaveDraft = async () => {
+    if (isSavingDraft || isPublishing) return;
+    setIsSavingDraft(true);
     setErrorToast("");
-    const prog = buildProgramObject("draft", version);
-    appStore.saveProgram(prog);
     try {
-      await saveProgramAction(prog);
-    } catch {
-      // Local device draft succeeded; cloud sync skipped when unauthenticated
+      const prog = buildProgramObject("draft", version);
+      appStore.saveProgram(prog);
+      try {
+        await saveProgramAction(prog);
+      } catch {
+        // Local device draft succeeded; cloud sync skipped when unauthenticated
+      }
+      setStatus("draft");
+      setSuccessToast("Program draft saved successfully.");
+      setTimeout(() => setSuccessToast(""), 3000);
+    } finally {
+      setIsSavingDraft(false);
     }
-    setStatus("draft");
-    setSuccessToast("Program draft saved successfully.");
-    setTimeout(() => setSuccessToast(""), 3000);
   };
 
   const handlePublish = async () => {
+    if (isPublishing || isSavingDraft) return;
+    setIsPublishing(true);
     setShowPublishModal(false);
     setErrorToast("");
     try {
@@ -588,6 +599,8 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
       }, 1000);
     } catch (err) {
       setErrorToast(err instanceof Error ? err.message : "Failed to publish program.");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -645,19 +658,31 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
           </button>
 
           <button
+            type="button"
+            disabled={isSavingDraft || isPublishing}
             onClick={handleSaveDraft}
-            className="px-3.5 py-2 rounded-lg bg-[#162032] border border-[#334155] text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 rounded-lg bg-[#162032] border border-[#334155] text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
           >
-            <Save className="w-3.5 h-3.5" />
-            Save Draft
+            {isSavingDraft ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Save className="w-3.5 h-3.5" />
+            )}
+            <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
           </button>
 
           <button
+            type="button"
+            disabled={isSavingDraft || isPublishing}
             onClick={() => setShowPublishModal(true)}
-            className="px-4 py-2 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow-sm uppercase tracking-wider"
+            className="px-4 py-2 rounded-lg bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow-sm uppercase tracking-wider disabled:opacity-50 cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5" />
-            Publish Program
+            {isPublishing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            <span>{isPublishing ? "Publishing..." : "Publish Program"}</span>
           </button>
         </div>
       </div>
@@ -1272,16 +1297,27 @@ export default function ProgramBuilderPage({ programId }: { programId?: string }
 
             <div className="flex gap-2 pt-2">
               <button
+                type="button"
+                disabled={isPublishing}
                 onClick={() => setShowPublishModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-[#0F172A] border border-[#334155] text-xs font-bold text-slate-300"
+                className="flex-1 py-2.5 rounded-xl bg-[#0F172A] border border-[#334155] text-xs font-bold text-slate-300 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
+                disabled={isPublishing}
                 onClick={handlePublish}
-                className="flex-1 py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider"
+                className="flex-1 py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                Confirm & Push
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Publishing...</span>
+                  </>
+                ) : (
+                  <span>Confirm &amp; Push</span>
+                )}
               </button>
             </div>
           </div>
